@@ -5,7 +5,7 @@ import time
 import atexit
 
 
-class RemoteDevice(object):
+class Remote(object):
     def __init__(self):
         self.enabled = None  
 
@@ -39,7 +39,7 @@ class RemoteDevice(object):
 
 
 
-class RemoteDataDevice(RemoteDevice):
+class DataRemote(Remote):
     """A data capture device. 
 
     This class handles a thread to fetch data from a device and dispatch 
@@ -52,7 +52,7 @@ class RemoteDataDevice(RemoteDevice):
     implementation.
     """
     def __init__(self):
-        super(RemoteDataDevice, self).__init__()
+        super(DataRemote, self).__init__()
         # A buffer for data.
         self._data = None
         # A thread to fetch and dispatch data.
@@ -76,7 +76,7 @@ class RemoteDataDevice(RemoteDevice):
             self._data_thread = threading.Thread(target=self._data_thread_loop)
             self._data_thread.daemon = True
             self._data_thread.start()
-        super(RemoteDataDevice, self).enable()
+        super(DataRemote, self).enable()
 
 
     def disable(self):
@@ -86,7 +86,7 @@ class RemoteDataDevice(RemoteDevice):
                 self._data_thread_run = False
                 self._data_thread.join()
             self.data_thread = None
-        super(RemoteDataDevice, self).disable()
+        super(DataRemote, self).disable()
 
 
     def _get_data(self):
@@ -131,14 +131,14 @@ class RemoteDataDevice(RemoteDevice):
         self.set_client(client_uri)
  
 
-class RemoteCameraDevice(RemoteDataDevice):
+class CameraRemote(DataRemote):
     def __init__(self):
         # A tuple defining data shape.
         self.dshape = None
         # A data type.
         self.dtype = None
         self.dtransform = None
-        super(RemoteCameraDevice, self).__init__()
+        super(CameraRemote, self).__init__()
 
     
     def get_exposure_time(self):
