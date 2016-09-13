@@ -18,6 +18,8 @@
 
 """Classes for remote control of microscope components."""
 import abc
+import logging
+from logging.handlers import RotatingFileHandler
 import multiprocessing
 import numpy as np
 from collections import OrderedDict
@@ -26,18 +28,31 @@ import Queue
 from threading import Thread
 import time
 
+LOGGER = logging.getLogger('remotes')
+LOGGER.setLevel(logging.DEBUG)
+log_ch = RotatingFileHandler('remotelog.txt')
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_ch.setFormatter(log_formatter)
+LOGGER.addHandler(log_ch)
+
+
+def remote(cls, host, port, uid=None, **kwargs):
+    return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
+
 
 class Remote(object):
     #__metaclass__ = abc.ABCMeta
-    def __init__(self):
-        print "__init__"
+    # If there are multiple devices, do they 'float', or can we
+    # specify the one we want and be sure to get it?
+    FLOATING = False
+    def __init__(self, *args, **kwargs):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
+        self.logger = LOGGER
 
 
     def __del__(self):
-        print "__del__"
         self.shutdown()
 
 
@@ -72,11 +87,6 @@ class Remote(object):
                                         'advanced':adv}})
 
 
-    @Pyro4.expose
-    def get_some_dict(self):
-        return {'a':1, 'b':2}
-
-
     @abc.abstractmethod
     @Pyro4.expose
     def disable(self):
@@ -89,6 +99,7 @@ class Remote(object):
     def enable(self):
         """Enable the device."""
         self.enabled = True
+
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -107,7 +118,6 @@ class Remote(object):
     @Pyro4.expose
     def initialize(self, *args, **kwargs):
         """Initialize the device."""
-        print "initialize"
         self.add_setting('thing', 'int', None, None, (0, 100))
 
 
@@ -122,7 +132,6 @@ class Remote(object):
     @Pyro4.expose
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
-        print "shutdown"
         self.enabled = False
 
     @Pyro4.expose
@@ -152,6 +161,10 @@ class Remote(object):
         for key in update_keys:
             results[key] = settings[key]['get']()
         return results
+
+
+class FloatingRemote(Remote):
+    FLOATING = True
 
 
 class DataRemote(Remote):
@@ -244,7 +257,7 @@ class DataRemote(Remote):
 
 
     def _process_data(self, data):
-        """Do any data processing prior to sending to client and return data."""
+        """Do any data processing and return data."""
         return data
 
 
@@ -306,64 +319,20 @@ class DataRemote(Remote):
         self.set_client(client_uri)
 
 
-class CameraRemote(DataRemote):
-    """Adds functionality to DataRemote to support cameras.
-
-    Applies a transform to acquired data in the processing step.
-    Defines the interface for cameras.
-    Must implement _fetch_data as per DataRemote._fetch_data."""
-    def __init__(self):
-        # A tuple defining data shape.
-        self.dshape = None
-        # A data type.
-        self.dtype = None
-        # A transform to apply to data (fliplr, flipud, rot90)
-        self.dtransform = (0, 0, 0)
-        super(CameraRemote, self).__init__()
-        self.some_setting = 0.
-        #self.settings.append()
-
-
-    def _process_data(self, data):
-        """Apply self.dtransform to data."""
-        flips = (self.transform[0], self.transform[1])
-        rot = self.transform[2]
-
-        return {(0,0): numpy.rot90(data, rot),
-                (0,1): numpy.flipud(numpy.rot90(data, rot)),
-                (1,0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1,1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
-                }[flips]
-
-
-    @abc.abstractmethod
-    @Pyro4.expose
-    def get_exposure_time(self):
-        pass
-
-
-    def set_some_setting(self, value):
-        self.some_setting = value
-
-
-    def get_some_setting(self, value):
-        return self.some_setting
-
-
 class RemoteServer(multiprocessing.Process):
-    def __init__(self, term_event, remote_class, id_to_host, id_to_port, index=0):
+    def __init__(self, term_event, remote_def, id_to_host, id_to_port):
         """Initialise a remote and serve at host/port according to its id.
 
-        :param remoteClass: class to serve
-        :param id_to_host:  mapping of device identifiers to hostname
-        :param id_to_port:  mapping of device identifiers to port number
-        :param index:  device index if serving multiple devices of same type."""
-        self._index = index
+        :param remote_def:  definition of the remote
+        :param host_or_map: host or mapping of device identifiers to hostname
+        :param port_or_map: map or mapping of device identifiers to port number
+        """
+        # The device to serve.
+        self._remote_def = remote_def
+        self._remote = None
+        # Where to serve it.
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port
-        # The device to serve.
-        self._remote = None
-        self._remote_class = remote_class
         # A shared event to allow clean shutdown.
         self.term_event = term_event
         super(RemoteServer, self).__init__()
@@ -371,20 +340,23 @@ class RemoteServer(multiprocessing.Process):
 
 
     def run(self):
-        self._remote = self._remote_class()
+        self._remote = self._remote_def['cls'](**self._remote_def)
         while True:
             try:
-                self._remote.initialize(self._index)
+                self._remote.initialize()
             except:
                 time.sleep(5)
             else:
                 break
-        uid = (self._remote_class, self._remote.get_id())
-        if uid not in self._id_to_host or uid not in self._id_to_port:
-            raise Exception("Host or port not found for device "
-                            "with id %s." % uid)
-        host = self._id_to_host[uid]
-        port = self._id_to_port[uid]
+        if self._remote.FLOATING:
+            uid = self._remote.get_id()
+            if uid not in self._id_to_host or uid not in self._id_to_port:
+                raise Exception("Host or port not found for device %s" % (uid,))
+            host = self._id_to_host[uid]
+            port = self._id_to_port[uid]
+        else:
+            host = self._remote_def['host']
+            port = self._remote_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
@@ -427,16 +399,29 @@ if __name__ == '__main__':
         import config
     else:
         config = __import__(os.path.splitext(sys.argv[1])[0])
-    config.REMOTES.sort()
-    uid_to_host = {}
-    uid_to_port = {}
-    for (cls, clsid, host, port) in config.REMOTES:
-        uid = (cls, clsid)
-        uid_to_host[uid] = host
-        uid_to_port[uid] = int(port)
-    for cls, clsid, host, port in config.REMOTES:
-        servers = []
-        servers.append(RemoteServer(term_event, cls, uid_to_host, uid_to_port))
-        servers[-1].start()
+    
+    # Group remotes by class.
+    by_class = {}
+    for r in config.REMOTES:
+        by_class[r['cls']] = by_class.get(r['cls'], []) + [r]
+
+    servers = []
+    for cls, rs in by_class.iteritems():
+        if cls.FLOATING:
+            # Need to provide maps of uid to host and port.
+            uid_to_host = {}
+            uid_to_port = {}
+            for r in rs:
+                uid = r['uid']
+                uid_to_host[uid] = r['host']
+                uid_to_port[uid] = r['port']
+        else:
+            uid_to_host = None
+            uid_to_port = None
+
+        for r in rs:
+            servers.append(RemoteServer(term_event, r,
+                                        uid_to_host, uid_to_port))
+            servers[-1].start()
     while True:
         pass
