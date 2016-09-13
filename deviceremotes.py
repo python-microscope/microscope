@@ -28,13 +28,7 @@ import Queue
 from threading import Thread
 import time
 
-LOGGER = logging.getLogger('remotes')
-LOGGER.setLevel(logging.DEBUG)
-log_ch = RotatingFileHandler('remotelog.txt')
-log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-log_ch.setFormatter(log_formatter)
-LOGGER.addHandler(log_ch)
-
+LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
 def remote(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
@@ -49,7 +43,11 @@ class Remote(object):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
-        self.logger = LOGGER
+        # We fetch a logger here, but it can't log anything until
+        # a handler is attached after we've identified this device.
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.CRITICAL)
+        self.logger.info('Creating device.')
 
 
     def __del__(self):
@@ -118,7 +116,7 @@ class Remote(object):
     @Pyro4.expose
     def initialize(self, *args, **kwargs):
         """Initialize the device."""
-        self.add_setting('thing', 'int', None, None, (0, 100))
+        pass
 
 
     @abc.abstractmethod
@@ -133,6 +131,7 @@ class Remote(object):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
+        self.logger.info("Shutting down device.")
 
     @Pyro4.expose
     def update_settings(self, settings, init=False):
@@ -358,6 +357,12 @@ class RemoteServer(multiprocessing.Process):
             host = self._remote_def['host']
             port = self._remote_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
+        log_handler = RotatingFileHandler("%s_%s_%s.log" %
+                                           (type(self).__name__, host, port))
+        log_handler.setFormatter(LOG_FORMATTER)
+        self._remote.logger.addHandler(log_handler)
+        self._remote.logger.setLevel(logging.INFO)
+        self._remote.logger.info('Device initialized; starting daemon.')
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
