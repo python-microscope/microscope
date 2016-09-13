@@ -405,6 +405,10 @@ class RemoteServer(multiprocessing.Process):
 
 
 if __name__ == '__main__':
+    """Serve devices via pyro.
+
+    Usage:  deviceremotes [config]
+    """
     import signal, sys
     import os
     # An event to trigger clean termination of subprocesses.
