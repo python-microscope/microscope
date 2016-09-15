@@ -16,14 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import abc
-import deviceremotes
+import devicebase
 
-class LaserRemote(deviceremotes.Remote):
+class LaserDevice(devicebase.Device):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def __init__(self, *args, **kwargs):
-        super(LaserRemote, self).__init__(*args, **kwargs)
+        super(LaserDevice, self).__init__(*args, **kwargs)
         ## Should connect to the physical device here and set self.connection
         # to a type with read, readline and write methods (e.g. serial.Serial).
         self.connection = None

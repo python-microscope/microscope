@@ -1,9 +1,26 @@
-class CameraRemote(DataRemote):
-    """Adds functionality to DataRemote to support cameras.
+#!/usr/bin/python
+# -*- coding: utf-8
+#
+# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+class CameraDevice(DataDevice):
+    """Adds functionality to DataDevice to support cameras.
 
     Applies a transform to acquired data in the processing step.
     Defines the interface for cameras.
-    Must implement _fetch_data as per DataRemote._fetch_data."""
+    Must implement _fetch_data as per DataDevice._fetch_data."""
     def __init__(self):
         # A tuple defining data shape.
         self.dshape = None
@@ -11,7 +28,7 @@ class CameraRemote(DataRemote):
         self.dtype = None
         # A transform to apply to data (fliplr, flipud, rot90)
         self.dtransform = (0, 0, 0)
-        super(CameraRemote, self).__init__()
+        super(CameraDevice, self).__init__()
         self.some_setting = 0.
         #self.settings.append()
 

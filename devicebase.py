@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Classes for remote control of microscope components."""
+"""Classes for control of microscope components."""
 import abc
 import logging
 from logging.handlers import RotatingFileHandler
@@ -30,11 +30,11 @@ import time
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
-def remote(cls, host, port, uid=None, **kwargs):
+def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
-class Remote(object):
+class Device(object):
     #__metaclass__ = abc.ABCMeta
     # If there are multiple devices, do they 'float', or can we
     # specify the one we want and be sure to get it?
@@ -133,6 +133,7 @@ class Remote(object):
         self.enabled = False
         self.logger.info("Shutting down device.")
 
+
     @Pyro4.expose
     def update_settings(self, settings, init=False):
         """Update settings based on dict of settings and values."""
@@ -162,11 +163,11 @@ class Remote(object):
         return results
 
 
-class FloatingRemote(Remote):
+class FloatingDevice(Device):
     FLOATING = True
 
 
-class DataRemote(Remote):
+class DataDevice(Device):
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
@@ -182,7 +183,7 @@ class DataRemote(Remote):
     """
     def __init__(self, buffer_length=0):
         """Derived.__init__ must call this at some point."""
-        super(DataRemote, self).__init__()
+        super(DataDevice, self).__init__()
         # A length-1 buffer for fetching data.
         self._data = None
         # A thread to fetch and dispatch data.
@@ -231,7 +232,7 @@ class DataRemote(Remote):
             self._dispatch_thread = Thread(target=self._dispatch_loop)
             self._dispatch_thread.daemon = True
             self._dispatch_thread.start()
-        super(DataRemote, self).enable()
+        super(DataDevice, self).enable()
 
 
     def disable(self):
@@ -243,7 +244,7 @@ class DataRemote(Remote):
             if self._fetch_thread.is_alive():
                 self._fetch_thread_run = False
                 self._fetch_thread.join()
-        super(DataRemote, self).disable()
+        super(DataDevice, self).disable()
 
 
     @abc.abstractmethod
@@ -307,7 +308,7 @@ class DataRemote(Remote):
         was_acquiring = self.acquiring
         if was_acquiring:
             self.abort()
-        super(DataRemote, self).update_settings(settings, init)
+        super(DataDevice, self).update_settings(settings, init)
         if was_acquiring:
             self.start_aquisition()
 
@@ -318,55 +319,55 @@ class DataRemote(Remote):
         self.set_client(client_uri)
 
 
-class RemoteServer(multiprocessing.Process):
-    def __init__(self, term_event, remote_def, id_to_host, id_to_port):
-        """Initialise a remote and serve at host/port according to its id.
+class DeviceServer(multiprocessing.Process):
+    def __init__(self, term_event, device_def, id_to_host, id_to_port):
+        """Initialise a device and serve at host/port according to its id.
 
-        :param remote_def:  definition of the remote
+        :param device_def:  definition of the device
         :param host_or_map: host or mapping of device identifiers to hostname
         :param port_or_map: map or mapping of device identifiers to port number
         """
         # The device to serve.
-        self._remote_def = remote_def
-        self._remote = None
+        self._device_def = device_def
+        self._device = None
         # Where to serve it.
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port
         # A shared event to allow clean shutdown.
         self.term_event = term_event
-        super(RemoteServer, self).__init__()
+        super(DeviceServer, self).__init__()
         self.daemon = True
 
 
     def run(self):
-        self._remote = self._remote_def['cls'](**self._remote_def)
+        self._device = self._device_def['cls'](**self._device_def)
         while True:
             try:
-                self._remote.initialize()
+                self._device.initialize()
             except:
                 time.sleep(5)
             else:
                 break
-        if self._remote.FLOATING:
-            uid = self._remote.get_id()
+        if self._device.FLOATING:
+            uid = self._device.get_id()
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
             host = self._id_to_host[uid]
             port = self._id_to_port[uid]
         else:
-            host = self._remote_def['host']
-            port = self._remote_def['port']
+            host = self._device_def['host']
+            port = self._device_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
                                            (type(self).__name__, host, port))
         log_handler.setFormatter(LOG_FORMATTER)
-        self._remote.logger.addHandler(log_handler)
-        self._remote.logger.setLevel(logging.INFO)
-        self._remote.logger.info('Device initialized; starting daemon.')
+        self._device.logger.addHandler(log_handler)
+        self._device.logger.setLevel(logging.INFO)
+        self._device.logger.info('Device initialized; starting daemon.')
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                                   args=({self._remote: 'REMOTE'},),
+                                   args=({self._device: ''},),
                                    kwargs={'daemon':pyro_daemon, 'ns':False})
         pyro_thread.daemon = True
         pyro_thread.start()
@@ -378,13 +379,13 @@ class RemoteServer(multiprocessing.Process):
         # Termination condition triggered.
         pyro_daemon.shutdown()
         pyro_thread.join()
-        self._remote.shutdown()
+        self._device.shutdown()
 
 
 if __name__ == '__main__':
     """Serve devices via pyro.
 
-    Usage:  deviceremotes [config]
+    Usage:  devicebase [config]
     """
     import signal, sys
     import os
@@ -405,9 +406,9 @@ if __name__ == '__main__':
     else:
         config = __import__(os.path.splitext(sys.argv[1])[0])
     
-    # Group remotes by class.
+    # Group devices by class.
     by_class = {}
-    for r in config.REMOTES:
+    for r in config.DEVICES:
         by_class[r['cls']] = by_class.get(r['cls'], []) + [r]
 
     servers = []
@@ -425,8 +426,8 @@ if __name__ == '__main__':
             uid_to_port = None
 
         for r in rs:
-            servers.append(RemoteServer(term_event, r,
+            servers.append(DeviceServer(term_event, r,
                                         uid_to_host, uid_to_port))
             servers[-1].start()
-    while True:
-        pass
+    for s in servers:
+        s.join()
