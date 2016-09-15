@@ -39,7 +39,7 @@ class FloatingDeviceMixin(object):
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
-    selection of a specific device: instead, a device must be 
+    selection of a specific device: instead, a device must be
     initialized and then queried to determine its ID. This class is
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
@@ -171,8 +171,9 @@ class Device(object):
         return results
 
 
-class FloatingDevice(Device):
-    FLOATING = True
+class FloatingDevice(Device, FloatingDeviceMixin):
+    def get_id(self):
+        return None
 
 
 class DataDevice(Device):
