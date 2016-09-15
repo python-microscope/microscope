@@ -329,12 +329,13 @@ class DataDevice(Device):
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, term_event, device_def, id_to_host, id_to_port):
+    def __init__(self, term_event, device_def, id_to_host, id_to_port, count=0):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def:  definition of the device
         :param host_or_map: host or mapping of device identifiers to hostname
         :param port_or_map: map or mapping of device identifiers to port number
+        :param count:       this is the countth process serving this class
         """
         # The device to serve.
         self._device_def = device_def
@@ -346,10 +347,12 @@ class DeviceServer(multiprocessing.Process):
         self.term_event = term_event
         super(DeviceServer, self).__init__()
         self.daemon = True
+        # Some SDKs need an index to access more than one device.
+        self.count = count
 
 
     def run(self):
-        self._device = self._device_def['cls'](**self._device_def)
+        self._device = self._device_def['cls'](index=self.count, **self._device_def)
         while True:
             try:
                 self._device.initialize()
@@ -416,7 +419,7 @@ if __name__ == '__main__':
         import config
     else:
         config = __import__(os.path.splitext(sys.argv[1])[0])
-    
+
     # Group devices by class.
     by_class = {}
     for r in config.DEVICES:
@@ -424,6 +427,9 @@ if __name__ == '__main__':
 
     servers = []
     for cls, rs in by_class.iteritems():
+        # Keep track of how many of these classes we have set up.
+        # Some SDKs need this information to index devices.
+        count = 0
         if issubclass(cls, FloatingDevice):
             # Need to provide maps of uid to host and port.
             uid_to_host = {}
@@ -438,7 +444,9 @@ if __name__ == '__main__':
 
         for r in rs:
             servers.append(DeviceServer(term_event, r,
-                                        uid_to_host, uid_to_port))
+                                        uid_to_host, uid_to_port,
+                                        count=count))
             servers[-1].start()
+            count += 1
     for s in servers:
         s.join()
