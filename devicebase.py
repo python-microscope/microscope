@@ -63,6 +63,7 @@ class Device(object):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.CRITICAL)
         self.logger.info('Creating device.')
+        self.index = kwargs['index']
 
 
     def __del__(self):
