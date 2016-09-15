@@ -224,7 +224,7 @@ class DataDevice(Device):
 
     @abc.abstractmethod
     @Pyro4.expose
-    def start_aquisition(self):
+    def start_acquisition(self):
         """Start acquisition."""
         self._acquiring = True
 
@@ -321,7 +321,7 @@ class DataDevice(Device):
             self.abort()
         super(DataDevice, self).update_settings(settings, init)
         if was_acquiring:
-            self.start_aquisition()
+            self.start_acquisition()
 
 
     @Pyro4.expose
