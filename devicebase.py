@@ -397,7 +397,9 @@ if __name__ == '__main__':
     """
     import signal, sys
     import os
-    # An event to trigger clean termination of subprocesses.
+    # An event to trigger clean termination of subprocesses. This is the
+    # only way to ensure devices are shut down properly when processes
+    # exit, as __del__ is not necessarily called when the intepreter exits.
     term_event = multiprocessing.Event()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
