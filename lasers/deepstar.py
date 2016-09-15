@@ -41,7 +41,7 @@ def flushBuffer(func):
     return wrapper
 
 
-class DeepstarLaser(laser.LaserRemote):
+class DeepstarLaser(laser.LaserDevice):
     def __init__(self, serialPort, baudRate, timeout):
         super(DeepstarLaser, self).__init__()
         self.connection = serial.Serial(port = serialPort,

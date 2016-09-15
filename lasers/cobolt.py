@@ -36,7 +36,7 @@ def lockComms(func):
     return wrapper
 
 
-class CoboltLaser(laser.LaserRemote):
+class CoboltLaser(laser.LaserDevice):
     def __init__(self, com=None, baud=None, timeout=0.01, **kwargs):
         super(CoboltLaser, self).__init__()
         self.connection = serial.Serial(port = com,
