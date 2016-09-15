@@ -34,11 +34,26 @@ def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
+class FloatingDeviceMixin(object):
+    __metaclass__ = abc.ABCMeta
+    """A mixin for devices that 'float'.
+
+    Some SDKs handling multiple devices do not allow for explicit
+    selection of a specific device: instead, a device must be 
+    initialized and then queried to determine its ID. This class is
+    a mixin which identifies a subclass as floating, and enforces
+    the implementation of a 'get_id' method.
+    """
+    @abc.abstractmethod
+    @Pyro4.expose
+    def get_id(self):
+        """Return a unique hardware identifier, such as a serial number."""
+        pass
+
+
 class Device(object):
     #__metaclass__ = abc.ABCMeta
-    # If there are multiple devices, do they 'float', or can we
-    # specify the one we want and be sure to get it?
-    FLOATING = False
+    """A base device class. All devices should sublcass this class."""
     def __init__(self, *args, **kwargs):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
@@ -97,13 +112,6 @@ class Device(object):
     def enable(self):
         """Enable the device."""
         self.enabled = True
-
-
-    @abc.abstractmethod
-    @Pyro4.expose
-    def get_id(self):
-        """Return a unique hardware identifier, such as a serial number."""
-        pass
 
 
     @Pyro4.expose
@@ -348,7 +356,7 @@ class DeviceServer(multiprocessing.Process):
                 time.sleep(5)
             else:
                 break
-        if self._device.FLOATING:
+        if isinstance(self._device, FloatingDevice):
             uid = self._device.get_id()
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
@@ -413,7 +421,7 @@ if __name__ == '__main__':
 
     servers = []
     for cls, rs in by_class.iteritems():
-        if cls.FLOATING:
+        if issubclass(cls, FloatingDevice):
             # Need to provide maps of uid to host and port.
             uid_to_host = {}
             uid_to_port = {}
