@@ -394,13 +394,7 @@ class DeviceServer(multiprocessing.Process):
         self._device.shutdown()
 
 
-if __name__ == '__main__':
-    """Serve devices via pyro.
-
-    Usage:  devicebase [config]
-    """
-    import signal, sys
-    import os
+def __main__():
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the intepreter exits.
@@ -450,3 +444,13 @@ if __name__ == '__main__':
             count += 1
     for s in servers:
         s.join()
+
+
+if __name__ == '__main__':
+    """Serve devices via pyro.
+
+    Usage:  devicebase [config]
+    """
+    import signal, sys
+    import os
+    __main__()
