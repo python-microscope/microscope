@@ -177,6 +177,7 @@ class FloatingDevice(Device, FloatingDeviceMixin):
 
 
 class DataDevice(Device):
+    __metaclass__ = abc.ABCMeta
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
