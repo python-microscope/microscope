@@ -192,9 +192,9 @@ class DataDevice(Device):
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
-    def __init__(self, buffer_length=0):
+    def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
-        super(DataDevice, self).__init__()
+        super(DataDevice, self).__init__(**kwargs)
         # A length-1 buffer for fetching data.
         self._data = None
         # A thread to fetch and dispatch data.
