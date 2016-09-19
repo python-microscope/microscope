@@ -15,20 +15,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-class CameraDevice(DataDevice):
+import abc
+import devicebase
+import Pyro4
+
+class CameraDevice(devicebase.DataDevice):
+    __metaclass_ = abc.ABCMeta
     """Adds functionality to DataDevice to support cameras.
 
     Applies a transform to acquired data in the processing step.
     Defines the interface for cameras.
-    Must implement _fetch_data as per DataDevice._fetch_data."""
-    def __init__(self):
+    """
+    def __init__(self, *args, **kwargs):
         # A tuple defining data shape.
         self.dshape = None
         # A data type.
         self.dtype = None
         # A transform to apply to data (fliplr, flipud, rot90)
         self.dtransform = (0, 0, 0)
-        super(CameraDevice, self).__init__()
+        super(CameraDevice, self).__init__(**kwargs)
         self.some_setting = 0.
         #self.settings.append()
 
@@ -38,6 +43,7 @@ class CameraDevice(DataDevice):
         flips = (self.transform[0], self.transform[1])
         rot = self.transform[2]
 
+        # Choose appropriate transform based on (flips, rot).
         return {(0,0): numpy.rot90(data, rot),
                 (0,1): numpy.flipud(numpy.rot90(data, rot)),
                 (1,0): numpy.fliplr(numpy.rot90(data, rot)),
