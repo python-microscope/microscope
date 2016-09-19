@@ -260,11 +260,16 @@ class DataDevice(Device):
 
     @abc.abstractmethod
     def _fetch_data(self):
-        """Poll for data
+        """Poll for data and return it, with minimal processing.
 
-        If data is fetched, store it in self._data and return True; otherwise
-        return False."""
-        pass
+        If the device uses buffering in software, this function should copy
+        the data from the buffer, release or recycle the buffer, then return
+        a reference to the copy. Otherwise, if the SDK returns a data object
+        that will not be writtedn to again, this function can just return a
+        reference to the object.
+        If no data is available, return None.
+        """
+        return None
 
 
     def _process_data(self, data):
@@ -278,7 +283,7 @@ class DataDevice(Device):
             try:
                 # Currently uses legacy receiveData. Would like to pass
                 # this function name as an argument to set_client, but
-                # not sure to subsequently resolve this over Pyro.
+                # not sure how to subsequently resolve this over Pyro.
                 self._client.receiveData(data, timestamp)
             except Pyro4.errors.ConnectionClosedError:
                 # Nothing is listening
@@ -288,22 +293,25 @@ class DataDevice(Device):
 
 
     def _dispatch_loop(self):
+        """Process data and send results to any client."""
         while True:
             if self._buffer.empty():
                 time.sleep(0.01)
                 continue
-            timestamp, data = self._buffer.get()
+            data, timestamp = self._buffer.get()
             self._send_data(self._process_data(data), timestamp)
             self._buffer.task_done()
 
 
     def _fetch_loop(self):
-        """Poll source for data and put into buffer."""
+        """Poll source for data and put it into dispatch buffer."""
         self._fetch_thread_run = True
         while self._fetch_thread_run:
-            if self._fetch_data():
+            data = self._fetch_data()
+            if data:
+                # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
-                self._buffer.put((timestamp, self._data.copy()))
+                self._buffer.put((data, timestamp))
             else:
                 time.sleep(0.001)
 
