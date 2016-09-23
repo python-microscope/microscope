@@ -39,7 +39,17 @@ import time
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
+# A utility function
+_call_if_callable = lambda f: f() if callable(f) else f
+
+# A device definition for use in config files.
 def device(cls, host, port, uid=None, **kwargs):
+    """Define a device and where to serve it.
+
+    Defines a device of type cls, served on host:port.
+    UID is used to identify 'floating' devices (see below).
+    kwargs can be used to pass any other parameters to cls.__init__.
+    """
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
@@ -69,65 +79,123 @@ class Device(object):
         self.settings = OrderedDict()
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
-        self.logger = logging.getLogger()
-        self.logger.setLevel(logging.CRITICAL)
-        self.logger.info('Creating device.')
-        self.index = kwargs['index'] if 'index' in kwargs else None
+        self._logger = logging.getLogger()
+        self._logger.info('%s: Creating device.' % self)
+        self._index = kwargs['index'] if 'index' in kwargs else None
 
 
     def __del__(self):
         self.shutdown()
 
 
-    def add_setting(self, name, dtype, get_func, set_func, values, adv=False):
+    def add_setting(self, name, dtype, get_func, set_func, values):
         """Add a setting definition.
 
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
         :param get_func: a function to get the current value
         :param set_func: a function to set the value
-        :param values: a description of allowed values dependent on dtype
-        :param adv: is this an advanced setting?
-        """
+        :param values: a description of allowed values dependent on dtype,
+                       or function that returns a description.
 
+        A client needs some way of knowing a setting name and data type,
+        retrieving the current value and, if settable, a way to retrieve
+        allowable values, and set the value.
+        We store this info in an OrderedDict. I considered having a Setting
+        class with getter, setter, etc., and adding Setting instances as
+        device attributes, but Pyro does not support dot notation to access
+        the functions we need (e.g. Device.some_setting.set ), so I'd have to
+        write access functions, anyway.
+        """
         # Mapping of dtype to type(values)
         DTYPES = {'int':tuple,
                   'float':tuple,
                   'bool':type(None),
                   'enum':list,
-                  'str':int}
+                  'str':int,
+                   int:tuple,
+                   float:tuple,
+                   bool:type(None),
+                   str:int}
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not isinstance(values, DTYPES[dtype]):
-            raise Exception('Invalid values type for %s: expected %s' %
+        elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
+            raise Exception('Invalid values type for %s: expected function or %s' %
                             (dtype, DTYPES[dtype]))
         else:
             self.settings.update({name:{'type':dtype,
                                         'get':get_func,
                                         'set':set_func,
                                         'values':values,
-                                        'current':None,
-                                        'advanced':adv}})
+                                        'current':None}})
+
+    def on_disable(self):
+        """Do any device-specific work on disable.
+
+        Subclasses should override this method, rather than modfiy
+        disable(self).
+        """
+        pass
 
 
-    @abc.abstractmethod
     @Pyro4.expose
     def disable(self):
         """Disable the device for a short period for inactivity."""
+        self.on_disable()
         self.enabled = False
 
 
-    @abc.abstractmethod
+    def on_enable(self):
+        """Do any device-specific work on enable.
+
+        Subclasses should override this method, rather than modfiy
+        enable(self).
+        """
+        pass
+
+
     @Pyro4.expose
     def enable(self):
         """Enable the device."""
+        self.on_enable()
         self.enabled = True
 
 
     @Pyro4.expose
-    def get_settings(self):
-        """Return the dict of settings as list of tuples."""
-        return [s for s in self.settings.iteritems()]
+    def get_setting(self, name):
+        """Return the current value of a setting."""
+        return self.settings[name]['get']()
+
+
+    @Pyro4.expose
+    def get_setting_type(self, name):
+        """Return the type of a setting (bool, int, float, str or enum)."""
+        return self.settings[name]['type']
+
+
+    @Pyro4.expose
+    def get_setting_values(self, name):
+        """Return the range, max length or possible values for a setting."""
+        return _call_if_callable(self.settings[name]['values'])
+
+
+    @Pyro4.expose
+    def get_all_settings(self):
+        """Return ordered settings as a list of dicts."""
+        return [(k, {# wrap type in str since can't serialize types
+                     'type': str(v['type']),
+                     'values': _call_if_callable(v['values']),
+                     'current': v['get']() if v['get'] else None})
+                for (k, v) in self.settings.iteritems()]
+
+
+    @Pyro4.expose
+    def set_setting(self, name, value):
+        """Set a setting."""
+        if self.settings[name]['set'] is None:
+            raise NotImplementedError
+        ### TODO ### further validation.
+        self.settings[name]['set'](value)
 
 
     @abc.abstractmethod
@@ -149,23 +217,28 @@ class Device(object):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
-        self.logger.info("Shutting down device.")
+        self._logger.info("Shutting down device.")
 
 
     @Pyro4.expose
-    def update_settings(self, settings, init=False):
+    def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
             # Assume nothing about state: set everything.
             my_keys = set(self.settings.keys())
-            their_keys = set(settings.keys())
-            update_keys = my_keys | their_keys
+            their_keys = set(incoming.keys())
+            update_keys = my_keys & their_keys
+            if update_keys != my_keys:
+                missing = ', '.join([k for k in my_keys - their_keys])
+                msg = 'update_settings init=True but missing keys: %s.' % missing
+                self._logger.debug(msg)
+                raise Exception(msg)
         else:
             # Only update changed values.
             my_keys = set(self.settings.keys())
-            their_keys = set(settings.keys())
+            their_keys = set(incoming.keys())
             update_keys = set(key for key in my_keys & their_keys
-                              if self.settings[key]['current'] != settings[key]['current'])
+                              if self.settings[key]['current'] != incoming[key])
         results = {}
         # Update values.
         for key in update_keys:
@@ -174,16 +247,11 @@ class Device(object):
                 result[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            self.settings[key]['set'](settings[key])
+            self.settings[key]['set'](incoming[key])
         # Read back values in second loop.
         for key in update_keys:
-            results[key] = settings[key]['get']()
+            results[key] = self.settings[key]['get']()
         return results
-
-
-class FloatingDevice(Device, FloatingDeviceMixin):
-    def get_id(self):
-        return None
 
 
 class DataDevice(Device):
@@ -243,7 +311,10 @@ class DataDevice(Device):
 
         Ensures that a data handling threads are running.
         Derived.enable must set up a self._data array to receive data,
-        then call this after any other processing."""
+        then call this after any other processing.
+        """
+        # Call device-specific code before starting threads.
+        self.on_enable()
         if not self._fetch_thread or not self._fetch_thread.is_alive():
             self._fetch_thread = Thread(target=self._fetch_loop)
             self._fetch_thread.daemon = True
@@ -252,7 +323,8 @@ class DataDevice(Device):
             self._dispatch_thread = Thread(target=self._dispatch_loop)
             self._dispatch_thread.daemon = True
             self._dispatch_thread.start()
-        super(DataDevice, self).enable()
+        self.enabled = True
+
 
 
     def disable(self):
@@ -274,7 +346,7 @@ class DataDevice(Device):
         If the device uses buffering in software, this function should copy
         the data from the buffer, release or recycle the buffer, then return
         a reference to the copy. Otherwise, if the SDK returns a data object
-        that will not be writtedn to again, this function can just return a
+        that will not be written to again, this function can just return a
         reference to the object.
         If no data is available, return None.
         """
@@ -379,7 +451,7 @@ class DeviceServer(multiprocessing.Process):
                 time.sleep(5)
             else:
                 break
-        if isinstance(self._device, FloatingDevice):
+        if isinstance(self._device, FloatingDeviceMixin):
             uid = self._device.get_id()
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
@@ -392,9 +464,9 @@ class DeviceServer(multiprocessing.Process):
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
                                            (type(self).__name__, host, port))
         log_handler.setFormatter(LOG_FORMATTER)
-        self._device.logger.addHandler(log_handler)
-        self._device.logger.setLevel(logging.INFO)
-        self._device.logger.info('Device initialized; starting daemon.')
+        self._device._logger.addHandler(log_handler)
+        self._device._logger.setLevel(logging.INFO)
+        self._device._logger.info('Device initialized; starting daemon.')
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
@@ -443,7 +515,7 @@ def __main__():
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
-        if issubclass(cls, FloatingDevice):
+        if issubclass(cls, FloatingDeviceMixin):
             # Need to provide maps of uid to host and port.
             uid_to_host = {}
             uid_to_port = {}
