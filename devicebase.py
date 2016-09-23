@@ -16,7 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Classes for control of microscope components."""
+"""Classes for control of microscope components.
+
+This module provides base classes for experiment control and data
+acquisition devices that can be served over Pyro. This means that each
+device may be served from a separate process, or even from a different PC.
+
+When called from the command line, this module will serve devices defined
+in a config file.
+
+"""
 import abc
 import logging
 from logging.handlers import RotatingFileHandler
