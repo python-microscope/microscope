@@ -19,11 +19,36 @@
 
 This class provides a wrapper for PYME's SDK3 interface that allows
 a camera and all its settings to be exposed over Pyro.
+
+Limitations:
+The Zyla can not read out the full chip in 16-bit mode.
 """
 import abc
 import camera
+import ctypes
 import devicebase
+import numpy as np
+import Queue
+import threading
 from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
+
+# Number of buffers to allocate.
+NUM_BUFFERS = 50
+
+# SDK data pointer type
+DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
+
+# Wrapper to preserve acquiring state.
+def keep_aquiring(func):
+    def wrapper(self, *args, **kwargs):
+        if self._camera_acquiring.get_value():
+            self.abort()
+            result = func(self, *args, **kwargs)
+            self.start_acquisition()
+        else:
+            result = func(self, *args, **kwargs)
+        return result
+    return wrapper
 
 
 # Wrapper to ensure feature is readable.
@@ -35,6 +60,7 @@ def readable_wrapper(func):
             return None#Warning('%s not currently readable.' % self.propertyName)
     return wrapper
 
+
 # Wrapper to ensure feature is writable.
 def writable_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -43,7 +69,6 @@ def writable_wrapper(func):
         else:
             return False#Warning('%s not currently writable.' % self.propertyName)
     return wrapper
-
 
 
 # Overrides for local style and error handling.
@@ -83,7 +108,7 @@ class AndorSDK3(camera.CameraDevice,
         if not AndorSDK3.SDK_INITIALIZED:
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)
-        self._handle = None
+        self.handle = None
         SDK3Camera.__init__(self, self._index)
 
         # Define features with local style. The SDK treats parameter names
@@ -99,6 +124,7 @@ class AndorSDK3(camera.CameraDevice,
         self._aoi_left = ATInt()
         self._aoi_top = ATInt()
         self._aoi_width = ATInt()
+        self._aoi_stride = ATInt()
         self._auxiliary_out_source = ATEnum()
         self._baseline_level = ATInt()
         self._bit_depth = ATEnum()
@@ -159,13 +185,75 @@ class AndorSDK3(camera.CameraDevice,
         self._trigger_mode = ATEnum()
         self._vertically_centre_aoi = ATBool()
 
+        # Software buffers and parameters for data conversion.
+        self.buffers = Queue.Queue()
+        self._buffer_size = None
+        self._img_stride = None
+        self._img_width = None
+        self._img_height = None
+        self._img_encoding = None
 
-    def _fetch_data(self):
-        pass
+
+    def _purge_buffers(self):
+        """Purge buffers on both camera and PC."""
+        if self._camera_acquiring.get_value():
+            raise Exception ('Can not modify buffers while camera acquiring.')
+        SDK3.Flush(self.handle)
+        while True:
+            try:
+                self.buffers.get(block=False)
+            except Queue.Empty:
+                break
+
+
+    def _create_buffers(self, num=NUM_BUFFERS):
+        """Create buffers and store values needed to remove padding later."""
+        self._purge_buffers()
+        self._img_stride = self._aoi_stride.get_value()
+        self._img_width = self._aoi_width.get_value()
+        self._img_height = self._aoi_height.get_value()
+        self._img_encoding = self._pixel_encoding.get_string()
+        img_size = self._image_size_bytes.get_value()
+        self._buffer_size = img_size
+        for i in xrange(num):
+            buf = np.require(np.empty(img_size), dtype='uint8',
+                             requirements=['C_CONTIGUOUS',
+                                           'ALIGNED',
+                                           'OWNDATA'])
+            self.buffers.put(buf)
+            SDK3.QueueBuffer(self.handle,
+                             buf.ctypes.data_as(DPTR_TYPE),
+                             img_size)
+
+
+    def _fetch_data(self, timeout=10):
+        try:
+            ptr, length = SDK3.WaitBuffer(self.handle, timeout)
+        except SDK3.TimeoutError:
+            return None
+        except Exception:
+            raise
+        raw = self.buffers.get()
+        width = self._img_width
+        height = self._img_height
+        data = raw#.reshape((-1, bytes_per_row))[:, 0:width].copy()
+        data = np.empty((width, height), dtype='uint16')
+        SDK3.ConvertBuffer(ptr, data.ctypes.data_as(DPTR_TYPE),
+                           width, height,
+                           self._img_stride, self._img_encoding, 'Mono16')
+        # Requeue the buffer if buffer size has not been changed elsewhere.
+        if raw.size == self._buffer_size:
+            self.buffers.put(raw)
+            SDK3.QueueBuffer(self.handle, ptr, length)
+        else:
+            del(raw)
+
+        return data
 
 
     def abort(self):
-        self._acquisition_stop()
+        if self._camera_acquiring.get_value():
+            self._acquisition_stop()
 
 
     def initialize(self):
@@ -216,15 +304,18 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def make_safe(self):
-        pass
+        if self._camera_acquiring.get_value():
+            self.abort()
 
 
     def shutdown(self):
         self.set_cooling(False)
-        SDK3.FinaliseLibrary()
+        SDK3.Close(self.handle)
 
 
     def start_acquisition(self):
+        if self._camera_acquiring.get_value():
+            self._acquisition_stop()
         self._acquisition_start()
 
 
@@ -251,11 +342,13 @@ class AndorSDK3(camera.CameraDevice,
          return tuple(int(t) for t in as_text)
 
 
+    @keep_aquiring
     def set_binning(self, h, v):
         modes = self._aoi_binning.get_available_values()
         as_text = '%dx%d' % (h,v)
         if as_text in modes:
             self._aoi_binning.set_string(as_text)
+            self._create_buffers()
             return True
         else:
             return False
@@ -268,22 +361,27 @@ class AndorSDK3(camera.CameraDevice,
                 self._aoi_height.get_value())
 
 
+    @keep_aquiring
     def set_roi(self, x, y, width, height):
         current = self.get_roi()
+        if self._camera_acquiring.get_value():
+            self.abort()
         try:
-            self._aoi_left.set_value(x)
-            self._aoi_top.set_value(y)
             self._aoi_width.set_value(width)
             self._aoi_height.set_value(height)
+            self._aoi_left.set_value(x)
+            self._aoi_top.set_value(y)
         except:
-            self._aoi_left.set_value(current[0])
-            self._aoi_top.set_value(current[1])
             self._aoi_width.set_value(current[2])
             self._aoi_height.set_value(current[3])
+            self._aoi_left.set_value(current[0])
+            self._aoi_top.set_value(current[1])
             return False
         return True
 
 
     def get_gain(self):
         if hasattr(self, '_preampgain'):
-            return sel
+            return self._preampgain.get_value()
+        else:
+            return None

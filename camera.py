@@ -96,7 +96,9 @@ class CameraDevice(devicebase.DataDevice):
 
 
     def set_roi(self, x, y, width, height):
-        """Set the ROI according to the provided rectangle."""
+        """Set the ROI according to the provided rectangle.
+
+        Return True if ROI set correctly, False otherwise."""
         pass
 
 
