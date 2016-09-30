@@ -236,10 +236,12 @@ class AndorSDK3(camera.CameraDevice,
                              img_size)
 
 
-    def _fetch_data(self, timeout=10):
+    def _fetch_data(self, timeout=10, debug=False):
         try:
             ptr, length = SDK3.WaitBuffer(self.handle, timeout)
-        except SDK3.TimeoutError:
+        except SDK3.TimeoutError as e:
+            if debug:
+                print e
             return None
         except Exception:
             raise
