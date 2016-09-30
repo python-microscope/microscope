@@ -38,6 +38,16 @@ NUM_BUFFERS = 50
 # SDK data pointer type
 DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
 
+# Trigger mode to type.
+TRIGGER_MODES = {
+    'internal': None,
+    'external': camera.TRIGGER_BEFORE,
+    'external start': None,
+    'external exposure': camera.TRIGGER_DURATION,
+    'software': camera.TRIGGER_SOFT,
+}
+
+
 # Wrapper to preserve acquiring state.
 def keep_aquiring(func):
     def wrapper(self, *args, **kwargs):
