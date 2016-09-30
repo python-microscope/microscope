@@ -462,7 +462,7 @@ class DeviceServer(multiprocessing.Process):
             port = self._device_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
-                                           (type(self).__name__, host, port))
+                                           (type(self._device).__name__, host, port))
         log_handler.setFormatter(LOG_FORMATTER)
         self._device._logger.addHandler(log_handler)
         self._device._logger.setLevel(logging.INFO)
@@ -470,7 +470,7 @@ class DeviceServer(multiprocessing.Process):
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                                   args=({self._device: type(self).__name__},),
+                                   args=({'device'},),
                                    kwargs={'daemon':pyro_daemon, 'ns':False})
         pyro_thread.daemon = True
         pyro_thread.start()
