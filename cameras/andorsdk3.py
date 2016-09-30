@@ -347,6 +347,11 @@ class AndorSDK3(camera.CameraDevice,
                 self._sensor_height.get_value())
 
 
+    def get_trigger_type(self):
+        return TRIGGER_MODES[self._trigger_mode.get_string().lower()]
+
+
+
     def get_binning(self):
          as_text = self._aoi_binning.get_string().split('x')
          return tuple(int(t) for t in as_text)
