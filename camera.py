@@ -17,10 +17,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import abc
 import devicebase
+import itertools
 import Pyro4
 
 # Triggering types.
-(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION) = range(3)
+(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
+
+ALLOWED_TRANSFORMS = [p for p in itertools.product(*3*[range(2)])]
 
 class CameraDevice(devicebase.DataDevice):
     """Adds functionality to DataDevice to support cameras.
@@ -29,21 +32,23 @@ class CameraDevice(devicebase.DataDevice):
     Applies a transform to acquired data in the processing step.
     """
     def __init__(self, *args, **kwargs):
-        # A tuple defining data shape.
-        self.dshape = None
-        # A data type.
-        self.dtype = None
-        # A transform to apply to data (fliplr, flipud, rot90)
-        self.dtransform = (0, 0, 0)
         super(CameraDevice, self).__init__(**kwargs)
-        self.some_setting = 0.
-        #self.settings.append()
+        # Transforms to apply to data (fliplr, flipud, rot90)
+        # Transform to correct for readout order.
+        self._readout_transform = (0, 0, 0)
+        # Transform supplied by client to correct for system geometry.
+        self._transform = (0, 0, 0)
+        # A transform provided by the client.
+        self.add_setting('transform', 'enum',
+                         self.get_transform,
+                         self.set_transform,
+                         lambda: ALLOWED_TRANSFORMS)
 
 
     def _process_data(self, data):
-        """Apply self.dtransform to data."""
-        flips = (self.transform[0], self.transform[1])
-        rot = self.transform[2]
+        """Apply self._transform to data."""
+        flips = (self._transform[0], self._transform[1])
+        rot = self._transform[2]
 
         # Choose appropriate transform based on (flips, rot).
         return {(0,0): numpy.rot90(data, rot),
@@ -51,6 +56,18 @@ class CameraDevice(devicebase.DataDevice):
                 (1,0): numpy.fliplr(numpy.rot90(data, rot)),
                 (1,1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
                 }[flips]
+
+
+    def get_transform(self):
+        """Return the current transform without readout transform."""
+        return tuple(self._readout_transform[i] ^ self._transform[i]
+                                for i in range(3))
+
+
+    def set_transform(self, transform):
+        """Combine provided transform with readout transform."""
+        self._transform = tuple(self._readout_transform[i] ^ transform[i]
+                                for i in range(3))
 
 
     @abc.abstractmethod
