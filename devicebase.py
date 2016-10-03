@@ -39,6 +39,17 @@ import time
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
+# Mapping of setting data types to allowed-value description types.
+DTYPES = {'int': tuple,
+          'float': tuple,
+          'bool': type(None),
+          'enum': list,
+          'str': int,
+          int: tuple,
+          float: tuple,
+          bool: type(None),
+          str: int}
+
 # A utility function
 _call_if_callable = lambda f: f() if callable(f) else f
 
@@ -108,15 +119,6 @@ class Device(object):
         write access functions, anyway.
         """
         # Mapping of dtype to type(values)
-        DTYPES = {'int':tuple,
-                  'float':tuple,
-                  'bool':type(None),
-                  'enum':list,
-                  'str':int,
-                   int:tuple,
-                   float:tuple,
-                   bool:type(None),
-                   str:int}
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
