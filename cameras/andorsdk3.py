@@ -275,7 +275,7 @@ class AndorSDK3(camera.CameraDevice,
         Open the connection, connect properties and populate settings dict.
         """
         self.handle = SDK3.Open(self._index)
-        for name, var in self.__dict__.items():
+        for name, var in sorted(self.__dict__.items()):
             sdk_name = name.replace('_', '')
             if isinstance(var, ATProperty):
                 if not SDK3.IsImplemented(self.handle, sdk_name):
