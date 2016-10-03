@@ -151,7 +151,7 @@ class Device(object):
     def on_enable(self):
         """Do any device-specific work on enable.
 
-        Subclasses should override this method, rather than modfiy
+        Subclasses should override this method, rather than modify
         enable(self).
         """
         pass
