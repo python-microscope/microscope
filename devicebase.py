@@ -429,13 +429,14 @@ class DataDevice(Device):
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, term_event, device_def, id_to_host, id_to_port, count=0):
+    def __init__(self, device_def, id_to_host, id_to_port, count=0, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def:  definition of the device
         :param host_or_map: host or mapping of device identifiers to hostname
         :param port_or_map: map or mapping of device identifiers to port number
         :param count:       this is the countth process serving this class
+        :param exit_event:  a shared event to signal that the process should quit.
         """
         # The device to serve.
         self._device_def = device_def
@@ -444,7 +445,7 @@ class DeviceServer(multiprocessing.Process):
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port
         # A shared event to allow clean shutdown.
-        self.term_event = term_event
+        self.exit_event = exit_event
         super(DeviceServer, self).__init__()
         self.daemon = True
         # Some SDKs need an index to access more than one device.
@@ -483,14 +484,18 @@ class DeviceServer(multiprocessing.Process):
                                    kwargs={'daemon':pyro_daemon, 'ns':False})
         pyro_thread.daemon = True
         pyro_thread.start()
-        # This tread waits for the termination event.
-        try:
-            self.term_event.wait()
-        except:
-            pass
-        # Termination condition triggered.
-        pyro_daemon.shutdown()
-        pyro_thread.join()
+        if self.exit_event:
+            # This tread waits for the termination event.
+            try:
+                self.exit_event.wait()
+            except:
+                pass
+            pyro_daemon.shutdown()
+            pyro_thread.join()
+            # Termination condition triggered.
+        else:
+            # This is the main process. Sleep until interrupt.
+            pyro_thread.join()
         self._device.shutdown()
 
 
@@ -498,10 +503,10 @@ def __main__():
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the intepreter exits.
-    term_event = multiprocessing.Event()
+    exit_event = multiprocessing.Event()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
-        term_event.set()
+        exit_event.set()
         for s in servers:
             s.join()
         sys.exit()
@@ -537,9 +542,9 @@ def __main__():
             uid_to_port = None
 
         for r in rs:
-            servers.append(DeviceServer(term_event, r,
+            servers.append(DeviceServer(r,
                                         uid_to_host, uid_to_port,
-                                        count=count))
+                                        exit_event=exit_event, count=count))
             servers[-1].start()
             count += 1
     for s in servers:
