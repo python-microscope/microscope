@@ -98,6 +98,7 @@ ATEnum.set_index  = writable_wrapper(ATEnum.setIndex)
 ATEnum.get_string = readable_wrapper(ATEnum.getString)
 ATEnum.set_string = writable_wrapper(ATEnum.setString)
 ATEnum.get_available_values = readable_wrapper(ATEnum.getAvailableValues)
+ATProperty.is_readonly = lambda self: not SDK3.IsWritable(self.handle, self.propertyName)
 
 # Mapping of AT type to python type.
 PROPERTY_TYPES = {
@@ -284,10 +285,13 @@ class AndorSDK3(camera.CameraDevice,
 
                 if type(var) is ATCommand:
                     continue
-                elif type(var) is ATEnum:
-                    set_func = var.set_index
-                    get_func = lambda v=var: (v.get_index(), v.get_string())
+
+                is_readonly_func = var.is_readonly
+                if type(var) is ATEnum:
+                    set_func = var.set_string
+                    get_func = var.get_string
                     vals_func = var.get_available_values
+
                 else:
                     set_func = var.set_value
                     get_func = var.get_value
@@ -298,7 +302,7 @@ class AndorSDK3(camera.CameraDevice,
                     else:
                         vals_func = None
                 self.add_setting(name.lstrip('_'), PROPERTY_TYPES[type(var)],
-                                 get_func, set_func, vals_func)
+                                 get_func, set_func, vals_func, is_readonly_func)
         self.set_cooling(True)
 
 

@@ -99,7 +99,7 @@ class Device(object):
         self.shutdown()
 
 
-    def add_setting(self, name, dtype, get_func, set_func, values):
+    def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
         :param name: the setting's name
@@ -129,7 +129,8 @@ class Device(object):
                                         'get':get_func,
                                         'set':set_func,
                                         'values':values,
-                                        'current':None}})
+                                        'current':None,
+                                        'readonly': readonly}})
 
     def on_disable(self):
         """Do any device-specific work on disable.
