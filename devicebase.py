@@ -183,13 +183,19 @@ class Device(object):
 
 
     @Pyro4.expose
+    def describe_settings(self):
+        """Return ordered setting descriptions as a list of dicts."""
+        return [(k, {  # wrap type in str since can't serialize types
+            'type': str(v['type']),
+            'values': _call_if_callable(v['values']),
+            'readonly': _call_if_callable(v['readonly']),})
+                for (k, v) in self.settings.iteritems()]
+
+    @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
-        return [(k, {# wrap type in str since can't serialize types
-                     'type': str(v['type']),
-                     'values': _call_if_callable(v['values']),
-                     'current': v['get']() if v['get'] else None})
-                for (k, v) in self.settings.iteritems()]
+        return{k : v['get']() if v['get'] else None
+               for k, v in self.settings.iteritems()}
 
 
     @Pyro4.expose
