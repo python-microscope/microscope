@@ -258,7 +258,7 @@ class AndorSDK3(camera.CameraDevice,
             self.buffers.put(raw)
             SDK3.QueueBuffer(self.handle, ptr, length)
         else:
-            del(raw)
+            del raw
 
         return data
 
