@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import abc
+from ast import literal_eval
 import devicebase
 import numpy
 import itertools
@@ -67,6 +68,8 @@ class CameraDevice(devicebase.DataDevice):
 
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
+        if isinstance(transform, (str, unicode)):
+            transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
 
