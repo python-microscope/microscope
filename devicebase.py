@@ -141,35 +141,36 @@ class Device(object):
                                         'current':None,
                                         'readonly': readonly}})
 
-    def on_disable(self):
+    def _on_disable(self):
         """Do any device-specific work on disable.
 
         Subclasses should override this method, rather than modfiy
         disable(self).
         """
-        pass
+        return True
 
 
     @Pyro4.expose
     def disable(self):
         """Disable the device for a short period for inactivity."""
-        self.on_disable()
+        self._on_disable()
         self.enabled = False
 
 
-    def on_enable(self):
+
+    def _on_enable(self):
         """Do any device-specific work on enable.
 
         Subclasses should override this method, rather than modify
         enable(self).
         """
-        pass
+        return True
 
 
     @Pyro4.expose
     def enable(self):
         """Enable the device."""
-        self.on_enable()
+        self._on_enable()
         self.enabled = True
 
 
@@ -317,11 +318,12 @@ class DataDevice(Device):
         """Enable the data capture device.
 
         Ensures that a data handling threads are running.
-        Derived.enable must set up a self._data array to receive data,
-        then call this after any other processing.
+        Implement device-specific code in _on_enable .
         """
         # Call device-specific code before starting threads.
-        self.on_enable()
+        if not self._on_enable():
+            self.enabled = False
+            return False
         if not self._fetch_thread or not self._fetch_thread.is_alive():
             self._fetch_thread = Thread(target=self._fetch_loop)
             self._fetch_thread.daemon = True
@@ -336,7 +338,7 @@ class DataDevice(Device):
     def disable(self):
         """Disable the data capture device.
 
-        Derived.disable must call this at some point."""
+        Implement device-specific code in _on_disable ."""
         self.enabled = False
         if self._fetch_thread:
             if self._fetch_thread.is_alive():
