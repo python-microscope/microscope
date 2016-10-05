@@ -407,7 +407,10 @@ class DataDevice(Device):
     @Pyro4.expose
     def set_client(self, client_uri):
         """Set up a connection to our client."""
-        self._client = Pyro4.Proxy(client_uri)
+        if client_uri is not None:
+            self._client = Pyro4.Proxy(client_uri)
+        else:
+            self._client = None
 
 
     @Pyro4.expose
