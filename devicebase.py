@@ -213,7 +213,6 @@ class Device(object):
         pass
 
 
-    @abc.abstractmethod
     @Pyro4.expose
     def make_safe(self):
         """Put the device into a safe state."""
