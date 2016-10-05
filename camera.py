@@ -59,13 +59,13 @@ class CameraDevice(devicebase.DataDevice):
                 (1,1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
                 }[flips]
 
-
+    @Pyro4.expose
     def get_transform(self):
         """Return the current transform without readout transform."""
         return tuple(self._readout_transform[i] ^ self._transform[i]
                                 for i in range(3))
 
-
+    @Pyro4.expose
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
         if isinstance(transform, (str, unicode)):
@@ -79,35 +79,35 @@ class CameraDevice(devicebase.DataDevice):
     def set_exposure_time(self, value):
         pass
 
-
+    @Pyro4.expose
     def get_exposure_time(self):
         pass
 
-
+    @Pyro4.expose
     def get_cycle_time(self):
         pass
 
-
+    @Pyro4.expose
     def get_sensor_shape(self):
         """Return a tuple of (width, height)."""
         pass
 
-
+    @Pyro4.expose
     def get_binning(self):
         """Return a tuple of (horizontal, vertical)."""
         pass
 
-
+    @Pyro4.expose
     def set_binning(self, h_bin, v_bin):
         """Set binning along both axes."""
         pass
 
-
+    @Pyro4.expose
     def get_sensor_temperature(self):
         """Return the sensor temperature."""
         pass
 
-
+    @Pyro4.expose
     def get_roi(self):
         """Return ROI as a rectangle (x0, y0, width, height).
 
@@ -115,24 +115,24 @@ class CameraDevice(devicebase.DataDevice):
         reference to the sensor geometry."""
         pass
 
-
+    @Pyro4.expose
     def set_roi(self, x, y, width, height):
         """Set the ROI according to the provided rectangle.
 
         Return True if ROI set correctly, False otherwise."""
         pass
 
-
+    @Pyro4.expose
     def get_gain(self):
         """Get the current amplifier gain."""
         pass
 
-
+    @Pyro4.expose
     def set_gain(self):
         """Set the amplifier gain."""
         pass
 
-
+    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger mode.
 
@@ -142,6 +142,7 @@ class CameraDevice(devicebase.DataDevice):
             TRIGGER_DURATION (bulb exposure.)
         """
 
+    @Pyro4.expose
     def get_meta_data(self):
         """Return metadata."""
         pass
