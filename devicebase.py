@@ -27,6 +27,7 @@ in a config file.
 
 """
 import abc
+import distutils.version
 import logging
 from logging.handlers import RotatingFileHandler
 import multiprocessing
@@ -36,6 +37,14 @@ import Pyro4
 import Queue
 from threading import Thread
 import time
+
+# Pyro4 configuration.
+if (distutils.version.LooseVersion(Pyro4.__version__) >=
+    distutils.version.LooseVersion('4.22')):
+    Pyro4.config.SERIALIZERS_ACCEPTED.discard('serpent')
+    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
+    Pyro4.config.SERIALIZER = 'pickle'
+
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
