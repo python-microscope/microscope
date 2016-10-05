@@ -188,6 +188,7 @@ class Device(object):
             'readonly': _call_if_callable(v['readonly']),})
                 for (k, v) in self.settings.iteritems()]
 
+
     @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
@@ -311,7 +312,7 @@ class DataDevice(Device):
         """Start acquisition."""
         self._acquiring = True
 
-
+    @Pyro4.expose
     def enable(self):
         """Enable the data capture device.
 
@@ -331,8 +332,7 @@ class DataDevice(Device):
             self._dispatch_thread.start()
         self.enabled = True
 
-
-
+    @Pyro4.expose
     def disable(self):
         """Disable the data capture device.
 
@@ -409,6 +409,7 @@ class DataDevice(Device):
         self._client = Pyro4.Proxy(client_uri)
 
 
+    @Pyro4.expose
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
         was_acquiring = self.acquiring
