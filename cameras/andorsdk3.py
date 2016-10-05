@@ -23,13 +23,11 @@ a camera and all its settings to be exposed over Pyro.
 Limitations:
 The Zyla can not read out the full chip in 16-bit mode.
 """
-import abc
 import camera
-import ctypes
 import devicebase
 import numpy as np
+import Pyro4
 import Queue
-import threading
 from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
 
 # Number of buffers to allocate.
@@ -109,7 +107,8 @@ PROPERTY_TYPES = {
     ATEnum: 'enum'
 }
 
-
+@Pyro4.expose
+@Pyro4.behavior('single')
 class AndorSDK3(camera.CameraDevice,
                 devicebase.FloatingDeviceMixin,
                 SDK3Camera):
