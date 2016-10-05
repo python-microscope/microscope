@@ -180,18 +180,6 @@ class Device(object):
 
 
     @Pyro4.expose
-    def get_setting_type(self, name):
-        """Return the type of a setting (bool, int, float, str or enum)."""
-        return self.settings[name]['type']
-
-
-    @Pyro4.expose
-    def get_setting_values(self, name):
-        """Return the range, max length or possible values for a setting."""
-        return _call_if_callable(self.settings[name]['values'])
-
-
-    @Pyro4.expose
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
         return [(k, {  # wrap type in str since can't serialize types
