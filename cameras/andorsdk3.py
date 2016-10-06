@@ -341,7 +341,10 @@ class AndorSDK3(camera.CameraDevice,
         self._logger.info("Preparing for acquisition.")
         if self._camera_acquiring.get_value():
             self._acquisition_stop()
+        self._create_buffers()
         self._acquisition_start()
+        self._logger.info("Acquisition enabled.")
+        return True
 
 
     def set_exposure_time(self, value):
