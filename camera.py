@@ -146,3 +146,8 @@ class CameraDevice(devicebase.DataDevice):
     def get_meta_data(self):
         """Return metadata."""
         pass
+
+    @Pyro4.expose
+    def soft_trigger(self):
+        """Optional software trigger - implement if available."""
+        pass
