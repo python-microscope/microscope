@@ -206,6 +206,7 @@ class AndorSDK3(camera.CameraDevice,
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
+        self._logger.info("Purging buffers.")
         if self._camera_acquiring.get_value():
             raise Exception ('Can not modify buffers while camera acquiring.')
         SDK3.Flush(self.handle)
@@ -219,6 +220,7 @@ class AndorSDK3(camera.CameraDevice,
     def _create_buffers(self, num=NUM_BUFFERS):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
+        self._logger.info("Creating %d buffers." % num)
         self._img_stride = self._aoi_stride.get_value()
         self._img_width = self._aoi_width.get_value()
         self._img_height = self._aoi_height.get_value()
@@ -236,15 +238,16 @@ class AndorSDK3(camera.CameraDevice,
                              img_size)
 
 
-    def _fetch_data(self, timeout=10, debug=False):
+    def _fetch_data(self, timeout=5, debug=False):
         try:
             ptr, length = SDK3.WaitBuffer(self.handle, timeout)
         except SDK3.TimeoutError as e:
             if debug:
-                print e
+                self._logger.debug(e)
             return None
         except Exception:
             raise
+        self._logger.info("DATA!")
         raw = self.buffers.get()
         width = self._img_width
         height = self._img_height
@@ -264,6 +267,7 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def abort(self):
+        self._logger.info('Disabling acquisition.')
         if self._camera_acquiring.get_value():
             self._acquisition_stop()
 
@@ -324,6 +328,7 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def shutdown(self):
+        self._logger.info("Shutting down camera.")
         self.set_cooling(False)
         SDK3.Close(self.handle)
 
