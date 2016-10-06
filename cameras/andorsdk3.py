@@ -190,6 +190,12 @@ class AndorSDK3(camera.CameraDevice,
         self._img_height = None
         self._img_encoding = None
 
+    @property
+    def _aquiring(self):
+        if self.enabled:
+            return self._camera_acquiring.get_value()
+        else:
+            return False
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
