@@ -340,8 +340,13 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def set_exposure_time(self, value):
-        self._exposure_time.set_value(value)
+        bounded_value = sorted((self._exposure_time.min(),
+                      self._exposure_time.max(),
+                      value))[1]
+        self._exposure_time.set_value(bounded_value)
         self._frame_rate.set_value(self._frame_rate.max())
+        self._logger.info("Set exposure time to %f, resulting framerate %f."
+                          % (bounded_value, self._frame_rate.get_value()))
 
 
     def get_exposure_time(self):
