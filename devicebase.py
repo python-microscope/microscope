@@ -388,7 +388,7 @@ class DataDevice(Device):
         self._fetch_thread_run = True
         while self._fetch_thread_run:
             data = self._fetch_data()
-            if data:
+            if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
                 self._buffer.put((data, timestamp))
