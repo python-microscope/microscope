@@ -369,6 +369,9 @@ class AndorSDK3(camera.CameraDevice,
         return TRIGGER_MODES[self._trigger_mode.get_string().lower()]
 
 
+    def soft_trigger(self):
+        return self._software_trigger()
+
 
     def get_binning(self):
          as_text = self._aoi_binning.get_string().split('x')
