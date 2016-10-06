@@ -304,12 +304,6 @@ class DataDevice(Device):
         self._acquiring = False
 
 
-    @abc.abstractmethod
-    @Pyro4.expose
-    def start_acquisition(self):
-        """Start acquisition."""
-        self._acquiring = True
-
     @Pyro4.expose
     def enable(self):
         """Enable the data capture device.
