@@ -259,6 +259,19 @@ class Device(object):
         return results
 
 
+# Wrapper to preserve acquiring state.
+def keep_acquiring(func):
+    def wrapper(self, *args, **kwargs):
+        if self._aquiring:
+            self.abort()
+            result = func(self, *args, **kwargs)
+            self._on_enable()
+        else:
+            result = func(self, *args, **kwargs)
+        return result
+    return wrapper
+
+
 class DataDevice(Device):
     __metaclass__ = abc.ABCMeta
     """A data capture device.
@@ -296,6 +309,8 @@ class DataDevice(Device):
     def __del__(self):
         self.disable()
 
+    # Wrap set_setting to pause and resume acquisition.
+    set_setting = Pyro4.expose(keep_acquiring(Device.set_setting))
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -379,7 +394,11 @@ class DataDevice(Device):
                 time.sleep(0.01)
                 continue
             data, timestamp = self._buffer.get()
-            self._send_data(self._process_data(data), timestamp)
+            try:
+                self._send_data(self._process_data(data), timestamp)
+            except Exception as e:
+                self._logger.error("in _dispatch_loop: %s." % e)
+                raise e
             self._buffer.task_done()
 
 
@@ -387,7 +406,11 @@ class DataDevice(Device):
         """Poll source for data and put it into dispatch buffer."""
         self._fetch_thread_run = True
         while self._fetch_thread_run:
-            data = self._fetch_data()
+            try:
+                data = self._fetch_data()
+            except Exception as e:
+                self._logger.error("in _fetch_loop: %s." % e)
+                raise e
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
@@ -399,7 +422,7 @@ class DataDevice(Device):
     @Pyro4.expose
     def set_client(self, client_uri):
         """Set up a connection to our client."""
-        self._logger.info("Setting client to %s." % clien)
+        self._logger.info("Setting client to %s." % client_uri)
         if client_uri is not None:
             self._client = Pyro4.Proxy(client_uri)
         else:
@@ -407,6 +430,7 @@ class DataDevice(Device):
 
 
     @Pyro4.expose
+    @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
         was_acquiring = self.acquiring
