@@ -170,8 +170,7 @@ class Device(object):
     @Pyro4.expose
     def enable(self):
         """Enable the device."""
-        self._on_enable()
-        self.enabled = True
+        self.enabled = self._on_enable()
 
 
     @Pyro4.expose
