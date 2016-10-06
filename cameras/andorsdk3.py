@@ -52,7 +52,7 @@ def keep_aquiring(func):
         if self._camera_acquiring.get_value():
             self.abort()
             result = func(self, *args, **kwargs)
-            self.start_acquisition()
+            self._on_enable()
         else:
             result = func(self, *args, **kwargs)
         return result
@@ -328,7 +328,12 @@ class AndorSDK3(camera.CameraDevice,
         SDK3.Close(self.handle)
 
 
-    def start_acquisition(self):
+    def _on_disable(self):
+        self.abort()
+
+
+    def _on_enable(self):
+        self._logger.info("Preparing for acquisition.")
         if self._camera_acquiring.get_value():
             self._acquisition_stop()
         self._acquisition_start()
