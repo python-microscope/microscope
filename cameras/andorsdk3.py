@@ -25,6 +25,7 @@ The Zyla can not read out the full chip in 16-bit mode.
 """
 import camera
 import devicebase
+from devicebase import keep_acquiring
 import numpy as np
 import Pyro4
 import Queue
@@ -44,20 +45,6 @@ TRIGGER_MODES = {
     'external exposure': camera.TRIGGER_DURATION,
     'software': camera.TRIGGER_SOFT,
 }
-
-
-# Wrapper to preserve acquiring state.
-def keep_aquiring(func):
-    def wrapper(self, *args, **kwargs):
-        if self._camera_acquiring.get_value():
-            self.abort()
-            result = func(self, *args, **kwargs)
-            self._on_enable()
-        else:
-            result = func(self, *args, **kwargs)
-        return result
-    return wrapper
-
 
 # Wrapper to ensure feature is readable.
 def readable_wrapper(func):
@@ -377,7 +364,7 @@ class AndorSDK3(camera.CameraDevice,
          return tuple(int(t) for t in as_text)
 
 
-    @keep_aquiring
+    @keep_acquiring
     def set_binning(self, h, v):
         modes = self._aoi_binning.get_available_values()
         as_text = '%dx%d' % (h,v)
@@ -395,8 +382,7 @@ class AndorSDK3(camera.CameraDevice,
                 self._aoi_width.get_value(),
                 self._aoi_height.get_value())
 
-
-    @keep_aquiring
+    @keep_acquiring
     def set_roi(self, x, y, width, height):
         current = self.get_roi()
         if self._camera_acquiring.get_value():
