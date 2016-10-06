@@ -100,7 +100,6 @@ class Device(object):
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger()
-        self._logger.info('%s: Creating device.' % self)
         self._index = kwargs['index'] if 'index' in kwargs else None
 
 
@@ -406,6 +405,7 @@ class DataDevice(Device):
     @Pyro4.expose
     def set_client(self, client_uri):
         """Set up a connection to our client."""
+        self._logger.info("Setting client to %s." % clien)
         if client_uri is not None:
             self._client = Pyro4.Proxy(client_uri)
         else:
@@ -473,16 +473,18 @@ class DeviceServer(multiprocessing.Process):
             port = self._device_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
-                                           (type(self._device).__name__, host, port))
+                                          (type(self._device).__name__, host, port))
         log_handler.setFormatter(LOG_FORMATTER)
-        self._device._logger.addHandler(log_handler)
-        self._device._logger.setLevel(logging.INFO)
-        self._device._logger.info('Device initialized; starting daemon.')
+        logger = logging.getLogger()
+        logger.addHandler(log_handler)
+        logger.setLevel(logging.INFO)
+        logger.info('Device initialized; starting daemon.')
+
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                                   args=({self._device: type(self).__name__},),
-                                   kwargs={'daemon':pyro_daemon, 'ns':False})
+                             args=({self._device: type(self).__name__},),
+                             kwargs={'daemon':pyro_daemon, 'ns':False})
         pyro_thread.daemon = True
         pyro_thread.start()
         if self.exit_event:
