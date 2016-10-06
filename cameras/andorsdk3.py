@@ -247,7 +247,6 @@ class AndorSDK3(camera.CameraDevice,
             return None
         except Exception:
             raise
-        self._logger.info("DATA!")
         raw = self.buffers.get()
         width = self._img_width
         height = self._img_height
