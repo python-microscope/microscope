@@ -31,8 +31,6 @@ import Pyro4
 import Queue
 from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
 
-# Number of buffers to allocate.
-NUM_BUFFERS = 50
 
 # SDK data pointer type
 DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
@@ -183,6 +181,11 @@ class AndorSDK3(camera.CameraDevice,
         self._vertically_centre_aoi = ATBool()
 
         # Software buffers and parameters for data conversion.
+        self.num_buffers = 50
+        self.add_setting('num_buffers', 'int',
+                         lambda: self.num_buffers,
+                         lambda val: setattr(self, 'num_buffers', val),
+                         lambda: (1, 100))
         self.buffers = Queue.Queue()
         self._buffer_size = None
         self._img_stride = None
@@ -210,8 +213,10 @@ class AndorSDK3(camera.CameraDevice,
                 break
 
 
-    def _create_buffers(self, num=NUM_BUFFERS):
+    def _create_buffers(self, num=None):
         """Create buffers and store values needed to remove padding later."""
+        if num is None:
+            num = self.num_buffers
         self._purge_buffers()
         self._logger.info("Creating %d buffers." % num)
         self._img_stride = self._aoi_stride.get_value()
