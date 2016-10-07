@@ -203,7 +203,7 @@ class AndorSDK3(camera.CameraDevice,
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
         self._logger.info("Purging buffers.")
-        if self._camera_acquiring.get_value():
+        if self._acquiring:
             raise Exception ('Can not modify buffers while camera acquiring.')
         SDK3.Flush(self.handle)
         while True:
@@ -265,7 +265,7 @@ class AndorSDK3(camera.CameraDevice,
 
     def abort(self):
         self._logger.info('Disabling acquisition.')
-        if self._camera_acquiring.get_value():
+        if self._acquiring:
             self._acquisition_stop()
 
 
@@ -331,7 +331,7 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def make_safe(self):
-        if self._camera_acquiring.get_value():
+        if self._acquiring:
             self.abort()
 
 
@@ -347,7 +347,7 @@ class AndorSDK3(camera.CameraDevice,
 
     def _on_enable(self):
         self._logger.info("Preparing for acquisition.")
-        if self._camera_acquiring.get_value():
+        if self._acquiring:
             self._acquisition_stop()
         self._create_buffers()
         self._acquisition_start()
@@ -412,7 +412,7 @@ class AndorSDK3(camera.CameraDevice,
     @keep_acquiring
     def set_roi(self, x, y, width, height):
         current = self.get_roi()
-        if self._camera_acquiring.get_value():
+        if self._acquiring:
             self.abort()
         try:
             self._aoi_width.set_value(width)
