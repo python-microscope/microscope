@@ -303,7 +303,18 @@ class AndorSDK3(camera.CameraDevice,
                         vals_func = None
                 self.add_setting(name.lstrip('_'), PROPERTY_TYPES[type(var)],
                                  get_func, set_func, vals_func, is_readonly_func)
+        # Default setup.
         self.set_cooling(True)
+        self._trigger_mode.set_string('Software')
+        self._cycle_mode.set_string('Continuous')
+        # Zyla 4.2 does not appear to be able to read full chip at 16-bid depth,
+        # so drop to a lower bit mode.
+        if hasattr(self, '_simple_pre_amp_gain_control'):
+            values = self._simple_pre_amp_gain_control.get_available_values()
+            for val in values:
+                if 'well' in val and ('12-bit' in val or '11-bit' in val):
+                    self._simple_pre_amp_gain_control.set_string(val)
+                    break
 
 
     def set_cooling(self, value):
