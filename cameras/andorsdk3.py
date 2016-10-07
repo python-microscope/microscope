@@ -194,7 +194,7 @@ class AndorSDK3(camera.CameraDevice,
         self._img_encoding = None
 
     @property
-    def _aquiring(self):
+    def _acquiring(self):
         if self.enabled:
             return self._camera_acquiring.get_value()
         else:

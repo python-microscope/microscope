@@ -262,7 +262,7 @@ class Device(object):
 # Wrapper to preserve acquiring state.
 def keep_acquiring(func):
     def wrapper(self, *args, **kwargs):
-        if self._aquiring:
+        if self._acquiring:
             self.abort()
             result = func(self, *args, **kwargs)
             self._on_enable()
