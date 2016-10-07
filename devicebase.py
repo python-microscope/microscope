@@ -433,7 +433,7 @@ class DataDevice(Device):
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
-        was_acquiring = self.acquiring
+        was_acquiring = self._acquiring
         if was_acquiring:
             self.abort()
         super(DataDevice, self).update_settings(settings, init)
