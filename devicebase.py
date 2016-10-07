@@ -394,12 +394,23 @@ class DataDevice(Device):
                 time.sleep(0.01)
                 continue
             data, timestamp = self._buffer.get()
-            try:
-                self._send_data(self._process_data(data), timestamp)
-            except Exception as e:
-                self._logger.error("in _dispatch_loop: %s." % e)
+            err = None
+            if isinstance(data, Exception):
+                standard_exception = Exception(str(data))
+                try:
+                    self._send_data(standard_exception, timestamp)
+                except Exception as e:
+                    err = e
+            else:
+                try:
+                    self._send_data(self._process_data(data), timestamp)
+                except Exception as e:
+                    err = e
+
+            if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
+                self._logger.error("in _dispatch_loop: %s." % err)
             self._buffer.task_done()
 
 
@@ -413,6 +424,8 @@ class DataDevice(Device):
                 self._logger.error("in _fetch_loop: %s." % e)
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
+                timestamp = time.time()
+                self._buffer.put((e, timestamp))
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
