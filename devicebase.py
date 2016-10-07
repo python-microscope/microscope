@@ -249,7 +249,7 @@ class Device(object):
         for key in update_keys:
             if key not in my_keys or not self.settings[key]['set']:
                 # Setting not recognised or no set function implemented
-                result[key] = NotImplemented
+                results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
             self.settings[key]['set'](incoming[key])
