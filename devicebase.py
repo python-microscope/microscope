@@ -31,33 +31,41 @@ import distutils.version
 import logging
 from logging.handlers import RotatingFileHandler
 import multiprocessing
-import numpy as np
 from collections import OrderedDict
 import Pyro4
-import Queue
 from threading import Thread
 import time
 
-# Pyro4 configuration.
-if (distutils.version.LooseVersion(Pyro4.__version__) >=
-    distutils.version.LooseVersion('4.22')):
-    Pyro4.config.SERIALIZERS_ACCEPTED.discard('serpent')
-    Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
-    Pyro4.config.SERIALIZER = 'pickle'
+# Python 2.7 and 3 compatibility.
+try:
+    import queue
+except:
+    import Queue as queue
 
+try:
+    from future.utils import iteritems
+except:
+    pass
+
+Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
+Pyro4.config.SERIALIZER='pickle'
+Pyro4.config.PICKLE_PROTOCOL_VERSION=2
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
 
-# Mapping of setting data types to allowed-value description types.
-DTYPES = {'int': tuple,
-          'float': tuple,
-          'bool': type(None),
-          'enum': list,
-          'str': int,
-          int: tuple,
-          float: tuple,
-          bool: type(None),
-          str: int}
+# Mapping of setting data types to descriptors allowed-value description types.
+# For python 2 and 3 compatibility, we convert the type into a descriptor string.
+# This avoids problems with, say a python 2 client recognising a python 3
+# <class 'int'> as a python 2 <type 'int'>.
+DTYPES = {'int': ('int', tuple),
+          'float': ('float', tuple),
+          'bool': ('bool', type(None)),
+          'enum': ('enum', list),
+          'str': ('str', int),
+          int: ('int', tuple),
+          float: ('float', tuple),
+          bool: ('bool', type(None)),
+          str: ('str', int)}
 
 # A utility function
 _call_if_callable = lambda f: f() if callable(f) else f
@@ -126,14 +134,13 @@ class Device(object):
         the functions we need (e.g. Device.some_setting.set ), so I'd have to
         write access functions, anyway.
         """
-        # Mapping of dtype to type(values)
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
+        elif not (isinstance(values, DTYPES[dtype][1]) or callable(values)):
             raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype]))
+                            (dtype, DTYPES[dtype][1]))
         else:
-            self.settings.update({name:{'type':dtype,
+            self.settings.update({name:{'type':DTYPES[dtype][0],
                                         'get':get_func,
                                         'set':set_func,
                                         'values':values,
@@ -185,14 +192,14 @@ class Device(object):
             'type': str(v['type']),
             'values': _call_if_callable(v['values']),
             'readonly': _call_if_callable(v['readonly']),})
-                for (k, v) in self.settings.iteritems()]
+                for (k, v) in iteritems(self.settings)]
 
 
     @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         return{k : v['get']() if v['get'] else None
-               for k, v in self.settings.iteritems()}
+               for k, v in iteritems(self.settings)}
 
 
     @Pyro4.expose
@@ -301,7 +308,7 @@ class DataDevice(Device):
         # A thread to dispatch data.
         self._dispatch_thread = None
         # A buffer for data dispatch.
-        self._buffer = Queue.Queue(maxsize = buffer_length)
+        self._buffer = queue.Queue(maxsize = buffer_length)
         # A flag to indicate if device is ready to acquire.
         self._acquiring = False
 
@@ -396,7 +403,7 @@ class DataDevice(Device):
             data, timestamp = self._buffer.get()
             err = None
             if isinstance(data, Exception):
-                standard_exception = Exception(str(data))
+                standard_exception = Exception(str(data).encode('ascii'))
                 try:
                     self._send_data(standard_exception, timestamp)
                 except Exception as e:
@@ -562,7 +569,7 @@ def __main__():
         by_class[r['cls']] = by_class.get(r['cls'], []) + [r]
 
     servers = []
-    for cls, rs in by_class.iteritems():
+    for cls, rs in iteritems(by_class):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0

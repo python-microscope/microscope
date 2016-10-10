@@ -28,8 +28,19 @@ import devicebase
 from devicebase import keep_acquiring
 import numpy as np
 import Pyro4
-import Queue
-from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
+# Python 2.7 to 3
+try:
+    import queue
+except:
+    import Queue as queue
+
+# PYME is not yet ready for Python 3. Until it is, Andor's SDK3
+# can be supported by placing PYME's SDK3.py and SDK3Cam.py in
+# the same folder is this file.
+try:
+    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
+except:
+    from .SDK3Cam import *
 
 
 # SDK data pointer type
@@ -186,7 +197,7 @@ class AndorSDK3(camera.CameraDevice,
                          lambda: self.num_buffers,
                          lambda val: setattr(self, 'num_buffers', val),
                          lambda: (1, 100))
-        self.buffers = Queue.Queue()
+        self.buffers = queue.Queue()
         self._buffer_size = None
         self._img_stride = None
         self._img_width = None
@@ -218,7 +229,7 @@ class AndorSDK3(camera.CameraDevice,
         while True:
             try:
                 self.buffers.get(block=False)
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
 
@@ -234,7 +245,7 @@ class AndorSDK3(camera.CameraDevice,
         self._img_encoding = self._pixel_encoding.get_string()
         img_size = self._image_size_bytes.get_value()
         self._buffer_size = img_size
-        for i in xrange(num):
+        for i in range(num):
             buf = np.require(np.empty(img_size), dtype='uint8',
                              requirements=['C_CONTIGUOUS',
                                            'ALIGNED',
