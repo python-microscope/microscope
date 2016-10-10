@@ -193,12 +193,21 @@ class AndorSDK3(camera.CameraDevice,
         self._img_height = None
         self._img_encoding = None
 
+
     @property
     def _acquiring(self):
         if self.enabled:
             return self._camera_acquiring.get_value()
         else:
             return False
+
+    @_acquiring.setter
+    def _acquiring(self, value):
+        # Here to prevent an error when super.__init__ intializes
+        # self._acquiring. Doesn't do anything, because the DLL keeps
+        # track of acquisition state.
+        pass
+
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
