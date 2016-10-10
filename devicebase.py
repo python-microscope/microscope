@@ -426,6 +426,7 @@ class DataDevice(Device):
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
                 self._buffer.put((e, timestamp))
+                data = None
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
