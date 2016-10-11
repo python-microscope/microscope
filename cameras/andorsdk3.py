@@ -196,10 +196,10 @@ class AndorSDK3(camera.CameraDevice,
         self._vertically_centre_aoi = ATBool()
 
         # Software buffers and parameters for data conversion.
-        self.num_buffers = 50
+        self.num_buffers = 32
         self.add_setting('num_buffers', 'int',
                          lambda: self.num_buffers,
-                         lambda val: setattr(self, 'num_buffers', val),
+                         lambda val: self.set_num_buffers(val),
                          lambda: (1, 100))
         self.buffers = queue.Queue()
         self._buffer_size = None
