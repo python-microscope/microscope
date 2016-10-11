@@ -518,8 +518,12 @@ class DeviceServer(multiprocessing.Process):
         log_handler.setFormatter(LOG_FORMATTER)
         logger = logging.getLogger()
         logger.addHandler(log_handler)
-        logger.setLevel(logging.INFO)
+        if __debug__:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
         logger.info('Device initialized; starting daemon.')
+        logger.debug('Debugging messages on.')
 
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
