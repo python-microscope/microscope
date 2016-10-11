@@ -37,10 +37,11 @@ except:
 # PYME is not yet ready for Python 3. Until it is, Andor's SDK3
 # can be supported by placing PYME's SDK3.py and SDK3Cam.py in
 # the same folder is this file.
-try:
-    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
-except:
-    from .SDK3Cam import *
+#try:
+#    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
+#except:
+#    from .SDK3Cam import *
+from .SDK3Cam import *
 
 
 # SDK data pointer type
@@ -115,7 +116,7 @@ class AndorSDK3(camera.CameraDevice,
                 SDK3Camera):
     SDK_INITIALIZED = False
     def __init__(self, *args, **kwargs):
-        super(AndorSDK3, self).__init__(**kwargs)
+        super(AndorSDK3, self).__init__(uses_callback=True, **kwargs)
         if not AndorSDK3.SDK_INITIALIZED:
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)

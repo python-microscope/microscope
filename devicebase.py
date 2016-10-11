@@ -303,6 +303,8 @@ class DataDevice(Device):
         self._fetch_thread = None
         # A flag to control the _fetch_thread.
         self._fetch_thread_run = False
+        # A flag to indicate that this class uses a fetch callback.
+        self._using_callback = False
         # A client to which we send data.
         self._client = None
         # A thread to dispatch data.
@@ -337,10 +339,14 @@ class DataDevice(Device):
         if not self._on_enable():
             self.enabled = False
             return False
-        if not self._fetch_thread or not self._fetch_thread.is_alive():
-            self._fetch_thread = Thread(target=self._fetch_loop)
-            self._fetch_thread.daemon = True
-            self._fetch_thread.start()
+        if self._using_callback:
+            if self._fetch_thread:
+                self._fetch_thread_run = False
+        else:
+            if not self._fetch_thread or not self._fetch_thread.is_alive():
+                self._fetch_thread = Thread(target=self._fetch_loop)
+                self._fetch_thread.daemon = True
+                self._fetch_thread.start()
         if not self._dispatch_thread or not self._dispatch_thread.is_alive():
             self._dispatch_thread = Thread(target=self._dispatch_loop)
             self._dispatch_thread.daemon = True
