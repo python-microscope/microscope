@@ -116,7 +116,6 @@ class AndorSDK3(camera.CameraDevice,
         self._index = kwargs.get('index', 0)
         self.handle = None
         SDK3Camera.__init__(self, self._index)
-
         # Define features with local style. The SDK treats parameter names
         # without regard to case, so we just need to remove the underscores
         # when connecting properties to SDK calls. We define all possible
@@ -222,7 +221,7 @@ class AndorSDK3(camera.CameraDevice,
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
-        self._logger.info("Purging buffers.")
+        self._logger.debug("Purging buffers.")
         if self._acquiring:
             raise Exception ('Can not modify buffers while camera acquiring.')
         SDK3.Flush(self.handle)
@@ -238,7 +237,7 @@ class AndorSDK3(camera.CameraDevice,
         if num is None:
             num = self.num_buffers
         self._purge_buffers()
-        self._logger.info("Creating %d buffers." % num)
+        self._logger.debug("Creating %d buffers." % num)
         self._img_stride = self._aoi_stride.get_value()
         self._img_width = self._aoi_width.get_value()
         self._img_height = self._aoi_height.get_value()
@@ -282,9 +281,9 @@ class AndorSDK3(camera.CameraDevice,
 
         return data
 
-
     def abort(self):
-        self._logger.info('Disabling acquisition.')
+        """Abort acquisition."""
+        self._logger.debug('Disabling acquisition.')
         if self._acquiring:
             self._acquisition_stop()
 
@@ -311,7 +310,6 @@ class AndorSDK3(camera.CameraDevice,
                     set_func = var.set_string
                     get_func = var.get_string
                     vals_func = var.get_available_values
-
                 else:
                     set_func = var.set_value
                     get_func = var.get_value
@@ -366,12 +364,15 @@ class AndorSDK3(camera.CameraDevice,
 
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
+        self._logger.debug("Preparing for acquisition.")
         if self._acquiring:
             self._acquisition_stop()
         self._create_buffers()
-        self._acquisition_start()
-        self._logger.info("Acquisition enabled.")
+        try:
+            self._acquisition_start()
+        except Exception as e:
+            raise Exception(str(e))
+        self._logger.debug("Acquisition enabled: %s." % self._acquiring)
         return True
 
 
@@ -381,7 +382,7 @@ class AndorSDK3(camera.CameraDevice,
                       value))[1]
         self._exposure_time.set_value(bounded_value)
         self._frame_rate.set_value(self._frame_rate.max())
-        self._logger.info("Set exposure time to %f, resulting framerate %f."
+        self._logger.debug("Set exposure time to %f, resulting framerate %f."
                           % (bounded_value, self._frame_rate.get_value()))
 
 
