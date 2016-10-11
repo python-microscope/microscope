@@ -103,6 +103,11 @@ PROPERTY_TYPES = {
     ATEnum: 'enum'
 }
 
+INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
+                       '_aoi_binning', '_aoi_left', '_aoi_top',
+                       '_aoi_width', '_aoi_height', ]
+
+
 @Pyro4.expose
 @Pyro4.behavior('single')
 class AndorSDK3(camera.CameraDevice,
@@ -202,14 +207,18 @@ class AndorSDK3(camera.CameraDevice,
         self._img_width = None
         self._img_height = None
         self._img_encoding = None
+        self._buffers_valid = False
 
 
     @property
     def _acquiring(self):
-        if self.enabled:
-            return self._camera_acquiring.get_value()
-        else:
-            return False
+        return self._camera_acquiring.get_value()
+
+
+    def set_num_buffers(self, num):
+        self.num_buffers = num
+        self._buffers_valid = False
+
 
     @_acquiring.setter
     def _acquiring(self, value):
@@ -222,6 +231,7 @@ class AndorSDK3(camera.CameraDevice,
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
         self._logger.debug("Purging buffers.")
+        self._buffers_valid = False
         if self._acquiring:
             raise Exception ('Can not modify buffers while camera acquiring.')
         SDK3.Flush(self.handle)
@@ -234,6 +244,8 @@ class AndorSDK3(camera.CameraDevice,
 
     def _create_buffers(self, num=None):
         """Create buffers and store values needed to remove padding later."""
+        if self._buffers_valid:
+            return
         if num is None:
             num = self.num_buffers
         self._purge_buffers()
@@ -253,9 +265,11 @@ class AndorSDK3(camera.CameraDevice,
             SDK3.QueueBuffer(self.handle,
                              buf.ctypes.data_as(DPTR_TYPE),
                              img_size)
+        self._buffers_valid = True
 
 
     def _fetch_data(self, timeout=5, debug=False):
+        """Fetch data and recycle buffers."""
         try:
             ptr, length = SDK3.WaitBuffer(self.handle, timeout)
         except SDK3.TimeoutError as e:
@@ -287,6 +301,13 @@ class AndorSDK3(camera.CameraDevice,
         if self._acquiring:
             self._acquisition_stop()
 
+    def invalidate_buffers(self, func):
+        """Wrap functions that invalidate buffers so buffers are recreated."""
+        outerself = self
+        def wrapper(self, *args, **kwargs):
+            func(self, *args, **kwargs)
+            outerself._buffers_valid = False
+        return wrapper
 
     def initialize(self):
         """Initialise the camera.
@@ -319,6 +340,10 @@ class AndorSDK3(camera.CameraDevice,
                         vals_func = lambda v=var: (v.min(), v.max())
                     else:
                         vals_func = None
+
+                if name in INVALIDATES_BUFFERS:
+                    set_func = self.invalidate_buffers(set_func)
+
                 self.add_setting(name.lstrip('_'), PROPERTY_TYPES[type(var)],
                                  get_func, set_func, vals_func, is_readonly_func)
         # Default setup.
@@ -361,6 +386,7 @@ class AndorSDK3(camera.CameraDevice,
 
     def _on_disable(self):
         self.abort()
+        self._buffers_valid = False
 
 
     def _on_enable(self):
