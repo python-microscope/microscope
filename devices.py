@@ -42,6 +42,7 @@ import time
 try:
     import queue
 except:
+    # noinspection PyPep8Naming
     import Queue as queue
 
 try:
@@ -49,11 +50,10 @@ try:
 except:
     pass
 
-# Pyro configuration. Use pickle because it can serialize
-# numpy ndarrays.
+# Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
-Pyro4.config.SERIALIZER='pickle'
-Pyro4.config.PICKLE_PROTOCOL_VERSION=2
+Pyro4.config.SERIALIZER = 'pickle'
+Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 # Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
@@ -76,7 +76,9 @@ DTYPES = {'int': ('int', tuple),
           str: ('str', int)}
 
 # A utility function to call callables or return value of non-callables.
+# noinspection PyPep8
 _call_if_callable = lambda f: f() if callable(f) else f
+
 
 # A device definition for use in config files.
 def device(cls, host, port, uid=None, **kwargs):
@@ -99,6 +101,7 @@ class FloatingDeviceMixin(object):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
+
     @abc.abstractmethod
     @Pyro4.expose
     def get_id(self):
@@ -107,8 +110,9 @@ class FloatingDeviceMixin(object):
 
 
 class Device(object):
-    #__metaclass__ = abc.ABCMeta
-    """A base device class. All devices should sublcass this class."""
+    __metaclass__ = abc.ABCMeta
+    """A base device class. All devices should subclass this class."""
+
     def __init__(self, *args, **kwargs):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
@@ -118,10 +122,8 @@ class Device(object):
         self._logger = logging.getLogger()
         self._index = kwargs['index'] if 'index' in kwargs else None
 
-
     def __del__(self):
         self.shutdown()
-
 
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
@@ -131,7 +133,8 @@ class Device(object):
         :param get_func: a function to get the current value
         :param set_func: a function to set the value
         :param values: a description of allowed values dependent on dtype,
-                       or function that returns a description.
+                       or function that returns a description
+        :param readonly: an optional flag to indicate a read-only setting.
 
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
@@ -148,29 +151,26 @@ class Device(object):
             raise Exception('Invalid values type for %s: expected function or %s' %
                             (dtype, DTYPES[dtype][1]))
         else:
-            self.settings.update({name:{'type':DTYPES[dtype][0],
-                                        'get':get_func,
-                                        'set':set_func,
-                                        'values':values,
-                                        'current':None,
-                                        'readonly': readonly}})
+            self.settings.update({name: {'type': DTYPES[dtype][0],
+                                         'get': get_func,
+                                         'set': set_func,
+                                         'values': values,
+                                         'current': None,
+                                         'readonly': readonly}})
 
     def _on_disable(self):
         """Do any device-specific work on disable.
 
-        Subclasses should override this method, rather than modfiy
+        Subclasses should override this method, rather than modify
         disable(self).
         """
         return True
-
 
     @Pyro4.expose
     def disable(self):
         """Disable the device for a short period for inactivity."""
         self._on_disable()
         self.enabled = False
-
-
 
     def _on_enable(self):
         """Do any device-specific work on enable.
@@ -180,18 +180,15 @@ class Device(object):
         """
         return True
 
-
     @Pyro4.expose
     def enable(self):
         """Enable the device."""
         self.enabled = self._on_enable()
 
-
     @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
         return self.settings[name]['get']()
-
 
     @Pyro4.expose
     def describe_settings(self):
@@ -199,25 +196,22 @@ class Device(object):
         return [(k, {  # wrap type in str since can't serialize types
             'type': str(v['type']),
             'values': _call_if_callable(v['values']),
-            'readonly': _call_if_callable(v['readonly']),})
+            'readonly': _call_if_callable(v['readonly']), })
                 for (k, v) in iteritems(self.settings)]
-
 
     @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
-        return{k : v['get']() if v['get'] else None
-               for k, v in iteritems(self.settings)}
-
+        return {k: v['get']() if v['get'] else None
+                for k, v in iteritems(self.settings)}
 
     @Pyro4.expose
     def set_setting(self, name, value):
         """Set a setting."""
         if self.settings[name]['set'] is None:
             raise NotImplementedError
-        ### TODO ### further validation.
+        # TODO further validation.
         self.settings[name]['set'](value)
-
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -225,12 +219,10 @@ class Device(object):
         """Initialize the device."""
         pass
 
-
     @Pyro4.expose
     def make_safe(self):
         """Put the device into a safe state."""
         pass
-
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -238,7 +230,6 @@ class Device(object):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
         self._logger.info("Shutting down device.")
-
 
     @Pyro4.expose
     def update_settings(self, incoming, init=False):
@@ -274,7 +265,7 @@ class Device(object):
         return results
 
 
-# Wrapper to preserve acquiring state.
+# Wrapper to preserve acquiring state of data capture devices.
 def keep_acquiring(func):
     def wrapper(self, *args, **kwargs):
         if self._acquiring:
@@ -284,6 +275,7 @@ def keep_acquiring(func):
         else:
             result = func(self, *args, **kwargs)
         return result
+
     return wrapper
 
 
@@ -302,6 +294,7 @@ class DataDevice(Device):
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
+
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
         super(DataDevice, self).__init__(**kwargs)
@@ -318,10 +311,9 @@ class DataDevice(Device):
         # A thread to dispatch data.
         self._dispatch_thread = None
         # A buffer for data dispatch.
-        self._buffer = queue.Queue(maxsize = buffer_length)
+        self._buffer = queue.Queue(maxsize=buffer_length)
         # A flag to indicate if device is ready to acquire.
         self._acquiring = False
-
 
     def __del__(self):
         self.disable()
@@ -334,7 +326,6 @@ class DataDevice(Device):
     def abort(self):
         """Stop acquisition as soon as possible."""
         self._acquiring = False
-
 
     @Pyro4.expose
     def enable(self):
@@ -373,7 +364,6 @@ class DataDevice(Device):
                 self._fetch_thread.join()
         super(DataDevice, self).disable()
 
-
     @abc.abstractmethod
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.
@@ -387,11 +377,9 @@ class DataDevice(Device):
         """
         return None
 
-
     def _process_data(self, data):
         """Do any data processing and return data."""
         return data
-
 
     def _send_data(self, data, timestamp):
         """Dispatch data to the client."""
@@ -406,7 +394,6 @@ class DataDevice(Device):
                 self._client = None
             except:
                 raise
-
 
     def _dispatch_loop(self):
         """Process data and send results to any client."""
@@ -434,7 +421,6 @@ class DataDevice(Device):
                 self._logger.error("in _dispatch_loop: %s." % err)
             self._buffer.task_done()
 
-
     def _fetch_loop(self):
         """Poll source for data and put it into dispatch buffer."""
         self._fetch_thread_run = True
@@ -455,7 +441,6 @@ class DataDevice(Device):
             else:
                 time.sleep(0.001)
 
-
     @Pyro4.expose
     def set_client(self, client_uri):
         """Set up a connection to our client."""
@@ -465,19 +450,13 @@ class DataDevice(Device):
         else:
             self._client = None
 
-
     @Pyro4.expose
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
-        was_acquiring = self._acquiring
-        if was_acquiring:
-            self.abort()
         super(DataDevice, self).update_settings(settings, init)
-        if was_acquiring:
-            self.start_acquisition()
 
-
+    # noinspection PyPep8Naming
     @Pyro4.expose
     def receiveClient(self, client_uri):
         """A passthrough for compatibility."""
@@ -489,8 +468,8 @@ class DeviceServer(multiprocessing.Process):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def:  definition of the device
-        :param host_or_map: host or mapping of device identifiers to hostname
-        :param port_or_map: map or mapping of device identifiers to port number
+        :param id_to_host: host or mapping of device identifiers to hostname
+        :param id_to_port: map or mapping of device identifiers to port number
         :param count:       this is the countth process serving this class
         :param exit_event:  a shared event to signal that the process should quit.
         """
@@ -506,7 +485,6 @@ class DeviceServer(multiprocessing.Process):
         self.daemon = True
         # Some SDKs need an index to access more than one device.
         self.count = count
-
 
     def run(self):
         self._device = self._device_def['cls'](index=self.count, **self._device_def)
@@ -543,7 +521,7 @@ class DeviceServer(multiprocessing.Process):
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
                              args=({self._device: type(self).__name__},),
-                             kwargs={'daemon':pyro_daemon, 'ns':False})
+                             kwargs={'daemon': pyro_daemon, 'ns': False})
         pyro_thread.daemon = True
         pyro_thread.start()
         if self.exit_event:
@@ -564,13 +542,14 @@ class DeviceServer(multiprocessing.Process):
 def __main__():
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
-    # exit, as __del__ is not necessarily called when the intepreter exits.
+    # exit, as __del__ is not necessarily called when the interpreter exits.
     exit_event = multiprocessing.Event()
+
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
         exit_event.set()
-        for s in servers:
-            s.join()
+        for this_server in servers:
+            this_server.join()
         sys.exit()
 
     signal.signal(signal.SIGTERM, term_func)
@@ -613,14 +592,14 @@ def __main__():
         s.join()
 
 
-
 class CameraDevice(DataDevice):
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3*[range(2)])]
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
     """Adds functionality to DataDevice to support cameras.
 
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
+
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
         # Transforms to apply to data (fliplr, flipud, rot90)
@@ -634,17 +613,16 @@ class CameraDevice(DataDevice):
                          self.set_transform,
                          lambda: CameraDevice.ALLOWED_TRANSFORMS)
 
-
     def _process_data(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
         rot = self._transform[2]
 
         # Choose appropriate transform based on (flips, rot).
-        return {(0,0): numpy.rot90(data, rot),
-                (0,1): numpy.flipud(numpy.rot90(data, rot)),
-                (1,0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1,1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
+        return {(0, 0): numpy.rot90(data, rot),
+                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
+                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
+                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
                 }[flips]
 
     @Pyro4.expose
@@ -660,7 +638,6 @@ class CameraDevice(DataDevice):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
-
 
     @abc.abstractmethod
     @Pyro4.expose
