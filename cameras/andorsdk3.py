@@ -385,6 +385,7 @@ class AndorSDK3(camera.CameraDevice,
         self._exposure_callback = SDK3.CALLBACKTYPE(callback)
 
 
+
     def set_cooling(self, value):
         try:
             self._sensor_cooling.set_value(value)
@@ -427,6 +428,7 @@ class AndorSDK3(camera.CameraDevice,
         return True
 
 
+    @keep_acquiring
     def set_exposure_time(self, value):
         bounded_value = sorted((self._exposure_time.min(),
                       self._exposure_time.max(),
