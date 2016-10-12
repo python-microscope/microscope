@@ -15,10 +15,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import abc
-import camera
+import devices
 
-class CameraTemplate(camera.CameraDevice):
+
+class CameraTemplate(devices.CameraDevice):
     def _fetch_data(self):
         pass
 

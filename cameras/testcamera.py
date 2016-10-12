@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Test camera device. """
-import camera
-from devicebase import keep_acquiring
+import devices
+from devices import keep_acquiring
 import numpy as np
 import Pyro4
 import random
@@ -26,15 +26,15 @@ import time
 # Trigger mode to type.
 TRIGGER_MODES = {
     'internal': None,
-    'external': camera.TRIGGER_BEFORE,
+    'external': devices.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': camera.TRIGGER_DURATION,
-    'software': camera.TRIGGER_SOFT,
+    'external exposure': devices.TRIGGER_DURATION,
+    'software': devices.TRIGGER_SOFT,
 }
 
 @Pyro4.expose
 @Pyro4.behavior('single')
-class TestCamera(camera.CameraDevice):
+class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
         # Software buffers and parameters for data conversion.

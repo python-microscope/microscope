@@ -27,10 +27,12 @@ in a config file.
 
 """
 import abc
-import distutils.version
+import itertools
 import logging
+from ast import literal_eval
 from logging.handlers import RotatingFileHandler
 import multiprocessing
+import numpy
 from collections import OrderedDict
 import Pyro4
 from threading import Thread
@@ -47,11 +49,17 @@ try:
 except:
     pass
 
+# Pyro configuration. Use pickle because it can serialize
+# numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER='pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION=2
 
+# Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
+
+# Trigger types.
+(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -67,7 +75,7 @@ DTYPES = {'int': ('int', tuple),
           bool: ('bool', type(None)),
           str: ('str', int)}
 
-# A utility function
+# A utility function to call callables or return value of non-callables.
 _call_if_callable = lambda f: f() if callable(f) else f
 
 # A device definition for use in config files.
@@ -604,6 +612,133 @@ def __main__():
     for s in servers:
         s.join()
 
+
+
+class CameraDevice(DataDevice):
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3*[range(2)])]
+    """Adds functionality to DataDevice to support cameras.
+
+    Defines the interface for cameras.
+    Applies a transform to acquired data in the processing step.
+    """
+    def __init__(self, *args, **kwargs):
+        super(CameraDevice, self).__init__(**kwargs)
+        # Transforms to apply to data (fliplr, flipud, rot90)
+        # Transform to correct for readout order.
+        self._readout_transform = (0, 0, 0)
+        # Transform supplied by client to correct for system geometry.
+        self._transform = (0, 0, 0)
+        # A transform provided by the client.
+        self.add_setting('transform', 'enum',
+                         self.get_transform,
+                         self.set_transform,
+                         lambda: CameraDevice.ALLOWED_TRANSFORMS)
+
+
+    def _process_data(self, data):
+        """Apply self._transform to data."""
+        flips = (self._transform[0], self._transform[1])
+        rot = self._transform[2]
+
+        # Choose appropriate transform based on (flips, rot).
+        return {(0,0): numpy.rot90(data, rot),
+                (0,1): numpy.flipud(numpy.rot90(data, rot)),
+                (1,0): numpy.fliplr(numpy.rot90(data, rot)),
+                (1,1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
+                }[flips]
+
+    @Pyro4.expose
+    def get_transform(self):
+        """Return the current transform without readout transform."""
+        return tuple(self._readout_transform[i] ^ self._transform[i]
+                     for i in range(3))
+
+    @Pyro4.expose
+    def set_transform(self, transform):
+        """Combine provided transform with readout transform."""
+        if isinstance(transform, (str, unicode)):
+            transform = literal_eval(transform)
+        self._transform = tuple(self._readout_transform[i] ^ transform[i]
+                                for i in range(3))
+
+
+    @abc.abstractmethod
+    @Pyro4.expose
+    def set_exposure_time(self, value):
+        pass
+
+    @Pyro4.expose
+    def get_exposure_time(self):
+        pass
+
+    @Pyro4.expose
+    def get_cycle_time(self):
+        pass
+
+    @Pyro4.expose
+    def get_sensor_shape(self):
+        """Return a tuple of (width, height)."""
+        pass
+
+    @Pyro4.expose
+    def get_binning(self):
+        """Return a tuple of (horizontal, vertical)."""
+        pass
+
+    @Pyro4.expose
+    def set_binning(self, h_bin, v_bin):
+        """Set binning along both axes."""
+        pass
+
+    @Pyro4.expose
+    def get_sensor_temperature(self):
+        """Return the sensor temperature."""
+        pass
+
+    @Pyro4.expose
+    def get_roi(self):
+        """Return ROI as a rectangle (x0, y0, width, height).
+
+        Chosen this rectangle format as it completely defines the ROI without
+        reference to the sensor geometry."""
+        pass
+
+    @Pyro4.expose
+    def set_roi(self, x, y, width, height):
+        """Set the ROI according to the provided rectangle.
+
+        Return True if ROI set correctly, False otherwise."""
+        pass
+
+    @Pyro4.expose
+    def get_gain(self):
+        """Get the current amplifier gain."""
+        pass
+
+    @Pyro4.expose
+    def set_gain(self):
+        """Set the amplifier gain."""
+        pass
+
+    @Pyro4.expose
+    def get_trigger_type(self):
+        """Return the current trigger mode.
+
+        One of
+            TRIGGER_AFTER,
+            TRIGGER_BEFORE or
+            TRIGGER_DURATION (bulb exposure.)
+        """
+
+    @Pyro4.expose
+    def get_meta_data(self):
+        """Return metadata."""
+        pass
+
+    @Pyro4.expose
+    def soft_trigger(self):
+        """Optional software trigger - implement if available."""
+        pass
 
 if __name__ == '__main__':
     """Serve devices via pyro.

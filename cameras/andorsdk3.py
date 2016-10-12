@@ -23,9 +23,8 @@ a camera and all its settings to be exposed over Pyro.
 Limitations:
 The Zyla can not read out the full chip in 16-bit mode.
 """
-import camera
-import devicebase
-from devicebase import keep_acquiring
+import devices
+from devices import keep_acquiring
 import numpy as np
 import Pyro4
 import time
@@ -50,10 +49,10 @@ DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
 # Trigger mode to type.
 TRIGGER_MODES = {
     'internal': None,
-    'external': camera.TRIGGER_BEFORE,
+    'external': devices.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': camera.TRIGGER_DURATION,
-    'software': camera.TRIGGER_SOFT,
+    'external exposure': devices.TRIGGER_DURATION,
+    'software': devices.TRIGGER_SOFT,
 }
 
 # Wrapper to ensure feature is readable.
@@ -111,8 +110,8 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
 
 @Pyro4.expose
 @Pyro4.behavior('single')
-class AndorSDK3(camera.CameraDevice,
-                devicebase.FloatingDeviceMixin,
+class AndorSDK3(devices.CameraDevice,
+                devices.FloatingDeviceMixin,
                 SDK3Camera):
     SDK_INITIALIZED = False
     def __init__(self, *args, **kwargs):
