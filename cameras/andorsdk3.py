@@ -19,9 +19,6 @@
 
 This class provides a wrapper for PYME's SDK3 interface that allows
 a camera and all its settings to be exposed over Pyro.
-
-Limitations:
-The Zyla can not read out the full chip in 16-bit mode.
 """
 import devices
 from devices import keep_acquiring
