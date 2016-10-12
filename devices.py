@@ -740,11 +740,75 @@ class CameraDevice(DataDevice):
         """Optional software trigger - implement if available."""
         pass
 
+
+class LaserDevice(Device):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        super(LaserDevice, self).__init__(*args, **kwargs)
+        self.connection = None
+        self._set_point = None
+
+    def _read(self, num_chars):
+        """Simple passthrough to read numChars from connection."""
+        return self.connection.read(num_chars)
+
+    @abc.abstractmethod
+    def _readline(self):
+        """Simple passthrough to read one line from connection."""
+        return self.connection.readline().strip()
+
+    def _write(self, command):
+        """Send a command to the device."""
+        # Override if a specific format is required.
+        response = self.connection.write(command + '\r\n')
+        return response
+
+    @abc.abstractmethod
+    def get_status(self):
+        """Query and return the laser status."""
+        result = []
+        # ...
+        return result
+
+    @abc.abstractmethod
+    def get_is_on(self):
+        """Return True if the laser is currently able to produce light."""
+        pass
+
+    @abc.abstractmethod
+    def get_max_power_mw(self):
+        """Return the max. power in mW."""
+        pass
+
+    @abc.abstractmethod
+    def get_power_mw(self):
+        """"" Return the current power in mW."""
+        pass
+
+    def get_set_power_mw(self):
+        """Return the power set point."""
+        return self._set_point
+
+    @abc.abstractmethod
+    def _set_power_mw(self, mw):
+        """Set the power on the device in mW."""
+        pass
+
+    def set_power_mw(self, mw):
+        """Set the power form an argument in mW and save the set point."""
+        self._set_point = mw
+        self._set_power_mw(mw)
+
+
 if __name__ == '__main__':
     """Serve devices via pyro.
 
-    Usage:  devicebase [config]
+    Usage:  devices [config]
     """
-    import signal, sys
     import os
+    import signal
+    import sys
+
     __main__()
