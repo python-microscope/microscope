@@ -736,7 +736,6 @@ class LaserDevice(Device):
         """Simple passthrough to read numChars from connection."""
         return self.connection.read(num_chars)
 
-    @abc.abstractmethod
     def _readline(self):
         """Simple passthrough to read one line from connection."""
         return self.connection.readline().strip()
