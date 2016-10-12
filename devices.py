@@ -233,7 +233,7 @@ class Device(object):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
-        self._logger.info("Shutting down %s." % self.__name__)
+        self._logger.info("Shutting down %s." % self.__class__.__name__)
         self._on_shutdown()
 
     @Pyro4.expose
@@ -658,39 +658,86 @@ class CameraDevice(DataDevice):
         pass
 
     @Pyro4.expose
-    def get_sensor_shape(self):
-        """Return a tuple of (width, height)."""
-        pass
-
-    @Pyro4.expose
-    def get_binning(self):
-        """Return a tuple of (horizontal, vertical)."""
-        pass
-
-    @Pyro4.expose
-    def set_binning(self, h_bin, v_bin):
-        """Set binning along both axes."""
-        pass
-
-    @Pyro4.expose
     def get_sensor_temperature(self):
         """Return the sensor temperature."""
         pass
 
+    @abc.abstractmethod
+    def _get_sensor_shape(self):
+        """Return a tuple of (width, height)"""
+        pass
+
+    @Pyro4.expose
+    def get_sensor_shape(self):
+        """Return a tuple of (width, height), corrected for transform."""
+        shape = self._get_sensor_shape()
+        if self._transform[2]:
+            #90 degree rotation
+            shape = (shape[1], shape[0])
+        return shape
+
+    @abc.abstractmethod
+    def _get_binning(self):
+        """Return a tuple of (horizontal, vertical)"""
+        pass
+
+    @Pyro4.expose
+    def get_binning(self):
+        """Return a tuple of (horizontal, vertical), corrected for transform."""
+        binning = self._get_binning()
+        if self._transform[2]:
+            #90 degree rotation
+            binning = (binning[1], binning[0])
+        return binning
+
+    @abc.abstractmethod
+    def _set_binning(self, h_bin, v_bin):
+        """Set binning along both axes. Return True if successful."""
+        pass
+
+    @Pyro4.expose
+    def set_binning(self, h_bin, v_bin):
+        """Set binning along both axes. Return True if successful."""
+        if self._transform[2]:
+            #90 degree rotation
+            binning = (v_bin, h_bin)
+        else:
+            binning = (h_bin, v_bin)
+        return self._set_binning(*binning)
+
+    @abc.abstractmethod
+    def _get_roi(self):
+        """Return the ROI as it is on hardware."""
+        return (left, top, width, height)
+
     @Pyro4.expose
     def get_roi(self):
-        """Return ROI as a rectangle (x0, y0, width, height).
+        """Return ROI as a rectangle (left, top, width, height).
 
         Chosen this rectangle format as it completely defines the ROI without
         reference to the sensor geometry."""
-        pass
+        roi = self._get_roi()
+        if self._transform[2]:
+            # 90 degree rotation
+             roi = (roi[1], roi[0], roi[3], roi[2])
+        return roi
+
+    @abc.abstractmethod
+    def _set_roi(self, left, top, width, height):
+        """Set the ROI on the hardware, return True if successful."""
+        return False
 
     @Pyro4.expose
-    def set_roi(self, x, y, width, height):
+    def set_roi(self, left, top, width, height):
         """Set the ROI according to the provided rectangle.
 
         Return True if ROI set correctly, False otherwise."""
-        pass
+        if self._transform[2]:
+            roi = (top, left, height, width)
+        else:
+            roi = (left, top, width, height)
+        return self._set_roi(*roi)
+
 
     @Pyro4.expose
     def get_gain(self):

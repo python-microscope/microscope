@@ -228,16 +228,16 @@ class AndorSDK3(devices.CameraDevice,
             self._event_enable.set_value(False)
             self._using_callback = False
 
-    def set_num_buffers(self, num):
-        self.num_buffers = num
-        self._buffers_valid = False
-
     @_acquiring.setter
     def _acquiring(self, value):
         # Here to prevent an error when super.__init__ intializes
         # self._acquiring. Doesn't do anything, because the DLL keeps
         # track of acquisition state.
         pass
+
+    def set_num_buffers(self, num):
+        self.num_buffers = num
+        self._buffers_valid = False
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
@@ -277,6 +277,14 @@ class AndorSDK3(devices.CameraDevice,
                              img_size)
         self._buffers_valid = True
 
+    def invalidate_buffers(self, func):
+        """Wrap functions that invalidate buffers so buffers are recreated."""
+        outerself = self
+        def wrapper(self, *args, **kwargs):
+            func(self, *args, **kwargs)
+            outerself._buffers_valid = False
+        return wrapper
+
     def _fetch_data(self, timeout=5, debug=False):
         """Fetch data and recycle buffers."""
         try:
@@ -309,14 +317,6 @@ class AndorSDK3(devices.CameraDevice,
         self._logger.debug('Disabling acquisition.')
         if self._acquiring:
             self._acquisition_stop()
-
-    def invalidate_buffers(self, func):
-        """Wrap functions that invalidate buffers so buffers are recreated."""
-        outerself = self
-        def wrapper(self, *args, **kwargs):
-            func(self, *args, **kwargs)
-            outerself._buffers_valid = False
-        return wrapper
 
     def initialize(self):
         """Initialise the camera.
@@ -422,7 +422,7 @@ class AndorSDK3(devices.CameraDevice,
     def get_cycle_time(self):
         return 1. / self._frame_rate.get_value()
 
-    def get_sensor_shape(self):
+    def _get_sensor_shape(self):
         return (self._sensor_width.get_value(),
                 self._sensor_height.get_value())
 
@@ -432,12 +432,12 @@ class AndorSDK3(devices.CameraDevice,
     def soft_trigger(self):
         return self._software_trigger()
 
-    def get_binning(self):
+    def _get_binning(self):
          as_text = self._aoi_binning.get_string().split('x')
          return tuple(int(t) for t in as_text)
 
     @keep_acquiring
-    def set_binning(self, h, v):
+    def _set_binning(self, h, v):
         modes = self._aoi_binning.get_available_values()
         as_text = '%dx%d' % (h,v)
         if as_text in modes:
@@ -447,14 +447,14 @@ class AndorSDK3(devices.CameraDevice,
         else:
             return False
 
-    def get_roi(self):
+    def _get_roi(self):
         return (self._aoi_left.get_value(),
                 self._aoi_top.get_value(),
                 self._aoi_width.get_value(),
                 self._aoi_height.get_value())
 
     @keep_acquiring
-    def set_roi(self, x, y, width, height):
+    def _set_roi(self, x, y, width, height):
         current = self.get_roi()
         if self._acquiring:
             self.abort()

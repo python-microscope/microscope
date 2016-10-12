@@ -52,23 +52,19 @@ class TestCamera(devices.CameraDevice):
         self._exposure_time = 0.1
         self._triggered = False
 
-
     def _set_error_percent(self, value):
         self._error_percent = value
         self._a_setting = value / 10
 
-
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
         self._logger.info("Purging buffers.")
-
 
     def _create_buffers(self):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
         self._logger.info("Creating buffers.")
         #time.sleep(0.5)
-
 
     def _fetch_data(self):
         if self._acquiring and self._triggered:
@@ -80,12 +76,10 @@ class TestCamera(devices.CameraDevice):
             self._triggered = False
             return np.random.random_integers(255, size=(512,512)).astype(np.int16)
 
-
     def abort(self):
         self._logger.info('Disabling acquisition.')
         if self._acquiring:
             self._acquiring = False
-
 
     def initialize(self):
         """Initialise the camera.
@@ -95,19 +89,12 @@ class TestCamera(devices.CameraDevice):
         self._logger.info('Initializing.')
         time.sleep(0.5)
 
-
     def make_safe(self):
         if self._acquiring:
             self.abort()
 
-
-    def shutdown(self):
-        self._logger.info("Shutting down camera.")
-
-
     def _on_disable(self):
         self.abort()
-
 
     def _on_enable(self):
         self._logger.info("Preparing for acquisition.")
@@ -118,53 +105,45 @@ class TestCamera(devices.CameraDevice):
         self._logger.info("Acquisition enabled.")
         return True
 
-
     def set_exposure_time(self, value):
         self._exposure_time = value
-
 
     def get_exposure_time(self):
         return self._exposure_time
 
-
     def get_cycle_time(self):
         return self._exposure_time
 
-
-    def get_sensor_shape(self):
+    def _get_sensor_shape(self):
         return (512,512)
 
-
     def get_trigger_type(self):
-        return camera.TRIGGER_SOFT
-
+        return devices.TRIGGER_SOFT
 
     def soft_trigger(self):
         self._logger.info('Trigger received; self._acquiring is %s.' % self._acquiring)
         if self._acquiring:
             self._triggered = True
 
-
-    def get_binning(self):
+    def _get_binning(self):
          return (1,1)
 
-
     @keep_acquiring
-    def set_binning(self, h, v):
+    def _set_binning(self, h, v):
         return False
 
-
-    def get_roi(self):
+    def _get_roi(self):
         return (0, 0, 512, 512)
 
-
     @keep_acquiring
-    def set_roi(self, x, y, width, height):
+    def _set_roi(self, x, y, width, height):
         return False
-
 
     def get_gain(self):
         if hasattr(self, '_preampgain'):
             return self._preampgain.get_value()
         else:
             return None
+
+    def _on_shutdown(self):
+        pass
