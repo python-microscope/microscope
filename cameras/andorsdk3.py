@@ -61,7 +61,6 @@ def readable_wrapper(func):
             return None#Warning('%s not currently readable.' % self.propertyName)
     return wrapper
 
-
 # Wrapper to ensure feature is writable.
 def writable_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -70,7 +69,6 @@ def writable_wrapper(func):
         else:
             return False#Warning('%s not currently writable.' % self.propertyName)
     return wrapper
-
 
 # Overrides for local style and error handling.
 ATInt.get_value = readable_wrapper(ATInt.getValue)
@@ -103,7 +101,6 @@ PROPERTY_TYPES = {
 INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_binning', '_aoi_left', '_aoi_top',
                        '_aoi_width', '_aoi_height', ]
-
 
 @Pyro4.expose
 @Pyro4.behavior('single')
@@ -211,7 +208,6 @@ class AndorSDK3(devices.CameraDevice,
         self._buffers_valid = False
         self._exposure_callback = None
 
-
     @property
     def _acquiring(self):
         return self._camera_acquiring.get_value()
@@ -232,11 +228,9 @@ class AndorSDK3(devices.CameraDevice,
             self._event_enable.set_value(False)
             self._using_callback = False
 
-
     def set_num_buffers(self, num):
         self.num_buffers = num
         self._buffers_valid = False
-
 
     @_acquiring.setter
     def _acquiring(self, value):
@@ -244,7 +238,6 @@ class AndorSDK3(devices.CameraDevice,
         # self._acquiring. Doesn't do anything, because the DLL keeps
         # track of acquisition state.
         pass
-
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
@@ -258,7 +251,6 @@ class AndorSDK3(devices.CameraDevice,
                 self.buffers.get(block=False)
             except queue.Empty:
                 break
-
 
     def _create_buffers(self, num=None):
         """Create buffers and store values needed to remove padding later."""
@@ -284,7 +276,6 @@ class AndorSDK3(devices.CameraDevice,
                              buf.ctypes.data_as(DPTR_TYPE),
                              img_size)
         self._buffers_valid = True
-
 
     def _fetch_data(self, timeout=5, debug=False):
         """Fetch data and recycle buffers."""
@@ -380,8 +371,6 @@ class AndorSDK3(devices.CameraDevice,
 
         self._exposure_callback = SDK3.CALLBACKTYPE(callback)
 
-
-
     def set_cooling(self, value):
         try:
             self._sensor_cooling.set_value(value)
@@ -417,7 +406,6 @@ class AndorSDK3(devices.CameraDevice,
         self._logger.debug("Acquisition enabled: %s." % self._acquiring)
         return True
 
-
     @keep_acquiring
     def set_exposure_time(self, value):
         bounded_value = sorted((self._exposure_time.min(),
@@ -428,32 +416,25 @@ class AndorSDK3(devices.CameraDevice,
         self._logger.debug("Set exposure time to %f, resulting framerate %f."
                           % (bounded_value, self._frame_rate.get_value()))
 
-
     def get_exposure_time(self):
         return self._exposure_time.get_value()
 
-
     def get_cycle_time(self):
         return 1. / self._frame_rate.get_value()
-
 
     def get_sensor_shape(self):
         return (self._sensor_width.get_value(),
                 self._sensor_height.get_value())
 
-
     def get_trigger_type(self):
         return TRIGGER_MODES[self._trigger_mode.get_string().lower()]
-
 
     def soft_trigger(self):
         return self._software_trigger()
 
-
     def get_binning(self):
          as_text = self._aoi_binning.get_string().split('x')
          return tuple(int(t) for t in as_text)
-
 
     @keep_acquiring
     def set_binning(self, h, v):
@@ -465,7 +446,6 @@ class AndorSDK3(devices.CameraDevice,
             return True
         else:
             return False
-
 
     def get_roi(self):
         return (self._aoi_left.get_value(),
@@ -490,7 +470,6 @@ class AndorSDK3(devices.CameraDevice,
             self._aoi_top.set_value(current[1])
             return False
         return True
-
 
     def get_gain(self):
         if hasattr(self, '_preampgain'):
