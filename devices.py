@@ -225,11 +225,16 @@ class Device(object):
         pass
 
     @abc.abstractmethod
+    def _on_shutdown(self):
+        """Sublcasses over-ride this with tasks to do on shutdown."""
+        pass
+
     @Pyro4.expose
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
-        self._logger.info("Shutting down device.")
+        self._logger.info("Shutting down %s." % self.__name__)
+        self._on_shutdown()
 
     @Pyro4.expose
     def update_settings(self, incoming, init=False):

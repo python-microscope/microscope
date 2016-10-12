@@ -390,26 +390,20 @@ class AndorSDK3(devices.CameraDevice,
         except Exception:
             raise
 
-
     def get_id(self):
         return self._serial_number.get_value()
-
 
     def make_safe(self):
         if self._acquiring:
             self.abort()
 
-
-    def shutdown(self):
-        self._logger.info("Shutting down camera.")
+    def _on_shutdown(self):
         self.set_cooling(False)
         SDK3.Close(self.handle)
-
 
     def _on_disable(self):
         self.abort()
         self._buffers_valid = False
-
 
     def _on_enable(self):
         self._logger.debug("Preparing for acquisition.")
