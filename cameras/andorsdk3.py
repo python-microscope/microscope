@@ -28,6 +28,7 @@ import devicebase
 from devicebase import keep_acquiring
 import numpy as np
 import Pyro4
+import time
 # Python 2.7 to 3
 try:
     import queue
@@ -37,11 +38,10 @@ except:
 # PYME is not yet ready for Python 3. Until it is, Andor's SDK3
 # can be supported by placing PYME's SDK3.py and SDK3Cam.py in
 # the same folder is this file.
-#try:
-#    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
-#except:
-#    from .SDK3Cam import *
-from .SDK3Cam import *
+try:
+    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
+except:
+    from .SDK3Cam import *
 
 
 # SDK data pointer type
@@ -116,12 +116,16 @@ class AndorSDK3(camera.CameraDevice,
                 SDK3Camera):
     SDK_INITIALIZED = False
     def __init__(self, *args, **kwargs):
-        super(AndorSDK3, self).__init__(uses_callback=True, **kwargs)
+        super(AndorSDK3, self).__init__(**kwargs)
         if not AndorSDK3.SDK_INITIALIZED:
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)
         self.handle = None
         SDK3Camera.__init__(self, self._index)
+        self.add_setting('use_callback', 'bool',
+                         lambda: self._using_callback,
+                         self._enable_callback,
+                         None)
         # Define features with local style. The SDK treats parameter names
         # without regard to case, so we just need to remove the underscores
         # when connecting properties to SDK calls. We define all possible
@@ -209,11 +213,28 @@ class AndorSDK3(camera.CameraDevice,
         self._img_height = None
         self._img_encoding = None
         self._buffers_valid = False
+        self._exposure_callback = None
 
 
     @property
     def _acquiring(self):
         return self._camera_acquiring.get_value()
+
+    @keep_acquiring
+    def _enable_callback(self, use=False):
+        if use:
+            SDK3.RegisterFeatureCallback(self.handle,
+                                         "ExposureEndEvent",
+                                         self._exposure_callback, None)
+            self._event_selector.set_string("ExposureEndEvent")
+            self._event_enable.set_value(True)
+            self._using_callback = True
+        else:
+            SDK3.UnregisterFeatureCallback(self.handle,
+                                           "ExposureEndEvent",
+                                           self._exposure_callback, None)
+            self._event_enable.set_value(False)
+            self._using_callback = False
 
 
     def set_num_buffers(self, num):
@@ -351,6 +372,17 @@ class AndorSDK3(camera.CameraDevice,
         self.set_cooling(True)
         self._trigger_mode.set_string('Software')
         self._cycle_mode.set_string('Continuous')
+
+        def callback(*args):
+            data = self._fetch_data(timeout=500)
+            timestamp = time.time()
+            if data is not None:
+                self._buffer.put((data, timestamp))
+                return 0
+            else:
+                return -1
+
+        self._exposure_callback = SDK3.CALLBACKTYPE(callback)
 
 
     def set_cooling(self, value):
