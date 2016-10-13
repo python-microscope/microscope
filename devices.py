@@ -616,16 +616,6 @@ class CameraDevice(DataDevice):
         return self._set_roi(*roi)
 
     @Pyro4.expose
-    def get_gain(self):
-        """Get the current amplifier gain."""
-        pass
-
-    @Pyro4.expose
-    def set_gain(self, value):
-        """Set the amplifier gain."""
-        pass
-
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger mode.
 

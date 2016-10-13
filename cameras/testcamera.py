@@ -139,11 +139,5 @@ class TestCamera(devices.CameraDevice):
     def _set_roi(self, x, y, width, height):
         return False
 
-    def get_gain(self):
-        if hasattr(self, '_preampgain'):
-            return self._preampgain.get_value()
-        else:
-            return None
-
     def _on_shutdown(self):
         pass
