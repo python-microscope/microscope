@@ -91,6 +91,7 @@ def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
+# === FloatingDeviceMixin ===
 class FloatingDeviceMixin(object):
     __metaclass__ = abc.ABCMeta
     """A mixin for devices that 'float'.
@@ -109,6 +110,7 @@ class FloatingDeviceMixin(object):
         pass
 
 
+# === Device ===
 class Device(object):
     __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
@@ -125,6 +127,57 @@ class Device(object):
     def __del__(self):
         self.shutdown()
 
+    def _on_disable(self):
+        """Do any device-specific work on disable.
+
+        Subclasses should override this method, rather than modify
+        disable(self).
+        """
+        return True
+
+    @Pyro4.expose
+    def disable(self):
+        """Disable the device for a short period for inactivity."""
+        self._on_disable()
+        self.enabled = False
+
+    def _on_enable(self):
+        """Do any device-specific work on enable.
+
+        Subclasses should override this method, rather than modify
+        enable(self).
+        """
+        return True
+
+    @Pyro4.expose
+    def enable(self):
+        """Enable the device."""
+        self.enabled = self._on_enable()
+
+    @abc.abstractmethod
+    def _on_shutdown(self):
+        """Sublcasses over-ride this with tasks to do on shutdown."""
+        pass
+
+    @abc.abstractmethod
+    @Pyro4.expose
+    def initialize(self, *args, **kwargs):
+        """Initialize the device."""
+        pass
+
+    @Pyro4.expose
+    def shutdown(self):
+        """Shutdown the device for a prolonged period of inactivity."""
+        self.enabled = False
+        self._logger.info("Shutting down %s." % self.__class__.__name__)
+        self._on_shutdown()
+
+    @Pyro4.expose
+    def make_safe(self):
+        """Put the device into a safe state."""
+        pass
+
+    # Methods for manipulating settings.
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
@@ -158,46 +211,10 @@ class Device(object):
                                          'current': None,
                                          'readonly': readonly}})
 
-    def _on_disable(self):
-        """Do any device-specific work on disable.
-
-        Subclasses should override this method, rather than modify
-        disable(self).
-        """
-        return True
-
-    @Pyro4.expose
-    def disable(self):
-        """Disable the device for a short period for inactivity."""
-        self._on_disable()
-        self.enabled = False
-
-    def _on_enable(self):
-        """Do any device-specific work on enable.
-
-        Subclasses should override this method, rather than modify
-        enable(self).
-        """
-        return True
-
-    @Pyro4.expose
-    def enable(self):
-        """Enable the device."""
-        self.enabled = self._on_enable()
-
     @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
         return self.settings[name]['get']()
-
-    @Pyro4.expose
-    def describe_settings(self):
-        """Return ordered setting descriptions as a list of dicts."""
-        return [(k, {  # wrap type in str since can't serialize types
-            'type': str(v['type']),
-            'values': _call_if_callable(v['values']),
-            'readonly': _call_if_callable(v['readonly']), })
-                for (k, v) in iteritems(self.settings)]
 
     @Pyro4.expose
     def get_all_settings(self):
@@ -213,28 +230,14 @@ class Device(object):
         # TODO further validation.
         self.settings[name]['set'](value)
 
-    @abc.abstractmethod
     @Pyro4.expose
-    def initialize(self, *args, **kwargs):
-        """Initialize the device."""
-        pass
-
-    @Pyro4.expose
-    def make_safe(self):
-        """Put the device into a safe state."""
-        pass
-
-    @abc.abstractmethod
-    def _on_shutdown(self):
-        """Sublcasses over-ride this with tasks to do on shutdown."""
-        pass
-
-    @Pyro4.expose
-    def shutdown(self):
-        """Shutdown the device for a prolonged period of inactivity."""
-        self.enabled = False
-        self._logger.info("Shutting down %s." % self.__class__.__name__)
-        self._on_shutdown()
+    def describe_settings(self):
+        """Return ordered setting descriptions as a list of dicts."""
+        return [(k, {  # wrap type in str since can't serialize types
+            'type': str(v['type']),
+            'values': _call_if_callable(v['values']),
+            'readonly': _call_if_callable(v['readonly']), })
+                for (k, v) in iteritems(self.settings)]
 
     @Pyro4.expose
     def update_settings(self, incoming, init=False):
@@ -269,6 +272,8 @@ class Device(object):
             results[key] = self.settings[key]['get']()
         return results
 
+
+# === DataDevice ===
 
 # Wrapper to preserve acquiring state of data capture devices.
 def keep_acquiring(func):
@@ -468,6 +473,240 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
 
+# === CameraDevice ===
+class CameraDevice(DataDevice):
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
+    """Adds functionality to DataDevice to support cameras.
+
+    Defines the interface for cameras.
+    Applies a transform to acquired data in the processing step.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(CameraDevice, self).__init__(**kwargs)
+        # Transforms to apply to data (fliplr, flipud, rot90)
+        # Transform to correct for readout order.
+        self._readout_transform = (0, 0, 0)
+        # Transform supplied by client to correct for system geometry.
+        self._transform = (0, 0, 0)
+        # A transform provided by the client.
+        self.add_setting('transform', 'enum',
+                         self.get_transform,
+                         self.set_transform,
+                         lambda: CameraDevice.ALLOWED_TRANSFORMS)
+
+    def _process_data(self, data):
+        """Apply self._transform to data."""
+        flips = (self._transform[0], self._transform[1])
+        rot = self._transform[2]
+
+        # Choose appropriate transform based on (flips, rot).
+        return {(0, 0): numpy.rot90(data, rot),
+                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
+                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
+                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
+                }[flips]
+
+    @Pyro4.expose
+    def get_transform(self):
+        """Return the current transform without readout transform."""
+        return tuple(self._readout_transform[i] ^ self._transform[i]
+                     for i in range(3))
+
+    @Pyro4.expose
+    def set_transform(self, transform):
+        """Combine provided transform with readout transform."""
+        if isinstance(transform, (str, unicode)):
+            transform = literal_eval(transform)
+        self._transform = tuple(self._readout_transform[i] ^ transform[i]
+                                for i in range(3))
+
+    @abc.abstractmethod
+    @Pyro4.expose
+    def set_exposure_time(self, value):
+        pass
+
+    @Pyro4.expose
+    def get_exposure_time(self):
+        pass
+
+    @Pyro4.expose
+    def get_cycle_time(self):
+        pass
+
+    @Pyro4.expose
+    def get_sensor_temperature(self):
+        """Return the sensor temperature."""
+        pass
+
+    @abc.abstractmethod
+    def _get_sensor_shape(self):
+        """Return a tuple of (width, height)"""
+        pass
+
+    @Pyro4.expose
+    def get_sensor_shape(self):
+        """Return a tuple of (width, height), corrected for transform."""
+        shape = self._get_sensor_shape()
+        if self._transform[2]:
+            # 90 degree rotation
+            shape = (shape[1], shape[0])
+        return shape
+
+    @abc.abstractmethod
+    def _get_binning(self):
+        """Return a tuple of (horizontal, vertical)"""
+        pass
+
+    @Pyro4.expose
+    def get_binning(self):
+        """Return a tuple of (horizontal, vertical), corrected for transform."""
+        binning = self._get_binning()
+        if self._transform[2]:
+            # 90 degree rotation
+            binning = (binning[1], binning[0])
+        return binning
+
+    @abc.abstractmethod
+    def _set_binning(self, h_bin, v_bin):
+        """Set binning along both axes. Return True if successful."""
+        pass
+
+    @Pyro4.expose
+    def set_binning(self, h_bin, v_bin):
+        """Set binning along both axes. Return True if successful."""
+        if self._transform[2]:
+            # 90 degree rotation
+            binning = (v_bin, h_bin)
+        else:
+            binning = (h_bin, v_bin)
+        return self._set_binning(*binning)
+
+    @abc.abstractmethod
+    def _get_roi(self):
+        """Return the ROI as it is on hardware."""
+        return left, top, width, height
+
+    @Pyro4.expose
+    def get_roi(self):
+        """Return ROI as a rectangle (left, top, width, height).
+
+        Chosen this rectangle format as it completely defines the ROI without
+        reference to the sensor geometry."""
+        roi = self._get_roi()
+        if self._transform[2]:
+            # 90 degree rotation
+            roi = (roi[1], roi[0], roi[3], roi[2])
+        return roi
+
+    @abc.abstractmethod
+    def _set_roi(self, left, top, width, height):
+        """Set the ROI on the hardware, return True if successful."""
+        return False
+
+    @Pyro4.expose
+    def set_roi(self, left, top, width, height):
+        """Set the ROI according to the provided rectangle.
+
+        Return True if ROI set correctly, False otherwise."""
+        if self._transform[2]:
+            roi = (top, left, height, width)
+        else:
+            roi = (left, top, width, height)
+        return self._set_roi(*roi)
+
+    @Pyro4.expose
+    def get_gain(self):
+        """Get the current amplifier gain."""
+        pass
+
+    @Pyro4.expose
+    def set_gain(self, value):
+        """Set the amplifier gain."""
+        pass
+
+    @Pyro4.expose
+    def get_trigger_type(self):
+        """Return the current trigger mode.
+
+        One of
+            TRIGGER_AFTER,
+            TRIGGER_BEFORE or
+            TRIGGER_DURATION (bulb exposure.)
+        """
+
+    @Pyro4.expose
+    def get_meta_data(self):
+        """Return metadata."""
+        pass
+
+    @Pyro4.expose
+    def soft_trigger(self):
+        """Optional software trigger - implement if available."""
+        pass
+
+
+# === LaserDevice ===
+class LaserDevice(Device):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        super(LaserDevice, self).__init__(*args, **kwargs)
+        self.connection = None
+        self._set_point = None
+
+    def _read(self, num_chars):
+        """Simple passthrough to read numChars from connection."""
+        return self.connection.read(num_chars)
+
+    def _readline(self):
+        """Simple passthrough to read one line from connection."""
+        return self.connection.readline().strip()
+
+    def _write(self, command):
+        """Send a command to the device."""
+        # Override if a specific format is required.
+        response = self.connection.write(command + '\r\n')
+        return response
+
+    @abc.abstractmethod
+    def get_status(self):
+        """Query and return the laser status."""
+        result = []
+        # ...
+        return result
+
+    @abc.abstractmethod
+    def get_is_on(self):
+        """Return True if the laser is currently able to produce light."""
+        pass
+
+    @abc.abstractmethod
+    def get_max_power_mw(self):
+        """Return the max. power in mW."""
+        pass
+
+    @abc.abstractmethod
+    def get_power_mw(self):
+        """"" Return the current power in mW."""
+        pass
+
+    def get_set_power_mw(self):
+        """Return the power set point."""
+        return self._set_point
+
+    @abc.abstractmethod
+    def _set_power_mw(self, mw):
+        """Set the power on the device in mW."""
+        pass
+
+    def set_power_mw(self, mw):
+        """Set the power form an argument in mW and save the set point."""
+        self._set_point = mw
+        self._set_power_mw(mw)
+
+
 class DeviceServer(multiprocessing.Process):
     def __init__(self, device_def, id_to_host, id_to_port, count=0, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
@@ -595,239 +834,6 @@ def __main__():
             count += 1
     for s in servers:
         s.join()
-
-
-class CameraDevice(DataDevice):
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
-    """Adds functionality to DataDevice to support cameras.
-
-    Defines the interface for cameras.
-    Applies a transform to acquired data in the processing step.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(CameraDevice, self).__init__(**kwargs)
-        # Transforms to apply to data (fliplr, flipud, rot90)
-        # Transform to correct for readout order.
-        self._readout_transform = (0, 0, 0)
-        # Transform supplied by client to correct for system geometry.
-        self._transform = (0, 0, 0)
-        # A transform provided by the client.
-        self.add_setting('transform', 'enum',
-                         self.get_transform,
-                         self.set_transform,
-                         lambda: CameraDevice.ALLOWED_TRANSFORMS)
-
-    def _process_data(self, data):
-        """Apply self._transform to data."""
-        flips = (self._transform[0], self._transform[1])
-        rot = self._transform[2]
-
-        # Choose appropriate transform based on (flips, rot).
-        return {(0, 0): numpy.rot90(data, rot),
-                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
-                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
-                }[flips]
-
-    @Pyro4.expose
-    def get_transform(self):
-        """Return the current transform without readout transform."""
-        return tuple(self._readout_transform[i] ^ self._transform[i]
-                     for i in range(3))
-
-    @Pyro4.expose
-    def set_transform(self, transform):
-        """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, unicode)):
-            transform = literal_eval(transform)
-        self._transform = tuple(self._readout_transform[i] ^ transform[i]
-                                for i in range(3))
-
-    @abc.abstractmethod
-    @Pyro4.expose
-    def set_exposure_time(self, value):
-        pass
-
-    @Pyro4.expose
-    def get_exposure_time(self):
-        pass
-
-    @Pyro4.expose
-    def get_cycle_time(self):
-        pass
-
-    @Pyro4.expose
-    def get_sensor_temperature(self):
-        """Return the sensor temperature."""
-        pass
-
-    @abc.abstractmethod
-    def _get_sensor_shape(self):
-        """Return a tuple of (width, height)"""
-        pass
-
-    @Pyro4.expose
-    def get_sensor_shape(self):
-        """Return a tuple of (width, height), corrected for transform."""
-        shape = self._get_sensor_shape()
-        if self._transform[2]:
-            #90 degree rotation
-            shape = (shape[1], shape[0])
-        return shape
-
-    @abc.abstractmethod
-    def _get_binning(self):
-        """Return a tuple of (horizontal, vertical)"""
-        pass
-
-    @Pyro4.expose
-    def get_binning(self):
-        """Return a tuple of (horizontal, vertical), corrected for transform."""
-        binning = self._get_binning()
-        if self._transform[2]:
-            #90 degree rotation
-            binning = (binning[1], binning[0])
-        return binning
-
-    @abc.abstractmethod
-    def _set_binning(self, h_bin, v_bin):
-        """Set binning along both axes. Return True if successful."""
-        pass
-
-    @Pyro4.expose
-    def set_binning(self, h_bin, v_bin):
-        """Set binning along both axes. Return True if successful."""
-        if self._transform[2]:
-            #90 degree rotation
-            binning = (v_bin, h_bin)
-        else:
-            binning = (h_bin, v_bin)
-        return self._set_binning(*binning)
-
-    @abc.abstractmethod
-    def _get_roi(self):
-        """Return the ROI as it is on hardware."""
-        return (left, top, width, height)
-
-    @Pyro4.expose
-    def get_roi(self):
-        """Return ROI as a rectangle (left, top, width, height).
-
-        Chosen this rectangle format as it completely defines the ROI without
-        reference to the sensor geometry."""
-        roi = self._get_roi()
-        if self._transform[2]:
-            # 90 degree rotation
-             roi = (roi[1], roi[0], roi[3], roi[2])
-        return roi
-
-    @abc.abstractmethod
-    def _set_roi(self, left, top, width, height):
-        """Set the ROI on the hardware, return True if successful."""
-        return False
-
-    @Pyro4.expose
-    def set_roi(self, left, top, width, height):
-        """Set the ROI according to the provided rectangle.
-
-        Return True if ROI set correctly, False otherwise."""
-        if self._transform[2]:
-            roi = (top, left, height, width)
-        else:
-            roi = (left, top, width, height)
-        return self._set_roi(*roi)
-
-
-    @Pyro4.expose
-    def get_gain(self):
-        """Get the current amplifier gain."""
-        pass
-
-    @Pyro4.expose
-    def set_gain(self):
-        """Set the amplifier gain."""
-        pass
-
-    @Pyro4.expose
-    def get_trigger_type(self):
-        """Return the current trigger mode.
-
-        One of
-            TRIGGER_AFTER,
-            TRIGGER_BEFORE or
-            TRIGGER_DURATION (bulb exposure.)
-        """
-
-    @Pyro4.expose
-    def get_meta_data(self):
-        """Return metadata."""
-        pass
-
-    @Pyro4.expose
-    def soft_trigger(self):
-        """Optional software trigger - implement if available."""
-        pass
-
-
-class LaserDevice(Device):
-    __metaclass__ = abc.ABCMeta
-
-    @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        super(LaserDevice, self).__init__(*args, **kwargs)
-        self.connection = None
-        self._set_point = None
-
-    def _read(self, num_chars):
-        """Simple passthrough to read numChars from connection."""
-        return self.connection.read(num_chars)
-
-    def _readline(self):
-        """Simple passthrough to read one line from connection."""
-        return self.connection.readline().strip()
-
-    def _write(self, command):
-        """Send a command to the device."""
-        # Override if a specific format is required.
-        response = self.connection.write(command + '\r\n')
-        return response
-
-    @abc.abstractmethod
-    def get_status(self):
-        """Query and return the laser status."""
-        result = []
-        # ...
-        return result
-
-    @abc.abstractmethod
-    def get_is_on(self):
-        """Return True if the laser is currently able to produce light."""
-        pass
-
-    @abc.abstractmethod
-    def get_max_power_mw(self):
-        """Return the max. power in mW."""
-        pass
-
-    @abc.abstractmethod
-    def get_power_mw(self):
-        """"" Return the current power in mW."""
-        pass
-
-    def get_set_power_mw(self):
-        """Return the power set point."""
-        return self._set_point
-
-    @abc.abstractmethod
-    def _set_power_mw(self, mw):
-        """Set the power on the device in mW."""
-        pass
-
-    def set_power_mw(self, mw):
-        """Set the power form an argument in mW and save the set point."""
-        self._set_point = mw
-        self._set_power_mw(mw)
 
 
 if __name__ == '__main__':
