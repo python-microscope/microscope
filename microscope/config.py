@@ -10,5 +10,5 @@ from microscope.devices import device
 from microscope.cameras import testcamera
 
 DEVICES = [
-	device(testcamera.TestCamera, '127.0.0.1', 8001, otherargs=1,),
+  device(testcamera.TestCamera, '127.0.0.1', 8001, otherargs=1,),
 ]

@@ -69,7 +69,7 @@ class TemplateCamera(devices.CameraDevice):
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-         return (1,1)
+        return (1,1)
 
     @keep_acquiring
     def _set_binning(self, h, v):
