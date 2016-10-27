@@ -20,8 +20,8 @@
 This class provides a wrapper for PYME's SDK3 interface that allows
 a camera and all its settings to be exposed over Pyro.
 """
-import devices
-from devices import keep_acquiring
+from microscope import devices
+from microscope.devices import keep_acquiring
 import numpy as np
 import Pyro4
 import time

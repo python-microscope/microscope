@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Test camera device. """
-import devices
-from devices import keep_acquiring
+from microscope import devices
+from microscope.devices import keep_acquiring
 import numpy as np
 import Pyro4
 import random

@@ -19,7 +19,7 @@ import serial
 import threading
 import functools
 
-import devices
+from microscope import devices
 
 CONFIG_NAME = 'deepstar'
 CLASS_NAME = 'DeepstarLaser'
