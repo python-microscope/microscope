@@ -5,10 +5,10 @@ Import device classes, then define entries in DEVICES as:
    devices(CLASS, HOST, PORT, other_args)
 """
 # Function to create record for each device.
-from devices import device
+from microscope.devices import device
 # Import device modules/classes here.
-from cameras import testcamera
+from microscope.cameras import testcamera
 
 DEVICES = [
-	device(testcamera.TestCamera, '127.0.0.1', 8001, otherargs=1,),
+  device(testcamera.TestCamera, '127.0.0.1', 8001, otherargs=1,),
 ]

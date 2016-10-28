@@ -18,7 +18,7 @@
 import serial
 import threading
 import time
-import devices
+from microscope import devices
 import functools
 
 

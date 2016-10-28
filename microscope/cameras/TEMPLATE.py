@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Test camera device. """
-import devices
-from devices import keep_acquiring
+from microscope import devices
+from microscope.devices import keep_acquiring
 import Pyro4
 
 # Trigger mode to type.
@@ -69,7 +69,7 @@ class TemplateCamera(devices.CameraDevice):
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-         return (1,1)
+        return (1,1)
 
     @keep_acquiring
     def _set_binning(self, h, v):
