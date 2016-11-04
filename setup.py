@@ -36,8 +36,8 @@ setuptools.setup(
   ],
 
   entry_points = {
-    "console_scripts" : [
-      "deviceserver = microscope.deviceserver",
+    'console_scripts' : [
+      'deviceserver = microscope.deviceserver:__main__',
     ]
   },
 
