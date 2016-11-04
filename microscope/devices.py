@@ -682,7 +682,7 @@ class LaserDevice(Device):
         pass
 
     def set_power_mw(self, mw):
-        """Set the power form an argument in mW and save the set point."""
+        """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
 
