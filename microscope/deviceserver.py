@@ -133,11 +133,11 @@ def __main__():
 
     # Group devices by class.
     by_class = {}
-    for r in config.DEVICES:
-        by_class[r['cls']] = by_class.get(r['cls'], []) + [r]
+    for dev in config.DEVICES:
+        by_class[dev['cls']] = by_class.get(dev['cls'], []) + [dev]
 
     servers = []
-    for cls, rs in iteritems(by_class):
+    for cls, devs in iteritems(by_class):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
@@ -145,16 +145,16 @@ def __main__():
             # Need to provide maps of uid to host and port.
             uid_to_host = {}
             uid_to_port = {}
-            for r in rs:
-                uid = r['uid']
-                uid_to_host[uid] = r['host']
-                uid_to_port[uid] = r['port']
+            for dev in devs:
+                uid = dev['uid']
+                uid_to_host[uid] = dev['host']
+                uid_to_port[uid] = dev['port']
         else:
             uid_to_host = None
             uid_to_port = None
 
-        for r in rs:
-            servers.append(DeviceServer(r,
+        for dev in devs:
+            servers.append(DeviceServer(dev,
                                         uid_to_host, uid_to_port,
                                         exit_event=exit_event, count=count))
             servers[-1].start()
