@@ -42,7 +42,7 @@ def _flush_buffer(func):
 
 
 class DeepstarLaser(devices.LaserDevice):
-    def __init__(self, port, baud, timeout):
+    def __init__(self, port, baud, timeout, **kwargs):
         super(DeepstarLaser, self).__init__()
         self.connection = serial.Serial(port = port,
             baudrate = baud, timeout = timeout,
@@ -52,7 +52,7 @@ class DeepstarLaser(devices.LaserDevice):
         # use 16-byte mode.
         self._write('S?')
         response = self._readline()
-        self_logger.info("Current laser state: [%s]" % response)
+        self._logger.info("Current laser state: [%s]" % response)
         self.comms_lock = threading.RLock()
         
 
@@ -81,28 +81,28 @@ class DeepstarLaser(devices.LaserDevice):
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @_flush_buffer
     def enable(self):
-        self_logger.info("Turning laser ON.")
+        self._logger.info("Turning laser ON.")
         self._write('LON')
         response = self._readline()
         #Turn on deepstar mode with internal voltage ref
-        self_logger.info("Enable response: [%s]" % response)
+        self._logger.info("Enable response: [%s]" % response)
         self._write('L2')
         response = self._readline()
-        self_logger.info("L2 response: [%s]" % response)
+        self._logger.info("L2 response: [%s]" % response)
         #Enable internal peak power
         self._write('IPO')
         response = self._readline()
-        self_logger.info("Enable-internal peak power response: [%s]" % response)
+        self._logger.info("Enable-internal peak power response: [%s]" % response)
         #Set MF turns off internal digital and bias modulation
         self._write('MF')
         response = self._readline()
-        self_logger.info("MF response [%s]" % response)
+        self._logger.info("MF response [%s]" % response)
 
         if not self.get_is_on():
             # Something went wrong.
             self._write('S?')
             response = self._readline()
-            self_logger.error("Failed to turn on. Current status: %s" % response)
+            self._logger.error("Failed to turn on. Current status: %s" % response)
             return False
         return True
 
@@ -115,7 +115,7 @@ class DeepstarLaser(devices.LaserDevice):
     ## Turn the laser OFF.
     @_flush_buffer
     def disable(self):
-        self_logger.info("Turning laser OFF.")
+        self._logger.info("Turning laser OFF.")
         self._write('LF')
         return self._readline()
 
@@ -133,7 +133,7 @@ class DeepstarLaser(devices.LaserDevice):
     def get_is_on(self):
         self._write('S?')
         response = self._readline()
-        self_logger.info("Are we on? [%s]" % response)
+        self._logger.info("Are we on? [%s]" % response)
         return response == 'S2'
 
 
@@ -141,14 +141,14 @@ class DeepstarLaser(devices.LaserDevice):
     def _set_power(self, level):
         if (level > 1.0) :
             return
-        self_logger.info("level=%d" % level)
+        self._logger.info("level=%d" % level)
         power=int (level*0xFFF)
-        self_logger.info("power=%d" % power)
+        self._logger.info("power=%d" % power)
         strPower = "PP%03X" % power
-        self_logger.info("power level=%s" %strPower)
+        self._logger.info("power level=%s" %strPower)
         self._write(strPower)
         response = self._readline()
-        self_logger.info("Power response [%s]" % response)
+        self._logger.info("Power response [%s]" % response)
         return response
 
 
