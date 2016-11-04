@@ -1,3 +1,5 @@
+import imp
+import importlib
 import logging
 import multiprocessing
 import os
@@ -112,10 +114,22 @@ def __main__():
     signal.signal(signal.SIGTERM, term_func)
     signal.signal(signal.SIGINT, term_func)
 
+    config_file = None
+
     if len(sys.argv) == 1:
-        import config
+        # No config file specified. Check cwd.
+        if os.path.isfile('config.py'):
+            config_file = 'config.py'
     else:
-        config = __import__(os.path.splitext(sys.argv[1])[0])
+        # Config file specified.
+        config_file = sys.argv[1]
+
+    if config_file is not None:
+        with open(config_file) as fh:
+            config = imp.load_module('config', fh, config_file, ('py', 'r', imp.PY_SOURCE))
+    else:
+        # Fall back to default test config.
+        import microscope.config as config
 
     # Group devices by class.
     by_class = {}
