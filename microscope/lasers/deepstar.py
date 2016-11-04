@@ -21,9 +21,6 @@ import functools
 
 from microscope import devices
 
-CONFIG_NAME = 'deepstar'
-CLASS_NAME = 'DeepstarLaser'
-
 def _flush_buffer(func):
     """A decorator to flush the input buffer prior to issuing a command.
 
