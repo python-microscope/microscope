@@ -1,3 +1,29 @@
+#!/usr/bin/python
+# -*- coding: utf-8
+#
+# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""A class for serving microscope components.
+
+This module provides a server to make microscope control objects available
+over Pyro. When called from the command line, this module will serve devices
+defined in a specified config file, any 'config.py' found at the current
+working directory, or default test objects found in microscope.config.
+"""
+
 import imp
 import importlib
 import logging
@@ -21,6 +47,7 @@ Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 # Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
+
 
 class DeviceServer(multiprocessing.Process):
     def __init__(self, device_def, id_to_host, id_to_port, count=0, exit_event=None):

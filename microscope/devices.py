@@ -21,10 +21,6 @@
 This module provides base classes for experiment control and data
 acquisition devices that can be served over Pyro. This means that each
 device may be served from a separate process, or even from a different PC.
-
-When called from the command line, this module will serve devices defined
-in a config file.
-
 """
 import abc
 import itertools
