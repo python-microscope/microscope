@@ -142,7 +142,7 @@ class Device(object):
 
     @abc.abstractmethod
     def _on_shutdown(self):
-        """Sublcasses over-ride this with tasks to do on shutdown."""
+        """Subclasses over-ride this with tasks to do on shutdown."""
         pass
 
     @abc.abstractmethod
