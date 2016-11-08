@@ -19,15 +19,19 @@
 """A dummy filter wheel class. """
 from microscope import devices
 from future.utils import iteritems
+import Pyro4
+import time
 
 class TestFilterwheel(devices.Device):
     def __init__(self, *args, **kwargs):
         super(TestFilterwheel, self).__init__()
-        self._position = 0
-        self._filters = {0: 'GFP',
+        self._utype = devices.UFILTER
+        self.__position = 0
+        self._filters = {0: ('GFP', 525),
                          1: 'Cy5',
                          2: '4pass',
-                         3: None}
+                         3: None,
+                         6: 'ND10',}
         self._inv_filters = {val:key for key, val in iteritems(self._filters)}
         # The position as an integer.
         self.add_setting('position',
@@ -41,6 +45,20 @@ class TestFilterwheel(devices.Device):
                          lambda: self._filters[self._position],
                          lambda val: setattr(self, '_position', self._inv_filters[val]),
                          self._filters.values)
+
+    @property
+    def _position(self):
+        return self.__position
+
+    @_position.setter
+    def _position(self, value):
+        time.sleep(1)
+        self.__position = value
+
+
+    @Pyro4.expose
+    def get_filters(self):
+        return [(index, filt) for index, filt in iteritems(self._filters)]
 
     def initialize(self):
         pass
