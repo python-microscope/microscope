@@ -47,6 +47,9 @@ except:
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
+# Device types.
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
+
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
 # This avoids problems with, say a python 2 client recognising a python 3
@@ -109,9 +112,21 @@ class Device(object):
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger()
         self._index = kwargs['index'] if 'index' in kwargs else None
+        self._utype = UGENERIC
 
     def __del__(self):
         self.shutdown()
+
+
+    @Pyro4.expose
+    def get_device_type(self):
+        return self._utype
+
+
+    @Pyro4.expose
+    def get_is_enabled(self):
+        return self.enabled
+
 
     def _on_disable(self):
         """Do any device-specific work on disable.
@@ -215,6 +230,18 @@ class Device(object):
             raise NotImplementedError
         # TODO further validation.
         self.settings[name]['set'](value)
+
+    @Pyro4.expose
+    def describe_setting(self, name):
+        """Return ordered setting descriptions as a list of dicts."""
+        v = self.settings.get(name, None)
+        if v is None:
+            return v
+        else:
+            return {  # wrap type in str since can't serialize types
+                'type': str(v['type']),
+                'values': _call_if_callable(v['values']),
+                'readonly': _call_if_callable(v['readonly']), }
 
     @Pyro4.expose
     def describe_settings(self):
