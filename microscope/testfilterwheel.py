@@ -23,15 +23,11 @@ import Pyro4
 import time
 
 class TestFilterwheel(devices.Device):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filters=[], *args, **kwargs):
         super(TestFilterwheel, self).__init__()
         self._utype = devices.UFILTER
         self.__position = 0
-        self._filters = {0: ('GFP', 525),
-                         1: 'Cy5',
-                         2: '4pass',
-                         3: None,
-                         6: 'ND10',}
+        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
         self._inv_filters = {val:key for key, val in iteritems(self._filters)}
         # The position as an integer.
         self.add_setting('position',
