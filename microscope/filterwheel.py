@@ -17,44 +17,59 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """A dummy filter wheel class. """
+import abc
 from microscope import devices
 from future.utils import iteritems
 import Pyro4
 import time
 
-class TestFilterwheel(devices.Device):
-    def __init__(self, filters=[], *args, **kwargs):
-        super(TestFilterwheel, self).__init__()
+class FilterWheelBase(devices.Device):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, filters, *args, **kwargs):
+        super(FilterWheelBase, self).__init__(*args, **kwargs)
         self._utype = devices.UFILTER
-        self.__position = 0
         self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
-        self._inv_filters = {val:key for key, val in iteritems(self._filters)}
+        self._inv_filters = {val: key for key, val in iteritems(self._filters)}
         # The position as an integer.
         self.add_setting('position',
                          'int',
-                         lambda: self._position,
-                         lambda val: setattr(self, '_position', val),
-                         (0,5))
+                         self._get_position,
+                         self._set_position,
+                         (0, 5))
         # The selected filter.
         self.add_setting('filter',
                          'enum',
-                         lambda: self._filters[self._position],
-                         lambda val: setattr(self, '_position', self._inv_filters[val]),
+                         lambda: self._filters[self._get_position()],
+                         lambda val: self._set_position(self._inv_filters[val]),
                          self._filters.values)
 
-    @property
-    def _position(self):
-        return self.__position
+    @abc.abstractmethod
+    def _get_position(self):
+        return self._position
 
-    @_position.setter
-    def _position(self, value):
-        time.sleep(1)
-        self.__position = value
-
+    @abc.abstractmethod
+    def _set_position(self, position):
+        self._position = position
 
     @Pyro4.expose
     def get_filters(self):
         return [(index, filt) for index, filt in iteritems(self._filters)]
+
+
+
+
+class TestFilterwheel(FilterWheelBase):
+    def __init__(self, filters=[], *args, **kwargs):
+        super(TestFilterwheel, self).__init__(filters, *args, **kwargs)
+        self._position = 0
+
+    def _get_position(self):
+        return self._position
+
+    def _set_position(self, position):
+        time.sleep(1)
+        self._position = position
 
     def initialize(self):
         pass
