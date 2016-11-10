@@ -12,5 +12,6 @@ from microscope import testfilterwheel
 
 DEVICES = [
   device(testcamera.TestCamera, '127.0.0.1', 8001, otherargs=1,),
-  device(testfilterwheel.TestFilterwheel, '127.0.0.1', 8003),
+  device(testfilterwheel.TestFilterwheel, '127.0.0.1', 8003,
+         filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
 ]
