@@ -1,7 +1,6 @@
 Aims and scope of the Python Microscope Project.
 --------------------------------------------------
 
-
 V1.0 10/10/2016 Ian Dobbie - ian.dobbie@bioch.ox.ac.uk
 
 
@@ -27,14 +26,12 @@ microscope front end written in Python. We have done extensive work
 adding additional hardware support, bug fixing, and improving the
 front end. The system has grown beyond its design assumptions and we are
 therefore trying to start again to have a more sustainable code base
-for the future. 
-
-
-
+for the future.
 
 
 Contributors:
 --------------------
-Ian Dobbie
-David Susano Pinto
-Mick Phillips
+
+* Ian Dobbie
+* David Miguel Susano Pinto
+* Mick Phillips
