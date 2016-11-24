@@ -12,7 +12,7 @@ import setuptools
 
 setuptools.setup(
   name = "microscope",
-  version = "0.0.1",
+  version = "0.0.1+dev",
   description = "An extensible microscope hardware interface.",
   license = "GPL-3.0+",
 
