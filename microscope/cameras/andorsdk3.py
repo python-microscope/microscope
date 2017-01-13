@@ -104,9 +104,9 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
 
 @Pyro4.expose
 @Pyro4.behavior('single')
-class AndorSDK3(devices.CameraDevice,
-                devices.FloatingDeviceMixin,
-                SDK3Camera):
+class AndorSDK3(devices.FloatingDeviceMixin,
+                SDK3Camera,
+                devices.CameraDevice):
     SDK_INITIALIZED = False
     def __init__(self, *args, **kwargs):
         super(AndorSDK3, self).__init__(**kwargs)
