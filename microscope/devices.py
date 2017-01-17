@@ -39,10 +39,7 @@ except:
     # noinspection PyPep8Naming
     import Queue as queue
 
-try:
-    from future.utils import iteritems
-except:
-    pass
+from six import iteritems
 
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)

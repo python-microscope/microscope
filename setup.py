@@ -33,6 +33,10 @@ setuptools.setup(
     "numpy",
     "Pyro4",
     "pyserial",
+    ## We use six instead of anything else because we are already
+    ## indirectly dependent on it due to serpent which is a Pyro4
+    ## dependency.
+    "six",
   ],
 
   entry_points = {

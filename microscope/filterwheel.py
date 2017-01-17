@@ -19,7 +19,7 @@
 """A dummy filter wheel class. """
 import abc
 from microscope import devices
-from future.utils import iteritems
+from six import iteritems
 import Pyro4
 import time
 
@@ -55,8 +55,6 @@ class FilterWheelBase(devices.Device):
     @Pyro4.expose
     def get_filters(self):
         return [(index, filt) for index, filt in iteritems(self._filters)]
-
-
 
 
 class TestFilterwheel(FilterWheelBase):

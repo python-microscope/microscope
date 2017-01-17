@@ -35,7 +35,7 @@ from logging.handlers import RotatingFileHandler
 from threading import Thread
 
 import Pyro4
-from future.utils import iteritems
+from six import iteritems
 
 from microscope.devices import FloatingDeviceMixin
 
