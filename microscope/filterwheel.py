@@ -19,7 +19,6 @@
 """A dummy filter wheel class. """
 import abc
 from microscope import devices
-from six import iteritems
 import Pyro4
 import time
 
@@ -30,7 +29,7 @@ class FilterWheelBase(devices.Device):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
         self._utype = devices.UFILTER
         self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
-        self._inv_filters = {val: key for key, val in iteritems(self._filters)}
+        self._inv_filters = {val: key for key, val in self._filters.items()}
         # The position as an integer.
         self.add_setting('position',
                          'int',
@@ -54,7 +53,7 @@ class FilterWheelBase(devices.Device):
 
     @Pyro4.expose
     def get_filters(self):
-        return [(index, filt) for index, filt in iteritems(self._filters)]
+        return self._filters.items()
 
 
 class TestFilterwheel(FilterWheelBase):
