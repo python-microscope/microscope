@@ -1,0 +1,11 @@
+Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
+---------------------------------------------------------------
+
+ ** New abstract class FilterWheel.
+
+ ** New dependency on six.
+
+Summary of user-visible changes for version 0.0.1 (2016/11/24):
+---------------------------------------------------------------
+
+ ** Initial release of python-microscope.
