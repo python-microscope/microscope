@@ -318,7 +318,10 @@ class dllFunction(object):
 
         for j in range(len(self.inp)):
             if self.inp[j]:  # an input
-                ars.append(args[i])
+                if self.f.argtypes[j] is CALLBACK and not isinstance(args[i], CALLBACK):
+                    ars.append(CALLBACK(args[i]))
+                else:
+                    ars.append(args[i])
                 i += 1
             else:  # an output
                 r, ar = self.fargs[j].get_var(bs)
@@ -360,30 +363,15 @@ dllFunc('pl_cam_close', [int16,])
 dllFunc('pl_cam_get_name', [int16, OUTSTRING], buf_len=CAM_NAME_LEN)
 dllFunc('pl_cam_get_total', [OUTPUT(int16),])
 dllFunc('pl_cam_open', [STRING, OUTPUT(int16), int16])
-dllFunc('pl_cam_register_callback', [int16, enumtype, ctypes.c_void_p])
+dllFunc('pl_cam_register_callback', [int16, int32, CALLBACK])
+dllFunc('pl_cam_register_callback_ex', [int16, int32, ctypes.c_void_p, ctypes.c_void_p])
+dllFunc('pl_cam_register_callback_ex2', [int16, int32, ctypes.c_void_p])
+dllFunc('pl_cam_register_callback_ex3', [int16, int32, ctypes.c_void_p, ctypes.c_void_p])
+dllFunc('pl_cam_deregister_callback', [int16, ctypes.c_void_p])
 
 dllFunc('pl_error_code')
 
-"""
-pl_cam_register_callback_ex(int16
-hcam, int32
-callback_event,
-void * callback, void * context);
 
-pl_cam_register_callback_ex2(int16
-hcam, int32
-callback_event,
-void * callback);
-
-pl_cam_register_callback_ex3(int16
-hcam, int32
-callback_event,
-void * callback, void * context);
-
-pl_cam_deregister_callback(int16
-hcam, int32
-callback_event);
-"""
 
 # DEVICE DRIVER PARAMETERS
 #define PARAM_DD_INFO_LENGTH        ((CLASS0<<16) + (TYPE_INT16<<24) + 1)
@@ -866,3 +854,24 @@ extern "C"
 
 #endif /* _PVCAM_H */
 """
+
+def _test_init():
+    try:
+        pvcam_uninit()
+    except:
+        pass
+    pvcam_init()
+    print('Version:\t%d' % pvcam_get_ver().value)
+    n_cameras = cam_get_total().value
+    print('Found   \t%d camera(s)' % n_cameras)
+    if not n_cameras:
+        pvcam_uninit()
+        return
+    cameras={}
+    for n in range(n_cameras):
+        name = cam_get_name(n).value
+        cameras[name] = cam_open(name, 0).value
+    return cameras
+
+
+
