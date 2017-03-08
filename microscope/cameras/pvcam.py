@@ -1,7 +1,13 @@
 import ctypes
 import platform
+import os
+import re
 
-# base typedefs
+_HEADER = 'pvcam.h'
+
+### Data types ###
+
+## Base typedefs, from pvcam SDK master.h
 #typedef unsigned short rs_bool;
 rs_bool = ctypes.c_ushort
 #typedef signed char    int8;
@@ -27,32 +33,76 @@ long64 = ctypes.c_longlong
 # enums
 enumtype = ctypes.c_int32
 
-# Maximum length of a camera name.
-CAM_NAME_LEN = 32
-# Maximum length of a post-processing parameter/feature name.
-# Use MAX_PP_NAME_LEN instead.
-PARAM_NAME_LEN = 32
-# Maximum length of an error message.
-ERROR_MSG_LEN = 255
-# Maximum length of a sensor chip name.
-CCD_NAME_LEN = 17
-# Maximum length of a camera serial number string.
-MAX_ALPHA_SER_NUM_LEN = 32
-# Maximum length of a post-processing parameter/feature name.
-MAX_PP_NAME_LEN = 32
-# Maximum length of a system name.
-MAX_SYSTEM_NAME_LEN = 32
-# Maximum length of a vendor name.
-MAX_VENDOR_NAME_LEN = 32
-# Maximum length of a product name.
-MAX_PRODUCT_NAME_LEN = 32
-# Maximum length of a product name.
-MAX_CAM_PART_NUM_LEN = 32
-# Maximum length of a gain name.
-MAX_GAIN_NAME_LEN = 32
+## Parse defines and enums from C header file.
+fh = open(os.path.join(os.path.split(__file__)[0], _HEADER), 'r')
+while True:
+    line = fh.readline()
+    if not line: break
+    if any([re.match(pattern, line) for pattern in [
+        r'^\s*\/\*.*', # /* comments
+        r'^\s*#ifndef .*', # #ifndef lines
+        r'^\s*#ifdef .*',  # #ifndef lines
+        r'^\s*#if .*',  # #if lines
+        r'^\s*#endif.*',  # #endif lines
+        r'^\s*$', # blank lines
+        ]]):
+        continue
+    # #define flag
+    if re.match(r'^\s*#define\s+\w+\s?$', line):
+       continue
+    # #define name value
+    match = re.match(r'^\s*#define\s*(\w+)\s+(\w+)\s+(\/\*)?', line)
+    if match:
+        name = match.groups()[0]
+        value = eval(match.groups()[1])
+        globals()[name] = value
+        continue
+    # #define name (expr)
+    match = re.match(r'^\s*#define\s*(\w+)\s+(\(.*\))', line) # #define name (expr)
+    if match:
+        name = match.groups()[0]
+        value = eval(match.groups()[1])
+        globals()[name] = value
+        continue
+    # #typedef enum
+    match = re.match(r'^\s*typedef enum\s*(\w+)?', line)
+    if match:
+        tag = match.groups()[0]
+        globals()[tag] = {}
+        line = fh.readline()
+        while not re.match(r'^.*{', line):
+            line = fh.readline()
+        count = 0
+        while not re.match(r'^.*}', line):
+            match = re.match(r'^(\s*{\s*)?\s*(\w+)(\s*=\s*(\w+))?', line)
+            line = fh.readline()
+            if not match:
+                continue
+            null, name, null, value = match.groups()
+            if not value:
+                # No value assigned in header file.
+                value = count
+                count += 1
+            else:
+                value = eval(value)
+            globals()[name] = value
+            globals()[tag][value] = name
+        # Get the enum name.
+        match = re.match(r'^.*}\s*((\w+)?;)?', line)
+        name = match.groups()[-1]
+        if not name:
+            line = fh.readline()
+            match = re.match(r'^\s*(\w+)?;?', line)
+            if not match.groups()[0]:
+                raise Exception('Error parsing %s: enum name not found for tag %s.'
+                                  % (_HEADER, tag))
+            else:
+                name = match.groups()[0]
+        if name != tag:
+            globals()[name] = globals()[tag]
+fh.close()
 
-# Data types
-
+## C structures
 # GUID for #FRAME_INFO structure.
 class PVCAM_FRAME_INFO_GUID(ctypes.Structure):
     _fields_ = [("f1", uns32),
@@ -206,8 +256,8 @@ class md_frame(ctypes.Structure):
         ("roiCount", uns16),
     ]
 
-arch, plat = platform.architecture()
 
+arch, plat = platform.architecture()
 if plat.startswith('Windows'):
     if arch == '32bit':
         _lib = ctypes.WinDLL('pvcam32')
@@ -215,31 +265,6 @@ if plat.startswith('Windows'):
         _lib = ctypes.WinDLL('pvcam64')
 else:
     _lib = ctypes.CDLL('pvcam.so')
-
-
-
-# Data type definitions
-TYPE_INT16 = 1
-TYPE_INT32 = 2
-TYPE_FLT64 = 4
-TYPE_UNS8 = 5
-TYPE_UNS16 = 6
-TYPE_UNS32 = 7
-TYPE_UNS64 = 8
-TYPE_ENUM = 9
-TYPE_BOOLEAN = 11
-TYPE_INT8 = 12
-TYPE_CHAR_PTR = 13
-TYPE_VOID_PTR = 14
-TYPE_VOID_PTR_PTR = 15
-TYPE_INT64 = 16
-TYPE_SMART_STREAM_TYPE = 17
-TYPE_SMART_STREAM_TYPE_PTR = 18
-TYPE_FLT32 = 19
-
-CLASS0 = 0 # Camera Communications
-CLASS2 = 2 # Configuration/Setup
-CLASS3 = 3 # Data Acuisition
 
 ### Functions ###
 STRING = ctypes.c_char_p
@@ -353,7 +378,6 @@ def dllFunc(name, args=[], argnames=[], buf_len=0):
     globals()[name[3:]] = f
 
 
-
 # Class 0 functions - library
 dllFunc('pl_pvcam_get_ver', [OUTPUT(uns16)])
 dllFunc('pl_pvcam_init')
@@ -368,267 +392,59 @@ dllFunc('pl_cam_register_callback_ex', [int16, int32, ctypes.c_void_p, ctypes.c_
 dllFunc('pl_cam_register_callback_ex2', [int16, int32, ctypes.c_void_p])
 dllFunc('pl_cam_register_callback_ex3', [int16, int32, ctypes.c_void_p, ctypes.c_void_p])
 dllFunc('pl_cam_deregister_callback', [int16, ctypes.c_void_p])
+# Class 1 functions - error handling. Handled in dllFunction.
+# Class 2 functions - configuration/setup.
+dllFunc('pl_get_param', [int16, uns32, int16, OUTPUT(ctypes.c_void_p)])
+dllFunc('pl_set_param', [int16, uns32, ctypes.c_void_p])
 
-dllFunc('pl_error_code')
+
+_attr_map = {
+    ATTR_ACCESS: uns16,
+    ATTR_AVAIL: rs_bool,
+    ATTR_COUNT: uns32,
+    ATTR_CURRENT: None,
+    ATTR_DEFAULT: None,
+    ATTR_INCREMENT: None,
+    ATTR_MAX: None,
+    ATTR_MIN: None,
+    ATTR_TYPE: uns16,
+}
+
+_typemap = {
+    TYPE_INT16: int16,
+    TYPE_INT32: int32,
+    TYPE_FLT64: flt64,
+    TYPE_UNS8: uns8,
+    TYPE_UNS16: uns16,
+    TYPE_UNS32: uns32,
+    TYPE_UNS64: ulong64,
+    TYPE_ENUM: int32, # from SDK documentation
+    TYPE_BOOLEAN: rs_bool,
+    TYPE_INT8: int8,
+    TYPE_CHAR_PTR: ctypes.c_char_p,
+    TYPE_VOID_PTR: ctypes.c_void_p,
+    TYPE_VOID_PTR_PTR: ctypes.POINTER(ctypes.c_void_p),
+    TYPE_INT64: long64,
+    TYPE_SMART_STREAM_TYPE: smart_stream_type,
+    TYPE_SMART_STREAM_TYPE_PTR: ctypes.POINTER(smart_stream_type),
+    TYPE_FLT32: flt32,}
 
 
+def _get_param_type(param):
+    return _typemap[param >> 24 & 255]
 
-# DEVICE DRIVER PARAMETERS
-#define PARAM_DD_INFO_LENGTH        ((CLASS0<<16) + (TYPE_INT16<<24) + 1)
-#define PARAM_DD_VERSION            ((CLASS0<<16) + (TYPE_UNS16<<24) + 2)
-#define PARAM_DD_RETRIES            ((CLASS0<<16) + (TYPE_UNS16<<24) + 3)
-#define PARAM_DD_TIMEOUT            ((CLASS0<<16) + (TYPE_UNS16<<24) + 4)
-#define PARAM_DD_INFO               ((CLASS0<<16) + (TYPE_CHAR_PTR<<24) + 5)
+
+def _get_param(handle, param_id):
+    t = get_param(handle, param_id, ATTR_TYPE)
+    c = get_param(handle, param_id, ATTR_CURRENT)
+    print(t, c)
+    if t.value == TYPE_CHAR_PTR:
+        return str(buffer(c))
+    else:
+        return c.value
+
+
 """
-/* CONFIGURATION AND SETUP PARAMETERS */
-
-/* Sensor skip parameters */
-
-/** ADC offset setting. */
-#define PARAM_ADC_OFFSET            ((CLASS2<<16) + (TYPE_INT16<<24)     + 195)
-/** Sensor chip name. */
-#define PARAM_CHIP_NAME             ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 129)
-/** Camera system name. */
-#define PARAM_SYSTEM_NAME           ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 130)
-/** Camera vendor name. */
-#define PARAM_VENDOR_NAME           ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 131)
-/** Camera product name. */
-#define PARAM_PRODUCT_NAME          ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 132)
-/** Camera part number. */
-#define PARAM_CAMERA_PART_NUMBER    ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 133)
-
-#define PARAM_COOLING_MODE          ((CLASS2<<16) + (TYPE_ENUM<<24)      + 214)
-#define PARAM_PREAMP_DELAY          ((CLASS2<<16) + (TYPE_UNS16<<24)     + 502)
-#define PARAM_COLOR_MODE            ((CLASS2<<16) + (TYPE_ENUM<<24)      + 504)
-#define PARAM_MPP_CAPABLE           ((CLASS2<<16) + (TYPE_ENUM<<24)      + 224)
-#define PARAM_PREAMP_OFF_CONTROL    ((CLASS2<<16) + (TYPE_UNS32<<24)     + 507)
-#pragma message("PARAM_SERIAL_NUM has been removed because it is not supported.  Compilation will fail with apps that use this parameter, but execution will continue to work until the next release (at that point, execution will start to throw an error).  Please contact support with any concerns.")
-
-/* Sensor dimensions and physical characteristics */
-
-/* Pre and post dummies of sensor. */
-#define PARAM_PREMASK               ((CLASS2<<16) + (TYPE_UNS16<<24)     +  53)
-#define PARAM_PRESCAN               ((CLASS2<<16) + (TYPE_UNS16<<24)     +  55)
-#define PARAM_POSTMASK              ((CLASS2<<16) + (TYPE_UNS16<<24)     +  54)
-#define PARAM_POSTSCAN              ((CLASS2<<16) + (TYPE_UNS16<<24)     +  56)
-#define PARAM_PIX_PAR_DIST          ((CLASS2<<16) + (TYPE_UNS16<<24)     + 500)
-#define PARAM_PIX_PAR_SIZE          ((CLASS2<<16) + (TYPE_UNS16<<24)     +  63)
-#define PARAM_PIX_SER_DIST          ((CLASS2<<16) + (TYPE_UNS16<<24)     + 501)
-#define PARAM_PIX_SER_SIZE          ((CLASS2<<16) + (TYPE_UNS16<<24)     +  62)
-#define PARAM_SUMMING_WELL          ((CLASS2<<16) + (TYPE_BOOLEAN<<24)   + 505)
-#define PARAM_FWELL_CAPACITY        ((CLASS2<<16) + (TYPE_UNS32<<24)     + 506)
-/** Y dimension of active area of sensor chip. */
-#define PARAM_PAR_SIZE              ((CLASS2<<16) + (TYPE_UNS16<<24)     +  57)
-/** X dimension of active area of sensor chip. */
-#define PARAM_SER_SIZE              ((CLASS2<<16) + (TYPE_UNS16<<24)     +  58)
-#define PARAM_ACCUM_CAPABLE         ((CLASS2<<16) + (TYPE_BOOLEAN<<24)   + 538)
-#define PARAM_FLASH_DWNLD_CAPABLE   ((CLASS2<<16) + (TYPE_BOOLEAN<<24)   + 539)
-
-/* General parameters */
-
-/** Readout time of current ROI in milliseconds. */
-#define PARAM_READOUT_TIME          ((CLASS2<<16) + (TYPE_FLT64<<24)     + 179)
-
-/* CAMERA PARAMETERS */
-#define PARAM_CLEAR_CYCLES          ((CLASS2<<16) + (TYPE_UNS16<<24)     +  97)
-#define PARAM_CLEAR_MODE            ((CLASS2<<16) + (TYPE_ENUM<<24)      + 523)
-#define PARAM_FRAME_CAPABLE         ((CLASS2<<16) + (TYPE_BOOLEAN<<24)   + 509)
-#define PARAM_PMODE                 ((CLASS2<<16) + (TYPE_ENUM <<24)     + 524)
-#pragma message("PARAM_CCS_STATUS has been removed because it is not supported.  Compilation will fail with apps that use this parameter, but execution will continue to work until the next release (at that point, execution will start to throw an error).  Please contact support with any concerns.")
-
-/* These are the temperature parameters for the detector. */
-#define PARAM_TEMP                  ((CLASS2<<16) + (TYPE_INT16<<24)     + 525)
-#define PARAM_TEMP_SETPOINT         ((CLASS2<<16) + (TYPE_INT16<<24)     + 526)
-
-/* These are the parameters used for firmware version retrieval. */
-#define PARAM_CAM_FW_VERSION        ((CLASS2<<16) + (TYPE_UNS16<<24)     + 532)
-#define PARAM_HEAD_SER_NUM_ALPHA    ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 533)
-#define PARAM_PCI_FW_VERSION        ((CLASS2<<16) + (TYPE_UNS16<<24)     + 534)
-#pragma message("PARAM_CAM_FW_FULL_VERSION has been removed because it is not supported.  Compilation will fail with apps that use this parameter, but execution will continue to work until the next release (at that point, execution will start to throw an error).  Please contact support with any concerns.")
-#define PARAM_FAN_SPEED_SETPOINT    ((CLASS2<<16) + (TYPE_ENUM<<24)      + 710)
-
-/* Exposure mode, timed strobed etc, etc. */
-#define PARAM_EXPOSURE_MODE         ((CLASS2<<16) + (TYPE_ENUM<<24)      + 535)
-#define PARAM_EXPOSE_OUT_MODE       ((CLASS2<<16) + (TYPE_ENUM<<24)      + 560)
-
-/* SPEED TABLE PARAMETERS */
-#define PARAM_BIT_DEPTH             ((CLASS2<<16) + (TYPE_INT16<<24)     + 511)
-#define PARAM_GAIN_INDEX            ((CLASS2<<16) + (TYPE_INT16<<24)     + 512)
-#define PARAM_SPDTAB_INDEX          ((CLASS2<<16) + (TYPE_INT16<<24)     + 513)
-#define PARAM_GAIN_NAME             ((CLASS2<<16) + (TYPE_CHAR_PTR<<24)  + 514)
-#define PARAM_READOUT_PORT          ((CLASS2<<16) + (TYPE_ENUM<<24)      + 247)
-#define PARAM_PIX_TIME              ((CLASS2<<16) + (TYPE_UNS16<<24)     + 516)
-
-/* SHUTTER PARAMETERS */
-#define PARAM_SHTR_CLOSE_DELAY      ((CLASS2<<16) + (TYPE_UNS16<<24)     + 519)
-#define PARAM_SHTR_OPEN_DELAY       ((CLASS2<<16) + (TYPE_UNS16<<24)     + 520)
-#define PARAM_SHTR_OPEN_MODE        ((CLASS2<<16) + (TYPE_ENUM <<24)     + 521)
-#define PARAM_SHTR_STATUS           ((CLASS2<<16) + (TYPE_ENUM <<24)     + 522)
-
-/* I/O PARAMETERS */
-#define PARAM_IO_ADDR               ((CLASS2<<16) + (TYPE_UNS16<<24)     + 527)
-#define PARAM_IO_TYPE               ((CLASS2<<16) + (TYPE_ENUM<<24)      + 528)
-#define PARAM_IO_DIRECTION          ((CLASS2<<16) + (TYPE_ENUM<<24)      + 529)
-#define PARAM_IO_STATE              ((CLASS2<<16) + (TYPE_FLT64<<24)     + 530)
-#define PARAM_IO_BITDEPTH           ((CLASS2<<16) + (TYPE_UNS16<<24)     + 531)
-
-/* GAIN MULTIPLIER PARAMETERS */
-#define PARAM_GAIN_MULT_FACTOR      ((CLASS2<<16) + (TYPE_UNS16<<24)     + 537)
-#define PARAM_GAIN_MULT_ENABLE      ((CLASS2<<16) + (TYPE_BOOLEAN<<24)   + 541)
-
-/* POST PROCESSING PARAMETERS */
-#define PARAM_PP_FEAT_NAME          ((CLASS2<<16) + (TYPE_CHAR_PTR<<24) +  542)
-#define PARAM_PP_INDEX              ((CLASS2<<16) + (TYPE_INT16<<24)    +  543)
-#define PARAM_ACTUAL_GAIN           ((CLASS2<<16) + (TYPE_UNS16<<24)     + 544)
-#define PARAM_PP_PARAM_INDEX        ((CLASS2<<16) + (TYPE_INT16<<24)    +  545)
-#define PARAM_PP_PARAM_NAME         ((CLASS2<<16) + (TYPE_CHAR_PTR<<24) +  546)
-#define PARAM_PP_PARAM              ((CLASS2<<16) + (TYPE_UNS32<<24)    +  547)
-#define PARAM_READ_NOISE            ((CLASS2<<16) + (TYPE_UNS16<<24)     + 548)
-#define PARAM_PP_FEAT_ID            ((CLASS2<<16) + (TYPE_UNS16<<24)    +  549)
-#define PARAM_PP_PARAM_ID           ((CLASS2<<16) + (TYPE_UNS16<<24)    +  550)
-
-/* S.M.A.R.T. STREAMING PARAMETERS */
-#define PARAM_SMART_STREAM_MODE_ENABLED     ((CLASS2<<16) + (TYPE_BOOLEAN<<24)  +  700)
-#define PARAM_SMART_STREAM_MODE             ((CLASS2<<16) + (TYPE_UNS16<<24)    +  701)
-#define PARAM_SMART_STREAM_EXP_PARAMS       ((CLASS2<<16) + (TYPE_VOID_PTR<<24) +  702)
-#define PARAM_SMART_STREAM_DLY_PARAMS       ((CLASS2<<16) + (TYPE_VOID_PTR<<24) +  703)
-
-/* DATA AQUISITION PARAMETERS */
-
-/* ACQUISITION PARAMETERS */
-#define PARAM_EXP_TIME              ((CLASS3<<16) + (TYPE_UNS16<<24)     +   1)
-#define PARAM_EXP_RES               ((CLASS3<<16) + (TYPE_ENUM<<24)      +   2)
-#pragma message("PARAM_EXP_MIN_TIME has been removed because it is not supported.  Compilation will fail with apps that use this parameter, but execution will continue to work until the next release (at that point, execution will start to throw an error).  Please contact support with any concerns.")
-#define PARAM_EXP_RES_INDEX         ((CLASS3<<16) + (TYPE_UNS16<<24)     +   4)
-#define PARAM_EXPOSURE_TIME         ((CLASS3<<16) + (TYPE_UNS64<<24)     +   8)
-
-/* PARAMETERS FOR  BEGIN and END of FRAME Interrupts */
-#define PARAM_BOF_EOF_ENABLE        ((CLASS3<<16) + (TYPE_ENUM<<24)      +   5)
-#define PARAM_BOF_EOF_COUNT         ((CLASS3<<16) + (TYPE_UNS32<<24)     +   6)
-#define PARAM_BOF_EOF_CLR           ((CLASS3<<16) + (TYPE_BOOLEAN<<24)   +   7)
-
-/* Test to see if hardware/software can perform circular buffer */
-#define PARAM_CIRC_BUFFER           ((CLASS3<<16) + (TYPE_BOOLEAN<<24)   + 299)
-#define PARAM_FRAME_BUFFER_SIZE     ((CLASS3<<16) + (TYPE_UNS64<<24)     + 300)
-
-/* Supported binning reported by camera */
-#define PARAM_BINNING_SER           ((CLASS3<<16) + (TYPE_ENUM<<24)      + 165)
-#define PARAM_BINNING_PAR           ((CLASS3<<16) + (TYPE_ENUM<<24)      + 166)
-
-#pragma message("PARAM_CURRENT_PVTIME has been removed because it is not supported.  Compilation will fail with apps that use this parameter, but execution will continue to work until the next release (at that point, execution will start to throw an error).  Please contact support with any concerns.")
-
-/* Parameters related to multiple ROIs and Centroids */
-#define PARAM_METADATA_ENABLED      ((CLASS3<<16) + (TYPE_BOOLEAN<<24)   + 168)
-#define PARAM_ROI_COUNT             ((CLASS3<<16) + (TYPE_UNS16  <<24)   + 169)
-#define PARAM_CENTROIDS_ENABLED     ((CLASS3<<16) + (TYPE_BOOLEAN<<24)   + 170)
-#define PARAM_CENTROIDS_RADIUS      ((CLASS3<<16) + (TYPE_UNS16  <<24)   + 171)
-#define PARAM_CENTROIDS_COUNT       ((CLASS3<<16) + (TYPE_UNS16  <<24)   + 172)
-
-/* Parameters related to triggering table */
-#define PARAM_TRIGTAB_SIGNAL        ((CLASS3<<16) + (TYPE_ENUM<<24)      + 180)
-#define PARAM_LAST_MUXED_SIGNAL     ((CLASS3<<16) + (TYPE_UNS8<<24)      + 181)
-
-/******************************************************************************/
-/* End of parameter ID definitions.                                           */
-/******************************************************************************/
-
-/******************************************************************************/
-/* Start of function prototypes.                                              */
-/******************************************************************************/
-
-#ifndef PV_EMBEDDED
-
-#ifdef PV_C_PLUS_PLUS
-extern "C"
-{
-#endif
-
-    /*****************************************************************************/
-    /*****************************************************************************/
-    /*                                                                           */
-    /*                 Camera Communications Function Prototypes                 */
-    /*                                                                           */
-    /*****************************************************************************/
-    /*****************************************************************************/
-
-    /*****************************************************************************/
-    /* rs_bool (RETURN)  All functions that return a rs_bool return TRUE for     */
-    /*                   success and FALSE for failure.  If a failure occurs     */
-    /*                   pl_error_code() and pl_error_message() can be used to   */
-    /*                   determine the cause.                                    */
-    /*****************************************************************************/
-
-    /*****************************************************************************/
-    /* pvcam_version     Version number of the PVCAM library                     */
-    /*                     16 bits = MMMMMMMMrrrrTTTT where MMMMMMMM = Major #,  */
-    /*                     rrrr = Minor #, and TTTT = Trivial #                  */
-    /*****************************************************************************/
-
-    rs_bool PV_DECL pl_pvcam_get_ver (uns16* pvcam_version);
-    rs_bool PV_DECL pl_pvcam_init (void);
-    rs_bool PV_DECL pl_pvcam_uninit (void);
-
-    /*****************************************************************************/
-    /* hcam              Camera handle returned from pl_cam_open()               */
-    /* cam_num           Camera number Range: 0 through (totl_cams-1)            */
-    /* camera_name       Text name assigned to a camera (with RSConfig)          */
-    /* totl_cams         Total number of cameras in the system                   */
-    /* o_mode            Mode to open the camera in (must be OPEN_EXCLUSIVE)     */
-    /*****************************************************************************/
-
-    /**
-    @addtogroup grp_pm_deprecated_functions
-    @{
-    */
-
-    /** @} */
-    rs_bool PV_DECL pl_cam_close (int16 hcam);
-    rs_bool PV_DECL pl_cam_get_name (int16 cam_num, char* camera_name);
-    rs_bool PV_DECL pl_cam_get_total (int16* totl_cams);
-    rs_bool PV_DECL pl_cam_open (char* camera_name, int16* hcam, int16 o_mode);
-
-    /*****************************************************************************/
-    /* callback_event    Callback event to register for (see PL_CALLBACK_EVENT)  */
-    /* callback          Callback function pointer                               */
-    /* contex            Pointer to custom user contex                           */
-    /*****************************************************************************/
-
-    rs_bool PV_DECL pl_cam_register_callback (int16 hcam, int32 callback_event,
-                                              void* callback);
-    rs_bool PV_DECL pl_cam_register_callback_ex (int16 hcam, int32 callback_event,
-                                                 void* callback, void* context);
-    rs_bool PV_DECL pl_cam_register_callback_ex2 (int16 hcam, int32 callback_event,
-                                                 void* callback);
-    rs_bool PV_DECL pl_cam_register_callback_ex3 (int16 hcam, int32 callback_event,
-                                                 void* callback, void* context);
-    rs_bool PV_DECL pl_cam_deregister_callback (int16 hcam, int32 callback_event);
-
-    /*****************************************************************************/
-    /*****************************************************************************/
-    /*                                                                           */
-    /*                     Error Reporting Function Prototypes                   */
-    /*                                                                           */
-    /*****************************************************************************/
-    /*****************************************************************************/
-
-    /*****************************************************************************/
-    /* int16 (RETURN)    pl_error_code(void) returns the error code of the last  */
-    /*                   pl_ function call.                                      */
-    /* err_code          Unique ID of the error: returned from pl_error_code()   */
-    /* msg               Text description of err_code.                           */
-    /*****************************************************************************/
-
-    int16   PV_DECL pl_error_code (void);
-    rs_bool PV_DECL pl_error_message (int16 err_code, char* msg);
-
-
-    /*****************************************************************************/
-    /*****************************************************************************/
-    /*                                                                           */
-    /*                   Configuration/Setup Function Prototypes                 */
-    /*                                                                           */
-    /*****************************************************************************/
-    /*****************************************************************************/
 
     /*****************************************************************************/
     /* param_id          ID of the parameter to get or set (PARAM_...)           */
