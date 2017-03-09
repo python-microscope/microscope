@@ -1,13 +1,34 @@
+#!/usr/bin/python
+# -*- coding: utf-8
+#
+# Copyright 2017 Mick Phillips (mick.phillips@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""pvcam library wrapper.
+
+This module exposes pvcam C library functions in python.
+"""
 import ctypes
 import platform
 import os
 import re
 
+
 _HEADER = 'pvcam.h'
 
-### Data types ###
-
-## Base typedefs, from pvcam SDK master.h
+# === Data types ===
+# Base typedefs, from pvcam SDK master.h
 #typedef unsigned short rs_bool;
 rs_bool = ctypes.c_ushort
 #typedef signed char    int8;
@@ -33,7 +54,7 @@ long64 = ctypes.c_longlong
 # enums
 enumtype = ctypes.c_int32
 
-## Parse defines and enums from C header file.
+# === Parse defines and enums from C header file. ===
 fh = open(os.path.join(os.path.split(__file__)[0], _HEADER), 'r')
 while True:
     line = fh.readline()
@@ -102,7 +123,7 @@ while True:
             globals()[name] = globals()[tag]
 fh.close()
 
-## C structures
+# === C structures ===
 # GUID for #FRAME_INFO structure.
 class PVCAM_FRAME_INFO_GUID(ctypes.Structure):
     _fields_ = [("f1", uns32),
@@ -331,15 +352,25 @@ class dllFunction(object):
 
         self.f.__doc__ = docstring
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         ars = []
         i = 0
         ret = []
 
-        if self.buf_len >= 0:
+        # pl_get_param buffer length depends on the parameter being fetched, so
+        # use kwargs to pass buffer length.
+        if 'buf_len' in kwargs:
+            bs = kwargs['buf_len']
+        elif self.name == 'pl_get_enum_param':
+            # last argument is buffer length
+            bs = args[-1]
+        elif self.buf_len >= 0:
             bs = self.buf_len
         else:
-            bs = 255
+            bs = 256
+        if isinstance(bs, ctypes._SimpleCData):
+            bs = bs.value
+
 
         for j in range(len(self.inp)):
             if self.inp[j]:  # an input
@@ -375,7 +406,7 @@ class dllFunction(object):
 
 def dllFunc(name, args=[], argnames=[], buf_len=0):
     f = dllFunction(name, args, argnames, buf_len=buf_len)
-    globals()[name[3:]] = f
+    globals()[name[2:]] = f
 
 
 # Class 0 functions - library
@@ -388,15 +419,23 @@ dllFunc('pl_cam_get_name', [int16, OUTSTRING], buf_len=CAM_NAME_LEN)
 dllFunc('pl_cam_get_total', [OUTPUT(int16),])
 dllFunc('pl_cam_open', [STRING, OUTPUT(int16), int16])
 dllFunc('pl_cam_register_callback', [int16, int32, CALLBACK])
-dllFunc('pl_cam_register_callback_ex', [int16, int32, ctypes.c_void_p, ctypes.c_void_p])
-dllFunc('pl_cam_register_callback_ex2', [int16, int32, ctypes.c_void_p])
-dllFunc('pl_cam_register_callback_ex3', [int16, int32, ctypes.c_void_p, ctypes.c_void_p])
+dllFunc('pl_cam_register_callback_ex', [int16, int32, CALLBACK, ctypes.c_void_p])
+dllFunc('pl_cam_register_callback_ex2', [int16, int32, CALLBACK])
+dllFunc('pl_cam_register_callback_ex3', [int16, int32, CALLBACK, ctypes.c_void_p])
 dllFunc('pl_cam_deregister_callback', [int16, ctypes.c_void_p])
 # Class 1 functions - error handling. Handled in dllFunction.
 # Class 2 functions - configuration/setup.
 dllFunc('pl_get_param', [int16, uns32, int16, OUTPUT(ctypes.c_void_p)])
 dllFunc('pl_set_param', [int16, uns32, ctypes.c_void_p])
+dllFunc('pl_get_enum_param', [int16, uns32, uns32, OUTPUT(int32), OUTSTRING, uns32])
+dllFunc('pl_enum_str_length', [int16, uns32, uns32, OUTPUT(uns32)])
+dllFunc('pl_pp_reset', [int16,])
+dllFunc('pl_create_smart_stream_struct', [OUTPUT(smart_stream_type), uns16])
+dllFunc('pl_release_smart_stream_struct', [ctypes.POINTER(smart_stream_type),])
+dllFunc('pl_create_frame_info_struct', [OUTPUT(FRAME_INFO),])
+dllFunc('pl_release_frame_info_struct', [ctypes.POINTER(FRAME_INFO),])
 
+dllFunc('pl_exp_abort', [int16, int16])
 
 _attr_map = {
     ATTR_ACCESS: uns16,
@@ -430,52 +469,27 @@ _typemap = {
     TYPE_FLT32: flt32,}
 
 
-def _get_param_type(param):
-    return _typemap[param >> 24 & 255]
-
-
-def _get_param(handle, param_id):
-    t = get_param(handle, param_id, ATTR_TYPE)
-    c = get_param(handle, param_id, ATTR_CURRENT)
-    print(t, c)
-    if t.value == TYPE_CHAR_PTR:
-        return str(buffer(c))
-    else:
-        return c.value
-
-
+_dtypemap = {
+    TYPE_INT16: 'int',
+    TYPE_INT32: 'int',
+    TYPE_FLT64: 'float',
+    TYPE_UNS8: 'int',
+    TYPE_UNS16: 'int',
+    TYPE_UNS32: 'int',
+    TYPE_UNS64: 'int',
+    TYPE_ENUM: 'enum',
+    TYPE_BOOLEAN: 'bool',
+    TYPE_INT8: 'int',
+    TYPE_CHAR_PTR: 'str',
+    TYPE_VOID_PTR: None,
+    TYPE_VOID_PTR_PTR: None,
+    TYPE_INT64: 'int',
+    TYPE_SMART_STREAM_TYPE: None,
+    TYPE_SMART_STREAM_TYPE_PTR: None,
+    TYPE_FLT32: 'float',
+}
 """
 
-    /*****************************************************************************/
-    /* param_id          ID of the parameter to get or set (PARAM_...)           */
-    /* param_attribute   Attribute of the parameter to get (ATTR_...)            */
-    /* param_value       Value to get or set                                     */
-    /* index             Index of enumeration Range: 0 through N-1 ... where N   */
-    /*                     is retrieved with get_param(...,ATTR_COUNT,...)       */
-    /* value             Numerical value of enumeration                          */
-    /* desc              Text description of enumeration                         */
-    /* length            Length of text description of enumeration               */
-    /*****************************************************************************/
-
-    rs_bool PV_DECL pl_get_param (int16 hcam, uns32 param_id,
-                                  int16 param_attribute, void* param_value);
-    rs_bool PV_DECL pl_set_param (int16 hcam, uns32 param_id,
-                                  void* param_value);
-    rs_bool PV_DECL pl_get_enum_param (int16 hcam, uns32 param_id, uns32 index,
-                                       int32* value, char* desc,
-                                       uns32 length);
-    rs_bool PV_DECL pl_enum_str_length (int16 hcam, uns32 param_id, uns32 index,
-                                        uns32* length);
-    rs_bool PV_DECL pl_pp_reset (int16 hcam);
-
-    rs_bool PV_DECL pl_create_smart_stream_struct(smart_stream_type** array,
-                                                  uns16 entries);
-
-    rs_bool PV_DECL pl_release_smart_stream_struct(smart_stream_type** array);
-
-    rs_bool PV_DECL pl_create_frame_info_struct(FRAME_INFO** new_frame);
-
-    rs_bool PV_DECL pl_release_frame_info_struct(FRAME_INFO* frame_to_delete);
 
     /*****************************************************************************/
     /*****************************************************************************/
@@ -671,23 +685,397 @@ def _get_param(handle, param_id):
 #endif /* _PVCAM_H */
 """
 
-def _test_init():
+# Mapping of param ids to maximum string lengths.
+# PARAM_DD_INFO is a variable length string, and its length can be found by
+# querying PARAM_DD_INFO_LEN. However, querying PARAM_DD_INFO frequently causes
+# a general protection fault in the DLL, regardless of buffer length.
+_length_map = {
+    PARAM_DD_INFO: None,
+    PARAM_CHIP_NAME: CCD_NAME_LEN,
+    PARAM_SYSTEM_NAME: MAX_SYSTEM_NAME_LEN,
+    PARAM_VENDOR_NAME: MAX_VENDOR_NAME_LEN,
+    PARAM_PRODUCT_NAME: MAX_PRODUCT_NAME_LEN,
+    PARAM_CAMERA_PART_NUMBER: MAX_CAM_PART_NUM_LEN,
+    PARAM_GAIN_NAME: MAX_GAIN_NAME_LEN,
+    PARAM_HEAD_SER_NUM_ALPHA: MAX_ALPHA_SER_NUM_LEN,
+    PARAM_PP_FEAT_NAME: MAX_PP_NAME_LEN,
+    PARAM_PP_PARAM_NAME: MAX_PP_NAME_LEN,
+}
+
+_param_to_name = {globals()[param]:param for param in globals()
+                  if (param.startswith('PARAM_') and param != 'PARAM_NAME_LEN')}
+
+
+def get_param_type(param_id):
+    return _typemap[param_id >> 24 & 255]
+
+
+def get_param_dtype(param_id):
+    return _dtypemap[param_id >> 24 & 255]
+
+
+def get_param(handle, param_id):
+    if not _get_param(handle, param_id, ATTR_AVAIL):
+        raise Exception('pvcam: parameter %s not available.' % _param_to_name[param_id])
+    t = _get_param(handle, param_id, ATTR_TYPE)
+    if t.value == TYPE_CHAR_PTR:
+        buf_len = _length_map[param_id]
+        if not buf_len:
+            raise Exception('pvcan: parameter %s not supported in python.' % _param_to_name[param_id])
+        c = _get_param(handle, param_id, ATTR_CURRENT, buf_len=buf_len)
+    else:
+        c = _get_param(handle, param_id, ATTR_CURRENT)
+    if t.value == TYPE_CHAR_PTR:
+        return str(buffer(c))
+    else:
+        return c
+
+
+from microscope import devices
+from microscope.devices import keep_acquiring
+import Pyro4
+
+# Trigger mode to type.
+TRIGGER_MODES = {
+    'internal': None,
+    'external': devices.TRIGGER_BEFORE,
+    'external start': None,
+    'external exposure': devices.TRIGGER_DURATION,
+    'software': devices.TRIGGER_SOFT,
+}
+
+@Pyro4.behavior('single')
+class PVCamera(devices.CameraDevice):
+    def __init__(self, *args, **kwargs):
+        super(PVCamera, self).__init__(**kwargs)
+        self._index = kwargs.get('index', 0)
+        self._pv_name = None
+        self.handle = None
+
+    """Private methods, called here and within super classes."""
+    def _fetch_data(self):
+        """Fetch data, recycle any buffers and return data or None."""
+        return data or None
+
+    def _on_enable(self):
+        """Enable the camera hardware and make ready to respond to triggers.
+
+        Return True if successful, False if not."""
+        return False
+
+    def _on_disable(self):
+        """Disable the hardware for a short period of inactivity."""
+        self.abort()
+        pass
+
+    def _on_shutdown(self):
+        """Disable the hardware for a prolonged period of inactivity."""
+        self._close()
+
+
+    def _get_param_access(self, param_id):
+        """Fetch parameter access restrictions."""
+        # Will always be an integer, so return .value.
+        return _get_param(self.handle, param_id, ATTR_ACCESS).value
+
+
+    def _get_param_avail(self, param_id):
+        """Is param_id available?"""
+        # Will always be an integer, so return .value.
+        return _get_param(self.handle, param_id, ATTR_AVAIL).value
+
+
+    def _get_param_count(self, param_id):
+        """Fetch parameter count."""
+        # Will always be an integer, so return .value.
+        return _get_param(self.handle, param_id, ATTR_COUNT).value
+
+
+    def _get_param_ctype(self, param_id):
+        """Return the C data type for a parameter."""
+        return _typemap[param_id >> 24 & 255]
+
+
+    def _get_param_type_code(self, param_id):
+        """Fetch the parameter type code."""
+        # Will always be an integer, so return .value.
+        return _get_param(self.handle, param_id, ATTR_TYPE).value
+
+
+    def _get_param(self, param_id, what=ATTR_CURRENT):
+        """Fetch a parameter for this device, converting from void_p."""
+        t = self._get_param_type_code(param_id)
+        if t == TYPE_CHAR_PTR:
+            buf_len = _length_map[param_id]
+            if not buf_len:
+                # Parameter not supported in python.
+                return None
+            try:
+                c = _get_param(self.handle, param_id, what, buf_len=buf_len)
+            except:
+                return None
+        else:
+            try:
+                c = _get_param(self.handle, param_id, what)
+            except:
+                return None
+        if t == TYPE_CHAR_PTR:
+            return str(buffer(c))
+        elif t in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
+                         TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
+            return c
+        else:
+            cast_to = self._get_param_ctype(param_id)
+            return ctypes.POINTER(cast_to)(c).contents.value
+
+
+    def _get_param_values(self, param_id):
+        """Get parameter values, range or string length."""
+        dtype = get_param_dtype(param_id)
+        if dtype == 'enum':
+            values = []
+            count = self._get_param_count(param_id)
+            for i in range(count):
+                length = _enum_str_length(self.handle, param_id, i)
+                values.append(tuple(c.value for c in _get_enum_param(self.handle, param_id, i, length)))
+        elif dtype in [str, 'str']:
+            values = _length_map[param_id]
+        else:
+            try:
+                values = (self._get_param(param_id, what=ATTR_MIN),
+                          self._get_param(param_id, what=ATTR_MAX))
+            except:
+                raise
+                values = (None, None)
+        return values
+
+
+
+    """Private shape-related methods. These methods do not need to account
+    for camera orientation or transforms due to readout mode, as that
+    is handled in the parent class."""
+    def _get_sensor_shape(self):
+        """Return the sensor shape (width, height)."""
+        return (512,512)
+
+    def _get_binning(self):
+        """Return the current binning (horizontal, vertical)."""
+        return (1,1)
+
+    @keep_acquiring
+    def _set_binning(self, h, v):
+        """Set binning to (h, v)."""
+        return False
+
+    def _get_roi(self):
+        """Return the current ROI (left, top, width, height)."""
+        return (0, 0, 512, 512)
+
+    @keep_acquiring
+    def _set_roi(self, left, top, width, height):
+        """Set the ROI to (left, tip, width, height)."""
+        return False
+
+
+    def _close(self):
+        _cam_close(self.handle)
+
+
+    def _open(self):
+        try:
+            _cam_close(self.handle)
+        except:
+            pass
+        self._pv_name = _cam_get_name(self._index)
+        self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
+
+        self._logger.info('Initializing.')
+
+    """Public methods, callable from client."""
+    @Pyro4.expose
+    def abort(self):
+        """Abort acquisition.
+
+        This should put the camera into a state in which settings can
+        be modified."""
+        self._acquiring = False
+
+    @Pyro4.expose
+    def initialize(self):
+        """Initialise the camera.
+
+        Open the connection and populate settings dict.
+        """
+        self._open()
+        for (param_id, name) in _param_to_name.items():
+            name = name[6:]
+            dtype = get_param_dtype(param_id)
+            if not dtype or not self._get_param_avail(param_id):
+                continue
+            writable = self._get_param_access(param_id) in [ACC_READ_WRITE, ACC_WRITE_ONLY]
+            #if writeable:
+            #    setfunc = lambda param_id=param_id: self._set_param(param_id, value)
+            self.add_setting(name,
+                            dtype,
+                            lambda param_id=param_id: self._get_param(param_id),
+                            lambda: None,
+                            lambda param_id=param_id: self._get_param_values(param_id),
+                            not writable)
+
+
+
+    @Pyro4.expose
+    def make_safe(self):
+        """Put the camera into a safe state.
+
+        Safe means (at least):
+         * it won't sustain damage if light falls on the sensor."""
+        if self._acquiring:
+            self.abort()
+
+    @Pyro4.expose
+    def set_exposure_time(self, value):
+        """Set the exposure time to value."""
+        pass
+
+    @Pyro4.expose
+    def get_exposure_time(self):
+        """Return the current exposure time."""
+        return 0.1
+
+    @Pyro4.expose
+    def get_cycle_time(self):
+        """Return the cycle time.
+
+        Cycle time is the minimum time between exposures. This is
+        typically exposure time plus readout time."""
+        return 0.15
+
+    @Pyro4.expose
+    def get_trigger_type(self):
+        """Return the current trigger type."""
+        return camera.TRIGGER_SOFT
+
+    @Pyro4.expose
+    def soft_trigger(self):
+        """Send a software trigger to the camera."""
+        pass
+
+
+def _test():
     try:
-        pvcam_uninit()
+        _pvcam_uninit()
     except:
         pass
-    pvcam_init()
-    print('Version:\t%d' % pvcam_get_ver().value)
-    n_cameras = cam_get_total().value
-    print('Found   \t%d camera(s)' % n_cameras)
+    _pvcam_init()
+    print('Version:\t%d' % _pvcam_get_ver().value)
+
+    n_cameras = _cam_get_total().value
+    print('Found:  \t%d camera(s)' % n_cameras)
     if not n_cameras:
-        pvcam_uninit()
+        _pvcam_uninit()
         return
+
     cameras={}
     for n in range(n_cameras):
-        name = cam_get_name(n).value
-        cameras[name] = cam_open(name, 0).value
+        name = _cam_get_name(n).value
+        cameras[name] = _cam_open(name, 0).value
+        print ("%d\t%s" % (cameras[name], name))
+
+    print('\n=== Callbacks ===')
+    f = lambda: None
+    try:
+        _cam_register_callback(0, PL_CALLBACK_EOF, f)
+        _cam_register_callback(0, PL_CALLBACK_EOF, CALLBACK(f))
+        _cam_deregister_callback(0, PL_CALLBACK_EOF)
+        print('Successfully registered EOF callback by both methods.')
+    except:
+        raise
+
+    f = lambda context: None
+    try:
+        _cam_register_callback_ex(0, PL_CALLBACK_EOF, f, 'abc')
+        _cam_register_callback_ex(0, PL_CALLBACK_EOF, CALLBACK(f), 'abc')
+        _cam_deregister_callback(0, PL_CALLBACK_EOF)
+        print('Successfully registered EOF callback with context by both methods.')
+    except:
+        raise
+
+    f = lambda frameinfo: None
+    try:
+        _cam_register_callback_ex2(0, PL_CALLBACK_EOF, f)
+        _cam_register_callback_ex2(0, PL_CALLBACK_EOF, CALLBACK(f))
+        _cam_deregister_callback(0, PL_CALLBACK_EOF)
+        print('Successfully registered EOF FRAME_INFO callback by both methods.')
+    except:
+        raise
+
+    f = lambda frameinfo, context: None
+    try:
+        _cam_register_callback_ex3(0, PL_CALLBACK_EOF, f, 'abc')
+        _cam_register_callback_ex3(0, PL_CALLBACK_EOF, CALLBACK(f), 'abc')
+        _cam_deregister_callback(0, PL_CALLBACK_EOF)
+        print('Successfully registered EOF FRAME_INFO callback with context by both methods.')
+    except:
+        raise
+
+
+    print ('\n=== Querying parameter types ===')
+    by_type = {}
+    count = 0
+    for param_id in _param_to_name:
+        try:
+            t = _get_param(0, param_id, ATTR_TYPE).value
+            count += 1
+        except:
+            print("%s not available." % _param_to_name[param_id])
+        if t not in by_type:
+            by_type[t] = []
+        by_type[t].append(param_id)
+    print("Queried %d parameters and found %d in %d types" % (len(_param_to_name), count, len(by_type)))
+
+
+    print('\n=== Testing get_param ===')
+    for t, param_ids in by_type.items():
+        print('\n== %s parameters ==' % _typemap[t])
+        passed = []
+        na = []
+        failed = {}
+        for param_id in param_ids:
+            name = _param_to_name[param_id]
+            try:
+                get_param(0, param_id)
+                passed.append(name)
+            except Exception as e:
+                if e.message.endswith(name + ' not available.'):
+                    na.append(name)
+                else:
+                    failed[name] = e.message
+        #if passed:
+        #    print ("= passed =")
+        #    print (', '.join(passed))
+        #if na:
+        #    print ("= not available =")
+        #    print (', '.join(na))
+        if failed:
+            print ("= failed =")
+            for fail in failed.items(): print ("%s: \t%s" % fail)
+
+
+    print('\n=== Testing get_enum_param ===')
+    for param_id in by_type[TYPE_ENUM]:
+        name = _param_to_name[param_id]
+        sl = _enum_str_length()
+        #t = _get_enum_param(0, param_id, )
+
+
+    # pl_set_param
+    # pl_get_enum_param
+    # pl_enum_str_length
+    # pl_pp_reset
+    # pl_create_smart_stream_struct
+    # pl_release_smart_stream_struct
+    # pl_create_frame_info_struct
+    # pl_release_frame_info_struct
+
     return cameras
-
-
-
