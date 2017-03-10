@@ -410,30 +410,53 @@ def dllFunc(name, args=[], argnames=[], buf_len=0):
 
 
 # Class 0 functions - library
-dllFunc('pl_pvcam_get_ver', [OUTPUT(uns16)])
+dllFunc('pl_pvcam_get_ver', [OUTPUT(uns16)], ['version'])
 dllFunc('pl_pvcam_init')
 dllFunc('pl_pvcam_uninit')
 # Class 0 functions - camera
-dllFunc('pl_cam_close', [int16,])
-dllFunc('pl_cam_get_name', [int16, OUTSTRING], buf_len=CAM_NAME_LEN)
-dllFunc('pl_cam_get_total', [OUTPUT(int16),])
-dllFunc('pl_cam_open', [STRING, OUTPUT(int16), int16])
-dllFunc('pl_cam_register_callback', [int16, int32, CALLBACK])
-dllFunc('pl_cam_register_callback_ex', [int16, int32, CALLBACK, ctypes.c_void_p])
-dllFunc('pl_cam_register_callback_ex2', [int16, int32, CALLBACK])
-dllFunc('pl_cam_register_callback_ex3', [int16, int32, CALLBACK, ctypes.c_void_p])
-dllFunc('pl_cam_deregister_callback', [int16, ctypes.c_void_p])
+dllFunc('pl_cam_close', [int16], ['hcam'])
+dllFunc('pl_cam_get_name',
+        [int16, OUTSTRING],
+        ['can_num', 'cam_name'], buf_len=CAM_NAME_LEN)
+dllFunc('pl_cam_get_total', [OUTPUT(int16),], ['total_cams',])
+dllFunc('pl_cam_open',
+        [STRING, OUTPUT(int16), int16],
+        ['cam_name', 'hcam', 'o_mode'])
+dllFunc('pl_cam_register_callback',
+        [int16, int32, CALLBACK],
+        ['hcam', 'event', 'Callback'])
+dllFunc('pl_cam_register_callback_ex',
+        [int16, int32, CALLBACK, ctypes.c_void_p],
+        ['hcam', 'event', 'Callback', 'Context'])
+dllFunc('pl_cam_register_callback_ex2',
+        [int16, int32, CALLBACK],
+        ['hcam', 'event', 'Callback'])
+dllFunc('pl_cam_register_callback_ex3',
+        [int16, int32, CALLBACK, ctypes.c_void_p],
+        ['hcam', 'event', 'Callback', 'Context'])
+dllFunc('pl_cam_deregister_callback',
+        [int16, ctypes.c_void_p],
+        ['hcam', 'event'])
 # Class 1 functions - error handling. Handled in dllFunction.
 # Class 2 functions - configuration/setup.
-dllFunc('pl_get_param', [int16, uns32, int16, OUTPUT(ctypes.c_void_p)])
-dllFunc('pl_set_param', [int16, uns32, ctypes.c_void_p])
-dllFunc('pl_get_enum_param', [int16, uns32, uns32, OUTPUT(int32), OUTSTRING, uns32])
-dllFunc('pl_enum_str_length', [int16, uns32, uns32, OUTPUT(uns32)])
-dllFunc('pl_pp_reset', [int16,])
-dllFunc('pl_create_smart_stream_struct', [OUTPUT(smart_stream_type), uns16])
-dllFunc('pl_release_smart_stream_struct', [ctypes.POINTER(smart_stream_type),])
-dllFunc('pl_create_frame_info_struct', [OUTPUT(FRAME_INFO),])
-dllFunc('pl_release_frame_info_struct', [ctypes.POINTER(FRAME_INFO),])
+dllFunc('pl_get_param', [int16, uns32, int16, OUTPUT(ctypes.c_void_p)],
+        ['hcam', 'param_id', 'param_attrib', 'param_value'])
+dllFunc('pl_set_param', [int16, uns32, ctypes.c_void_p],
+        ['hcam', 'param_id', 'param_value'])
+dllFunc('pl_get_enum_param',
+        [int16, uns32, uns32, OUTPUT(int32), OUTSTRING, uns32],
+        ['hcam', 'param_id', 'index', 'value', 'desc', 'length'])
+dllFunc('pl_enum_str_length', [int16, uns32, uns32, OUTPUT(uns32)],
+        ['hcam', 'param_id', 'index', 'length'])
+dllFunc('pl_pp_reset', [int16,], ['hcam'])
+dllFunc('pl_create_smart_stream_struct', [OUTPUT(smart_stream_type), uns16],
+        ['pSmtStruct', 'entries'])
+dllFunc('pl_release_smart_stream_struct', [ctypes.POINTER(smart_stream_type),],
+        ['pSmtStruct',])
+dllFunc('pl_create_frame_info_struct', [OUTPUT(FRAME_INFO),],
+        ['pNewFrameInfo'])
+dllFunc('pl_release_frame_info_struct', [ctypes.POINTER(FRAME_INFO),],
+        ['pFrameInfoToDel',])
 
 dllFunc('pl_exp_abort', [int16, int16])
 
@@ -849,6 +872,12 @@ class PVCamera(devices.CameraDevice):
                 values = (None, None)
         return values
 
+
+    def _set_param(self, param_id, value):
+        """Set a parameter with param_id to value."""
+        _set_param(self.handle,
+                   param_id,
+                   ctypes.byref(ctypes.c_void_p(value)))
 
 
     """Private shape-related methods. These methods do not need to account
