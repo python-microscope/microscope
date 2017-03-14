@@ -331,7 +331,7 @@ class DataDevice(Device):
         # A thread to dispatch data.
         self._dispatch_thread = None
         # A buffer for data dispatch.
-        self._buffer = queue.Queue(maxsize=buffer_length)
+        self._dispatch_buffer = queue.Queue(maxsize=buffer_length)
         # A flag to indicate if device is ready to acquire.
         self._acquiring = False
 
@@ -418,10 +418,10 @@ class DataDevice(Device):
     def _dispatch_loop(self):
         """Process data and send results to any client."""
         while True:
-            if self._buffer.empty():
+            if self._dispatch_buffer.empty():
                 time.sleep(0.01)
                 continue
-            data, timestamp = self._buffer.get()
+            data, timestamp = self._dispatch_buffer.get()
             err = None
             if isinstance(data, Exception):
                 standard_exception = Exception(str(data).encode('ascii'))
@@ -439,7 +439,7 @@ class DataDevice(Device):
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
                 self._logger.error("in _dispatch_loop: %s." % err)
-            self._buffer.task_done()
+            self._dispatch_buffer.task_done()
 
     def _fetch_loop(self):
         """Poll source for data and put it into dispatch buffer."""
@@ -452,12 +452,12 @@ class DataDevice(Device):
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
-                self._buffer.put((e, timestamp))
+                self._dispatch_buffer.put((e, timestamp))
                 data = None
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
-                self._buffer.put((data, timestamp))
+                self._dispatch_buffer.put((data, timestamp))
             else:
                 time.sleep(0.001)
 
@@ -634,6 +634,7 @@ class CameraDevice(DataDevice):
             TRIGGER_BEFORE or
             TRIGGER_DURATION (bulb exposure.)
         """
+        pass
 
     @Pyro4.expose
     def get_meta_data(self):
