@@ -20,9 +20,13 @@
 This module exposes pvcam C library functions in python.
 """
 import ctypes
+import numpy as np
 import platform
 import os
 import re
+import Pyro4
+from microscope import devices
+from microscope.devices import keep_acquiring
 
 _DLL_INITIALIZED = False
 
@@ -107,6 +111,8 @@ while True:
                 count += 1
             else:
                 value = eval(value)
+                # value may just be an initializer
+                count = value+1
             globals()[name] = value
             globals()[tag][value] = name
         # Get the enum name.
@@ -559,86 +565,6 @@ _dtypemap = {
     TYPE_FLT32: 'float',
 }
 """
-
-
-    /*****************************************************************************/
-    /*****************************************************************************/
-    /*                                                                           */
-    /*                   Data Acquisition Function Prototypes                    */
-    /*                                                                           */
-    /*****************************************************************************/
-    /*****************************************************************************/
-
-    /*****************************************************************************/
-    /* pixel_stream      Buffer to hold image(s)                                 */
-    /* byte_cnt          Size of bufer to hold images (in bytes)                 */
-    /* exp_total         Total number of exposures to take                       */
-    /* rgn_total         Total number of regions defined for each image          */
-    /* rgn_array         Array of regions (must be rgn_total in size)            */
-    /*                     s1    starting pixel in the serial register           */
-    /*                     s2    ending pixel in the serial register             */
-    /*                     sbin  serial binning for this region                  */
-    /*                     p1    starting pixel in the parallel register         */
-    /*                     p2    ending pixel in the parallel register           */
-    /*                     pbin  parallel binning for this region                */
-    /* exp_mode          Mode for capture (TIMED_MODE, STROBED_MODE, ...)        */
-    /* exposure_time     Time to expose in selected exposure resolution          */
-    /*                     Default is milliseconds (see PARAM_EXP_RES)           */
-    /* exp_bytes         Value returned from PVCAM specifying the required       */
-    /*                     number of bytes to allocate for the capture           */
-    /* buffer_mode       Circular buffer mode (CIRC_OVERWRITE,...)               */
-    /* size              Size of continuous capture pixel_stream                 */
-    /*                     (must be a multiple of byte_cnt)                      */
-    /* status            Status of the current capture (EXPOSURE_IN_PROGRESS,...)*/
-    /* bytes_arrived     Number of bytes that have arrived.  For continuous      */
-    /*                     mode this is the number of bytes that have arrived    */
-    /*                     this time through the buffer.                         */
-    /* buffer_cnt        Number of times through the buffer (continuous mode)    */
-    /* frame             Pointer to the requested image                          */
-    /* cam_state         State to set the camera in (CCS_NO_CHANGE,...)          */
-    /* hbuf              Standard image buffer                                   */
-    /* exposure          Exposure # to unravel, 65535 for All, else exposure #   */
-    /* array_list        Array of Pointers that will get the unraveled images    */
-    /*                     in the same order as the regions.                     */
-    /* tlimit            Time in milliseconds to wait for a transfer             */
-    /*****************************************************************************/
-
-    rs_bool PV_DECL pl_exp_setup_seq (int16 hcam, uns16 exp_total,
-                                      uns16 rgn_total, const rgn_type* rgn_array,
-                                      int16 exp_mode, uns32 exposure_time,
-                                      uns32* exp_bytes);
-    rs_bool PV_DECL pl_exp_start_seq (int16 hcam, void* pixel_stream);
-    rs_bool PV_DECL pl_exp_setup_cont (int16 hcam, uns16 rgn_total,
-                                       const rgn_type* rgn_array, int16 exp_mode,
-                                       uns32 exposure_time, uns32* exp_bytes,
-                                       int16 buffer_mode);
-    rs_bool PV_DECL pl_exp_start_cont (int16 hcam, void* pixel_stream, uns32 size);
-    rs_bool PV_DECL pl_exp_check_status (int16 hcam, int16* status, uns32* bytes_arrived);
-    rs_bool PV_DECL pl_exp_check_cont_status (int16 hcam, int16* status,
-                                              uns32* bytes_arrived, uns32* buffer_cnt);
-    rs_bool PV_DECL pl_exp_check_cont_status_ex (int16 hcam, int16* status,
-                                                 uns32* byte_cnt, uns32* buffer_cnt,
-                                                 FRAME_INFO* pFrameInfo);
-    rs_bool PV_DECL pl_exp_get_latest_frame (int16 hcam, void** frame);
-    rs_bool PV_DECL pl_exp_get_latest_frame_ex (int16 hcam, void** frame,
-                                                FRAME_INFO* pFrameInfo);
-    rs_bool PV_DECL pl_exp_get_oldest_frame (int16 hcam, void** frame);
-    rs_bool PV_DECL pl_exp_get_oldest_frame_ex (int16 hcam, void** frame,
-                                                FRAME_INFO* pFrameInfo);
-    rs_bool PV_DECL pl_exp_unlock_oldest_frame (int16 hcam);
-    rs_bool PV_DECL pl_exp_stop_cont (int16 hcam, int16 cam_state);
-    rs_bool PV_DECL pl_exp_abort (int16 hcam, int16 cam_state);
-    rs_bool PV_DECL pl_exp_finish_seq (int16 hcam, void* pixel_stream, int16 hbuf);
-
-    /*****************************************************************************/
-    /* addr              Specifies which I/O address to control                  */
-    /* state             Specifies the value to write to the register            */
-    /* location          Specifies when to control the I/O (SCR_PRE_FLASH,...)   */
-    /*****************************************************************************/
-    rs_bool PV_DECL pl_io_script_control (int16 hcam, uns16 addr, flt64 state,
-                                          uns32 location);
-    rs_bool PV_DECL pl_io_clear_script_control (int16 hcam);
-
     /*****************************************************************************/
     /*****************************************************************************/
     /*                                                                           */
@@ -778,10 +704,12 @@ _param_to_name = {globals()[param]:param for param in globals()
 
 
 def get_param_type(param_id):
+    # Parameter types are encoded in the 4th MSB of the param_id.
     return _typemap[param_id >> 24 & 255]
 
 
 def get_param_dtype(param_id):
+    # Parameter types are encoded in the 4th MSB of the param_id.
     return _dtypemap[param_id >> 24 & 255]
 
 
@@ -792,7 +720,7 @@ def get_param(handle, param_id):
     if t.value == TYPE_CHAR_PTR:
         buf_len = _length_map[param_id]
         if not buf_len:
-            raise Exception('pvcan: parameter %s not supported in python.' % _param_to_name[param_id])
+            raise Exception('pvcam: parameter %s not supported in python.' % _param_to_name[param_id])
         c = _get_param(handle, param_id, ATTR_CURRENT, buf_len=buf_len)
     else:
         c = _get_param(handle, param_id, ATTR_CURRENT)
@@ -800,11 +728,6 @@ def get_param(handle, param_id):
         return str(buffer(c))
     else:
         return c
-
-
-from microscope import devices
-from microscope.devices import keep_acquiring
-import Pyro4
 
 # Trigger mode to type.
 TRIGGER_MODES = {
@@ -829,33 +752,57 @@ class PVCamera(devices.CameraDevice):
         self.shape = (None, None)
         self.roi = (None, None, None, None)
         self.binning = (1, 1)
-        self.trigger = TIMED_MODE
+        self._trigger = TIMED_MODE
+        self.exposure_time = 10
+        self._buffer = None
+        self.soft_triggered = False
 
 
     @property
-    def region(self):
-        return rgn_type(self.roi[0], self.roi[1], self.binning[0],
-                        self.roi[2], self.roi[3], self.binning[1])
+    def _region(self):
+        return rgn_type(self.roi[0], self.roi[1]-1, self.binning[0],
+                        self.roi[2], self.roi[3]-1, self.binning[1])
+
 
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
         """Fetch data, recycle any buffers and return data or None."""
-        return data or None
+        if self._trigger == TIMED_MODE and self.soft_triggered:
+            try:
+                status, count = _exp_check_status(self.handle)
+            except:
+                return None
+            if status.value == READOUT_COMPLETE and count.value > 0:
+                self.soft_triggered = False
+                return self._buffer.copy()
+        return None
 
     def _on_enable(self):
         """Enable the camera hardware and make ready to respond to triggers.
 
         Return True if successful, False if not."""
-        return False
+        if self._trigger == TIMED_MODE:
+            nbytes = _exp_setup_seq(self.handle,
+                                    1, 1, # num epxosures, num regions
+                                    self._region,
+                                    TIMED_MODE,
+                                    self.exposure_time)
+            self._buffer = np.require(np.zeros(self.shape, dtype='int16'),
+                                      requirements=['C_CONTIGUOUS',
+                                      'ALIGNED',
+                                      'OWNDATA'])
+        return True
 
     def _on_disable(self):
         """Disable the hardware for a short period of inactivity."""
         self.abort()
         pass
 
+
     def _on_shutdown(self):
         """Disable the hardware for a prolonged period of inactivity."""
-        self._close()
+        self.abort()
+        _cam_close(self.handle)
 
 
     def _get_param_access(self, param_id):
@@ -890,7 +837,7 @@ class PVCamera(devices.CameraDevice):
     def _get_enum_param(self, param_id, index):
         length = _enum_str_length(self.handle, param_id, index)
         val, desc = _get_enum_param(self.handle, param_id, index, length)
-        return (val.value, str(desc.value))
+        return (val.value, desc.value)
 
 
     def _get_param(self, param_id, what=ATTR_CURRENT):
@@ -911,7 +858,7 @@ class PVCamera(devices.CameraDevice):
             except:
                 return None
         if t == TYPE_CHAR_PTR:
-            return str(buffer(c))
+            return str(buffer(c)) or ''
         elif t in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                          TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             return c
@@ -933,7 +880,7 @@ class PVCamera(devices.CameraDevice):
                 length = _enum_str_length(self.handle, param_id, i)
                 values.append(tuple(c.value for c in _get_enum_param(self.handle, param_id, i, length)))
         elif dtype in [str, 'str']:
-            values = _length_map[param_id]
+            values = _length_map[param_id] or 0
         else:
             try:
                 values = (self._get_param(param_id, what=ATTR_MIN),
@@ -946,6 +893,7 @@ class PVCamera(devices.CameraDevice):
 
     def _set_param(self, param_id, value):
         """Set a parameter with param_id to value."""
+        cvalue = self._get_param_ctype(param_id)(value)
         _set_param(self.handle,
                    param_id,
                    ctypes.byref(ctypes.c_void_p(value)))
@@ -977,11 +925,6 @@ class PVCamera(devices.CameraDevice):
 
         return False
 
-
-    def _close(self):
-        _cam_close(self.handle)
-
-
     def _open(self):
         try:
             _cam_close(self.handle)
@@ -999,6 +942,7 @@ class PVCamera(devices.CameraDevice):
 
         This should put the camera into a state in which settings can
         be modified."""
+        _exp_abort(self.handle, CCS_CLEAR)
         self._acquiring = False
 
     @Pyro4.expose
@@ -1014,7 +958,6 @@ class PVCamera(devices.CameraDevice):
             if not dtype or not self._get_param_avail(param_id):
                 continue
             writable = self._get_param_access(param_id) in [ACC_READ_WRITE, ACC_WRITE_ONLY]
-            #if writeable:
             self.add_setting(name,
                             dtype,
                             lambda param_id=param_id: self._get_param(param_id),
@@ -1023,6 +966,7 @@ class PVCamera(devices.CameraDevice):
                             not writable)
         self.shape = (self._get_param(PARAM_PAR_SIZE), self._get_param(PARAM_SER_SIZE))
         self.roi = (0, self.shape[0], 0, self.shape[1])
+        self._set_param(PARAM_CLEAR_MODE, CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
     @Pyro4.expose
@@ -1037,12 +981,21 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.expose
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
-        _exp_setup_seq(cam.handle, 1, 1, self.region, self.trigger, value)
+        _exp_setup_seq(cam.handle, 1, 1, self._region, self._trigger, value)
 
     @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time."""
-        return self._get_param(PARAM_EXPOSURE_TIME)
+        t = self._get_param(PARAM_EXPOSURE_TIME)
+        res = self._get_param(PARAM_EXP_RES)
+        multipliers = {EXP_RES_ONE_SEC: 1.,
+                       EXP_RES_ONE_MILLISEC: 1e-3,
+                       EXP_RES_ONE_MICROSEC: 1e-6}
+        if isinstance(res, tuple):
+            return t * multipliers[res[0]]
+        else:
+            return t * multipliers[res]
+
 
     @Pyro4.expose
     def get_cycle_time(self):
@@ -1050,17 +1003,32 @@ class PVCamera(devices.CameraDevice):
 
         Cycle time is the minimum time between exposures. This is
         typically exposure time plus readout time."""
-        return self._get_param(PARAM_READOUT_TIME) + self.get_exposure_time()
+        # Exposure time in seconds; readout time in microseconds.
+        return self.get_exposure_time() + 1e-6 * self._get_param(PARAM_READOUT_TIME)
 
     @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
-        return TRIGGER_MODES[self.trigger]
+        return TRIGGER_MODES[self._trigger]
+
 
     @Pyro4.expose
+    @Pyro4.oneway
     def soft_trigger(self):
-        """Send a software trigger to the camera."""
-        _exp_start_seq(self.handle, self.data)
+        if self._trigger == TIMED_MODE and self.get_is_enabled():
+
+            """Send a software trigger to the camera."""
+            self.soft_triggered = True
+            try:
+                _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+            except:
+                raise
+
+
+
+
+
+
 
 
 
