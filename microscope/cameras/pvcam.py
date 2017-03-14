@@ -24,6 +24,7 @@ import platform
 import os
 import re
 
+_DLL_INITIALIZED = False
 
 _HEADER = 'pvcam.h'
 
@@ -147,9 +148,9 @@ class smart_stream_type(ctypes.Structure):
 
 
 class rgn_type(ctypes.Structure):
-    _fields = [("s1", uns16),
+    _fields_ = [("s1", uns16),
                ("s2", uns16),
-               ("sb", uns16),
+               ("sbin", uns16),
                ("p1", uns16),
                ("p2", uns16),
                ("pbin", uns16),]
@@ -448,6 +449,7 @@ dllFunc('pl_get_enum_param',
         ['hcam', 'param_id', 'index', 'value', 'desc', 'length'])
 dllFunc('pl_enum_str_length', [int16, uns32, uns32, OUTPUT(uns32)],
         ['hcam', 'param_id', 'index', 'length'])
+
 dllFunc('pl_pp_reset', [int16,], ['hcam'])
 dllFunc('pl_create_smart_stream_struct', [OUTPUT(smart_stream_type), uns16],
         ['pSmtStruct', 'entries'])
@@ -457,9 +459,52 @@ dllFunc('pl_create_frame_info_struct', [OUTPUT(FRAME_INFO),],
         ['pNewFrameInfo'])
 dllFunc('pl_release_frame_info_struct', [ctypes.POINTER(FRAME_INFO),],
         ['pFrameInfoToDel',])
+dllFunc('pl_exp_abort', [int16, int16], ['hcam', 'cam_state'])
 
-dllFunc('pl_exp_abort', [int16, int16])
+dllFunc('pl_exp_setup_seq',
+        [int16, uns16, uns16, ctypes.POINTER(rgn_type), int16, uns32, OUTPUT(uns32)],
+        ['hcam', 'exp_total', 'rgn_total', 'rgn_array', 'exp_mode', 'exposure_time', 'exp_bytes'])
 
+dllFunc('pl_exp_start_seq', [int16, ctypes.c_void_p], ['hcam', 'pixel_stream'])
+
+dllFunc('pl_exp_setup_cont',
+        [int16, uns16, ctypes.POINTER(rgn_type), int16, uns32, OUTPUT(uns32), int16],
+        ['hcam', 'rgn_total', 'rgn_array', 'exp_mode', 'exposure_time', 'exp_bytes', 'buffer_mode'])
+
+dllFunc('pl_exp_start_cont', [int16, ctypes.c_void_p, uns32], ['hcam', 'pixel_stream', 'size'])
+
+dllFunc('pl_exp_check_status', [int16, OUTPUT(int16), OUTPUT(uns32)], ['hcam', 'status', 'bytes_arrived'])
+
+dllFunc('pl_exp_check_cont_status',
+        [int16, OUTPUT(int16), OUTPUT(uns32), OUTPUT(uns32)],
+        ['hcam', 'status', 'bytes_arrived', 'buffer_cnt'])
+
+dllFunc('pl_exp_check_cont_status_ex',
+        [int16, OUTPUT(int16), OUTPUT(uns32), OUTPUT(uns32), ctypes.POINTER(FRAME_INFO)],
+        ['hcam', 'status', 'byte_cnt', 'buffer_cnt', 'pFrameInfo'])
+
+dllFunc('pl_exp_get_latest_frame', [int16, OUTPUT(ctypes.c_void_p)], ['hcam', 'frame'])
+
+dllFunc('pl_exp_get_latest_frame_ex',
+        [int16, OUTPUT(ctypes.c_void_p), ctypes.POINTER(FRAME_INFO)],
+        ['hcam', 'frame', 'pFrameInfo'])
+
+dllFunc('pl_exp_get_oldest_frame', [int16, OUTPUT(ctypes.c_void_p)], ['hcam', 'frame'])
+
+dllFunc('pl_exp_get_oldest_frame_ex',
+        [int16, OUTPUT(ctypes.c_void_p), ctypes.POINTER(FRAME_INFO)],
+        ['hcam', 'frame', 'pFrameInfo'])
+
+dllFunc('pl_exp_unlock_oldest_frame', [int16], ['hcam'])
+
+dllFunc('pl_exp_stop_cont', [int16, int16], ['hcam', 'cam_state'])
+
+dllFunc('pl_exp_abort', [int16, int16], ['hcam', 'cam_state'])
+
+dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p, int16], ['hcam', 'pixel_stream', 'hbuf'])
+
+
+# Map ATTR_ enums to the return type for that ATTR.
 _attr_map = {
     ATTR_ACCESS: uns16,
     ATTR_AVAIL: rs_bool,
@@ -472,6 +517,7 @@ _attr_map = {
     ATTR_TYPE: uns16,
 }
 
+# Map TYPE enums to their type.
 _typemap = {
     TYPE_INT16: int16,
     TYPE_INT32: int32,
@@ -492,6 +538,7 @@ _typemap = {
     TYPE_FLT32: flt32,}
 
 
+# Map TYPE enums to the appropriate setting dtype.
 _dtypemap = {
     TYPE_INT16: 'int',
     TYPE_INT32: 'int',
@@ -725,6 +772,7 @@ _length_map = {
     PARAM_PP_PARAM_NAME: MAX_PP_NAME_LEN,
 }
 
+# map PARAM enums to the parameter name
 _param_to_name = {globals()[param]:param for param in globals()
                   if (param.startswith('PARAM_') and param != 'PARAM_NAME_LEN')}
 
@@ -760,20 +808,34 @@ import Pyro4
 
 # Trigger mode to type.
 TRIGGER_MODES = {
-    'internal': None,
-    'external': devices.TRIGGER_BEFORE,
-    'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
-    'software': devices.TRIGGER_SOFT,
+    TIMED_MODE: devices.TRIGGER_SOFT,
+    VARIABLE_TIMED_MODE: devices.TRIGGER_SOFT,
+    TRIGGER_FIRST_MODE: devices.TRIGGER_BEFORE,
+    STROBED_MODE: devices.TRIGGER_BEFORE,
+    BULB_MODE: devices.TRIGGER_DURATION,
 }
 
 @Pyro4.behavior('single')
 class PVCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
+        global _DLL_INITIALIZED
+        if not _DLL_INITIALIZED:
+            _pvcam_init()
+            _DLL_INITIALIZED = True
         self._index = kwargs.get('index', 0)
         self._pv_name = None
         self.handle = None
+        self.shape = (None, None)
+        self.roi = (None, None, None, None)
+        self.binning = (1, 1)
+        self.trigger = TIMED_MODE
+
+
+    @property
+    def region(self):
+        return rgn_type(self.roi[0], self.roi[1], self.binning[0],
+                        self.roi[2], self.roi[3], self.binning[1])
 
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
@@ -825,6 +887,12 @@ class PVCamera(devices.CameraDevice):
         return _get_param(self.handle, param_id, ATTR_TYPE).value
 
 
+    def _get_enum_param(self, param_id, index):
+        length = _enum_str_length(self.handle, param_id, index)
+        val, desc = _get_enum_param(self.handle, param_id, index, length)
+        return (val.value, str(desc.value))
+
+
     def _get_param(self, param_id, what=ATTR_CURRENT):
         """Fetch a parameter for this device, converting from void_p."""
         t = self._get_param_type_code(param_id)
@@ -847,6 +915,9 @@ class PVCamera(devices.CameraDevice):
         elif t in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                          TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             return c
+        elif t == TYPE_ENUM:
+            cast_to = self._get_param_ctype(param_id)
+            return self._get_enum_param(param_id, c.value or 0)
         else:
             cast_to = self._get_param_ctype(param_id)
             return ctypes.POINTER(cast_to)(c).contents.value
@@ -885,16 +956,16 @@ class PVCamera(devices.CameraDevice):
     is handled in the parent class."""
     def _get_sensor_shape(self):
         """Return the sensor shape (width, height)."""
-        return (512,512)
+        return self.shape
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-        return (1,1)
+        return self.binning
 
     @keep_acquiring
     def _set_binning(self, h, v):
         """Set binning to (h, v)."""
-        return False
+        self.binning = (h, v)
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
@@ -903,6 +974,7 @@ class PVCamera(devices.CameraDevice):
     @keep_acquiring
     def _set_roi(self, left, top, width, height):
         """Set the ROI to (left, tip, width, height)."""
+
         return False
 
 
@@ -943,14 +1015,14 @@ class PVCamera(devices.CameraDevice):
                 continue
             writable = self._get_param_access(param_id) in [ACC_READ_WRITE, ACC_WRITE_ONLY]
             #if writeable:
-            #    setfunc = lambda param_id=param_id: self._set_param(param_id, value)
             self.add_setting(name,
                             dtype,
                             lambda param_id=param_id: self._get_param(param_id),
                             lambda: None,
                             lambda param_id=param_id: self._get_param_values(param_id),
                             not writable)
-
+        self.shape = (self._get_param(PARAM_PAR_SIZE), self._get_param(PARAM_SER_SIZE))
+        self.roi = (0, self.shape[0], 0, self.shape[1])
 
 
     @Pyro4.expose
@@ -965,12 +1037,12 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.expose
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
-        pass
+        _exp_setup_seq(cam.handle, 1, 1, self.region, self.trigger, value)
 
     @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time."""
-        return 0.1
+        return self._get_param(PARAM_EXPOSURE_TIME)
 
     @Pyro4.expose
     def get_cycle_time(self):
@@ -978,17 +1050,21 @@ class PVCamera(devices.CameraDevice):
 
         Cycle time is the minimum time between exposures. This is
         typically exposure time plus readout time."""
-        return 0.15
+        return self._get_param(PARAM_READOUT_TIME) + self.get_exposure_time()
 
     @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
-        return camera.TRIGGER_SOFT
+        return TRIGGER_MODES[self.trigger]
 
     @Pyro4.expose
     def soft_trigger(self):
         """Send a software trigger to the camera."""
-        pass
+        _exp_start_seq(self.handle, self.data)
+
+
+
+
 
 
 def _test():
