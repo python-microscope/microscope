@@ -997,6 +997,7 @@ class PVCamera(devices.CameraDevice):
 
     @property
     def _region(self):
+        """Return a rgn_type for current roi and binning settings."""
         return rgn_type(self.roi[0], self.roi[1]-1, self.binning[0],
                         self.roi[2], self.roi[3]-1, self.binning[1])
 
@@ -1082,7 +1083,11 @@ class PVCamera(devices.CameraDevice):
     def _get_enum_param(self, param_id, index):
         length = _enum_str_length(self.handle, param_id, index)
         val, desc = _get_enum_param(self.handle, param_id, index, length)
-        return (val.value, desc.value)
+        # Documentation says that enums should be set by value, rather than by
+        # index, but this doesn't appear to work, so here were return the index
+        # as the first tuple element.
+        #return (val.value, desc.value)
+        return (index, desc.value)
 
 
     def _get_param(self, param_id, what=ATTR_CURRENT):
@@ -1123,7 +1128,10 @@ class PVCamera(devices.CameraDevice):
             count = self._get_param_count(param_id)
             for i in range(count):
                 length = _enum_str_length(self.handle, param_id, i)
-                values.append(tuple(c.value for c in _get_enum_param(self.handle, param_id, i, length)))
+                # Documentation says to set enums using their value, not their index,
+                # but it seems this is incorrect, so we return (index, description).
+                #values.append(tuple(c.value for c in _get_enum_param(self.handle, param_id, i, length)))
+                values.append((i, _get_enum_param(self.handle, param_id, i, length)[1].value))
         elif dtype in [str, 'str']:
             values = _length_map[param_id] or 0
         else:
@@ -1138,10 +1146,13 @@ class PVCamera(devices.CameraDevice):
 
     def _set_param(self, param_id, value):
         """Set a parameter with param_id to value."""
-        cvalue = self._get_param_ctype(param_id)(value)
-        _set_param(self.handle,
-                   param_id,
-                   ctypes.byref(ctypes.c_void_p(value)))
+        try:
+            cvalue = self._get_param_ctype(param_id)(value)
+            _set_param(self.handle,
+                       param_id,
+                       ctypes.byref(ctypes.c_void_p(value)))
+        except Exception as e:
+            print e.message
 
 
     """Private shape-related methods. These methods do not need to account
@@ -1204,14 +1215,29 @@ class PVCamera(devices.CameraDevice):
                 continue
             writable = self._get_param_access(param_id) in [ACC_READ_WRITE, ACC_WRITE_ONLY]
             self.add_setting(name,
-                            dtype,
-                            lambda param_id=param_id: self._get_param(param_id),
-                            lambda: None,
-                            lambda param_id=param_id: self._get_param_values(param_id),
-                            not writable)
+                             dtype,
+                             lambda param_id=param_id: self._get_param(param_id),
+                             lambda value, param_id=param_id: self._set_setting(param_id, value),
+                             lambda param_id=param_id: self._get_param_values(param_id),
+                             not writable)
         self.shape = (self._get_param(PARAM_PAR_SIZE), self._get_param(PARAM_SER_SIZE))
         self.roi = (0, self.shape[0], 0, self.shape[1])
         self._set_param(PARAM_CLEAR_MODE, CLEAR_PRE_EXPOSURE_POST_SEQ)
+
+
+    @keep_acquiring
+    def _set_setting(self, param_id, value):
+        dtype = get_param_dtype(param_id)
+        if dtype == 'enum':
+            value = value[0]
+
+        print param_id, _param_to_name[param_id], value
+        try:
+            self._set_param(param_id, value)
+        except Exception as e:
+            print e.message
+            return False
+        return True
 
 
     @Pyro4.expose
