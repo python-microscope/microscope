@@ -977,6 +977,7 @@ TRIGGER_MODES = {
 
 @Pyro4.behavior('single')
 class PVCamera(devices.CameraDevice):
+    """Implements the CameraDevice interface for the pvcam library."""
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
         global _DLL_INITIALIZED
@@ -992,7 +993,7 @@ class PVCamera(devices.CameraDevice):
         self._trigger = TIMED_MODE
         self.exposure_time = 0.001 # in seconds
         self._buffer = None
-        self.soft_triggered = False
+        self._soft_triggered = False
 
 
     @property
@@ -1005,13 +1006,13 @@ class PVCamera(devices.CameraDevice):
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
         """Fetch data, recycle any buffers and return data or None."""
-        if self._trigger == TIMED_MODE and self.soft_triggered:
+        if self._trigger == TIMED_MODE and self._soft_triggered:
             try:
                 status, count = _exp_check_status(self.handle)
             except:
                 return None
             if status.value == READOUT_COMPLETE and count.value > 0:
-                self.soft_triggered = False
+                self._soft_triggered = False
                 return self._buffer.copy()
         return None
 
@@ -1289,7 +1290,7 @@ class PVCamera(devices.CameraDevice):
     def soft_trigger(self):
         if self._trigger == TIMED_MODE and self.get_is_enabled():
             """Send a software trigger to the camera."""
-            self.soft_triggered = True
+            self._soft_triggered = True
             try:
                 _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
             except:
