@@ -1181,16 +1181,6 @@ class PVCamera(devices.CameraDevice):
 
         return False
 
-    def _open(self):
-        try:
-            _cam_close(self.handle)
-        except:
-            pass
-        self._pv_name = _cam_get_name(self._index)
-        self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
-
-        self._logger.info('Initializing.')
-
     """Public methods, callable from client."""
     @Pyro4.expose
     def abort(self):
@@ -1201,13 +1191,23 @@ class PVCamera(devices.CameraDevice):
         _exp_abort(self.handle, CCS_CLEAR)
         self._acquiring = False
 
+
     @Pyro4.expose
     def initialize(self):
         """Initialise the camera.
 
         Open the connection and populate settings dict.
         """
-        self._open()
+        if self.handle:
+            try:
+                _cam_close(self.handle)
+            except:
+                pass
+        self._pv_name = _cam_get_name(self._index)
+        self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
+
+        self._logger.info('Initializing.')
+
         for (param_id, name) in _param_to_name.items():
             name = name[6:]
             dtype = get_param_dtype(param_id)
