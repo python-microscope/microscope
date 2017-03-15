@@ -1152,7 +1152,7 @@ class PVCamera(devices.CameraDevice):
                        param_id,
                        ctypes.byref(ctypes.c_void_p(value)))
         except Exception as e:
-            print e.message
+            self._logger.error(e.message)
 
 
     """Private shape-related methods. These methods do not need to account
@@ -1230,12 +1230,10 @@ class PVCamera(devices.CameraDevice):
         dtype = get_param_dtype(param_id)
         if dtype == 'enum':
             value = value[0]
-
-        print param_id, _param_to_name[param_id], value
         try:
             self._set_param(param_id, value)
         except Exception as e:
-            print e.message
+            self._logger.error(e.message)
             return False
         return True
 
