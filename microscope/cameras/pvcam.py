@@ -990,7 +990,7 @@ class PVCamera(devices.CameraDevice):
         self.roi = (None, None, None, None)
         self.binning = (1, 1)
         self._trigger = TIMED_MODE
-        self.exposure_time = 10
+        self.exposure_time = 0.001 # in seconds
         self._buffer = None
         self.soft_triggered = False
 
@@ -1018,16 +1018,24 @@ class PVCamera(devices.CameraDevice):
         """Enable the camera hardware and make ready to respond to triggers.
 
         Return True if successful, False if not."""
+        if self.exposure_time < 1e-3:
+            self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MICROSEC)
+            t = int(self.exposure_time * 1e6)
+        else:
+            self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MILLISEC)
+            t = value = int(self.exposure_time * 1e3)
+
         if self._trigger == TIMED_MODE:
             nbytes = _exp_setup_seq(self.handle,
                                     1, 1, # num epxosures, num regions
                                     self._region,
                                     TIMED_MODE,
-                                    self.exposure_time)
+                                    t)
             self._buffer = np.require(np.zeros(self.shape, dtype='int16'),
                                       requirements=['C_CONTIGUOUS',
                                       'ALIGNED',
                                       'OWNDATA'])
+        self._acquiring = True
         return True
 
     def _on_disable(self):
@@ -1215,10 +1223,13 @@ class PVCamera(devices.CameraDevice):
         if self._acquiring:
             self.abort()
 
+
     @Pyro4.expose
+    @keep_acquiring
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
-        _exp_setup_seq(cam.handle, 1, 1, self._region, self._trigger, value)
+        self.exposure_time = value
+
 
     @Pyro4.expose
     def get_exposure_time(self):
