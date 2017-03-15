@@ -22,8 +22,6 @@ This module exposes pvcam C library functions in python.
 import ctypes
 import numpy as np
 import platform
-import os
-import re
 import Pyro4
 from microscope import devices
 from microscope.devices import keep_acquiring
@@ -31,6 +29,14 @@ from microscope.devices import keep_acquiring
 _DLL_INITIALIZED = False
 
 _HEADER = 'pvcam.h'
+
+# Readout transform mapping - {CHIP_NAME: {port: transform}}
+READOUT_TRANSFORMS = {
+    'Evolve-5': {0: (0,0,0),
+                 1: (1,0,0)}
+}
+
+
 
 # === Data types ===
 # Base typedefs, from pvcam SDK master.h
@@ -1223,7 +1229,51 @@ class PVCamera(devices.CameraDevice):
                              not writable)
         self.shape = (self._get_param(PARAM_PAR_SIZE), self._get_param(PARAM_SER_SIZE))
         self.roi = (0, self.shape[0], 0, self.shape[1])
+
+        # Populate readout modes by iterating over readout ports and speed
+        # table entries.
+        ro_ports = self._get_param_values(PARAM_READOUT_PORT)
+        self._readout_modes = []
+        self._readout_mode_parameters = {}
+        for i, port in ro_ports:
+            ro_speeds = self._get_param_values(PARAM_SPDTAB_INDEX)
+            for j in range(ro_speeds[0], ro_speeds[1]+1):
+                self._set_param(PARAM_SPDTAB_INDEX, j)
+                bit_depth = self._get_param(PARAM_BIT_DEPTH)
+                freq = 1e9 / self._get_param(PARAM_PIX_TIME)
+                if freq > 1e6:
+                    freq *= 1e-6
+                    prefix = 'M'
+                elif freq > 1e3:
+                    freq *= 1e-3
+                    prefix = 'k'
+                else:
+                    prefix = 'Hz'
+                mode_str = "%s, %s-bit, %s %sHz" % (port, bit_depth, freq, prefix)
+                self._readout_modes.append(mode_str)
+                self._readout_mode_parameters[mode_str] = {'port':i, 'spdtab_index': j}
+        # Set to default mode.
+        self.set_readout_mode(self._readout_modes[0])
         self._set_param(PARAM_CLEAR_MODE, CLEAR_PRE_EXPOSURE_POST_SEQ)
+
+
+    @Pyro4.expose
+    @keep_acquiring
+    def set_readout_mode(self, description):
+        """Set the readout mode and transform."""
+        params = self._readout_mode_parameters[description]
+        self._set_param(PARAM_READOUT_PORT, params['port'])
+        self._set_param(PARAM_SPDTAB_INDEX, params['spdtab_index'])
+        self._readout_mode = description
+        # Update transforms, if available.
+        chip = self._get_param(PARAM_CHIP_NAME)
+        client_transform = self.get_transform()
+        new_readout_transform = None
+        readout_map = READOUT_TRANSFORMS.get(chip, None)
+        if readout_map:
+            new_readout_transform = readout_map.get(params['port'], None)
+        if new_readout_transform:
+            self._set_readout_transform(new_readout_transform)
 
 
     @keep_acquiring
