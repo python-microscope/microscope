@@ -1399,12 +1399,11 @@ class PVCamera(devices.CameraDevice):
     def set_readout_mode(self, description):
         """Set the readout mode and transform."""
         params = self._readout_mode_parameters[description]
-        self._set_param(PARAM_READOUT_PORT, params['port'])
-        self._set_param(PARAM_SPDTAB_INDEX, params['spdtab_index'])
+        self._params[PARAM_READOUT_PORT].set_value(params['port'])
+        self._params[PARAM_SPDTAB_INDEX].set_value(params['spdtab_index'])
         self._readout_mode = description
         # Update transforms, if available.
-        chip = self._get_param(PARAM_CHIP_NAME)
-        client_transform = self.get_transform()
+        chip = self._params[PARAM_CHIP_NAME].current
         new_readout_transform = None
         readout_map = READOUT_TRANSFORMS.get(chip, None)
         if readout_map:
