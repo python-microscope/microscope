@@ -31,6 +31,7 @@ import os
 import signal
 import sys
 import time
+from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from threading import Thread
 
@@ -72,11 +73,26 @@ class DeviceServer(multiprocessing.Process):
         self.count = count
 
     def run(self):
+        logger = logging.getLogger()
+        if __debug__:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
+        # Later, we'll log to one file per server, with a filename
+        # based on a unique identifier for the device. Some devices
+        # don't have UIDs available until after initialization, so
+        # log to stderr until then.
+        stderr_handler = StreamHandler(sys.stderr)
+        stderr_handler.setFormatter(LOG_FORMATTER)
+        logger.addHandler(stderr_handler)
+        logger.debug('Debugging messages on.')
         self._device = self._device_def['cls'](index=self.count, **self._device_def)
         while True:
             try:
                 self._device.initialize()
-            except:
+            except Exception as e:
+                logger.debug('Failed to start device %s. Retrying in 5s.' % self._device)
+                logger.debug(e.message)
                 time.sleep(5)
             else:
                 break
@@ -93,14 +109,8 @@ class DeviceServer(multiprocessing.Process):
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
                                           (type(self._device).__name__, host, port))
         log_handler.setFormatter(LOG_FORMATTER)
-        logger = logging.getLogger()
         logger.addHandler(log_handler)
-        if __debug__:
-            logger.setLevel(logging.DEBUG)
-        else:
-            logger.setLevel(logging.INFO)
         logger.info('Device initialized; starting daemon.')
-        logger.debug('Debugging messages on.')
 
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
