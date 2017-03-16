@@ -1270,7 +1270,6 @@ class PVCamera(devices.CameraDevice):
                           self._get_param(param_id, what=ATTR_MAX))
             except:
                 raise
-                values = (None, None)
         return values
 
 
