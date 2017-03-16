@@ -766,7 +766,8 @@ dllFunc('pl_exp_stop_cont', [int16, int16], ['hcam', 'cam_state'])
 
 dllFunc('pl_exp_abort', [int16, int16], ['hcam', 'cam_state'])
 
-dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p, int16], ['hcam', 'pixel_stream', 'hbuf'])
+#dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p, int16], ['hcam', 'pixel_stream', 'hbuf'])
+dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p], ['hcam', 'pixel_stream'])
 
 
 # Map ATTR_ enums to the return type for that ATTR.
