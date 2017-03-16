@@ -212,13 +212,21 @@ class Device(object):
     @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
-        return self.settings[name]['get']()
+        try:
+            return self.settings[name]['get']()
+        except Exception as err:
+            self._logger.error("in get_setting(%s): %s." % (name, err))
+            raise
 
     @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
-        return {k: v['get']() if v['get'] else None
-                for k, v in iteritems(self.settings)}
+        try:
+            return {k: v['get']() if v['get'] else None
+                    for k, v in iteritems(self.settings)}
+        except Exception as err:
+            self._logger.error("in get_all_settings: %s." % err)
+            raise
 
     @Pyro4.expose
     def set_setting(self, name, value):
@@ -226,7 +234,11 @@ class Device(object):
         if self.settings[name]['set'] is None:
             raise NotImplementedError
         # TODO further validation.
-        self.settings[name]['set'](value)
+        try:
+            self.settings[name]['set'](value)
+        except Exception as err:
+            self._logger.error("in set_setting(%s): %s." % (name, err))
+
 
     @Pyro4.expose
     def describe_setting(self, name):
@@ -444,6 +456,7 @@ class DataDevice(Device):
     def _fetch_loop(self):
         """Poll source for data and put it into dispatch buffer."""
         self._fetch_thread_run = True
+
         while self._fetch_thread_run:
             try:
                 data = self._fetch_data()
