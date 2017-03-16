@@ -1348,31 +1348,36 @@ class PVCamera(devices.CameraDevice):
         self._logger.info('Initializing.')
 
         for (param_id, name) in _param_to_name.items():
+            p = PVParam(self, param_id)
+            self._params[param_id] = p
             name = name[6:]
-            dtype = get_param_dtype(param_id)
-            if not dtype or not self._get_param_avail(param_id):
+            if not p.dtype or not p.available:
                 continue
-            writable = self._get_param_access(param_id) in [ACC_READ_WRITE, ACC_WRITE_ONLY]
+            try:
+                p.current
+            except:
+                self._logger.warn("Skipping parameter %s: not supported in python." % p.name)
+                continue
             self.add_setting(name,
-                             dtype,
-                             lambda param_id=param_id: self._get_param(param_id),
-                             lambda value, param_id=param_id: self._set_setting(param_id, value),
-                             lambda param_id=param_id: self._get_param_values(param_id),
-                             not writable)
-        self.shape = (self._get_param(PARAM_PAR_SIZE), self._get_param(PARAM_SER_SIZE))
+                             p.dtype,
+                             lambda p=p: p.current,
+                             p.set_value,
+                             lambda p=p: p.values,
+                             not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
+        self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
         self.roi = (0, self.shape[0], 0, self.shape[1])
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
-        ro_ports = self._get_param_values(PARAM_READOUT_PORT)
+        ro_ports = self._params[PARAM_READOUT_PORT].values
         self._readout_modes = []
         self._readout_mode_parameters = {}
         for i, port in ro_ports:
-            ro_speeds = self._get_param_values(PARAM_SPDTAB_INDEX)
+            ro_speeds = self._params[PARAM_SPDTAB_INDEX].values
             for j in range(ro_speeds[0], ro_speeds[1]+1):
-                self._set_param(PARAM_SPDTAB_INDEX, j)
-                bit_depth = self._get_param(PARAM_BIT_DEPTH)
-                freq = 1e9 / self._get_param(PARAM_PIX_TIME)
+                self._params[PARAM_SPDTAB_INDEX].set_value(j)
+                bit_depth = self._params[PARAM_BIT_DEPTH].current
+                freq = 1e9 / self._params[PARAM_PIX_TIME].current
                 if freq > 1e6:
                     freq *= 1e-6
                     prefix = 'M'
@@ -1386,7 +1391,7 @@ class PVCamera(devices.CameraDevice):
                 self._readout_mode_parameters[mode_str] = {'port':i, 'spdtab_index': j}
         # Set to default mode.
         self.set_readout_mode(self._readout_modes[0])
-        self._set_param(PARAM_CLEAR_MODE, CLEAR_PRE_EXPOSURE_POST_SEQ)
+        self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
     @Pyro4.expose
