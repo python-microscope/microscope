@@ -35,7 +35,6 @@ READOUT_TRANSFORMS = {
 }
 
 
-
 # === Data types ===
 # Base typedefs, from pvcam SDK master.h
 #typedef unsigned short rs_bool;
@@ -657,7 +656,6 @@ class dllFunction(object):
             err_code = _lib.pl_error_code()
             err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
             _lib.pl_error_message(err_code, err_msg)
-
             raise Exception('pvcam error %d: %s' % (err_code, err_msg.value))
 
         if len(ret) == 0:
@@ -979,6 +977,129 @@ TRIGGER_MODES = {
     STROBED_MODE: devices.TRIGGER_BEFORE,
     BULB_MODE: devices.TRIGGER_DURATION,
 }
+
+class PVParam(object):
+    def __init__(self, camera, param_id):
+        self._hcam = camera.handle
+        self.param_id = param_id
+
+        self.name = _param_to_name[param_id]
+        self._pvtype = param_id >> 24 & 255
+        self.dtype = _dtypemap[self._pvtype]
+        self._ctype = _typemap[self._pvtype]
+
+
+    def set_value(self, new_value):
+        """Set a parameter value."""
+        if self.dtype == 'enum':
+            # The PVCAM documentation states:
+            #     If the data type coming back from ATTR_TYPE is TYPE_ENUM
+            #     the function pl_get_param returns (and pl_set_param takes)
+            #     the value of enumerated type, not its index.
+            # However, this behaviour is not consistent with observations of the
+            # Evolve-5: enums retrieved from the hardware have values that match
+            # corresponding enums defined in the C header file, but pl_set_param
+            # sets the value by it's index in the enum table, not the value itself,
+            # so we have to search the enum table for the value to set that value.
+            # We may be passed a value, a description string, or a tuple of
+            # (value, string).
+            values, descriptions = zip(*self.values)
+            if hasattr(new_value, '__iter__'):
+                desc = str(new_value[1])
+            else:
+                desc = str(new_value)
+            # If we have a description, rely on that, as this avoids any confusion
+            # of index and value.
+            if desc in descriptions:
+                new_index = descriptions.index(desc)
+            else:
+                try:
+                    new_index = values.index(new_value)
+                except:
+                    raise Exception("Could not find value %s for enum %s." % (new_value, self.name))
+            new_value = new_index
+
+        _set_param(self._hcam,
+                   self.param_id,
+                   ctypes.byref(ctypes.c_void_p(new_value)))
+
+
+    def _query(self, what=ATTR_CURRENT):
+        """Query the DLL for an attribute for this parameter."""
+        if what == ATTR_AVAIL:
+            return self.available
+        elif not self.available:
+            raise Exception("Parameter %s is not available" % self.name)
+        # return type
+        rtype = _attr_map[what]
+        if not rtype:
+            rtype = _get_param(self._hcam, self.param_id, ATTR_TYPE)
+        if rtype.value == TYPE_CHAR_PTR:
+            buf_len = _length_map[self.param_id]
+            if not buf_len:
+                raise Exception('pvcam: parameter %s not supported in python.' % self.name)
+            result = _get_param(self._hcam, self.param_id, what, buf_len=buf_len)
+        else:
+            result = _get_param(self._hcam, self.param_id, what)
+        return result
+
+
+    @property
+    def access(self):
+        return self._query(what=ATTR_ACCESS).value
+
+
+    @property
+    def available(self):
+        return bool(_get_param(self._hcam, self.param_id, ATTR_AVAIL))
+
+
+    @property
+    def count(self):
+        return self._query(what=ATTR_COUNT).value
+
+    @property
+    def values(self):
+        """Get parameter values, range or string length."""
+        if self.dtype == 'enum':
+            values = []
+            for i in range(self.count):
+                length = _enum_str_length(self._hcam, self.param_id, i)
+                value, desc = _get_enum_param(self._hcam, self.param_id, i, length)
+                values.append((value.value, desc.value))
+        elif self.dtype in [str, 'str']:
+            values = _length_map[self.param_id] or 0
+        else:
+            try:
+                values = (ctypes.POINTER(self._ctype)(self._query(ATTR_MIN)).contents.value,
+                          ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
+            except:
+                raise
+        return values
+
+    @property
+    def raw(self):
+        return self._query()
+
+    @property
+    def current(self):
+        if self._pvtype == TYPE_CHAR_PTR:
+                return str(buffer(self.raw)) or ''
+        elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
+                              TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
+            raise Exception('Value conversion not supported for parameter %s.' % self.name)
+        elif self._pvtype == TYPE_ENUM:
+            index = self.raw.value or 0
+            length = _enum_str_length(self._hcam, self.param_id, index)
+            val, desc = _get_enum_param(self._hcam, self.param_id, index, length)
+            # Documentation says that enums should be set by value, rather than by
+            # index, but this doesn't appear to work, so here were return the index
+            # as the first tuple element.
+            # return (index, value, description)
+            return (val.value, desc.value)
+        else:
+            return ctypes.POINTER(self._ctype)(self.raw).contents.value
+
 
 @Pyro4.behavior('single')
 class PVCamera(devices.CameraDevice):
