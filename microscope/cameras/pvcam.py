@@ -26,8 +26,6 @@ import Pyro4
 from microscope import devices
 from microscope.devices import keep_acquiring
 
-_DLL_INITIALIZED = False
-
 _HEADER = 'pvcam.h'
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
@@ -987,10 +985,6 @@ class PVCamera(devices.CameraDevice):
     """Implements the CameraDevice interface for the pvcam library."""
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
-        global _DLL_INITIALIZED
-        if not _DLL_INITIALIZED:
-            _pvcam_init()
-            _DLL_INITIALIZED = True
         self._index = kwargs.get('index', 0)
         self._pv_name = None
         self.handle = None
@@ -1206,11 +1200,21 @@ class PVCamera(devices.CameraDevice):
 
         Open the connection and populate settings dict.
         """
+        try:
+            _pvcam_init()
+        except:
+            pass
+        # If no cameras detected, need to deinit and reinit SDK to update count.
+        if _cam_get_total().value == 0:
+            _pvcam_uninit()
+            raise Exception ('No cameras detected.')
+
         if self.handle:
             try:
                 _cam_close(self.handle)
             except:
                 pass
+
         self._pv_name = _cam_get_name(self._index)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
 
