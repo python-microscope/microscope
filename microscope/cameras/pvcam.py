@@ -1136,13 +1136,17 @@ class PVCamera(devices.CameraDevice):
     def _fetch_data(self):
         """Fetch data, recycle any buffers and return data or None."""
         if self._trigger == TIMED_MODE and self._soft_triggered:
-            try:
-                status, count = _exp_check_status(self.handle)
-            except:
-                return None
-            if status.value == READOUT_COMPLETE and count.value > 0:
+            status, count = _exp_check_status(self.handle)
+            if status.value == READOUT_COMPLETE:# and count.value > 0:
+                self._logger.debug("Copying data from buffer.")
                 self._soft_triggered = False
-                return self._buffer.copy()
+                data = self._buffer.copy()
+                _exp_finish_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+                return data
+            elif status.value == READOUT_NOT_ACTIVE:
+                raise Exception("Expecting data, but READOUT_NOT_ACTIVE.")
+            elif status.value == READOUT_FAILED:
+                raise Exception("Expecting data, but READOUT_FAILED.")
         return None
 
     def _on_enable(self):
@@ -1155,19 +1159,25 @@ class PVCamera(devices.CameraDevice):
         else:
             self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MILLISEC)
             t = value = int(self.exposure_time * 1e3)
+        try:
+            if self._trigger == TIMED_MODE:
+                self._soft_triggered = False
+                nbytes = _exp_setup_seq(self.handle,
+                                        1, 1, # num epxosures, num regions
+                                        self._region,
+                                        TIMED_MODE,
+                                        t)
+                self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+                                          requirements=['C_CONTIGUOUS',
+                                          'ALIGNED',
+                                          'OWNDATA'])
+        except Exception as e:
+            self._logger.error("in _on_enable: %s" % e.message)
+            self._acquiring = False
+            raise
 
-        if self._trigger == TIMED_MODE:
-            nbytes = _exp_setup_seq(self.handle,
-                                    1, 1, # num epxosures, num regions
-                                    self._region,
-                                    TIMED_MODE,
-                                    t)
-            self._buffer = np.require(np.zeros(self.shape, dtype='int16'),
-                                      requirements=['C_CONTIGUOUS',
-                                      'ALIGNED',
-                                      'OWNDATA'])
         self._acquiring = True
-        return True
+        return self._acquiring
 
     def _on_disable(self):
         """Disable the hardware for a short period of inactivity."""
@@ -1317,7 +1327,7 @@ class PVCamera(devices.CameraDevice):
 
         This should put the camera into a state in which settings can
         be modified."""
-        _exp_abort(self.handle, CCS_CLEAR)
+        _exp_abort(self.handle, CCS_HALT)
         self._acquiring = False
 
 
@@ -1474,10 +1484,12 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.expose
     @Pyro4.oneway
     def soft_trigger(self):
+        self._logger.debug("Received soft trigger ...")
         if self._trigger == TIMED_MODE and self.get_is_enabled():
             """Send a software trigger to the camera."""
-            self._soft_triggered = True
             try:
                 _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+                self._soft_triggered = True
+                self._logger.debug("... triggered")
             except:
                 raise
