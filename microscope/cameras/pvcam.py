@@ -1116,6 +1116,13 @@ class PVCamera(devices.CameraDevice):
         self.exposure_time = 0.001 # in seconds
         self._buffer = None
         self._soft_triggered = False
+        self._params = {}
+
+        self.add_setting('exposure time',
+                         float,
+                         lambda: self.exposure_time,
+                         lambda value: setattr(self, 'exposure_time', value),
+                         lambda: (1e-6, 1),)
 
 
     @property
