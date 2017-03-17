@@ -992,32 +992,22 @@ class PVParam(object):
     def set_value(self, new_value):
         """Set a parameter value."""
         if self.dtype == 'enum':
-            # The PVCAM documentation states:
-            #     If the data type coming back from ATTR_TYPE is TYPE_ENUM
-            #     the function pl_get_param returns (and pl_set_param takes)
-            #     the value of enumerated type, not its index.
-            # However, this behaviour is not consistent with observations of the
-            # Evolve-5: enums retrieved from the hardware have values that match
-            # corresponding enums defined in the C header file, but pl_set_param
-            # sets the value by it's index in the enum table, not the value itself,
-            # so we have to search the enum table for the value to set that value.
             # We may be passed a value, a description string, or a tuple of
             # (value, string).
             values, descriptions = zip(*self.values)
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
-            else:
+            elif type(new_value) in [str, unicode]:
                 desc = str(new_value)
+            else:
+                desc = None
             # If we have a description, rely on that, as this avoids any confusion
             # of index and value.
-            if desc in descriptions:
+            if desc and desc in descriptions:
                 new_index = descriptions.index(desc)
-            else:
-                try:
-                    new_index = values.index(new_value)
-                except:
-                    raise Exception("Could not find value %s for enum %s." % (new_value, self.name))
-            new_value = new_index
+                new_value = values[new_index]
+            elif desc:
+                raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
 
         _set_param(self._hcam,
                    self.param_id,
@@ -1089,14 +1079,14 @@ class PVParam(object):
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
         elif self._pvtype == TYPE_ENUM:
-            index = self.raw.value or 0
-            length = _enum_str_length(self._hcam, self.param_id, index)
-            val, desc = _get_enum_param(self._hcam, self.param_id, index, length)
-            # Documentation says that enums should be set by value, rather than by
-            # index, but this doesn't appear to work, so here were return the index
-            # as the first tuple element.
-            # return (index, value, description)
-            return (val.value, desc.value)
+            value = self.raw.value or 0 # c_void_p(0) is None, so replace with 0
+            description = None
+            for index in range(self.count):
+                length = _enum_str_length(self._hcam, self.param_id, index)
+                val, desc = _get_enum_param(self._hcam, self.param_id, index, length)
+                if value == val.value:
+                    description = desc.value
+            return (value, description)
         else:
             return ctypes.POINTER(self._ctype)(self.raw).contents.value
 
