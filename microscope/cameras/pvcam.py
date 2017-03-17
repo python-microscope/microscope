@@ -26,14 +26,11 @@ import Pyro4
 from microscope import devices
 from microscope.devices import keep_acquiring
 
-_HEADER = 'pvcam.h'
-
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
 READOUT_TRANSFORMS = {
     'Evolve-5': {0: (0,0,0),
                  1: (1,0,0)}
 }
-
 
 # === Data types ===
 # Base typedefs, from pvcam SDK master.h
@@ -978,9 +975,18 @@ TRIGGER_MODES = {
     BULB_MODE: devices.TRIGGER_DURATION,
 }
 
+
+# === Python classes ===
+
+# Possible enum values that the hardware fails to report.
+_ENUM_FIXES = {
+    'Evolve-5': {PARAM_PMODE: [(0, 'Normal'), (4, 'Alternate Normal')],},
+}
+
+
 class PVParam(object):
     def __init__(self, camera, param_id):
-        self._hcam = camera.handle
+        self.cam = camera
         self.param_id = param_id
 
         self.name = _param_to_name[param_id]
@@ -1009,7 +1015,7 @@ class PVParam(object):
             elif desc:
                 raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
 
-        _set_param(self._hcam,
+        _set_param(self.cam.handle,
                    self.param_id,
                    ctypes.byref(ctypes.c_void_p(new_value)))
 
@@ -1023,14 +1029,14 @@ class PVParam(object):
         # return type
         rtype = _attr_map[what]
         if not rtype:
-            rtype = _get_param(self._hcam, self.param_id, ATTR_TYPE)
+            rtype = _get_param(self.cam.handle, self.param_id, ATTR_TYPE)
         if rtype.value == TYPE_CHAR_PTR:
             buf_len = _length_map[self.param_id]
             if not buf_len:
                 raise Exception('pvcam: parameter %s not supported in python.' % self.name)
-            result = _get_param(self._hcam, self.param_id, what, buf_len=buf_len)
+            result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
         else:
-            result = _get_param(self._hcam, self.param_id, what)
+            result = _get_param(self.cam.handle, self.param_id, what)
         return result
 
 
@@ -1041,7 +1047,7 @@ class PVParam(object):
 
     @property
     def available(self):
-        return bool(_get_param(self._hcam, self.param_id, ATTR_AVAIL))
+        return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL))
 
 
     @property
@@ -1054,9 +1060,15 @@ class PVParam(object):
         if self.dtype == 'enum':
             values = []
             for i in range(self.count):
-                length = _enum_str_length(self._hcam, self.param_id, i)
-                value, desc = _get_enum_param(self._hcam, self.param_id, i, length)
+                length = _enum_str_length(self.cam.handle, self.param_id, i)
+                value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
                 values.append((value.value, desc.value))
+            chip = self.cam._params[PARAM_CHIP_NAME].current
+            missing = _ENUM_FIXES.get(chip, {}).get(self.param_id, [])
+            for m in missing:
+                if m[0] not in zip(*values)[0]:
+                    values.append(m)
+            values.sort()
         elif self.dtype in [str, 'str']:
             values = _length_map[self.param_id] or 0
         else:
@@ -1065,6 +1077,7 @@ class PVParam(object):
                           ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
             except:
                 raise
+
         return values
 
     @property
@@ -1082,8 +1095,8 @@ class PVParam(object):
             value = self.raw.value or 0 # c_void_p(0) is None, so replace with 0
             description = None
             for index in range(self.count):
-                length = _enum_str_length(self._hcam, self.param_id, index)
-                val, desc = _get_enum_param(self._hcam, self.param_id, index, length)
+                length = _enum_str_length(self.cam.handle, self.param_id, index)
+                val, desc = _get_enum_param(self.cam.handle, self.param_id, index, length)
                 if value == val.value:
                     description = desc.value
             return (value, description)
