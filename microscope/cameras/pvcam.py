@@ -1179,10 +1179,10 @@ class PVCamera(devices.CameraDevice):
 
         Return True if successful, False if not."""
         if self.exposure_time < 1e-3:
-            self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MICROSEC)
+            self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MICROSEC)
             t = int(self.exposure_time * 1e6)
         else:
-            self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MILLISEC)
+            self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t = value = int(self.exposure_time * 1e3)
         if self._using_callback:
 
@@ -1251,109 +1251,6 @@ class PVCamera(devices.CameraDevice):
         """Disable the hardware for a prolonged period of inactivity."""
         self.abort()
         _cam_close(self.handle)
-
-
-    def _get_param_access(self, param_id):
-        """Fetch parameter access restrictions."""
-        # Will always be an integer, so return .value.
-        return _get_param(self.handle, param_id, ATTR_ACCESS).value
-
-
-    def _get_param_avail(self, param_id):
-        """Is param_id available?"""
-        # Will always be an integer, so return .value.
-        return _get_param(self.handle, param_id, ATTR_AVAIL).value
-
-
-    def _get_param_count(self, param_id):
-        """Fetch parameter count."""
-        # Will always be an integer, so return .value.
-        return _get_param(self.handle, param_id, ATTR_COUNT).value
-
-
-    def _get_param_ctype(self, param_id):
-        """Return the C data type for a parameter."""
-        return _typemap[param_id >> 24 & 255]
-
-
-    def _get_param_type_code(self, param_id):
-        """Fetch the parameter type code."""
-        # Will always be an integer, so return .value.
-        return _get_param(self.handle, param_id, ATTR_TYPE).value
-
-
-    def _get_enum_param(self, param_id, index):
-        length = _enum_str_length(self.handle, param_id, index)
-        val, desc = _get_enum_param(self.handle, param_id, index, length)
-        # Documentation says that enums should be set by value, rather than by
-        # index, but this doesn't appear to work, so here were return the index
-        # as the first tuple element.
-        #return (val.value, desc.value)
-        return (index, desc.value)
-
-
-    def _get_param(self, param_id, what=ATTR_CURRENT):
-        """Fetch a parameter for this device, converting from void_p."""
-        t = self._get_param_type_code(param_id)
-        if t == TYPE_CHAR_PTR:
-            buf_len = _length_map[param_id]
-            if not buf_len:
-                # Parameter not supported in python.
-                return None
-            try:
-                c = _get_param(self.handle, param_id, what, buf_len=buf_len)
-            except:
-                return None
-        else:
-            try:
-                c = _get_param(self.handle, param_id, what)
-            except:
-                return None
-        if t == TYPE_CHAR_PTR:
-            return str(memoryview(c)) or ''
-        elif t in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
-                         TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
-            return c
-        elif t == TYPE_ENUM:
-            cast_to = self._get_param_ctype(param_id)
-            return self._get_enum_param(param_id, c.value or 0)
-        else:
-            cast_to = self._get_param_ctype(param_id)
-            return ctypes.POINTER(cast_to)(c).contents.value
-
-
-    def _get_param_values(self, param_id):
-        """Get parameter values, range or string length."""
-        dtype = get_param_dtype(param_id)
-        if dtype == 'enum':
-            values = []
-            count = self._get_param_count(param_id)
-            for i in range(count):
-                length = _enum_str_length(self.handle, param_id, i)
-                # Documentation says to set enums using their value, not their index,
-                # but it seems this is incorrect, so we return (index, description).
-                #values.append(tuple(c.value for c in _get_enum_param(self.handle, param_id, i, length)))
-                values.append((i, _get_enum_param(self.handle, param_id, i, length)[1].value))
-        elif dtype in [str, 'str']:
-            values = _length_map[param_id] or 0
-        else:
-            try:
-                values = (self._get_param(param_id, what=ATTR_MIN),
-                          self._get_param(param_id, what=ATTR_MAX))
-            except:
-                raise
-        return values
-
-
-    def _set_param(self, param_id, value):
-        """Set a parameter with param_id to value."""
-        try:
-            cvalue = self._get_param_ctype(param_id)(value)
-            _set_param(self.handle,
-                       param_id,
-                       ctypes.byref(ctypes.c_void_p(value)))
-        except Exception as e:
-            self._logger.error(e.message)
 
 
     """Private shape-related methods. These methods do not need to account
@@ -1506,8 +1403,8 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time."""
-        t = self._get_param(PARAM_EXPOSURE_TIME)
-        res = self._get_param(PARAM_EXP_RES)
+        t = self._params[PARAM_EXPOSURE_TIME].current
+        res = self._params[PARAM_EXP_RES].current
         multipliers = {EXP_RES_ONE_SEC: 1.,
                        EXP_RES_ONE_MILLISEC: 1e-3,
                        EXP_RES_ONE_MICROSEC: 1e-6}
@@ -1524,7 +1421,7 @@ class PVCamera(devices.CameraDevice):
         Cycle time is the minimum time between exposures. This is
         typically exposure time plus readout time."""
         # Exposure time in seconds; readout time in microseconds.
-        return self.get_exposure_time() + 1e-6 * self._get_param(PARAM_READOUT_TIME)
+        return self.get_exposure_time() + 1e-6 * self._params[PARAM_READOUT_TIME].current
 
     @Pyro4.expose
     def get_trigger_type(self):
