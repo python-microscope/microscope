@@ -649,7 +649,7 @@ class dllFunction(object):
         res = self.f(*ars)
         # print res
 
-        if not res:
+        if res == False:
             err_code = _lib.pl_error_code()
             err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
             _lib.pl_error_message(err_code, err_msg)
@@ -661,6 +661,13 @@ class dllFunction(object):
             return ret[0]
         else:
             return ret
+
+
+def _status():
+    err_code = _lib.pl_error_code()
+    err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
+    _lib.pl_error_message(err_code, err_msg)
+    print (str(buffer(err_msg)))
 
 
 def dllFunc(name, args=[], argnames=[], buf_len=0):
@@ -1138,7 +1145,7 @@ class PVCamera(devices.CameraDevice):
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
         """Fetch data, recycle any buffers and return data or None."""
-        if self._trigger == TIMED_MODE and self._soft_triggered:
+        if self._trigger == 1000 + TIMED_MODE and self._soft_triggered:
             status, count = _exp_check_status(self.handle)
             if status.value == READOUT_COMPLETE:# and count.value > 0:
                 self._logger.debug("Copying data from buffer.")
@@ -1150,6 +1157,14 @@ class PVCamera(devices.CameraDevice):
                 raise Exception("Expecting data, but READOUT_NOT_ACTIVE.")
             elif status.value == READOUT_FAILED:
                 raise Exception("Expecting data, but READOUT_FAILED.")
+        elif self._trigger == TIMED_MODE:
+            status, byte_count, buffer_count = _exp_check_cont_status(self.handle)
+            if status.value == FRAME_AVAILABLE:
+                _exp_stop_cont(self.handle, CCS_CLEAR)
+                p_frame = ctypes.cast(_exp_get_oldest_frame(self.handle),
+                                    ctypes.POINTER(uns16))
+                frame = np.ctypeslib.as_array(p_frame, (self.roi[1], self.roi[3])).copy()
+                return frame
         return None
 
     def _on_enable(self):
@@ -1165,15 +1180,25 @@ class PVCamera(devices.CameraDevice):
         try:
             if self._trigger == TIMED_MODE:
                 self._soft_triggered = False
-                nbytes = _exp_setup_seq(self.handle,
-                                        1, 1, # num epxosures, num regions
-                                        self._region,
-                                        TIMED_MODE,
-                                        t)
-                self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+                # nbytes = _exp_setup_seq(self.handle,
+                #                         1, 1, # num epxosures, num regions
+                #                         self._region,
+                #                         TIMED_MODE,
+                #                         t)
+                # self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+                #                           requirements=['C_CONTIGUOUS',
+                #                           'ALIGNED',
+                #                           'OWNDATA'])
+                nbytes = _exp_setup_cont(self.handle,
+                                         1, self._region, TIMED_MODE, t, CIRC_OVERWRITE).value
+                self._buffer = np.require(np.zeros((10, self.shape[1], self.shape[0]), dtype='uint16'),
                                           requirements=['C_CONTIGUOUS',
-                                          'ALIGNED',
-                                          'OWNDATA'])
+                                                        'ALIGNED',
+                                                        'OWNDATA'])
+                _exp_start_cont(self.handle,
+                                self._buffer.ctypes.data_as(ctypes.c_void_p),
+                                self._buffer.nbytes)
+                _exp_stop_cont(self.handle, CCS_CLEAR)
         except Exception as e:
             self._logger.error("in _on_enable: %s" % e.message)
             self._acquiring = False
@@ -1330,6 +1355,7 @@ class PVCamera(devices.CameraDevice):
 
         This should put the camera into a state in which settings can
         be modified."""
+        _exp_stop_cont(self.handle, CCS_CLEAR)
         _exp_abort(self.handle, CCS_HALT)
         self._acquiring = False
 
@@ -1425,19 +1451,6 @@ class PVCamera(devices.CameraDevice):
             self._set_readout_transform(new_readout_transform)
 
 
-    @keep_acquiring
-    def _set_setting(self, param_id, value):
-        dtype = get_param_dtype(param_id)
-        if dtype == 'enum':
-            value = value[0]
-        try:
-            self._set_param(param_id, value)
-        except Exception as e:
-            self._logger.error(e.message)
-            return False
-        return True
-
-
     @Pyro4.expose
     def make_safe(self):
         """Put the camera into a safe state.
@@ -1491,7 +1504,10 @@ class PVCamera(devices.CameraDevice):
         if self._trigger == TIMED_MODE and self.get_is_enabled():
             """Send a software trigger to the camera."""
             try:
-                _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+                #_exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+                _exp_start_cont(self.handle,
+                                self._buffer.ctypes.data_as(ctypes.c_void_p),
+                                self._buffer.nbytes)
                 self._soft_triggered = True
                 self._logger.debug("... triggered")
             except:
