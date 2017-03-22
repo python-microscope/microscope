@@ -26,6 +26,7 @@ import Pyro4
 from microscope import devices
 from microscope.devices import keep_acquiring
 from past.builtins import basestring
+import time
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
 READOUT_TRANSFORMS = {
@@ -585,7 +586,8 @@ def stripMeta(val):
         return val
 
 
-CALLBACK = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
+
+CALLBACK = ctypes.CFUNCTYPE(ctypes.c_void_p)
 
 
 class dllFunction(object):
@@ -1134,6 +1136,7 @@ class PVCamera(devices.CameraDevice):
                          lambda: self.exposure_time,
                          lambda value: setattr(self, 'exposure_time', value),
                          lambda: (1e-6, 1),)
+        self._using_callback = True
 
 
     @property
@@ -1181,6 +1184,33 @@ class PVCamera(devices.CameraDevice):
         else:
             self._set_param(PARAM_EXP_RES, EXP_RES_ONE_MILLISEC)
             t = value = int(self.exposure_time * 1e3)
+        if self._using_callback:
+
+            def cb():
+                self._logger.info('Entered callback.')
+                timestamp = time.time()
+                frame = self._buffer.copy()
+                _exp_finish_seq(self.handle, CCS_CLEAR)
+                self._dispatch_buffer.put((frame, timestamp))
+                return
+
+            self._eof_callback = CALLBACK(cb)
+            _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
+
+            nbytes = _exp_setup_seq(self.handle,
+                                    1, 1, # num epxosures, num regions
+                                    self._region,
+                                    TIMED_MODE,
+                                    t)
+            self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+                                      requirements=['C_CONTIGUOUS',
+                                      'ALIGNED',
+                                      'OWNDATA'])
+            _exp_setup_seq(self.handle,
+                           1, 1, self._region, TIMED_MODE, t)
+            self._acquiring = True
+            return self._acquiring
+
         try:
             if self._trigger == TIMED_MODE:
                 self._soft_triggered = False
@@ -1505,6 +1535,10 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.oneway
     def soft_trigger(self):
         self._logger.debug("Received soft trigger ...")
+        if self._using_callback:
+            print "Triggered with callback."
+            _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
+            return
         if self._trigger == TIMED_MODE and self.get_is_enabled():
             """Send a software trigger to the camera."""
             try:
