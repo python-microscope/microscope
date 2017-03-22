@@ -1446,6 +1446,7 @@ class PVCamera(devices.CameraDevice):
         self._readout_modes = []
         self._readout_mode_parameters = {}
         for i, port in ro_ports:
+            self._params[PARAM_READOUT_PORT].set_value(i)
             ro_speeds = self._params[PARAM_SPDTAB_INDEX].values
             for j in range(ro_speeds[0], ro_speeds[1]+1):
                 self._params[PARAM_SPDTAB_INDEX].set_value(j)
