@@ -1158,15 +1158,18 @@ class PVCamera(devices.CameraDevice):
                 raise Exception("Expecting data, but READOUT_NOT_ACTIVE.")
             elif status.value == READOUT_FAILED:
                 raise Exception("Expecting data, but READOUT_FAILED.")
-        elif self._trigger == TIMED_MODE:
+        elif self._trigger == TIMED_MODE and self._soft_triggered:
             status, byte_count, buffer_count = _exp_check_cont_status(self.handle)
             if status.value == FRAME_AVAILABLE:
-                _exp_stop_cont(self.handle, CCS_CLEAR)
                 p_frame = ctypes.cast(_exp_get_oldest_frame(self.handle),
                                     ctypes.POINTER(uns16))
                 frame = np.ctypeslib.as_array(p_frame, (self.roi[1], self.roi[3])).copy()
+                _exp_stop_cont(self.handle, CCS_CLEAR)
+                self._soft_triggered = False
+                _exp_unlock_oldest_frame(self.handle)
                 return frame
         return None
+
 
     def _on_enable(self):
         """Enable the camera hardware and make ready to respond to triggers.
