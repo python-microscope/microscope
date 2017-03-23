@@ -1045,6 +1045,8 @@ class PVParam(object):
 
     def _query(self, what=ATTR_CURRENT):
         """Query the DLL for an attribute for this parameter."""
+        if self.cam._acquiring:
+            self.cam._logger.info("Querying settings during acquisition may break acquisition. (param %s)" % self.name)
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
@@ -1157,12 +1159,19 @@ class PVCamera(devices.CameraDevice):
                          self.set_exposure_time,
                          lambda: (1e-6, 1))
 
+
+        self.add_setting('trigger mode',
+                          'enum',
+                          lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
+                          lambda args: setattr(self, '_trigger', int(args[0])),
+                          [(k, v.label) for k, v in TRIGGER_MODES.items()]
+                          )
+
         self.add_setting('circular buffer length',
                          int,
                          lambda: self._circ_buffer_length,
                          lambda value: setattr(self, '_circ_buffer_length', value),
-                         lambda: (2, 100))
-
+                         (2, 100))
 
     @property
     def _region(self):
@@ -1177,11 +1186,6 @@ class PVCamera(devices.CameraDevice):
         return None
 
 
-    @Pyro4.expose
-    def OnEnable(self):
-        return self._on_enable()
-
-
     def _on_enable(self):
         """Enable the camera hardware and make ready to respond to triggers.
 
@@ -1194,6 +1198,8 @@ class PVCamera(devices.CameraDevice):
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t = value = int(self.exposure_time * 1e3)
+
+
         if self._trigger == TRIG_SOFT:
             # Software triggering for single frames.
             # Set up callback.
@@ -1212,7 +1218,6 @@ class PVCamera(devices.CameraDevice):
                                     self._region, TRIGGER_MODES[self._trigger].pv_mode, t)
             self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
                                       requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
-            self._acquiring = True
         else:
             # Use a circular buffer.
             self._using_callback = True
@@ -1232,14 +1237,28 @@ class PVCamera(devices.CameraDevice):
             buffer_shape = (self._circ_buffer_length*self.shape[1], self.shape[0])
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
-            try:
-                nbytes = _exp_setup_cont(self.handle, 1, self._region,
-                                         TRIGGER_MODES[self._trigger].pv_mode, t, CIRC_OVERWRITE).value
-                self._logger.debug('Enabling circular buffer.')
-                _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
-            except Exception as e:
-                self._logger.error(e.message)
-            self._acquiring = True
+            nbytes = _exp_setup_cont(self.handle, 1, self._region,
+                                     TRIGGER_MODES[self._trigger].pv_mode, t, CIRC_OVERWRITE).value
+
+        # Read back exposure time.
+        t_readback = self._params[PARAM_EXPOSURE_TIME].current
+        res = self._params[PARAM_EXP_RES].current
+        multipliers = {EXP_RES_ONE_SEC: 1.,
+                       EXP_RES_ONE_MILLISEC: 1e-3,
+                       EXP_RES_ONE_MICROSEC: 1e-6}
+        if isinstance(res, tuple):
+            self.exposure_time = t_readback * multipliers[res[0]]
+        else:
+            self.exposure_time = t_readback * multipliers[res]
+        self._logger.debug("***EXPOSURE TIME***\t%s" % self.exposure_time)
+        # Update cycle time. Exposure time in seconds; readout time in microseconds.
+        self.cycle_time = self.exposure_time + 1e-6 * self._params[PARAM_READOUT_TIME].current
+
+        if self._trigger != TRIG_SOFT:
+            self._logger.debug('Enabling circular buffer.')
+            _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
+
+        self._acquiring = True
         return self._acquiring
 
 
@@ -1317,11 +1336,9 @@ class PVCamera(devices.CameraDevice):
                 _cam_close(self.handle)
             except:
                 pass
-
-        self._pv_name = _cam_get_name(self._index)
+        self._pv_name = _cam_get_name(self._index).value
+        self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
-
-        self._logger.info('Initializing.')
 
         for (param_id, name) in _param_to_name.items():
             p = PVParam(self, param_id)
@@ -1334,12 +1351,23 @@ class PVCamera(devices.CameraDevice):
             except:
                 self._logger.warn("Skipping parameter %s: not supported in python." % p.name)
                 continue
-            self.add_setting(name,
-                             p.dtype,
-                             lambda p=p: p.current,
-                             lambda p=p: keep_acquiring(p.set_value),
-                             lambda p=p: p.values,
-                             not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
+
+            # Used to expose parameters here, but need to rework the settings system to
+            # prevent reads when self._acquiring.
+            # if param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
+            #     self.add_setting(p.name,
+            #                      p.dtype,
+            #                      lambda p=p: [p.current, None][self._acquiring],
+            #                      p.set_value,
+            #                      lambda p=p: p.values,
+            #                      not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
+        if PARAM_GAIN_MULT_FACTOR in self._params:
+            self.add_setting('gain',
+                             self._params[PARAM_GAIN_MULT_FACTOR].dtype,
+                             lambda: self._params[PARAM_GAIN_MULT_FACTOR].current,
+                             self._params[PARAM_GAIN_MULT_FACTOR].set_value,
+                             self._params[PARAM_GAIN_MULT_FACTOR].values)
+
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
         self.roi = (0, self.shape[0], 0, self.shape[1])
 
@@ -1408,26 +1436,21 @@ class PVCamera(devices.CameraDevice):
 
     @Pyro4.expose
     def get_exposure_time(self):
-        """Return the current exposure time."""
-        t = self._params[PARAM_EXPOSURE_TIME].current
-        res = self._params[PARAM_EXP_RES].current
-        multipliers = {EXP_RES_ONE_SEC: 1.,
-                       EXP_RES_ONE_MILLISEC: 1e-3,
-                       EXP_RES_ONE_MICROSEC: 1e-6}
-        if isinstance(res, tuple):
-            return t * multipliers[res[0]]
-        else:
-            return t * multipliers[res]
+        """Return the current exposure time.
+
+        Just return self.exposure_time, which is updated with the real
+        value during _on_enable."""
+        return self.exposure_time
 
 
     @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time.
 
-        Cycle time is the minimum time between exposures. This is
-        typically exposure time plus readout time."""
-        # Exposure time in seconds; readout time in microseconds.
-        return self.get_exposure_time() + 1e-6 * self._params[PARAM_READOUT_TIME].current
+        Just return self.cycle_time, which is updated with the real
+        value during _on_enable."""
+        return self.cycle_time
+
 
     @Pyro4.expose
     def get_trigger_type(self):
