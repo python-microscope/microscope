@@ -976,13 +976,26 @@ def get_param_dtype(param_id):
     return _dtypemap[param_id >> 24 & 255]
 
 
-# Trigger mode to type.
+# Trigger modes.
+class TriggerMode(object):
+    def __init__(self, id, label, pv_mode, microscope_mode):
+        self.id = id
+        self.label = label
+        self.pv_mode = pv_mode
+        self.microscope_mode = microscope_mode
+
+    def __repr__(self):
+        return "<%s: '%s'>" % (type(self).__name__, self.label)
+
+(TRIG_SOFT, TRIG_TIMED, TRIG_VARIABLE, TRIG_FIRST, TRIG_STROBED, TRIG_BULB) = range(6)
+
 TRIGGER_MODES = {
-    TIMED_MODE: devices.TRIGGER_SOFT,
-    VARIABLE_TIMED_MODE: devices.TRIGGER_SOFT,
-    TRIGGER_FIRST_MODE: devices.TRIGGER_BEFORE,
-    STROBED_MODE: devices.TRIGGER_BEFORE,
-    BULB_MODE: devices.TRIGGER_DURATION,
+    TRIG_SOFT: TriggerMode(TRIG_SOFT, 'software', TIMED_MODE, devices.TRIGGER_SOFT),
+    TRIG_TIMED: TriggerMode(TRIG_TIMED, 'timed', TIMED_MODE, -1),
+    TRIG_VARIABLE: TriggerMode(TRIG_VARIABLE, 'variable timed', VARIABLE_TIMED_MODE, -1),
+    TRIG_FIRST: TriggerMode(TRIG_FIRST, 'trig. first', TRIGGER_FIRST_MODE, devices.TRIGGER_BEFORE),
+    TRIG_STROBED: TriggerMode(TRIG_STROBED, 'strobed', STROBED_MODE, devices.TRIGGER_BEFORE),
+    TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION)
 }
 
 
@@ -1128,15 +1141,27 @@ class PVCamera(devices.CameraDevice):
         self._trigger = TIMED_MODE
         self.exposure_time = 0.001 # in seconds
         self._buffer = None
-        self._soft_triggered = False
         self._params = {}
+        self._circ_buffer_length = 10
+
+        self.add_setting('trigger mode',
+                          'enum',
+                          lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
+                          lambda args: setattr(self, '_trigger', int(args[0])),
+                          lambda: [(k, v.label) for k, v in TRIGGER_MODES.items()]
+                          )
 
         self.add_setting('exposure time',
                          float,
                          lambda: self.exposure_time,
-                         lambda value: setattr(self, 'exposure_time', value),
-                         lambda: (1e-6, 1),)
-        self._using_callback = True
+                         self.set_exposure_time,
+                         lambda: (1e-6, 1))
+
+        self.add_setting('circular buffer length',
+                         int,
+                         lambda: self._circ_buffer_length,
+                         lambda value: setattr(self, '_circ_buffer_length', value),
+                         lambda: (2, 100))
 
 
     @property
@@ -1148,103 +1173,80 @@ class PVCamera(devices.CameraDevice):
 
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
-        """Fetch data, recycle any buffers and return data or None."""
-        if self._trigger == 1000 + TIMED_MODE and self._soft_triggered:
-            status, count = _exp_check_status(self.handle)
-            if status.value == READOUT_COMPLETE:# and count.value > 0:
-                self._logger.debug("Copying data from buffer.")
-                self._soft_triggered = False
-                data = self._buffer.copy()
-                _exp_finish_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
-                return data
-            elif status.value == READOUT_NOT_ACTIVE:
-                raise Exception("Expecting data, but READOUT_NOT_ACTIVE.")
-            elif status.value == READOUT_FAILED:
-                raise Exception("Expecting data, but READOUT_FAILED.")
-        elif self._trigger == TIMED_MODE and self._soft_triggered:
-            status, byte_count, buffer_count = _exp_check_cont_status(self.handle)
-            if status.value == FRAME_AVAILABLE:
-                p_frame = ctypes.cast(_exp_get_oldest_frame(self.handle),
-                                    ctypes.POINTER(uns16))
-                frame = np.ctypeslib.as_array(p_frame, (self.roi[1], self.roi[3])).copy()
-                _exp_stop_cont(self.handle, CCS_CLEAR)
-                self._soft_triggered = False
-                _exp_unlock_oldest_frame(self.handle)
-                return frame
+        # Not used: images fetched using callback.
         return None
+
+
+    @Pyro4.expose
+    def OnEnable(self):
+        return self._on_enable()
 
 
     def _on_enable(self):
         """Enable the camera hardware and make ready to respond to triggers.
 
         Return True if successful, False if not."""
+
+        # Set exposure time resolution on camera.
         if self.exposure_time < 1e-3:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MICROSEC)
             t = int(self.exposure_time * 1e6)
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t = value = int(self.exposure_time * 1e3)
-        if self._using_callback:
-
+        if self._trigger == TRIG_SOFT:
+            # Software triggering for single frames.
+            # Set up callback.
+            self._using_callback = True
             def cb():
-                self._logger.info('Entered callback.')
+                self._logger.debug("In EOF callback - soft trigger.")
                 timestamp = time.time()
                 frame = self._buffer.copy()
                 _exp_finish_seq(self.handle, CCS_CLEAR)
                 self._dispatch_buffer.put((frame, timestamp))
                 return
-
+            # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-
-            nbytes = _exp_setup_seq(self.handle,
-                                    1, 1, # num epxosures, num regions
-                                    self._region,
-                                    TIMED_MODE,
-                                    t)
+            nbytes = _exp_setup_seq(self.handle, 1, 1, # cam, num epxosures, num regions
+                                    self._region, TRIGGER_MODES[self._trigger].pv_mode, t)
             self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
-                                      requirements=['C_CONTIGUOUS',
-                                      'ALIGNED',
-                                      'OWNDATA'])
-            _exp_setup_seq(self.handle,
-                           1, 1, self._region, TIMED_MODE, t)
+                                      requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
             self._acquiring = True
-            return self._acquiring
-
-        try:
-            if self._trigger == TIMED_MODE:
-                self._soft_triggered = False
-                # nbytes = _exp_setup_seq(self.handle,
-                #                         1, 1, # num epxosures, num regions
-                #                         self._region,
-                #                         TIMED_MODE,
-                #                         t)
-                # self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
-                #                           requirements=['C_CONTIGUOUS',
-                #                           'ALIGNED',
-                #                           'OWNDATA'])
-                nbytes = _exp_setup_cont(self.handle,
-                                         1, self._region, TIMED_MODE, t, CIRC_OVERWRITE).value
-                self._buffer = np.require(np.zeros((10, self.shape[1], self.shape[0]), dtype='uint16'),
-                                          requirements=['C_CONTIGUOUS',
-                                                        'ALIGNED',
-                                                        'OWNDATA'])
-                _exp_start_cont(self.handle,
-                                self._buffer.ctypes.data_as(ctypes.c_void_p),
-                                self._buffer.nbytes)
-                _exp_stop_cont(self.handle, CCS_CLEAR)
-        except Exception as e:
-            self._logger.error("in _on_enable: %s" % e.message)
-            self._acquiring = False
-            raise
-
-        self._acquiring = True
+        else:
+            # Use a circular buffer.
+            self._using_callback = True
+            def cb():
+                timestamp = time.time()
+                self._logger.debug("In c-buffer callback at t=%s." % timestamp)
+                frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
+                self._logger.debug("Fetched frame pointer.")
+                frame = np.ctypeslib.as_array(frame_p, (self.roi[1], self.roi[3])).copy()
+                self._logger.debug("Fetched frame.")
+                self._dispatch_buffer.put((frame, timestamp))
+                self._logger.debug("Dispatched frame.")
+                return
+            # Need to keep a reference to the callback.
+            self._eof_callback = CALLBACK(cb)
+            _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
+            buffer_shape = (self._circ_buffer_length*self.shape[1], self.shape[0])
+            self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
+                                          requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
+            try:
+                nbytes = _exp_setup_cont(self.handle, 1, self._region,
+                                         TRIGGER_MODES[self._trigger].pv_mode, t, CIRC_OVERWRITE).value
+                self._logger.debug('Enabling circular buffer.')
+                _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
+            except Exception as e:
+                self._logger.error(e.message)
+            self._acquiring = True
         return self._acquiring
+
 
     def _on_disable(self):
         """Disable the hardware for a short period of inactivity."""
         self.abort()
-        pass
+        _cam_deregister_callback(self.handle, PL_CALLBACK_EOF)
 
 
     def _on_shutdown(self):
@@ -1286,7 +1288,11 @@ class PVCamera(devices.CameraDevice):
 
         This should put the camera into a state in which settings can
         be modified."""
-        _exp_stop_cont(self.handle, CCS_CLEAR)
+        self._logger.debug('In abort.\n\tself._acquring=%s\n\tself=%s' % (self._acquiring, self))
+        if self._trigger == TRIG_SOFT:
+            _exp_finish_seq(self.handle, CCS_CLEAR)
+        else:
+            _exp_stop_cont(self.handle, CCS_CLEAR)
         _exp_abort(self.handle, CCS_HALT)
         self._acquiring = False
 
@@ -1331,7 +1337,7 @@ class PVCamera(devices.CameraDevice):
             self.add_setting(name,
                              p.dtype,
                              lambda p=p: p.current,
-                             p.set_value,
+                             lambda p=p: keep_acquiring(p.set_value),
                              lambda p=p: p.values,
                              not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
@@ -1426,25 +1432,16 @@ class PVCamera(devices.CameraDevice):
     @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
-        return TRIGGER_MODES[self._trigger]
+        return TRIGGER_MODES[self._trigger].microscope_mode
 
 
     @Pyro4.expose
     @Pyro4.oneway
     def soft_trigger(self):
-        self._logger.debug("Received soft trigger ...")
-        if self._using_callback:
-            print "Triggered with callback."
+        if self._trigger == TRIG_SOFT:
+            self._logger.debug("Received soft trigger ...")
             _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
-            return
-        if self._trigger == TIMED_MODE and self.get_is_enabled():
-            """Send a software trigger to the camera."""
-            try:
-                #_exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
-                _exp_start_cont(self.handle,
-                                self._buffer.ctypes.data_as(ctypes.c_void_p),
-                                self._buffer.nbytes)
-                self._soft_triggered = True
-                self._logger.debug("... triggered")
-            except:
-                raise
+        else:
+            status, bytes, frames = _exp_check_cont_status(self.handle)
+            self._logger.debug("status: %d\tbytes: %d\tframes: %d " % (status.value, bytes.value, frames.value))
+        return
