@@ -1159,6 +1159,9 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
         self.binning = (1, 1)
         self._trigger = TIMED_MODE
         self.exposure_time = 0.001 # in seconds
+        # Cycle time
+        self.cycle_time = self.exposure_time
+        # Data buffer.
         self._buffer = None
         # This devices PVCAM parameters.
         self._params = {}
