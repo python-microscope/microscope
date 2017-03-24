@@ -998,6 +998,12 @@ TRIGGER_MODES = {
     TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION)
 }
 
+STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
+                  EXPOSURE_IN_PROGRESS: 'EXPOSURE_IN_PROGRESS',
+                  READOUT_IN_PROGRESS: 'READOUT_IN_PROGRESS',
+                  READOUT_COMPLETE: 'READOUT_COMPLETE',
+                  READOUT_FAILED: 'READOUT_FAILED',
+                  FRAME_AVAILABLE: 'FRAME_AVAILABLE',}
 
 # === Python classes ===
 
@@ -1488,6 +1494,11 @@ class PVCamera(devices.CameraDevice):
             self._logger.debug("Received soft trigger ...")
             _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
         else:
-            status, bytes, frames = _exp_check_cont_status(self.handle)
-            self._logger.debug("status: %d\tbytes: %d\tframes: %d " % (status.value, bytes.value, frames.value))
+            cstatus, cbytes, cframes = _exp_check_cont_status(self.handle)
+            status, bytes = _exp_check_status(self.handle)
+
+            self._logger.debug("Status checks\ncheck_cont:   %s \t bytes: %d\tframes: %d\n"  \
+                               "check_status: %s \t bytes: %d\t" \
+                               % (STATUS_STRINGS[cstatus.value], cbytes.value, cframes.value,
+                                  STATUS_STRINGS[status.value], bytes.value))
         return
