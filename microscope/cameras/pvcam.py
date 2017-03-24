@@ -1189,8 +1189,8 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
     @property
     def _region(self):
         """Return a rgn_type for current roi and binning settings."""
-        return rgn_type(self.roi[0], self.roi[1]-1, self.binning[0],
-                        self.roi[2], self.roi[3]-1, self.binning[1])
+        return rgn_type(self.roi[0], self.roi[2]-1, self.binning[0],
+                        self.roi[1], self.roi[3]-1, self.binning[1])
 
 
     """Private methods, called here and within super classes."""
@@ -1237,13 +1237,13 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
                 """Circular buffer mode end-of-frame callback."""
                 timestamp = time.time()
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
-                frame = np.ctypeslib.as_array(frame_p, (self.roi[1], self.roi[3])).copy()
+                frame = np.ctypeslib.as_array(frame_p, (self.roi[2], self.roi[3])).copy()
                 self._dispatch_buffer.put((frame, timestamp))
                 return
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-            buffer_shape = (self._circ_buffer_length*self.shape[1], self.shape[0])
+            buffer_shape = (self._circ_buffer_length*self.roi[2], self.roi[3])
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
@@ -1311,13 +1311,13 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
-        return (0, 0, 512, 512)
+        return self.roi
 
     @keep_acquiring
     def _set_roi(self, left, top, width, height):
         """Set the ROI to (left, tip, width, height)."""
+        self.roi = (left, top, width, height)
 
-        return False
 
     """Public methods, callable from client."""
     def get_id(self):
@@ -1407,7 +1407,7 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
                              self._params[PARAM_PMODE].values)
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
-        self.roi = (0, self.shape[0], 0, self.shape[1])
+        self.roi = (0, 0, self.shape[0], self.shape[1])
 
         for param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
             p = self._params.get(param_id, None)
