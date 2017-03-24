@@ -1345,7 +1345,13 @@ class PVCamera(devices.CameraDevice):
         self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
 
+        self._params = {}
+        # Add chip before anything else, as chip name is used to add missing enums.
+        self._params[PARAM_CHIP_NAME] = PVParam(self, PARAM_CHIP_NAME)
+
         for (param_id, name) in _param_to_name.items():
+            if param_id in self._params:
+                continue
             p = PVParam(self, param_id)
             self._params[param_id] = p
             name = name[6:]
