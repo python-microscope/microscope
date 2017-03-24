@@ -1148,12 +1148,6 @@ class PVCamera(devices.CameraDevice):
         self._params = {}
         self._circ_buffer_length = 10
 
-        self.add_setting('trigger mode',
-                          'enum',
-                          lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
-                          lambda args: setattr(self, '_trigger', int(args[0])),
-                          lambda: [(k, v.label) for k, v in TRIGGER_MODES.items()]
-                          )
 
         self.add_setting('exposure time',
                          float,
