@@ -1359,19 +1359,22 @@ class PVCamera(devices.CameraDevice):
                 continue
             try:
                 p.current
-            except:
-                self._logger.warn("Skipping parameter %s: not supported in python." % p.name)
-                continue
+            except Exception as e:
+                if not e.message.startswith('pvcam error 49'):
+                    self._logger.warn("Skipping parameter %s: not supported in python. Error %s" % (p.name, e.message))
+                    continue
 
-            # Used to expose parameters here, but need to rework the settings system to
-            # prevent reads when self._acquiring.
-            # if param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
-            #     self.add_setting(p.name,
-            #                      p.dtype,
-            #                      lambda p=p: [p.current, None][self._acquiring],
-            #                      p.set_value,
-            #                      lambda p=p: p.values,
-            #                      not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
+            # Used to expose parameters as settings here, but need to rework the settings
+            # system to prevent reads when self._acquiring ... Even then, exposing all
+            # available parameters as settings seems to cause the camera hardware to fall
+            # over more frequently. Only expose what we need, for now.
+            # self.add_setting(p.name,
+            #                 p.dtype,
+            #                 lambda p=p: [p.current, None][self._acquiring],
+            #                 p.set_value,
+            #                 lambda p=p: p.values,
+            #                 not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
+
         if PARAM_GAIN_MULT_FACTOR in self._params:
             self.add_setting('gain',
                              self._params[PARAM_GAIN_MULT_FACTOR].dtype,
@@ -1379,8 +1382,20 @@ class PVCamera(devices.CameraDevice):
                              self._params[PARAM_GAIN_MULT_FACTOR].set_value,
                              self._params[PARAM_GAIN_MULT_FACTOR].values)
 
+        if PARAM_PMODE in self._params:
+            self.add_setting('frame transfer mode',
+                             self._params[PARAM_PMODE].dtype,
+                             lambda: self._params[PARAM_PMODE].current,
+                             self._params[PARAM_PMODE].set_value,
+                             self._params[PARAM_PMODE].values)
+
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
         self.roi = (0, self.shape[0], 0, self.shape[1])
+
+        for param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
+            p = self._params.get(param_id, None)
+            if not p or not p.dtype or not p.available:
+                continue
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
