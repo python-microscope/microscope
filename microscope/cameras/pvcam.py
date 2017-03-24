@@ -1194,10 +1194,11 @@ class PVCamera(devices.CameraDevice):
         # Set exposure time resolution on camera.
         if self.exposure_time < 1e-3:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MICROSEC)
-            t = int(self.exposure_time * 1e6)
+            t_exp = int(self.exposure_time * 1e6)
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
-            t = value = int(self.exposure_time * 1e3)
+            t_exp = value = int(self.exposure_time * 1e3)
+
 
 
         if self._trigger == TRIG_SOFT:
@@ -1215,7 +1216,7 @@ class PVCamera(devices.CameraDevice):
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
             nbytes = _exp_setup_seq(self.handle, 1, 1, # cam, num epxosures, num regions
-                                    self._region, TRIGGER_MODES[self._trigger].pv_mode, t)
+                                    self._region, TRIGGER_MODES[self._trigger].pv_mode, t_exp)
             self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
                                       requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
         else:
@@ -1238,7 +1239,9 @@ class PVCamera(devices.CameraDevice):
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
-                                     TRIGGER_MODES[self._trigger].pv_mode, t, CIRC_OVERWRITE).value
+                                     TRIGGER_MODES[self._trigger].pv_mode, t_exp, CIRC_OVERWRITE).value
+
+
 
         # Read back exposure time.
         t_readback = self._params[PARAM_EXPOSURE_TIME].current
@@ -1254,6 +1257,8 @@ class PVCamera(devices.CameraDevice):
         # Update cycle time. Exposure time in seconds; readout time in microseconds.
         self.cycle_time = self.exposure_time + 1e-6 * self._params[PARAM_READOUT_TIME].current
 
+        if self._trigger == TRIG_VARIABLE:
+            self._params[PARAM_EXP_TIME].set_value(t_exp)
         if self._trigger != TRIG_SOFT:
             self._logger.debug('Enabling circular buffer.')
             _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
