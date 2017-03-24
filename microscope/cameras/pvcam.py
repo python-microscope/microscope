@@ -1131,6 +1131,8 @@ class PVParam(object):
 
 @Pyro4.behavior('single')
 class PVCamera(devices.CameraDevice):
+    open_cameras = []
+
     """Implements the CameraDevice interface for the pvcam library."""
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
@@ -1277,6 +1279,10 @@ class PVCamera(devices.CameraDevice):
         """Disable the hardware for a prolonged period of inactivity."""
         self.abort()
         _cam_close(self.handle)
+        PVCamera.open_cameras.remove(self.handle)
+        if not PVCamera.open_cameras:
+            self._logger.info("No more open cameras - calling _pvcam_uninit.")
+            _pvcam_uninit()
 
 
     """Private shape-related methods. These methods do not need to account
@@ -1327,23 +1333,28 @@ class PVCamera(devices.CameraDevice):
 
         Open the connection and populate settings dict.
         """
-        try:
-            _pvcam_init()
-        except:
-            pass
+        if not PVCamera.open_cameras:
+            try:
+                _pvcam_init()
+            except:
+                pass
+
         # If no cameras detected, need to deinit and reinit SDK to update count.
         if _cam_get_total().value == 0:
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
 
-        if self.handle:
+        if self.handle in PVCamera.open_cameras:
             try:
                 _cam_close(self.handle)
+                PVCamera.open_cameras.remove(self.handle)
             except:
                 pass
+
         self._pv_name = _cam_get_name(self._index).value
         self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
+        PVCamera.open_cameras.append(self.handle)
 
         self._params = {}
         # Add chip before anything else, as chip name is used to add missing enums.
