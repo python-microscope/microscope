@@ -1016,6 +1016,7 @@ class PVParam(object):
         self._pvtype = param_id >> 24 & 255
         self.dtype = _dtypemap[self._pvtype]
         self._ctype = _typemap[self._pvtype]
+        self.__cache = {}
 
 
     def set_value(self, new_value):
@@ -1037,16 +1038,18 @@ class PVParam(object):
                 new_value = values[new_index]
             elif desc:
                 raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
-
         _set_param(self.cam.handle,
                    self.param_id,
                    ctypes.byref(ctypes.c_void_p(new_value)))
+        # Read back the value to update cache..
+        self._query(force_query=True)
 
 
-    def _query(self, what=ATTR_CURRENT):
+    def _query(self, what=ATTR_CURRENT, force_query=False):
         """Query the DLL for an attribute for this parameter."""
-        if self.cam._acquiring:
-            self.cam._logger.info("Querying settings during acquisition may break acquisition. (param %s)" % self.name)
+        key = (self, what)
+        if self.cam._acquiring and not force_query:
+            return self.__cache[key]
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
@@ -1062,6 +1065,7 @@ class PVParam(object):
             result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
         else:
             result = _get_param(self.cam.handle, self.param_id, what)
+        self.__cache[key] = result
         return result
 
 
@@ -1102,7 +1106,6 @@ class PVParam(object):
                           ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
             except:
                 raise
-
         return values
 
     @property
@@ -1117,13 +1120,10 @@ class PVParam(object):
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
         elif self._pvtype == TYPE_ENUM:
-            value = self.raw.value or 0 # c_void_p(0) is None, so replace with 0
-            description = None
-            for index in range(self.count):
-                length = _enum_str_length(self.cam.handle, self.param_id, index)
-                val, desc = _get_enum_param(self.cam.handle, self.param_id, index, length)
-                if value == val.value:
-                    description = desc.value
+            value = int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
+            vals, descs = zip(*self.values)
+            index = vals.index(value)
+            description = descs[index]
             return (value, description)
         else:
             return ctypes.POINTER(self._ctype)(self.raw).contents.value
