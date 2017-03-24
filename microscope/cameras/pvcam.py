@@ -1138,7 +1138,7 @@ class PVParam(object):
 
 
 @Pyro4.behavior('single')
-class PVCamera(devices.CameraDevice):
+class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
     # Keep track of open cameras.
     open_cameras = []
 
@@ -1317,6 +1317,10 @@ class PVCamera(devices.CameraDevice):
         return False
 
     """Public methods, callable from client."""
+    def get_id(self):
+        return self._params[PARAM_HEAD_SER_NUM_ALPHA].current
+
+
     @Pyro4.expose
     def abort(self):
         """Abort acquisition.
