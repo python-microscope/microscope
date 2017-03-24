@@ -553,6 +553,7 @@ else:
 STRING = ctypes.c_char_p
 
 # classes so that we do some magic and automatically add byrefs etc ... can classify outputs
+# (Nicked from PYME's Ixon wrapper.)
 class _meta(object):
     pass
 
@@ -580,17 +581,20 @@ OUTSTRING = _OUTSTRING()
 
 
 def stripMeta(val):
+    """Strip meta info from OUTPUT and OUTSTRING instances."""
     if isinstance(val, _meta):
         return val.val
     else:
         return val
 
-
-
+# Function type for callbacks.
 CALLBACK = ctypes.CFUNCTYPE(ctypes.c_void_p)
 
 
 class dllFunction(object):
+    """Expose a DLL function to python.
+
+    (Again, largely nicked from PYME.)"""
     def __init__(self, name, args=[], argnames=[], buf_len=-1, lib=_lib):
         self.f = getattr(lib, name)
         self.f.restype = rs_bool
@@ -619,7 +623,6 @@ class dllFunction(object):
         ars = []
         i = 0
         ret = []
-
         # pl_get_param buffer length depends on the parameter being fetched, so
         # use kwargs to pass buffer length.
         if 'buf_len' in kwargs:
@@ -633,7 +636,6 @@ class dllFunction(object):
             bs = 256
         if isinstance(bs, ctypes._SimpleCData):
             bs = bs.value
-
 
         for j in range(len(self.inp)):
             if self.inp[j]:  # an input
@@ -667,6 +669,7 @@ class dllFunction(object):
 
 
 def _status():
+    """Fetch the PVCAM DLL status."""
     err_code = _lib.pl_error_code()
     err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
     _lib.pl_error_message(err_code, err_msg)
@@ -674,10 +677,12 @@ def _status():
 
 
 def dllFunc(name, args=[], argnames=[], buf_len=0):
+    """Register a function using dllFunction."""
     f = dllFunction(name, args, argnames, buf_len=buf_len)
     globals()[name[2:]] = f
 
 
+"""DLL function imports."""
 # Class 0 functions - library
 dllFunc('pl_pvcam_get_ver', [OUTPUT(uns16)], ['version'])
 dllFunc('pl_pvcam_init')
@@ -717,7 +722,6 @@ dllFunc('pl_get_enum_param',
         ['hcam', 'param_id', 'index', 'value', 'desc', 'length'])
 dllFunc('pl_enum_str_length', [int16, uns32, uns32, OUTPUT(uns32)],
         ['hcam', 'param_id', 'index', 'length'])
-
 dllFunc('pl_pp_reset', [int16,], ['hcam'])
 dllFunc('pl_create_smart_stream_struct', [OUTPUT(smart_stream_type), uns16],
         ['pSmtStruct', 'entries'])
@@ -728,48 +732,36 @@ dllFunc('pl_create_frame_info_struct', [OUTPUT(FRAME_INFO),],
 dllFunc('pl_release_frame_info_struct', [ctypes.POINTER(FRAME_INFO),],
         ['pFrameInfoToDel',])
 dllFunc('pl_exp_abort', [int16, int16], ['hcam', 'cam_state'])
-
 dllFunc('pl_exp_setup_seq',
         [int16, uns16, uns16, ctypes.POINTER(rgn_type), int16, uns32, OUTPUT(uns32)],
         ['hcam', 'exp_total', 'rgn_total', 'rgn_array', 'exp_mode', 'exposure_time', 'exp_bytes'])
-
 dllFunc('pl_exp_start_seq', [int16, ctypes.c_void_p], ['hcam', 'pixel_stream'])
-
 dllFunc('pl_exp_setup_cont',
         [int16, uns16, ctypes.POINTER(rgn_type), int16, uns32, OUTPUT(uns32), int16],
         ['hcam', 'rgn_total', 'rgn_array', 'exp_mode', 'exposure_time', 'exp_bytes', 'buffer_mode'])
-
-dllFunc('pl_exp_start_cont', [int16, ctypes.c_void_p, uns32], ['hcam', 'pixel_stream', 'size'])
-
-dllFunc('pl_exp_check_status', [int16, OUTPUT(int16), OUTPUT(uns32)], ['hcam', 'status', 'bytes_arrived'])
-
+dllFunc('pl_exp_start_cont',
+        [int16, ctypes.c_void_p, uns32],
+        ['hcam', 'pixel_stream', 'size'])
+dllFunc('pl_exp_check_status',
+        [int16, OUTPUT(int16), OUTPUT(uns32)],
+        ['hcam', 'status', 'bytes_arrived'])
 dllFunc('pl_exp_check_cont_status',
         [int16, OUTPUT(int16), OUTPUT(uns32), OUTPUT(uns32)],
         ['hcam', 'status', 'bytes_arrived', 'buffer_cnt'])
-
 dllFunc('pl_exp_check_cont_status_ex',
         [int16, OUTPUT(int16), OUTPUT(uns32), OUTPUT(uns32), ctypes.POINTER(FRAME_INFO)],
         ['hcam', 'status', 'byte_cnt', 'buffer_cnt', 'pFrameInfo'])
-
 dllFunc('pl_exp_get_latest_frame', [int16, OUTPUT(ctypes.c_void_p)], ['hcam', 'frame'])
-
 dllFunc('pl_exp_get_latest_frame_ex',
         [int16, OUTPUT(ctypes.c_void_p), ctypes.POINTER(FRAME_INFO)],
         ['hcam', 'frame', 'pFrameInfo'])
-
 dllFunc('pl_exp_get_oldest_frame', [int16, OUTPUT(ctypes.c_void_p)], ['hcam', 'frame'])
-
 dllFunc('pl_exp_get_oldest_frame_ex',
         [int16, OUTPUT(ctypes.c_void_p), ctypes.POINTER(FRAME_INFO)],
         ['hcam', 'frame', 'pFrameInfo'])
-
 dllFunc('pl_exp_unlock_oldest_frame', [int16], ['hcam'])
-
 dllFunc('pl_exp_stop_cont', [int16, int16], ['hcam', 'cam_state'])
-
 dllFunc('pl_exp_abort', [int16, int16], ['hcam', 'cam_state'])
-
-#dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p, int16], ['hcam', 'pixel_stream', 'hbuf'])
 dllFunc('pl_exp_finish_seq', [int16, ctypes.c_void_p], ['hcam', 'pixel_stream'])
 
 
@@ -976,8 +968,25 @@ def get_param_dtype(param_id):
     return _dtypemap[param_id >> 24 & 255]
 
 
+# Map status codes to strings.
+STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
+                  EXPOSURE_IN_PROGRESS: 'EXPOSURE_IN_PROGRESS',
+                  READOUT_IN_PROGRESS: 'READOUT_IN_PROGRESS',
+                  READOUT_COMPLETE: 'READOUT_COMPLETE',
+                  READOUT_FAILED: 'READOUT_FAILED',
+                  FRAME_AVAILABLE: 'FRAME_AVAILABLE',}
+
+
+# Allowable enum values that the hardware fails to report.
+_ENUM_FIXES = {
+    'Evolve-5': {PARAM_PMODE: [(0, 'Normal'), (4, 'Alternate Normal')],},
+}
+
+
+# === Python classes ===
 # Trigger modes.
 class TriggerMode(object):
+    """A microscope trigger mode using PVCAM PMODES."""
     def __init__(self, id, label, pv_mode, microscope_mode):
         self.id = id
         self.label = label
@@ -987,33 +996,23 @@ class TriggerMode(object):
     def __repr__(self):
         return "<%s: '%s'>" % (type(self).__name__, self.label)
 
+
+# Enumerate trigger types.
 (TRIG_SOFT, TRIG_TIMED, TRIG_VARIABLE, TRIG_FIRST, TRIG_STROBED, TRIG_BULB) = range(6)
 
+# Trigger mode definitions.
 TRIGGER_MODES = {
     TRIG_SOFT: TriggerMode(TRIG_SOFT, 'software', TIMED_MODE, devices.TRIGGER_SOFT),
     TRIG_TIMED: TriggerMode(TRIG_TIMED, 'timed', TIMED_MODE, -1),
     TRIG_VARIABLE: TriggerMode(TRIG_VARIABLE, 'variable timed', VARIABLE_TIMED_MODE, -1),
     TRIG_FIRST: TriggerMode(TRIG_FIRST, 'trig. first', TRIGGER_FIRST_MODE, devices.TRIGGER_BEFORE),
     TRIG_STROBED: TriggerMode(TRIG_STROBED, 'strobed', STROBED_MODE, devices.TRIGGER_BEFORE),
-    TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION)
-}
-
-STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
-                  EXPOSURE_IN_PROGRESS: 'EXPOSURE_IN_PROGRESS',
-                  READOUT_IN_PROGRESS: 'READOUT_IN_PROGRESS',
-                  READOUT_COMPLETE: 'READOUT_COMPLETE',
-                  READOUT_FAILED: 'READOUT_FAILED',
-                  FRAME_AVAILABLE: 'FRAME_AVAILABLE',}
-
-# === Python classes ===
-
-# Possible enum values that the hardware fails to report.
-_ENUM_FIXES = {
-    'Evolve-5': {PARAM_PMODE: [(0, 'Normal'), (4, 'Alternate Normal')],},
+    TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION),
 }
 
 
 class PVParam(object):
+    """A wrapper around PVCAM parameters."""
     def __init__(self, camera, param_id):
         self.cam = camera
         self.param_id = param_id
@@ -1114,12 +1113,15 @@ class PVParam(object):
                 raise
         return values
 
+
     @property
     def raw(self):
         return self._query()
 
+
     @property
     def current(self):
+        """Return the current (or cached) parameter value."""
         if self._pvtype == TYPE_CHAR_PTR:
                 return str(memoryview(self.raw).tobytes()) or ''
         elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
@@ -1137,38 +1139,44 @@ class PVParam(object):
 
 @Pyro4.behavior('single')
 class PVCamera(devices.CameraDevice):
+    # Keep track of open cameras.
     open_cameras = []
 
     """Implements the CameraDevice interface for the pvcam library."""
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
+        # Camera index in DLL.
         self._index = kwargs.get('index', 0)
+        # Camera name in DLL.
         self._pv_name = None
+        # Camera handle.
         self.handle = None
+        # Sensor shape.
         self.shape = (None, None)
+        # Region of interest.
         self.roi = (None, None, None, None)
+        # Binning setting.
         self.binning = (1, 1)
         self._trigger = TIMED_MODE
         self.exposure_time = 0.001 # in seconds
         self._buffer = None
+        # This devices PVCAM parameters.
         self._params = {}
+        # Circular buffer length.
         self._circ_buffer_length = 10
 
-
+        # Add common settings.
         self.add_setting('exposure time',
                          float,
                          lambda: self.exposure_time,
                          self.set_exposure_time,
                          lambda: (1e-6, 1))
-
-
         self.add_setting('trigger mode',
                           'enum',
                           lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
                           lambda args: setattr(self, '_trigger', int(args[0])),
                           [(k, v.label) for k, v in TRIGGER_MODES.items()]
                           )
-
         self.add_setting('circular buffer length',
                          int,
                          lambda: self._circ_buffer_length,
@@ -1192,22 +1200,21 @@ class PVCamera(devices.CameraDevice):
         """Enable the camera hardware and make ready to respond to triggers.
 
         Return True if successful, False if not."""
-
-        # Set exposure time resolution on camera.
+        # Set exposure time resolution on camera and determine t_exp, the
+        # integer value used to set exposure time on the hardware later.
         if self.exposure_time < 1e-3:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MICROSEC)
             t_exp = int(self.exposure_time * 1e6)
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t_exp = value = int(self.exposure_time * 1e3)
-
-
-
+        # Configure camera, allocate buffer, and register callback.
         if self._trigger == TRIG_SOFT:
             # Software triggering for single frames.
             # Set up callback.
             self._using_callback = True
             def cb():
+                """Soft trigger mode end-of-frame callback."""
                 timestamp = time.time()
                 frame = self._buffer.copy()
                 _exp_finish_seq(self.handle, CCS_CLEAR)
@@ -1224,6 +1231,7 @@ class PVCamera(devices.CameraDevice):
             # Use a circular buffer.
             self._using_callback = True
             def cb():
+                """Circular buffer mode end-of-frame callback."""
                 timestamp = time.time()
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
                 frame = np.ctypeslib.as_array(frame_p, (self.roi[1], self.roi[3])).copy()
@@ -1242,22 +1250,25 @@ class PVCamera(devices.CameraDevice):
 
         # Read back exposure time.
         t_readback = self._params[PARAM_EXPOSURE_TIME].current
-        res = self._params[PARAM_EXP_RES].current
+        t_resolution = self._params[PARAM_EXP_RES].current
         multipliers = {EXP_RES_ONE_SEC: 1.,
                        EXP_RES_ONE_MILLISEC: 1e-3,
                        EXP_RES_ONE_MICROSEC: 1e-6}
-        if isinstance(res, tuple):
-            self.exposure_time = t_readback * multipliers[res[0]]
+        if isinstance(t_resolution, tuple):
+            self.exposure_time = t_readback * multipliers[t_resolution[0]]
         else:
-            self.exposure_time = t_readback * multipliers[res]
+            self.exposure_time = t_readback * multipliers[t_resolution]
         # Update cycle time. Exposure time in seconds; readout time in microseconds.
         self.cycle_time = self.exposure_time + 1e-6 * self._params[PARAM_READOUT_TIME].current
-
+        # Set up exposure time for VARIABLE_TIMED_MODE, as according to documentation.
+        # It doesn't seem to work.
         if self._trigger == TRIG_VARIABLE:
             self._params[PARAM_EXP_TIME].set_value(t_exp)
+        # If using real triggering, start triggered acquisition.
+        # (Software triggering will start acquisition in soft_trigger().)
         if self._trigger != TRIG_SOFT:
             _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
-
+        # Done.
         self._acquiring = True
         return self._acquiring
 
@@ -1292,6 +1303,7 @@ class PVCamera(devices.CameraDevice):
     @keep_acquiring
     def _set_binning(self, h, v):
         """Set binning to (h, v)."""
+        #  The keep_acquiring decorator will cause recreation of buffers.
         self.binning = (h, v)
 
     def _get_roi(self):
@@ -1321,37 +1333,33 @@ class PVCamera(devices.CameraDevice):
 
     @Pyro4.expose
     def initialize(self):
-        """Initialise the camera.
-
-        Open the connection and populate settings dict.
-        """
+        """Initialise the camera."""
+        # Init the DLL if necessary.
         if not PVCamera.open_cameras:
             try:
                 _pvcam_init()
             except:
                 pass
-
-        # If no cameras detected, need to deinit and reinit SDK to update count.
+        # If no cameras detected, need to deinit DLL so it can be reinited to update count.
         if _cam_get_total().value == 0:
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
-
+        # Close the camera if it's already open.
         if self.handle in PVCamera.open_cameras:
             try:
                 _cam_close(self.handle)
                 PVCamera.open_cameras.remove(self.handle)
             except:
                 pass
-
+        # Connect to the camera.
         self._pv_name = _cam_get_name(self._index).value
         self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
         PVCamera.open_cameras.append(self.handle)
-
+        # Repopulate _params.
         self._params = {}
         # Add chip before anything else, as chip name is used to add missing enums.
         self._params[PARAM_CHIP_NAME] = PVParam(self, PARAM_CHIP_NAME)
-
         for (param_id, name) in _param_to_name.items():
             if param_id in self._params:
                 continue
@@ -1366,7 +1374,6 @@ class PVCamera(devices.CameraDevice):
                 if not e.message.startswith('pvcam error 49'):
                     self._logger.warn("Skipping parameter %s: not supported in python. Error %s" % (p.name, e.message))
                     continue
-
             # Used to expose parameters as settings here, but need to rework the settings
             # system to prevent reads when self._acquiring ... Even then, exposing all
             # available parameters as settings seems to cause the camera hardware to fall
