@@ -366,10 +366,6 @@ class DataDevice(Device):
         Ensures that a data handling threads are running.
         Implement device-specific code in _on_enable .
         """
-        # Call device-specific code before starting threads.
-        if not self._on_enable():
-            self.enabled = False
-            return False
         if self._using_callback:
             if self._fetch_thread:
                 self._fetch_thread_run = False
@@ -382,6 +378,10 @@ class DataDevice(Device):
             self._dispatch_thread = Thread(target=self._dispatch_loop)
             self._dispatch_thread.daemon = True
             self._dispatch_thread.start()
+        # Call device-specific code.
+        if not self._on_enable():
+            self.enabled = False
+            return False
         self.enabled = True
 
     @Pyro4.expose
