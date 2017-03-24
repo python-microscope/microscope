@@ -1202,7 +1202,6 @@ class PVCamera(devices.CameraDevice):
             # Set up callback.
             self._using_callback = True
             def cb():
-                self._logger.debug("In EOF callback - soft trigger.")
                 timestamp = time.time()
                 frame = self._buffer.copy()
                 _exp_finish_seq(self.handle, CCS_CLEAR)
@@ -1220,13 +1219,9 @@ class PVCamera(devices.CameraDevice):
             self._using_callback = True
             def cb():
                 timestamp = time.time()
-                self._logger.debug("In c-buffer callback at t=%s." % timestamp)
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
-                self._logger.debug("Fetched frame pointer.")
                 frame = np.ctypeslib.as_array(frame_p, (self.roi[1], self.roi[3])).copy()
-                self._logger.debug("Fetched frame.")
                 self._dispatch_buffer.put((frame, timestamp))
-                self._logger.debug("Dispatched frame.")
                 return
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
@@ -1249,14 +1244,12 @@ class PVCamera(devices.CameraDevice):
             self.exposure_time = t_readback * multipliers[res[0]]
         else:
             self.exposure_time = t_readback * multipliers[res]
-        self._logger.debug("***EXPOSURE TIME***\t%s" % self.exposure_time)
         # Update cycle time. Exposure time in seconds; readout time in microseconds.
         self.cycle_time = self.exposure_time + 1e-6 * self._params[PARAM_READOUT_TIME].current
 
         if self._trigger == TRIG_VARIABLE:
             self._params[PARAM_EXP_TIME].set_value(t_exp)
         if self._trigger != TRIG_SOFT:
-            self._logger.debug('Enabling circular buffer.')
             _exp_start_cont(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p), self._buffer.nbytes)
 
         self._acquiring = True
@@ -1312,7 +1305,6 @@ class PVCamera(devices.CameraDevice):
 
         This should put the camera into a state in which settings can
         be modified."""
-        self._logger.debug('In abort.\n\tself._acquring=%s\n\tself=%s' % (self._acquiring, self))
         if self._trigger == TRIG_SOFT:
             _exp_finish_seq(self.handle, CCS_CLEAR)
         else:
