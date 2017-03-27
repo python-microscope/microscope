@@ -107,7 +107,7 @@ class Device(object):
         self.settings = OrderedDict()
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
-        self._logger = logging.getLogger()
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._index = kwargs['index'] if 'index' in kwargs else None
         self._utype = UGENERIC
 
@@ -167,8 +167,9 @@ class Device(object):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.enabled = False
-        self._logger.info("Shutting down %s." % self.__class__.__name__)
+        self._logger.info("Shutting down ... ... ...")
         self._on_shutdown()
+        self._logger.info("... ... ... ... shut down completed.")
 
     @Pyro4.expose
     def make_safe(self):
@@ -215,7 +216,7 @@ class Device(object):
         try:
             return self.settings[name]['get']()
         except Exception as err:
-            self._logger.error("in get_setting(%s): %s." % (name, err))
+            self._logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
 
     @Pyro4.expose
@@ -225,7 +226,7 @@ class Device(object):
             return {k: v['get']() if v['get'] else None
                     for k, v in iteritems(self.settings)}
         except Exception as err:
-            self._logger.error("in get_all_settings: %s." % err)
+            self._logger.error("in get_all_settings:", exc_info=err)
             raise
 
     @Pyro4.expose
@@ -237,7 +238,7 @@ class Device(object):
         try:
             self.settings[name]['set'](value)
         except Exception as err:
-            self._logger.error("in set_setting(%s): %s." % (name, err))
+            self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
 
     @Pyro4.expose
@@ -450,7 +451,7 @@ class DataDevice(Device):
             if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
-                self._logger.error("in _dispatch_loop: %s." % err)
+                self._logger.error("in _dispatch_loop:", exc_info=err)
             self._dispatch_buffer.task_done()
 
     def _fetch_loop(self):
@@ -461,7 +462,7 @@ class DataDevice(Device):
             try:
                 data = self._fetch_data()
             except Exception as e:
-                self._logger.error("in _fetch_loop: %s." % e)
+                self._logger.error("in _fetch_loop:", exc_info=err)
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
