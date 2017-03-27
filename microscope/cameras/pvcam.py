@@ -1351,18 +1351,26 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
         if _cam_get_total().value == 0:
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
-        # Close the camera if it's already open.
-        if self.handle in PVCamera.open_cameras:
-            try:
-                _cam_close(self.handle)
-                PVCamera.open_cameras.remove(self.handle)
-            except:
-                pass
         # Connect to the camera.
         self._pv_name = _cam_get_name(self._index).value
         self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
         PVCamera.open_cameras.append(self.handle)
+        # Set up event callbacks. Tried to use the resume callback to reinit camera
+        # after power loss, but any attempt to close/reopen the camera or deinit the
+        # DLL throws a Windows Error 0xE06D7363.
+        def _cb(event):
+            self._logger.info("Received %s event." % event)
+            if event == 'removed':
+                self._logger.critical("Can not re-init hardware. Exiting.")
+                exit(-1)
+            return
+        self._cbs = {'check': CALLBACK(lambda: _cb('check')),
+                     'resumed': CALLBACK(lambda: _cb('resumed')),
+                     'removed': CALLBACK(lambda: _cb('removed'))}
+        _cam_register_callback(self.handle, PL_CALLBACK_CHECK_CAMS, self._cbs['check'])
+        _cam_register_callback(self.handle, PL_CALLBACK_CAM_REMOVED, self._cbs['removed'])
+        _cam_register_callback(self.handle, PL_CALLBACK_CAM_RESUMED, self._cbs['resumed'])
         # Repopulate _params.
         self._params = {}
         # Add chip before anything else, as chip name is used to add missing enums.
