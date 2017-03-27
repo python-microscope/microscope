@@ -135,6 +135,14 @@ class DeviceServer(multiprocessing.Process):
 
 
 def __main__():
+    logger = logging.getLogger(__name__)
+    if __debug__:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    stderr_handler = StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(LOG_FORMATTER)
+    logger.addHandler(stderr_handler)
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
@@ -183,7 +191,39 @@ def __main__():
                                         exit_event=exit_event, count=count))
             servers[-1].start()
             count += 1
+
+    # Main thread must be idle to process signals correctly, so use another
+    # thread to check DeviceServers, restarting them where necessary. Define
+    # the thread target here so that it can access variables in __main__ scope.
+    def keep_alive():
+        """Keep DeviceServers alive."""
+        while not exit_event.is_set():
+            time.sleep(1)
+            for s in servers:
+                if not s.is_alive() and s.exitcode < 0:
+                    logger.info("DeviceServer Failure. Process %s is dead with exitcode %s. Restarting..."
+                                    % (s.pid, s.exitcode))
+                    servers.remove(s)
+                    servers.append(DeviceServer(s._device_def, s._id_to_host, s._id_to_port,
+                                                exit_event=exit_event, count=s.count))
+
+                    try:
+                        s.join(30)
+                    except:
+                        logger.error("... could not join PID %s." % (old_pid))
+                    else:
+                        old_pid = s.pid
+                        del (s)
+                        servers[-1].start()
+                        logger.info("... DeviceServer with PID %s restarted as PID %s." % (old_pid, servers[-1].pid))
+
+
+    keep_alive_thread = Thread(target=keep_alive)
+    keep_alive_thread.start()
+
     for s in servers:
+        # This will iterate over all servers: those present when the loop
+        # is entered, and any added to the list later.
         s.join()
 
 
