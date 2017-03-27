@@ -46,7 +46,7 @@ Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 # Logging formatter.
-LOG_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s PID %(process)s: %(message)s')
+LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:PID %(process)s: %(message)s')
 
 
 class DeviceServer(multiprocessing.Process):
@@ -73,7 +73,7 @@ class DeviceServer(multiprocessing.Process):
         self.count = count
 
     def run(self):
-        logger = logging.getLogger()
+        logger = logging.getLogger(self._device_def['cls'].__name__)
         if __debug__:
             logger.setLevel(logging.DEBUG)
         else:
@@ -85,14 +85,13 @@ class DeviceServer(multiprocessing.Process):
         stderr_handler = StreamHandler(sys.stderr)
         stderr_handler.setFormatter(LOG_FORMATTER)
         logger.addHandler(stderr_handler)
-        logger.debug('Debugging messages on.')
+        logger.debug("Debugging messages on.")
         self._device = self._device_def['cls'](index=self.count, **self._device_def)
         while True:
             try:
                 self._device.initialize()
             except Exception as e:
-                logger.debug('Failed to start device %s. Retrying in 5s.' % self._device)
-                logger.debug(e.message)
+                logger.info("Failed to start device. Retrying in 5s.", exc_info=e)
                 time.sleep(5)
             else:
                 break

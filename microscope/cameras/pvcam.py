@@ -1387,7 +1387,7 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
                 p.current
             except Exception as e:
                 if not e.message.startswith('pvcam error 49'):
-                    self._logger.warn("Skipping parameter %s: not supported in python. Error %s" % (p.name, e.message))
+                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=e.message)
                     continue
             # Used to expose parameters as settings here, but need to rework the settings
             # system to prevent reads when self._acquiring ... Even then, exposing all
