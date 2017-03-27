@@ -1157,7 +1157,7 @@ class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
         self.roi = (None, None, None, None)
         # Binning setting.
         self.binning = (1, 1)
-        self._trigger = TIMED_MODE
+        self._trigger = TRIG_STROBED
         self.exposure_time = 0.001 # in seconds
         # Cycle time
         self.cycle_time = self.exposure_time
