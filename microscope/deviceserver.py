@@ -27,7 +27,6 @@ working directory, or default test objects found in microscope.config.
 import imp # this has been deprecated, we should be using importlib
 import logging
 import multiprocessing
-import os
 import signal
 import sys
 import time
@@ -164,8 +163,15 @@ def __main__():
 
     # Group devices by class.
     by_class = {}
-    for dev in devices:
-        by_class[dev['cls']] = by_class.get(dev['cls'], []) + [dev]
+
+    try:
+        for dev in config.DEVICES:
+            by_class[dev['cls']] = by_class.get(dev['cls'], []) + [dev]
+    except:
+        logger.warn("No config.DEVICES found; missing config?")
+    else:
+        if not by_class:
+            logger.warn("No devices found: empty config?")
 
     servers = []
     for cls, devs in iteritems(by_class):
