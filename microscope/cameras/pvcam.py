@@ -25,7 +25,7 @@ import platform
 import Pyro4
 from microscope import devices
 from microscope.devices import keep_acquiring
-from past.builtins import basestring
+from six import string_types
 import time
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
@@ -1032,7 +1032,7 @@ class PVParam(object):
             values, descriptions = zip(*self.values)
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
-            elif isinstance(new_value, basestring):
+            elif isinstance(new_value, string_types):
                 desc = str(new_value)
             else:
                 desc = None
