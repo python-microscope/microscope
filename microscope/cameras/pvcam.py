@@ -1138,7 +1138,7 @@ class PVParam(object):
 
 
 @Pyro4.behavior('single')
-class PVCamera(devices.CameraDevice, devices.FloatingDeviceMixin):
+class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     # Keep track of open cameras.
     open_cameras = []
 
