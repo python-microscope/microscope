@@ -215,6 +215,11 @@ def __main__():
                         del (s)
                         servers[-1].start()
                         logger.info("... DeviceServer with PID %s restarted as PID %s." % (old_pid, servers[-1].pid))
+            if len(servers) == 0:
+                # Log and exit if no servers running. May want to change this
+                # if we add some interface to interactively restart servers.
+                logger.info("No servers running. Exiting.")
+                exit_event.set()
 
 
     keep_alive_thread = Thread(target=keep_alive)
