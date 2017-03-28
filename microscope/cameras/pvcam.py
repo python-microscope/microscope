@@ -18,6 +18,8 @@
 """pvcam library wrapper.
 
 This module exposes pvcam C library functions in python.
+
+TODO: support camera metadata.
 """
 import ctypes
 import numpy as np
@@ -959,11 +961,13 @@ _param_to_name = {globals()[param]:param for param in globals()
 
 
 def get_param_type(param_id):
+    """Return parameter type code (for C/DLL) for param_id."""
     # Parameter types are encoded in the 4th MSB of the param_id.
     return _typemap[param_id >> 24 & 255]
 
 
 def get_param_dtype(param_id):
+    """Return parameter dtype (for microscope settings) for param_id."""
     # Parameter types are encoded in the 4th MSB of the param_id.
     return _dtypemap[param_id >> 24 & 255]
 
@@ -1076,17 +1080,21 @@ class PVParam(object):
 
     @property
     def access(self):
+        """Return parameter access attribute."""
         return self._query(what=ATTR_ACCESS).value
 
 
     @property
     def available(self):
+        """Return whether or not parameter is available on hardware."""
         return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL))
 
 
     @property
     def count(self):
+        """Return count of parameter enum entries."""
         return self._query(what=ATTR_COUNT).value
+
 
     @property
     def values(self):
@@ -1116,6 +1124,7 @@ class PVParam(object):
 
     @property
     def raw(self):
+        """Return a raw parameter query result."""
         return self._query()
 
 
@@ -1139,10 +1148,11 @@ class PVParam(object):
 
 @Pyro4.behavior('single')
 class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
+    """Implements the CameraDevice interface for the pvcam library."""
     # Keep track of open cameras.
     open_cameras = []
 
-    """Implements the CameraDevice interface for the pvcam library."""
+
     def __init__(self, *args, **kwargs):
         super(PVCamera, self).__init__(**kwargs)
         # Camera index in DLL.
@@ -1195,6 +1205,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
     """Private methods, called here and within super classes."""
     def _fetch_data(self):
+        """Fetch data - for use in fetch_loop."""
         # Not used: images fetched using callback.
         return None
 
@@ -1321,6 +1332,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
     """Public methods, callable from client."""
     def get_id(self):
+        """Get hardware's unique identifier."""
         return self._params[PARAM_HEAD_SER_NUM_ALPHA].current
 
 
@@ -1512,6 +1524,10 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     @Pyro4.expose
     @Pyro4.oneway
     def soft_trigger(self):
+        """Expose software triggering to a client.
+
+        Trigger an exposure in TRIG_SOFT mode.
+        Log some debugging stats in other trigger modes."""
         if self._trigger == TRIG_SOFT:
             self._logger.debug("Received soft trigger ...")
             _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
