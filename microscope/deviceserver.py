@@ -48,6 +48,40 @@ Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:PID %(process)s: %(message)s')
 
 
+class Filter(logging.Filter):
+    def __init__(self):
+        self.last = None
+        self.count = 1
+        self.aggregate_at = 3
+        self.repeat_at = 5
+        self.stop_at = self.aggregate_at + 3 * self.repeat_at
+
+
+    def filter(self, record):
+        """Pass, aggregate or suppress consecutive repetitions of a log message."""
+        if self.last == record.msg:
+            # Repeated message. Increment count.
+            self.count += 1
+        else:
+            # New message. We've seen 1 instance of it.
+            self.count = 1
+        # Update self.last - no further reference to last message needed in this call.
+        self.last = record.msg
+        if self.count < self.aggregate_at:
+            return True
+        elif self.count == self.aggregate_at:
+            record.msg = "Aggregating reps. of: %s" % (record.msg)
+            return True
+        elif self.stop_at > self.count > self.aggregate_at and ((self.count-self.aggregate_at) % self.repeat_at) == 0:
+            record.msg = "%d times: %s" % (self.repeat_at, record.msg)
+            return True
+        elif self.count == self.stop_at:
+            record.msg = "Suppressing reps. of: %s" % (record.msg)
+            return True
+        else:
+            return False
+
+
 class DeviceServer(multiprocessing.Process):
     def __init__(self, device_def, id_to_host, id_to_port, count=0, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
@@ -84,6 +118,7 @@ class DeviceServer(multiprocessing.Process):
         stderr_handler = StreamHandler(sys.stderr)
         stderr_handler.setFormatter(LOG_FORMATTER)
         logger.addHandler(stderr_handler)
+        logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
         self._device = self._device_def['cls'](index=self.count, **self._device_def)
         while True:
@@ -141,6 +176,7 @@ def __main__():
     stderr_handler = StreamHandler(sys.stderr)
     stderr_handler.setFormatter(LOG_FORMATTER)
     logger.addHandler(stderr_handler)
+    logger.addFilter(Filter())
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
