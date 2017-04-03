@@ -1231,6 +1231,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 """Soft trigger mode end-of-frame callback."""
                 timestamp = time.time()
                 frame = self._buffer.copy()
+                self._logger.debug("Fetched single frame.")
                 _exp_finish_seq(self.handle, CCS_CLEAR)
                 self._dispatch_buffer.put((frame, timestamp))
                 return
@@ -1249,6 +1250,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 timestamp = time.time()
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
                 frame = np.ctypeslib.as_array(frame_p, (self.roi[2], self.roi[3])).copy()
+                self._logger.debug("Fetched frame from circular buffer.")
                 self._dispatch_buffer.put((frame, timestamp))
                 return
             # Need to keep a reference to the callback.
