@@ -150,7 +150,10 @@ class Device(object):
     @Pyro4.expose
     def enable(self):
         """Enable the device."""
-        self.enabled = self._on_enable()
+        try:
+            self.enabled = self._on_enable()
+        except Exception as err:
+            self._logger.debug("Error in _on_enable:", exc_info=err)
 
     @abc.abstractmethod
     def _on_shutdown(self):
@@ -367,6 +370,7 @@ class DataDevice(Device):
         Ensures that a data handling threads are running.
         Implement device-specific code in _on_enable .
         """
+        self._logger.debug("Enabling ...")
         if self._using_callback:
             if self._fetch_thread:
                 self._fetch_thread_run = False
@@ -380,10 +384,18 @@ class DataDevice(Device):
             self._dispatch_thread.daemon = True
             self._dispatch_thread.start()
         # Call device-specific code.
-        if not self._on_enable():
+        try:
+            result = self._on_enable()
+        except Exception as err:
+            self._logger.debug("Error in _on_enable:", exc_info=err)
             self.enabled = False
-            return False
-        self.enabled = True
+            raise err
+        if not result:
+            self.enabled = False
+        else:
+            self.enabled = True
+        self._logger.debug("... enabled.")
+        return self.enabled
 
     @Pyro4.expose
     def disable(self):
