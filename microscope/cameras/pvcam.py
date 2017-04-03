@@ -1364,6 +1364,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
         # Connect to the camera.
+        self._logger.info("DLL version: %s" % _pvcam_get_ver().value)
         self._pv_name = _cam_get_name(self._index).value
         self._logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
