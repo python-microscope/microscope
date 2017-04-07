@@ -443,10 +443,7 @@ class DataDevice(Device):
     def _dispatch_loop(self):
         """Process data and send results to any client."""
         while True:
-            if self._dispatch_buffer.empty():
-                time.sleep(0.01)
-                continue
-            data, timestamp = self._dispatch_buffer.get()
+            data, timestamp = self._dispatch_buffer.get(block=True)
             err = None
             if isinstance(data, Exception):
                 standard_exception = Exception(str(data).encode('ascii'))
