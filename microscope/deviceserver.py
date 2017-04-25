@@ -24,7 +24,9 @@ defined in a specified config file, any 'config.py' found at the current
 working directory, or default test objects found in microscope.config.
 """
 
+import collections
 import imp # this has been deprecated, we should be using importlib
+import importlib
 import logging
 import multiprocessing
 import signal
@@ -192,22 +194,47 @@ def __main__():
     signal.signal(signal.SIGTERM, term_func)
     signal.signal(signal.SIGINT, term_func)
 
-    devices = []
+    config_file = None
+
+    if len(sys.argv) == 1:
+        # No config file specified. Check cwd.
+        if os.path.isfile('config.py'):
+            config_file = 'config.py'
+    else:
+        # Config file specified.
+        config_file = sys.argv[1]
+
+    #if config_file is not None:
+    #    with open(config_file) as fh:
+    #        config = imp.load_module('config', fh, config_file, ('py', 'r', imp.PY_SOURCE))
+    #else:
+    #    # Fall back to default test config.
+    #    import microscope.config as config
+
+    devices = None
     if len(sys.argv) == 2:
         config = imp.load_source ('microscope.config', sys.argv[1])
-        devices = config.DEVICES
+        devices = getattr(config, 'DEVICES', None)
+        if not devices:
+            logger.critical("No 'DEVICES=...' in config file. Exiting.")
+        elif not isinstance(devices, collections.Iterable):
+            logger.critical("Error in config: DEVICES should be an iterable. Exiting.")
+            devices = None
+    else:
+        logger.critical("No config file specified. Exiting.")
+
+    if not devices:
+        sys.exit()
 
     # Group devices by class.
     by_class = {}
+    for dev in devices:
+        by_class[dev['cls']] = by_class.get(dev['cls'], []) + [dev]
 
-    try:
-        for dev in config.DEVICES:
-            by_class[dev['cls']] = by_class.get(dev['cls'], []) + [dev]
-    except:
-        logger.warn("No config.DEVICES found; missing config?")
-    else:
-        if not by_class:
-            logger.warn("No devices found: empty config?")
+    # Group devices by class.
+    if not by_class:
+        logger.critical("No valid devices specified. Exiting")
+        sys.exit()
 
     servers = []
     for cls, devs in iteritems(by_class):
