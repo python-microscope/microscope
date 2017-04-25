@@ -29,7 +29,6 @@ setuptools.setup(
   ],
 
   install_requires = [
-    "PYME",
     "numpy",
     "Pyro4",
     "pyserial",
