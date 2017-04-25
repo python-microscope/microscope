@@ -26,7 +26,6 @@ working directory, or default test objects found in microscope.config.
 
 import collections
 import imp # this has been deprecated, we should be using importlib
-import importlib
 import logging
 import multiprocessing
 import signal
