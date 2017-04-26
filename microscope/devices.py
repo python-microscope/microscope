@@ -471,7 +471,7 @@ class DataDevice(Device):
             try:
                 data = self._fetch_data()
             except Exception as e:
-                self._logger.error("in _fetch_loop:", exc_info=err)
+                self._logger.error("in _fetch_loop:", exc_info=e)
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
