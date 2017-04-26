@@ -31,14 +31,7 @@ try:
 except:
     import Queue as queue
 
-# PYME is not yet ready for Python 3. Until it is, Andor's SDK3
-# can be supported by placing PYME's SDK3.py and SDK3Cam.py in
-# the same folder is this file.
-try:
-    from PYME.Acquire.Hardware.AndorNeo.SDK3Cam import *
-except:
-    from .SDK3Cam import *
-
+from .SDK3Cam import *
 
 # SDK data pointer type
 DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
