@@ -742,6 +742,7 @@ class LaserDevice(Device):
         """"" Return the current power in mW."""
         pass
 
+    @Pyro4.expose
     def get_set_power_mw(self):
         """Return the power set point."""
         return self._set_point
@@ -751,6 +752,7 @@ class LaserDevice(Device):
         """Set the power on the device in mW."""
         pass
 
+    @Pyro4.expose
     def set_power_mw(self, mw):
         """Set the power from an argument in mW and save the set point."""
         self._set_point = mw

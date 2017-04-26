@@ -16,14 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from microscope import devices
+import Pyro4
 
-
+@Pyro4.expose
 class TestLaser(devices.LaserDevice):
     def __init__(self, *args, **kwargs):
         super(TestLaser, self).__init__()
         self._power = 0
         self._emission = False
-        
+
     def get_status(self):
         result = [self._emission, self._power, self._set_point]
         return result
