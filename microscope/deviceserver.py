@@ -149,7 +149,7 @@ class DeviceServer(multiprocessing.Process):
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                             args=({self._device: type(self).__name__},),
+                             args=({self._device: type(self._device).__name__},),
                              kwargs={'daemon': pyro_daemon, 'ns': False})
         pyro_thread.daemon = True
         pyro_thread.start()
