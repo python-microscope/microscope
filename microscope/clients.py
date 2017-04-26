@@ -37,6 +37,7 @@ Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 LISTENERS = {}
 
+
 class Client(object):
     """Base Client object that makes methods on proxy available locally."""
     def __init__(self, url):
@@ -74,7 +75,6 @@ class DataClient(Client):
             lthread.start()
         self._client_uri = LISTENERS[iface].register(self)
 
-
     def enable(self):
         """Set the client on the remote and enable it."""
         self.set_client(self._client_uri)
@@ -83,6 +83,8 @@ class DataClient(Client):
 
     @Pyro4.expose
     @Pyro4.oneway
+    # noinspection PyPep8Naming
+    # Legacy naming convention.
     def receiveData(self, data, timestamp, *args):
         self._buffer.put((data, timestamp))
 
