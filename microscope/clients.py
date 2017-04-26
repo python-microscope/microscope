@@ -69,7 +69,9 @@ class DataClient(Client):
             iface = socket.gethostbyname(socket.gethostname())
         if iface not in LISTENERS:
             LISTENERS[iface] = Pyro4.Daemon(host=iface)
-            threading.Thread(target=LISTENERS[iface].requestLoop).start()
+            lthread = threading.Thread(target=LISTENERS[iface].requestLoop)
+            lthread.daemon = True
+            lthread.start()
         self._client_uri = LISTENERS[iface].register(self)
 
 
