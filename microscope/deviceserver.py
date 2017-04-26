@@ -46,8 +46,8 @@ Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 # Logging formatter.
-LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:PID %(process)s: %(message)s')
-
+LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:'
+                                  'PID %(process)s: %(message)s')
 
 class Filter(logging.Filter):
     def __init__(self):
@@ -59,21 +59,24 @@ class Filter(logging.Filter):
 
 
     def filter(self, record):
-        """Pass, aggregate or suppress consecutive repetitions of a log message."""
+        """Pass, aggregate or suppress consecutive repetitions of a log message.
+        """
         if self.last == record.msg:
             # Repeated message. Increment count.
             self.count += 1
         else:
             # New message. We've seen 1 instance of it.
             self.count = 1
-        # Update self.last - no further reference to last message needed in this call.
+        # Update self.last - no further reference to last message
+        # needed in this call.
         self.last = record.msg
         if self.count < self.aggregate_at:
             return True
         elif self.count == self.aggregate_at:
             record.msg = "Aggregating reps. of: %s" % (record.msg)
             return True
-        elif self.stop_at > self.count > self.aggregate_at and ((self.count-self.aggregate_at) % self.repeat_at) == 0:
+        elif (self.stop_at > self.count > self.aggregate_at
+              and ((self.count-self.aggregate_at) % self.repeat_at) == 0):
             record.msg = "%d times: %s" % (self.repeat_at, record.msg)
             return True
         elif self.count == self.stop_at:
@@ -84,14 +87,16 @@ class Filter(logging.Filter):
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, device_def, id_to_host, id_to_port, count=0, exit_event=None):
+    def __init__(self, device_def, id_to_host, id_to_port, count=0,
+                 exit_event=None):
         """Initialise a device and serve at host/port according to its id.
 
-        :param device_def:  definition of the device
+        :param device_def: definition of the device
         :param id_to_host: host or mapping of device identifiers to hostname
         :param id_to_port: map or mapping of device identifiers to port number
-        :param count:       this is the countth process serving this class
-        :param exit_event:  a shared event to signal that the process should quit.
+        :param count:      this is the countth process serving this class
+        :param exit_event: a shared event to signal that the process
+            should quit.
         """
         # The device to serve.
         self._device_def = device_def
@@ -121,16 +126,19 @@ class DeviceServer(multiprocessing.Process):
         logger.addHandler(stderr_handler)
         logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
-        self._device = self._device_def['cls'](index=self.count, **self._device_def)
+        self._device = self._device_def['cls'](index=self.count,
+                                               **self._device_def)
         while True:
             try:
                 self._device.initialize()
             except Exception as e:
-                logger.info("Failed to start device. Retrying in 5s.", exc_info=e)
+                logger.info("Failed to start device. Retrying in 5s.",
+                            exc_info=e)
                 time.sleep(5)
             else:
                 break
-        if isinstance(self._device, FloatingDeviceMixin) and len(self._id_to_host)>1:
+        if (isinstance(self._device, FloatingDeviceMixin)
+            and len(self._id_to_host) > 1):
             uid = self._device.get_id()
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
@@ -141,7 +149,8 @@ class DeviceServer(multiprocessing.Process):
             port = self._device_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
         log_handler = RotatingFileHandler("%s_%s_%s.log" %
-                                          (type(self._device).__name__, host, port))
+                                          (type(self._device).__name__,
+                                           host, port))
         log_handler.setFormatter(LOG_FORMATTER)
         logger.addHandler(log_handler)
         logger.info('Device initialized; starting daemon.')
@@ -149,8 +158,10 @@ class DeviceServer(multiprocessing.Process):
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                             args=({self._device: type(self._device).__name__},),
-                             kwargs={'daemon': pyro_daemon, 'ns': False})
+                             args=({self._device:
+                                    type(self._device).__name__},),
+                             kwargs={'daemon': pyro_daemon, 'ns':
+                                     False})
         pyro_thread.daemon = True
         pyro_thread.start()
         if self.exit_event:
@@ -200,7 +211,8 @@ def __main__():
         if not devices:
             logger.critical("No 'DEVICES=...' in config file. Exiting.")
         elif not isinstance(devices, collections.Iterable):
-            logger.critical("Error in config: DEVICES should be an iterable. Exiting.")
+            logger.critical("Error in config: DEVICES should be an iterable."
+                            " Exiting.")
             devices = None
     else:
         logger.critical("No config file specified. Exiting.")
@@ -251,11 +263,15 @@ def __main__():
             time.sleep(1)
             for s in servers:
                 if not s.is_alive() and s.exitcode < 0:
-                    logger.info("DeviceServer Failure. Process %s is dead with exitcode %s. Restarting..."
-                                    % (s.pid, s.exitcode))
+                    logger.info(("DeviceServer Failure. Process %s is dead with"
+                                 " exitcode %s. Restarting...")
+                                % (s.pid, s.exitcode))
                     servers.remove(s)
-                    servers.append(DeviceServer(s._device_def, s._id_to_host, s._id_to_port,
-                                                exit_event=exit_event, count=s.count))
+                    servers.append(DeviceServer(s._device_def,
+                                                s._id_to_host,
+                                                s._id_to_port,
+                                                exit_event=exit_event,
+                                                count=s.count))
 
                     try:
                         s.join(30)
@@ -265,7 +281,9 @@ def __main__():
                         old_pid = s.pid
                         del (s)
                         servers[-1].start()
-                        logger.info("... DeviceServer with PID %s restarted as PID %s." % (old_pid, servers[-1].pid))
+                        logger.info(("... DeviceServer with PID %s restarted"
+                                     " as PID %s.")
+                                    % (old_pid, servers[-1].pid))
             if len(servers) == 0:
                 # Log and exit if no servers running. May want to change this
                 # if we add some interface to interactively restart servers.
