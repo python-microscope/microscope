@@ -98,7 +98,6 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
 @Pyro4.expose
 @Pyro4.behavior('single')
 class AndorSDK3(devices.FloatingDeviceMixin,
-                SDK3Camera,
                 devices.CameraDevice):
     SDK_INITIALIZED = False
     def __init__(self, *args, **kwargs):
@@ -107,7 +106,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)
         self.handle = None
-        SDK3Camera.__init__(self, self._index)
+        #self._sdk3cam = SDK3Camera(self._index)
+        #SDK3Camera.__init__(self, self._index)
         self.add_setting('use_callback', 'bool',
                          lambda: self._using_callback,
                          self._enable_callback,
@@ -316,7 +316,12 @@ class AndorSDK3(devices.FloatingDeviceMixin,
 
         Open the connection, connect properties and populate settings dict.
         """
-        self.handle = SDK3.Open(self._index)
+        try:
+            self.handle = SDK3.Open(self._index)
+        except:
+            raise Exception("Problem opening camera.")
+        if self.handle == None:
+            raise Exception("No camera opened.")
         for name, var in sorted(self.__dict__.items()):
             sdk_name = name.replace('_', '')
             if isinstance(var, ATProperty):
