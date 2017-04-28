@@ -15,7 +15,7 @@ for i in range(10):
     data.append(camera.trigger_and_wait())
     print("Frame %d captured." % i)
 
-print data
+print(data)
 
 laser.disable()
 camera.disable()
