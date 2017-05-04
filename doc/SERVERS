@@ -7,10 +7,10 @@ Import device classes, then define entries in DEVICES as:
 # Function to create record for each device.
 from microscope.devices import device
 # Import device modules/classes here.
-from microscope.cameras import testcamera
-from microscope.lasers import testlaser
+from microscope.testsuite.devices import TestCamera
+from microscope.testsuite.devices import TestLaser
 
 DEVICES = [
-  device(testcamera.TestCamera, '127.0.0.1', 8005, otherargs=1,),
-  device(testlaser.TestLaser, '127.0.0.1', 8006),
+  device(TestCamera, '127.0.0.1', 8005, otherargs=1,),
+  device(TestLaser, '127.0.0.1', 8006),
 ]
