@@ -140,9 +140,9 @@ class TestCamera(devices.CameraDevice):
     def _on_shutdown(self):
         pass
 
-class TestFilterwheel(FilterWheelBase):
+class TestFilterWheel(FilterWheelBase):
     def __init__(self, filters=[], *args, **kwargs):
-        super(TestFilterwheel, self).__init__(filters, *args, **kwargs)
+        super(TestFilterWheel, self).__init__(filters, *args, **kwargs)
         self._position = 0
 
     def _get_position(self):
