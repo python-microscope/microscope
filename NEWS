@@ -3,9 +3,16 @@ Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
 
  ** New abstract class FilterWheel.
 
+ ** New classes Client and DataClient.
+
  ** New dependency on six.
 
+ ** Removed dependency on PyME.
+
  ** Now works in Linux too.
+
+ ** Start writing of user documentation.
+
 
 Summary of user-visible changes for version 0.0.1 (2016/11/24):
 ---------------------------------------------------------------
