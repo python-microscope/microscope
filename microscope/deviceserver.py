@@ -312,6 +312,6 @@ def __main__():
 if __name__ == '__main__':
     """Serve devices via Pyro.
 
-    Usage:  deviceserver [config]
+    Usage:  deviceserver CONFIG
     """
     __main__()
