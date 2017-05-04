@@ -189,17 +189,25 @@ def __main__():
     stderr_handler.setFormatter(LOG_FORMATTER)
     logger.addHandler(stderr_handler)
     logger.addFilter(Filter())
+
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
     exit_event = multiprocessing.Event()
 
+    servers = [] # DeviceServers instances that we need to wait for when exiting
+
+    ## Child processes inherit signal handling from the parent so we
+    ## need to make sure that only the parent process sets the exist
+    ## event and waits for the DeviceServers to exit.  See issue #9.
+    parent = multiprocessing.current_process ()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
-        exit_event.set()
-        for this_server in servers:
-            this_server.join()
-        sys.exit()
+        if parent == multiprocessing.current_process ():
+            exit_event.set()
+            for this_server in servers:
+                this_server.join()
+            sys.exit()
 
     signal.signal(signal.SIGTERM, term_func)
     signal.signal(signal.SIGINT, term_func)
@@ -230,7 +238,6 @@ def __main__():
         logger.critical("No valid devices specified. Exiting")
         sys.exit()
 
-    servers = []
     for cls, devs in iteritems(by_class):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
