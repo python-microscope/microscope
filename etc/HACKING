@@ -45,7 +45,7 @@ commited or ignored files):
     git archive --format=tar --prefix="target/" HEAD | tar -x
     cd target/
     rm -r etc/
-    python setup.py sdist
+    python setup.py sdist --formats=gztar
     ```
 
 3. Upload and sign distribution:
