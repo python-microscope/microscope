@@ -26,6 +26,7 @@ setuptools.setup(
     "microscope",
     "microscope.cameras",
     "microscope.lasers",
+    "microscope.testsuite",
   ],
 
   install_requires = [
@@ -50,5 +51,5 @@ setuptools.setup(
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   ],
-  test_suite="testsuite",
+  test_suite="microscope.testsuite",
 )
