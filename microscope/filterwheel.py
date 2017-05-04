@@ -54,22 +54,3 @@ class FilterWheelBase(devices.Device):
     @Pyro4.expose
     def get_filters(self):
         return self._filters.items()
-
-
-class TestFilterwheel(FilterWheelBase):
-    def __init__(self, filters=[], *args, **kwargs):
-        super(TestFilterwheel, self).__init__(filters, *args, **kwargs)
-        self._position = 0
-
-    def _get_position(self):
-        return self._position
-
-    def _set_position(self, position):
-        time.sleep(1)
-        self._position = position
-
-    def initialize(self):
-        pass
-
-    def _on_shutdown(self):
-        pass

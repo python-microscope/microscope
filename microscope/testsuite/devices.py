@@ -1,36 +1,32 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
-# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Test camera device. """
-from microscope import devices
-from microscope.devices import keep_acquiring
-import numpy as np
-import Pyro4
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+## Copyright (C) 2016-2017 Mick Phillips <mick.phillips@gmail.com>
+##
+## This file is part of Microscope.
+##
+## Microscope is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Microscope is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
+
 import random
 import time
 
-# Trigger mode to type.
-TRIGGER_MODES = {
-    'internal': None,
-    'external': devices.TRIGGER_BEFORE,
-    'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
-    'software': devices.TRIGGER_SOFT,
-}
+import Pyro4
+import numpy as np
+
+from microscope import devices
+from microscope.devices import keep_acquiring
+from microscope.filterwheel import FilterWheelBase
 
 @Pyro4.expose
 @Pyro4.behavior('single')
@@ -74,7 +70,8 @@ class TestCamera(devices.CameraDevice):
             self._logger.info('Sending image')
             time.sleep(self._exposure_time)
             self._triggered = False
-            return np.random.random_integers(255, size=(512,512)).astype(np.int16)
+            return np.random.random_integers(255,
+                                             size=(512,512)).astype(np.int16)
 
     def abort(self):
         self._logger.info('Disabling acquisition.')
@@ -121,7 +118,8 @@ class TestCamera(devices.CameraDevice):
         return devices.TRIGGER_SOFT
 
     def soft_trigger(self):
-        self._logger.info('Trigger received; self._acquiring is %s.' % self._acquiring)
+        self._logger.info('Trigger received; self._acquiring is %s.'
+                          % self._acquiring)
         if self._acquiring:
             self._triggered = True
 
@@ -141,3 +139,58 @@ class TestCamera(devices.CameraDevice):
 
     def _on_shutdown(self):
         pass
+
+class TestFilterwheel(FilterWheelBase):
+    def __init__(self, filters=[], *args, **kwargs):
+        super(TestFilterwheel, self).__init__(filters, *args, **kwargs)
+        self._position = 0
+
+    def _get_position(self):
+        return self._position
+
+    def _set_position(self, position):
+        time.sleep(1)
+        self._position = position
+
+    def initialize(self):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
+@Pyro4.expose
+class TestLaser(devices.LaserDevice):
+    def __init__(self, *args, **kwargs):
+        super(TestLaser, self).__init__()
+        self._power = 0
+        self._emission = False
+
+    def get_status(self):
+        result = [self._emission, self._power, self._set_point]
+        return result
+
+    def enable(self):
+        self._emission = True
+        return self._emission
+
+    def _on_shutdown(self):
+        pass
+
+    def initialize(self):
+        pass
+
+    def disable(self):
+        self._emission = False
+        return self._emission
+
+    def get_is_on(self):
+        return self._emission
+
+    def _set_power_mw(self, level):
+        self._power = level
+
+    def get_max_power_mw(self):
+        return 100
+
+    def get_power_mw(self):
+        return self._power
