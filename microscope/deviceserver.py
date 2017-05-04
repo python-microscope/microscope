@@ -178,17 +178,8 @@ class DeviceServer(multiprocessing.Process):
             pyro_thread.join()
         self._device.shutdown()
 
-
-def __main__():
+def serve_devices(devices):
     logger = logging.getLogger(__name__)
-    if __debug__:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-    stderr_handler = StreamHandler(sys.stderr)
-    stderr_handler.setFormatter(LOG_FORMATTER)
-    logger.addHandler(stderr_handler)
-    logger.addFilter(Filter())
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
@@ -211,22 +202,6 @@ def __main__():
 
     signal.signal(signal.SIGTERM, term_func)
     signal.signal(signal.SIGINT, term_func)
-
-    devices = None
-    if len(sys.argv) == 2:
-        config = imp.load_source ('microscope.config', sys.argv[1])
-        devices = getattr(config, 'DEVICES', None)
-        if not devices:
-            logger.critical("No 'DEVICES=...' in config file. Exiting.")
-        elif not isinstance(devices, collections.Iterable):
-            logger.critical("Error in config: DEVICES should be an iterable."
-                            " Exiting.")
-            devices = None
-    else:
-        logger.critical("No config file specified. Exiting.")
-
-    if not devices:
-        sys.exit()
 
     # Group devices by class.
     by_class = {}
@@ -297,7 +272,6 @@ def __main__():
                 logger.info("No servers running. Exiting.")
                 exit_event.set()
 
-
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
 
@@ -306,6 +280,34 @@ def __main__():
         # is entered, and any added to the list later.
         s.join()
 
+def __main__():
+    logger = logging.getLogger(__name__)
+    if __debug__:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    stderr_handler = StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(LOG_FORMATTER)
+    logger.addHandler(stderr_handler)
+    logger.addFilter(Filter())
+
+    devices = None
+    if len(sys.argv) == 2:
+        config = imp.load_source ('microscope.config', sys.argv[1])
+        devices = getattr(config, 'DEVICES', None)
+        if not devices:
+            logger.critical("No 'DEVICES=...' in config file. Exiting.")
+        elif not isinstance(devices, collections.Iterable):
+            logger.critical("Error in config: DEVICES should be an iterable."
+                            " Exiting.")
+            devices = None
+    else:
+        logger.critical("No config file specified. Exiting.")
+
+    if not devices:
+        sys.exit()
+
+    serve_devices(devices)
 
 if __name__ == '__main__':
     """Serve devices via Pyro.
