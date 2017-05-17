@@ -215,6 +215,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
 
     @keep_acquiring
     def _enable_callback(self, use=False):
+        self.disable()
         if use:
             SDK3.RegisterFeatureCallback(self.handle,
                                          "ExposureEndEvent",
@@ -228,6 +229,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
                                            self._exposure_callback, None)
             self._event_enable.set_value(False)
             self._using_callback = False
+        self.enable()
 
     @_acquiring.setter
     def _acquiring(self, value):
