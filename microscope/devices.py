@@ -1,20 +1,21 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
-# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2016 Mick Phillips <mick.phillips@gmail.com>
+##
+## Microscope is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Microscope is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """Classes for control of microscope components.
 
@@ -22,6 +23,7 @@ This module provides base classes for experiment control and data
 acquisition devices that can be served over Pyro. This means that each
 device may be served from a separate process, or even from a different PC.
 """
+
 import abc
 import itertools
 import logging
@@ -696,6 +698,22 @@ class CameraDevice(DataDevice):
         pass
 
 
+class DeformableMirror(Device):
+    """Base class for Deformable Mirrors.
+    """
+    __metaclass__ = abs.ABCMeta
+
+    def __init__(self, *args, **kwargs):
+        microscope.device.Device.__init__(self, *args, **kwargs)
+        self._utype = microscope.device.UMIRROR
+
+    def reset(self):
+        """Set all actuators to the value zero.
+        """
+
+    def send(self,):
+
+
 # === LaserDevice ===
 class LaserDevice(Device):
     __metaclass__ = abc.ABCMeta
@@ -757,4 +775,3 @@ class LaserDevice(Device):
         """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
-

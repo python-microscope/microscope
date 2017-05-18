@@ -16,16 +16,15 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Base class for mirrors.
-"""
-
-import abc
+import ctypes
+import sys
 
 import microscope.devices
 
-class MirrorBase (microscope.device.Device):
-  __metaclass__ = abs.ABCMeta
+if sys.platform == "win32":
+  ctypes.
+else:
 
+class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, *args, **kwargs):
-    microscope.device.Device.__init__(self, *args, **kwargs)
-    self._utype = microscope.device.UMIRROR
+    microscope.devices.DeformableMirror.__init__(self, *args, **kwargs)
