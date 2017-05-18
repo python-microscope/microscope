@@ -29,7 +29,7 @@ import time
 from ast import literal_eval
 from collections import OrderedDict
 from six import string_types
-from threading import Thread
+from threading import Thread, RLock
 import Pyro4
 import numpy
 
@@ -98,6 +98,14 @@ class FloatingDeviceMixin(object):
 
 
 # === Device ===
+# Acquire a lock on settings dict before executing wrapped function
+def with_settings_lock(fn):
+    def wrapped_fn(self, *args, **kwargs):
+        with self._settings_lock:
+            result = fn(self, *args, *kwargs)
+        return result
+    return wrapped_fn
+
 class Device(object):
     __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
@@ -106,6 +114,7 @@ class Device(object):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
+        self._settings_lock = RLock()
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -181,6 +190,7 @@ class Device(object):
         pass
 
     # Methods for manipulating settings.
+    @with_settings_lock
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
@@ -215,6 +225,7 @@ class Device(object):
                                          'readonly': readonly}})
 
     @Pyro4.expose
+    @with_settings_lock
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
@@ -224,6 +235,7 @@ class Device(object):
             raise
 
     @Pyro4.expose
+    @with_settings_lock
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
@@ -234,6 +246,7 @@ class Device(object):
             raise
 
     @Pyro4.expose
+    @with_settings_lock
     def set_setting(self, name, value):
         """Set a setting."""
         if self.settings[name]['set'] is None:
@@ -267,6 +280,7 @@ class Device(object):
                 for (k, v) in iteritems(self.settings)]
 
     @Pyro4.expose
+    @with_settings_lock
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
