@@ -28,6 +28,7 @@ import logging
 import time
 from ast import literal_eval
 from collections import OrderedDict
+from six import string_types
 from threading import Thread
 import Pyro4
 import numpy
@@ -567,7 +568,7 @@ class CameraDevice(DataDevice):
     @Pyro4.expose
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, unicode)):
+        if isinstance(transform, (str, string_types)):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
