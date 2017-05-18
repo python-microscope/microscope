@@ -45,7 +45,7 @@ from six import iteritems
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER, UMIRROR) = range(7)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
