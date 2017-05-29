@@ -21,44 +21,68 @@
 Exceptions:
   May throw an OSError during import if the alpao SDK is not available.
 """
+
 import ctypes
 import sys
 
-#import microscope.devices
+import microscope.devices
 
 if sys.platform == "win32":
   _SDK = ctypes.windll.ASDK # throws OSError if missing
 else:
   raise NotImplementedError("alpao module not yet tested for non windows")
 
-_COMPL_STAT = ctypes.c_int # an enum type
-_CStr = ctypes.c_char_p
-_Scalar = ctypes.c_double
-_UInt = ctypes.c_uint32
-_Size_T = ctypes.c_size_t
+## These type names are the same names used in Alpao SDK documentation
+## and header files.
 
 class _asdkDM(ctypes.Structure):
   pass
 
-## Values for COMPL_STAT enum hardcoded because enum values are not
-## exported by ctypes.
+_asdkDM_p = ctypes.POINTER(_asdkDM)
+_COMPL_STAT = ctypes.c_int # an enum type
+_CStr = ctypes.c_char_p
+_Scalar = ctypes.c_double
+_Scalar_p = ctypes.POINTER(_Scalar)
+_UInt = ctypes.c_uint32
+_Size_T = ctypes.c_size_t
+
+## COMPL_STAT values hardcoded because enum definitions are not
+## exported.
 _SUCCESS = 0
 _FAILURE = -1
 
-_SDK.asdkInit.restype = ctypes.POINTER(_asdkDM)
-_SDK.asdkInit.argtypes = [_CStr]
-
-_SDK.asdkRelease.restype = _COMPL_STAT
-_SDK.asdkRelease.argtypes = [ctypes.POINTER(_asdkDM)]
-
+_SDK.asdkGet.argtypes = [_asdkDM_p, _CStr, _Scalar_p]
 _SDK.asdkGet.restype = _COMPL_STAT
-_SDK.asdkGet.argtypes = [ctypes.POINTER(_asdkDM), _CStr,
-                         ctypes.POINTER(_Scalar)]
 
+_SDK.asdkGetLastError.argtypes = [ctypes.POINTER(_UInt), _CStr, _Size_T]
 _SDK.asdkGetLastError.restype = _COMPL_STAT
-_SDK.asdkGetLastError.argtypes = [ctypes.POINTER(_UInt),
-                                  ctypes.POINTER(_CStr), _Size_T]
 
+_SDK.asdkInit.argtypes = [_CStr]
+_SDK.asdkInit.restype = _asdkDM_p
+
+_SDK.asdkPrintLastError.argtypes = []
+_SDK.asdkPrintLastError.restype = None
+
+_SDK.asdkRelease.argtypes = [_asdkDM_p]
+_SDK.asdkRelease.restype = _COMPL_STAT
+
+_SDK.asdkReset.argtypes = [_asdkDM_p]
+_SDK.asdkReset.restype = _COMPL_STAT
+
+_SDK.asdkSend.argtypes = [_asdkDM_p, _Scalar_p]
+_SDK.asdkSend.restype = _COMPL_STAT
+
+_SDK.asdkSendPattern.argtypes = [_asdkDM_p, _Scalar_p, _UInt, _UInt]
+_SDK.asdkSendPattern.restype = _COMPL_STAT
+
+_SDK.asdkSet.argtypes = [_asdkDM_p, _CStr, _Scalar]
+_SDK.asdkSet.restype = _COMPL_STAT
+
+_SDK.asdkSetString.argtypes = [_asdkDM_p, _CStr, _CStr]
+_SDK.asdkSetString.restype = _COMPL_STAT
+
+_SDK.asdkStop.argtypes = [_asdkDM_p]
+_SDK.asdkStop.restype = _COMPL_STAT
 
 class _DM(object):
   """Wraps the Alpao C interface into a class.
@@ -67,11 +91,44 @@ class _DM(object):
   from Alpao's SDK.
 
   Maybe this class is pointless and we could make the calls to the C
-  functions directly on the DeformableMirror class.
+  functions directly on the AlpaoDeformableMirror class.
   """
 
+  ## The length of the buffer given to Alpao SDK to write error
+  ## messages.
+  _err_msg_len = 64
+
+  def _check_error(self):
+    """Check for errors in the Alpao SDK.
+
+    Checks if there is an error in the Alpao SDK stack and raise an
+    exception if so.
+    """
+    ## asdkGetLastError should write a null-terminated string but
+    ## doesn't seem like it (at least CannotOpenCfg does not ends in
+    ## null) so we empty the buffer ourselves before using it.  Note
+    ## that even when there are no errors, we need to empty the buffer
+    ## because the buffer has the message 'No error in stack'.
+    ##
+    ## TODO: report this upstream to Alpao and clean our code.
+    self._err_msg[0:self._err_msg_len] = b'\x00' * self._err_msg_len
+
+    err = ctypes.pointer(_UInt(0))
+    status = _SDK.asdkGetLastError(err, self._err_msg, self._err_msg_len)
+    if status == _SUCCESS:
+      msg = self._err_msg.value
+      if len(msg) > self._err_msg_len:
+        msg = msg + "..."
+      raise Exception("Failed to initialise connection: %s (error %i)"
+                      % (msg, err.value))
+
   def __init__(self, serial_number):
-    self._dm = _SDK.asdkInit(serial_number.encode("utf-8"))
+    ## We need to constantly check for errors and need a buffer to
+    ## have the message written to.  To avoid creating a new buffer
+    ## each time, have a buffer per instance.
+    self._err_msg = ctypes.create_string_buffer(self._err_msg_len)
+
+    self._dm = _SDK.asdkInit(bytes(serial_number, "utf-8"))
     if not self._dm:
       raise Exception("Failed to initialise connection: don't know why")
     ## In theory, asdkInit should return a NULL pointer in case of
@@ -80,16 +137,9 @@ class _DM(object):
     ## there's any error on the stack.  But maybe there are
     ## initialisation errors that do make it return a NULL pointer so
     ## we check both.
-    err = ctypes.pointer(_UInt(0))
-    msg_len = 64 # should be enough
-    msg = ctypes.create_string_buffer(msg_len) ## FIXME (msg is wrong)
-    status = _SDK.asdkGetLastError(err, msg, msg_len)
-    if status == _SUCCESS:
-      msg = msg.value
-      if len(msg) > msg_len:
-        msg = msg + "..."
-      raise Exception("Failed to initialise connection: %s (error %i)"
-                      % (msg, err.value))
+    ##
+    ## TODO: report this upstream to Alpao and clean our code.
+    self._check_error()
 
   # def send(self, values, n_repeats=1):
   #   """Send values
@@ -118,8 +168,7 @@ class _DM(object):
     return int(value.contents.value)
 
   def __del__(self):
-    ## Don't bother checking if release was successful.  It's not like
-    ## we have an alternative plan.
+    ## Will throw an OSError if it's already been releaed.
     _SDK.asdkRelease(self._dm)
 
 class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
