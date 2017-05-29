@@ -25,12 +25,15 @@ Exceptions:
 import ctypes
 import sys
 
+import numpy
+
 import microscope.devices
 
 if sys.platform == "win32":
   _SDK = ctypes.windll.ASDK # throws OSError if missing
 else:
   raise NotImplementedError("alpao module not yet tested for non windows")
+
 
 ## These type names are the same names used in Alpao SDK documentation
 ## and header files.
@@ -141,35 +144,54 @@ class _DM(object):
     ## TODO: report this upstream to Alpao and clean our code.
     self._check_error()
 
-  # def send(self, values, n_repeats=1):
-  #   """Send values
-  #   """
-  #   status = _SDK.asdkSend(self._dm, const Scalar * value)
-  #   if status != SUCCESS:
-  #     raise Exception()
-
-  # def reset(self):
-  #   status = _SDK.asdkReset(self._dm)
-  #   if status != SUCCESS:
-  #     raise Exception()
-
-  # def stop(self):
-  #   """Stops all current transfer.
-  #   """
-  #   status = _SDK.asdkReset(self._dm)
-  #   if status != SUCCESS:
-  #     raise Exception()
-
-  def get_number_of_actuators(self):
-    value = ctypes.pointer(_Scalar())
-    status = _SDK.asdkGet(self._dm, "NbOfActuator".encode("utf-8"), value)
+    value = _Scalar_p()
+    status = _SDK.asdkGet(self._dm, bytes("NbOfActuator", "utf-8"), value)
     if status != _SUCCESS:
+      self._check_error()
+    self.n_actuators = int(value.contents.value)
+
+  def send(self, values, n_repeats=1):
+    """Send values to the mirror.
+
+    Parameters
+    ----------
+    values: numpy array
+      An N elements array of values in the range [-1 1], where N
+      equals the number of actuators.
+    """
+    if n_repeats != 1:
+      NotImplementedError()
+    elif values.size != self.n_actuators:
+      raise Exception(("Number of values '%d' differ from number of"
+                       " actuators '%d'") % (values.size, self.n_actuators))
+
+    status = _SDK.asdkSend(self._dm, values.ctypes.data_as(_Scalar_p))
+    if status != SUCCESS:
       raise Exception()
-    return int(value.contents.value)
+
+  def reset(self):
+    """Reset mirror values.
+    """
+    status = _SDK.asdkReset(self._dm)
+    if status != _SUCCESS:
+      self._check_error()
 
   def __del__(self):
     ## Will throw an OSError if it's already been releaed.
     _SDK.asdkRelease(self._dm)
+
+
+def _test_all_actuators(dm, time_interval=1):
+  """TODO: maybe move this to testsuite namespace?
+  """
+  data = numpy.zeros((dm.n_actuators), dtype=_Scalar)
+  for i in range(dm.n_actuators):
+    data[i] = 1.0
+    dm.send(data)
+    time.sleep(time_interval)
+    data[i] = 0.0
+  dm.reset()
+
 
 class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):
