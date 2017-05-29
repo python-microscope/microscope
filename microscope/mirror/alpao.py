@@ -24,6 +24,7 @@ Exceptions:
 
 import ctypes
 import sys
+import time
 
 import numpy
 
@@ -53,6 +54,7 @@ _Size_T = ctypes.c_size_t
 ## exported.
 _SUCCESS = 0
 _FAILURE = -1
+
 
 _SDK.asdkGet.argtypes = [_asdkDM_p, _CStr, _Scalar_p]
 _SDK.asdkGet.restype = _COMPL_STAT
@@ -126,6 +128,12 @@ class _DM(object):
                       % (msg, err.value))
 
   def __init__(self, serial_number):
+    """
+    Parameters
+    ----------
+    serial_number: string
+      The serial number of the deformable mirror, something like "BIL103".
+    """
     ## We need to constantly check for errors and need a buffer to
     ## have the message written to.  To avoid creating a new buffer
     ## each time, have a buffer per instance.
@@ -134,6 +142,7 @@ class _DM(object):
     self._dm = _SDK.asdkInit(bytes(serial_number, "utf-8"))
     if not self._dm:
       raise Exception("Failed to initialise connection: don't know why")
+
     ## In theory, asdkInit should return a NULL pointer in case of
     ## failure.  However, at least in the case of a missing
     ## configuration file it still returns a DM pointer so we check if
@@ -144,7 +153,7 @@ class _DM(object):
     ## TODO: report this upstream to Alpao and clean our code.
     self._check_error()
 
-    value = _Scalar_p()
+    value = _Scalar_p(_Scalar())
     status = _SDK.asdkGet(self._dm, bytes("NbOfActuator", "utf-8"), value)
     if status != _SUCCESS:
       self._check_error()
@@ -166,7 +175,7 @@ class _DM(object):
                        " actuators '%d'") % (values.size, self.n_actuators))
 
     status = _SDK.asdkSend(self._dm, values.ctypes.data_as(_Scalar_p))
-    if status != SUCCESS:
+    if status != _SUCCESS:
       raise Exception()
 
   def reset(self):
@@ -184,16 +193,27 @@ class _DM(object):
 def _test_all_actuators(dm, time_interval=1):
   """TODO: maybe move this to testsuite namespace?
   """
-  data = numpy.zeros((dm.n_actuators), dtype=_Scalar)
+  data = numpy.full((dm.n_actuators), -1.0, dtype=_Scalar)
   for i in range(dm.n_actuators):
     data[i] = 1.0
     dm.send(data)
     time.sleep(time_interval)
-    data[i] = 0.0
+    data[i] = -1.0
   dm.reset()
 
 
 class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):
     microscope.devices.DeformableMirror.__init__(self, *args, **kwargs)
-    self.serial_number = serial_number
+    self._dm = _DM(serial_number)
+
+  def get_n_actuators(self):
+    return self._dm.n_actuators
+
+  def send(self, values):
+    self._dm.send(values)
+
+  def reset(self):
+    self._dm.reset()
+
+  ## Do not set _on_shutdown.  To shutdown device, destroy object.

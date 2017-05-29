@@ -701,17 +701,38 @@ class CameraDevice(DataDevice):
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
     """
-    __metaclass__ = abs.ABCMeta
+    __metaclass__ = abc.ABCMeta
 
+    @abc.abstractmethod
     def __init__(self, *args, **kwargs):
-        microscope.device.Device.__init__(self, *args, **kwargs)
-        self._utype = microscope.device.UMIRROR
+        Device.__init__(self, *args, **kwargs)
+        self._utype = UMIRROR
 
+    @Pyro4.expose
+    @abc.abstractmethod
     def reset(self):
-        """Set all actuators to the value zero.
-        """
+        """Reset the deformable mirror.
 
-    def send(self,):
+        Effectivelly set all actuators back to value zero.
+        """
+        pass
+
+    @Pyro4.expose
+    @abc.abstractmethod
+    def send(self, values):
+        """Set values to the mirror
+
+        Parameters
+        ----------
+        values: numpy array
+            An N elements array of values in the range [-1 1], where N
+            equals the number of actuators.
+        """
+        pass
+
+    @Pyro4.expose
+    def get_n_actuators(self):
+        return self.n_actuators
 
 
 # === LaserDevice ===
