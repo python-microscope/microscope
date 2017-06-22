@@ -21,6 +21,7 @@ import inspect
 import Pyro4
 import socket
 import threading
+from microscope import devices
 
 # Python 2.7 and 3 compatibility.
 try:
