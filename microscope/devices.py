@@ -102,7 +102,7 @@ class FloatingDeviceMixin(object):
 def with_settings_lock(fn):
     def wrapped_fn(self, *args, **kwargs):
         with self._settings_lock:
-            result = fn(self, *args, *kwargs)
+            result = fn(self, *args, **kwargs)
         return result
     return wrapped_fn
 
