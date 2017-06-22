@@ -90,7 +90,9 @@ class DataClient(Client):
 
 
     def trigger_and_wait(self):
-        if not hasattr(self, 'soft_trigger'):
-            raise Exception("Device has no soft_trigger method.")
-        self.soft_trigger()
+        """Trigger device if using soft trigger, and wait for data."""
+        if self.get_trigger_type() == devices.TRIGGER_SOFT:
+            if not hasattr(self, 'soft_trigger'):
+                raise Exception("Device has no soft_trigger method.")
+            self.soft_trigger()
         return self._buffer.get(block=True)
