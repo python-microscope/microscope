@@ -63,6 +63,12 @@ class DeformableMirror(tkinter.Frame):
     self.canvas = tkinter.Canvas(self)
     self.canvas_frame = tkinter.Frame(self.canvas)
 
+    reset_button = tkinter.Button(self.canvas_frame,
+                                  text="Reset actuators",
+                                  command=self.dm.reset)
+    reset_button.pack(fill='x')
+    self.reset_button = reset_button
+
     self.sliders = [None] * n
     for i in range(n):
       callback = lambda s,i=i: self.set_actuator(i, float(s))
