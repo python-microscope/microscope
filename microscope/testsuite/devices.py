@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 ## Copyright (C) 2016-2017 Mick Phillips <mick.phillips@gmail.com>
+## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
 ##
 ## This file is part of Microscope.
 ##
@@ -194,3 +195,8 @@ class TestLaser(devices.LaserDevice):
 
     def get_power_mw(self):
         return self._power
+
+class TestDeformableMirror(devices.DeformableMirror):
+    def __init__(self, n_actuators, *args, **kwargs):
+        devices.DeformableMirror.__init__(self, *args, **kwargs)
+        self.n_actuators = n_actuators
