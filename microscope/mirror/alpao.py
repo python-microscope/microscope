@@ -103,6 +103,12 @@ class _DM(object):
   ## messages.
   _err_msg_len = 64
 
+  ## TODO: Confirm this values, the SDK manual does not say
+  trigger_type_to_value = {
+    microscope.devices.TRIGGER_SOFT : 0,
+    microscope.devices.TRIGGER_BEFORE: 2,
+  }
+
   def _check_error(self):
     """Check for errors in the Alpao SDK.
 
@@ -178,12 +184,37 @@ class _DM(object):
     if status != _SUCCESS:
       raise Exception()
 
+  def send_patterns(self, patterns):
+    """Send multiple patterns to the mirror.
+
+    Args:
+      patterns - numpy array with 2 dimensions, with one row per
+        pattern.  Even if sending only one pattern, the number of rows
+        must be 1, i.e., size (1, N) and not just N.
+    """
+    ## TODO: add option to repeat the pattern on the device
+    status = _SDK.asdkSendPattern(self._dm, patterns.ctypes.data_as(_Scalar_p),
+                                  patterns.shape[0], 1)
+    if status != _SUCCESS:
+      raise Exception()
+
   def reset(self):
     """Reset mirror values.
     """
     status = _SDK.asdkReset(self._dm)
     if status != _SUCCESS:
       self._check_error()
+
+  def set_trigger_type(self, trigger_type):
+    try:
+      value = self.trigger_type_to_value[trigger_type]
+    except KeyError:
+      raise Exception("invalid trigger type '%d' for Alpao Mirrors"
+                      % trigger_type)
+
+    status = _SDK.asdkSet(self._dm, bytes("TriggerMode", "utf-8"), value)
+    if status != _SUCCESS:
+      raise Exception("failed to set trigger mode '%d'" %  value)
 
   def __del__(self):
     ## Will throw an OSError if it's already been releaed.
@@ -212,6 +243,19 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
 
   def send(self, values):
     self._dm.send(values)
+
+  def send_patterns(self, patterns):
+    if patterns.ndim != 2:
+      raise Exception("patterns have %d dimensions instead of 2"
+                      % patterns.ndim)
+    elif patterns.shape[1] == self.get_n_actuators():
+      raise Exception(("PATTERNS number of columns '%d' must equal number of"
+                       " actuators '%d'"
+                       % (patterns.shape[1], self.get_n_actuators())))
+    self._dm.send_patterns(patterns)
+
+  def set_trigger(self, mode):
+    self._dm.set_trigger_type(mode)
 
   def reset(self):
     self._dm.reset()
