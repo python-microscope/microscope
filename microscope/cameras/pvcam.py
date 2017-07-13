@@ -1070,7 +1070,7 @@ class PVParam(object):
         err = None
         key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
-            return self.__cache[key]
+            return self.__cache.get(key, None)
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
@@ -1091,6 +1091,7 @@ class PVParam(object):
                 result = _get_param(self.cam.handle, self.param_id, what)
             except Exception as e:
                 err = e
+
         if err and err.message.startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
             result = None
@@ -1428,9 +1429,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
             try:
                 p.current
-            except Exception as e:
-                if not e.message.startswith('pvcam error 49'):
-                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=e.message)
+            except KeyError:
+                # Raise these here, as the message is a tuple, not a str.
+                raise
+            except Exception as err:
+                if not err.message.startswith('pvcam error 49'):
+                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=err.message)
                     continue
             self.add_setting(p.name,
                              p.dtype,
