@@ -566,8 +566,13 @@ class OUTPUT(_meta):
         self.val = ctypes.POINTER(val)
 
     def get_var(self, buf_len=0):
-        v = self.type()
-        return v, ctypes.byref(v)
+        if self.type in [STRING, ctypes.c_void_p] and buf_len > 0:
+            v = ctypes.create_string_buffer(buf_len)
+            ref = ctypes.cast(ctypes.pointer(v), self.val)
+        else:
+            v = self.type()
+            ref = ctypes.byref(v)
+        return v, ref
 
 
 class _OUTSTRING(OUTPUT):
