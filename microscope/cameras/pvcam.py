@@ -641,6 +641,7 @@ class dllFunction(object):
             bs = self.buf_len
         else:
             bs = 256
+        # May have been passed a ctype; if so, fetch its value.
         if isinstance(bs, ctypes._SimpleCData):
             bs = bs.value
 
@@ -657,9 +658,10 @@ class dllFunction(object):
                 ret.append(r)
                 # print r, r._type_
 
-        # print ars
+        # print (self.name, ars)
         res = self.f(*ars)
         # print res
+
 
         if res == False:
             err_code = _lib.pl_error_code()
@@ -1061,15 +1063,14 @@ class PVParam(object):
 
     def _query(self, what=ATTR_CURRENT, force_query=False):
         """Query the DLL for an attribute for this parameter."""
-        key = (self, what)
+        key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
             return self.__cache[key]
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
             raise Exception("Parameter %s is not available" % self.name)
-        # return type
-        rtype = _attr_map[what]
+        rtype = _attr_map[what] # return type
         if not rtype:
             rtype = _get_param(self.cam.handle, self.param_id, ATTR_TYPE)
         if rtype.value == TYPE_CHAR_PTR:
