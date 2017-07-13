@@ -1400,10 +1400,11 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             if param_id in self._params:
                 continue
             p = PVParam(self, param_id)
-            self._params[param_id] = p
-            name = name[6:]
             if not p.dtype or not p.available:
                 continue
+            self._params[param_id] = p
+            name = name[6:]
+
             try:
                 p.current
             except Exception as e:
