@@ -293,6 +293,8 @@ class Device(object):
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
+            if self.settings[key]['readonly']:
+                continue
             self.settings[key]['set'](incoming[key])
         # Read back values in second loop.
         for key in update_keys:
