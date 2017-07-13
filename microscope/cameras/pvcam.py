@@ -1162,8 +1162,12 @@ class PVParam(object):
         elif self._pvtype == TYPE_ENUM:
             value = int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
             vals, descs = zip(*self.values)
-            index = vals.index(value)
-            description = descs[index]
+            if value in vals:
+                index = vals.index(value)
+                description = descs[index]
+            else:
+                index = None
+                description = '*UNDEFINED*'
             return (value, description)
         else:
             return ctypes.POINTER(self._ctype)(self.raw).contents.value
