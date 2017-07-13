@@ -1056,8 +1056,11 @@ class PVParam(object):
                 raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
         _set_param(self.cam.handle,
                    self.param_id,
+                   # TODO: this throws errors on strings, since need to put them into
+                   # a buffer before creating a pointer. Does any pvcam hardware let you
+                   # write to strings, though?
                    ctypes.byref(ctypes.c_void_p(new_value)))
-        # Read back the value to update cache..
+        # Read back the value to update cache.
         self._query(force_query=True)
 
 
