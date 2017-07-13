@@ -1432,17 +1432,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 if not e.message.startswith('pvcam error 49'):
                     self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=e.message)
                     continue
-            # Used to expose parameters as settings here, but need to rework the settings
-            # system to prevent reads when self._acquiring ... Even then, exposing all
-            # available parameters as settings seems to cause the camera hardware to fall
-            # over more frequently. Only expose what we need, for now.
-            # self.add_setting(p.name,
-            #                 p.dtype,
-            #                 lambda p=p: [p.current, None][self._acquiring],
-            #                 p.set_value,
-            #                 lambda p=p: p.values,
-            #                 not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
-
+            self.add_setting(p.name,
+                             p.dtype,
+                             lambda p=p: [p.current, None][self._acquiring],
+                             p.set_value,
+                             lambda p=p: p.values,
+                             not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
         if PARAM_GAIN_MULT_FACTOR in self._params:
             self.add_setting('gain',
                              self._params[PARAM_GAIN_MULT_FACTOR].dtype,
@@ -1459,11 +1454,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
         self.roi = (0, 0, self.shape[0], self.shape[1])
-
-        for param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
-            p = self._params.get(param_id, None)
-            if not p or not p.dtype or not p.available:
-                continue
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
