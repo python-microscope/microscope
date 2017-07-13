@@ -1064,8 +1064,10 @@ class PVParam(object):
         self._query(force_query=True)
 
 
+
     def _query(self, what=ATTR_CURRENT, force_query=False):
         """Query the DLL for an attribute for this parameter."""
+        err = None
         key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
             return self.__cache[key]
@@ -1080,10 +1082,22 @@ class PVParam(object):
             buf_len = _length_map[self.param_id]
             if not buf_len:
                 raise Exception('pvcam: parameter %s not supported in python.' % self.name)
-            result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
+            try:
+                result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
+            except Exception as e:
+                err = e
         else:
-            result = _get_param(self.cam.handle, self.param_id, what)
-        self.__cache[key] = result
+            try:
+                result = _get_param(self.cam.handle, self.param_id, what)
+            except Exception as e:
+                err = e
+        if err and err.message.startswith('pvcam error 49'):
+            self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
+            result = None
+        elif err:
+            raise e
+        else:
+            self.__cache[key] = result
         return result
 
 
