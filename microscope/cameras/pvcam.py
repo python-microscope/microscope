@@ -1438,7 +1438,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                     continue
             self.add_setting(p.name,
                              p.dtype,
-                             lambda p=p: [p.current, None][self._acquiring],
+                             lambda p=p: p.current,
                              p.set_value,
                              lambda p=p: p.values,
                              not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
