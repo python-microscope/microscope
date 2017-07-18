@@ -211,7 +211,6 @@ class Device(object):
                                          'get': get_func,
                                          'set': set_func,
                                          'values': values,
-                                         'current': None,
                                          'readonly': readonly}})
 
     @Pyro4.expose
