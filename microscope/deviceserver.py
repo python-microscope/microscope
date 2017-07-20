@@ -195,6 +195,9 @@ def serve_devices(devices):
         """Terminate subprocesses cleanly."""
         if parent == multiprocessing.current_process ():
             exit_event.set()
+            # Join keep_alive_thread so that it can't modify the list
+            # of servers.
+            keep_alive_thread.join()
             for this_server in servers:
                 this_server.join()
             sys.exit()
@@ -274,10 +277,11 @@ def serve_devices(devices):
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
 
-    for s in servers:
-        # This will iterate over all servers: those present when the loop
-        # is entered, and any added to the list later.
-        s.join()
+    while not exit_event.is_set():
+        try:
+            time.sleep(100)
+        except (KeyboardInterrupt, IOError):
+            pass
 
 def __main__():
     logger = logging.getLogger(__name__)
