@@ -164,18 +164,17 @@ class DeviceServer(multiprocessing.Process):
                                      False})
         pyro_thread.daemon = True
         pyro_thread.start()
-        if self.exit_event:
+        # Wait for termination event. We should just be able to call
+        # wait() on the exit_event, but this causes issues with locks
+        # in multiprocessing - see http://bugs.python.org/issue30975 .
+        while self.exit_event and not self.exit_event.is_set():
             # This tread waits for the termination event.
             try:
-                self.exit_event.wait()
-            except:
+                time.sleep(5)
+            except (KeyboardInterrupt, IOError):
                 pass
-            pyro_daemon.shutdown()
-            pyro_thread.join()
-            # Termination condition triggered.
-        else:
-            # This is the main process. Sleep until interrupt.
-            pyro_thread.join()
+        pyro_daemon.shutdown()
+        pyro_thread.join()
         self._device.shutdown()
 
 def serve_devices(devices):
