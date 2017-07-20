@@ -28,6 +28,7 @@ import collections
 import imp # this has been deprecated, we should be using importlib
 import logging
 import multiprocessing
+import psutil
 import signal
 import sys
 import time
@@ -245,7 +246,11 @@ def serve_devices(devices):
         """Keep DeviceServers alive."""
         while not exit_event.is_set():
             for s in servers:
-                if not s.is_alive() and s.exitcode < 0:
+                # is_alive can show True for processes killed elsewhere, so also
+                # check that the process still exists.
+                if psutil.pid_exists(s.pid) and s.is_alive():
+                    continue
+                else:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
                                  " exitcode %s. Restarting...")
                                 % (s.pid, s.exitcode))
