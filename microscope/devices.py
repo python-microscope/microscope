@@ -283,7 +283,7 @@ class Device(object):
             my_keys = set(self.settings.keys())
             their_keys = set(incoming.keys())
             update_keys = set(key for key in my_keys & their_keys
-                              if self.settings[key]['current'] != incoming[key])
+                              if self.get_setting(key) != incoming[key])
         results = {}
         # Update values.
         for key in update_keys:
