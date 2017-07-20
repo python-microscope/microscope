@@ -128,7 +128,7 @@ class DeviceServer(multiprocessing.Process):
         logger.debug("Debugging messages on.")
         self._device = self._device_def['cls'](index=self.count,
                                                **self._device_def)
-        while True:
+        while not self.exit_event.is_set():
             try:
                 self._device.initialize()
             except Exception as e:
