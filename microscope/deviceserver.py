@@ -28,7 +28,6 @@ import collections
 import imp # this has been deprecated, we should be using importlib
 import logging
 import multiprocessing
-import psutil
 import signal
 import sys
 import time
@@ -195,6 +194,7 @@ def serve_devices(devices):
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
         if parent == multiprocessing.current_process ():
+            logger.debug("Shutting down all servers.")
             exit_event.set()
             # Join keep_alive_thread so that it can't modify the list
             # of servers.
@@ -246,9 +246,8 @@ def serve_devices(devices):
         """Keep DeviceServers alive."""
         while not exit_event.is_set():
             for s in servers:
-                # is_alive can show True for processes killed elsewhere, so also
-                # check that the process still exists.
-                if psutil.pid_exists(s.pid) and s.is_alive():
+                if s.is_alive():
+                    logger.info("%s is alive." % s.pid)
                     continue
                 else:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
