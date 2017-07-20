@@ -244,7 +244,6 @@ def serve_devices(devices):
     def keep_alive():
         """Keep DeviceServers alive."""
         while not exit_event.is_set():
-            time.sleep(1)
             for s in servers:
                 if not s.is_alive() and s.exitcode < 0:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
@@ -273,6 +272,10 @@ def serve_devices(devices):
                 # if we add some interface to interactively restart servers.
                 logger.info("No servers running. Exiting.")
                 exit_event.set()
+            try:
+                time.sleep(5)
+            except (KeyboardInterrupt, IOError):
+                pass
 
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
