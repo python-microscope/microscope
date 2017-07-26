@@ -585,14 +585,20 @@ class CameraDevice(DataDevice):
     @abc.abstractmethod
     @Pyro4.expose
     def set_exposure_time(self, value):
+        """Set the exposure time on the device.
+
+        :param value: exposure time in seconds
+        """
         pass
 
     @Pyro4.expose
     def get_exposure_time(self):
+        """Return the current exposure time, in seconds."""
         pass
 
     @Pyro4.expose
     def get_cycle_time(self):
+        """Return the cycle time, in seconds."""
         pass
 
     @Pyro4.expose
@@ -602,7 +608,7 @@ class CameraDevice(DataDevice):
 
     @abc.abstractmethod
     def _get_sensor_shape(self):
-        """Return a tuple of (width, height)"""
+        """Return a tuple of (width, height) indicating shape in pixels."""
         pass
 
     @Pyro4.expose
