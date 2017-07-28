@@ -131,7 +131,7 @@ class _DM(object):
       if len(msg) > self._err_msg_len:
         msg = msg + "..."
       raise Exception("Failed to initialise connection: %s (error %i)"
-                      % (msg, err.value))
+                      % (msg, err.contents.value))
 
   def __init__(self, serial_number):
     """
