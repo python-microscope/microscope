@@ -65,7 +65,7 @@ class DeformableMirror(tkinter.Frame):
 
     reset_button = tkinter.Button(self.canvas_frame,
                                   text="Reset actuators",
-                                  command=self.dm.reset)
+                                  command=self.reset)
     reset_button.pack(fill='x')
     self.reset_button = reset_button
 
@@ -114,6 +114,12 @@ class DeformableMirror(tkinter.Frame):
     self.dm_pattern[i] = val
 #    print self.dm_pattern
     self.dm.send(self.dm_pattern)
+
+  def reset(self):
+    for s in self.sliders:
+      s.set(0)
+    self.dm.reset()
+
 
 def make_app(frame_cls, *args, **kwargs):
   """Make a simple tkinter application from a single Frame.
