@@ -46,7 +46,7 @@ from six import iteritems
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER, UWAVEFRONTSENSOR) = range(7)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -765,4 +765,215 @@ class LaserDevice(Device):
         """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
+
+
+# === WavefrontSensorDevice ===
+class WavefrontSensorDevice(CameraDevice):
+    __metaclass__ = abc.ABCMeta
+    """Adds functionality to DataDevice to support WavefrontSensors (WFS).
+    As, in practice, all wavefront sensors are based on a camera, 
+    I think it makes sense here to subclassing a CameraDevice
+
+    Defines the interface for WFSs.
+    Applies transformations to the acquired data to get the relevant information:
+    intensity and wavefront maps, Zernike polynomials,...    
+    """
+    def __init__(self, *args, **kwargs):
+        super(WavefrontSensorDevice, self).__init__(**kwargs)
+        # Add WFS settings
+        # Zernike indexes to be returned
+        self._zernike_indexes = []
+        self.add_setting('zernike_indexes', 'int',
+                         self.get_zernike_indexes,
+                         self.set_zernike_indexes,
+                         'list of integers'))
+        # Filter the phase map returned by a number of the Zernike measurements
+        self._zernike_phase_filter = []
+        self.add_setting('zernike_phase_filter', 'bool',
+                         self.get_zernike_phase_filter,
+                         self.set_zernike_phase_filter,
+                         'list of integers')
+        # WaveLength at which the phase map is calculated
+        self._wavelength = None
+        self.add_setting('wavelength', 'int',
+                         self.get_wavelength,
+                         self.set_wavelength,
+                         'wavelength in nm')
+
+    # Some acquisition related methods #
+
+    @abc.abstractmethod
+    def _process_data(self, data):
+        """Apply necessary transformations to data to be served to the client.
+
+        Return as a dictionary:
+        - intensity_map: a 2D array containing the intensity
+        - linearity: some measure of the linearity of the data.
+            Simple saturation at the intensity map might not be enough to indicate
+            if we are exposing correctly to get a accurate measure of the phase.
+        - phase_map: a 2D array containing the phase
+        - tilts: a tuple containing X and Y tilts
+        - RMS: the root mean square measurement
+        - PtoV: peak to valley measurement
+        - zernike_polynomials: a list with the relevant Zernike polynomials
+        """
+
+        flips = (self._transform[0], self._transform[1])
+        rot = self._transform[2]
+
+        # Choose appropriate transform based on (flips, rot).
+        return {(0, 0): numpy.rot90(data, rot),
+                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
+                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
+                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
+                }[flips]
+
+    # Some measurements related methods
+    # We made the distinction here between ROI (form CameraDevice superclass)
+    # and pupil.
+    # ROI is the area that is acquired and shown in the intensity images.
+    # The pupil is the area that is analyzed for measuring phase.
+
+    @abc.abstractmethod
+    def _get_pupil(self):
+        """Return the pupil that is measured.
+        Pupil on WFS are not per se rectangular neither circular.
+        We might define them as:
+        1- a mask: a binary 2D array of the size of the sensor
+        2- as a list of sub-pupils each containing:
+           - the size (left, top, width, height) of a surrounding or enclosed rectangle
+           - whether the rectangle is surrounding or enclosed
+           - the contained shape: circular/oval or rectangular
+        While in most cases the pupil can be defined by a simple circle, it is
+        convenient to add the option of a mask.
+        Pupil has to be returned as a numpy array with the same orientation as the ROI
+        as it is going to use the same transform methods
+        """
+        pass
+
+    @Pyro4.expose
+    def get_pupil(self):
+        """Return pupil in a convenient way for the client."""
+        pupil = self._get_pupil()
+        # TODO: depending on the format of the pupil, we might have to transform it
+        # if self._transform[2]:
+        #     # 90 degree rotation
+        #     pupil = numpy.rot90(pupil)
+        return pupil
+
+    @abc.abstractmethod
+    def _set_pupil(self):
+        """Set the pupil on the hardware, return True if successful."""
+        return False
+
+    @Pyro4.expose
+    def set_pupil(self, pupil):
+        """Set the pupil according to the provided parameters.
+
+        Return True if pupil set correctly, False otherwise."""
+        # TODO: depending on the format of the pupil, we might have to transform it
+        # if self._transform[2]:
+        #     roi = (top, left, height, width)
+        # else:
+        #     roi = (left, top, width, height)
+        return self._set_pupil(pupil)
+
+    @abc.abstractmethod
+    def _set_reference(self, source):
+        """Reference the WFS to either:
+        - the manufacturer's reference
+        - a reference from a grabbed measurement
+        - a reference from a file
+
+        :return: True if successful
+        """
+        pass
+
+    @Pyro4.expose
+    def set_reference(self, source):
+        """Reference the WFS to either:
+        - the manufacturer's reference
+        - a reference from a grabbed measurement
+        - a reference from a file
+        for all the phase measurements
+        """
+        self._set_reference(source)
+
+    @abc.abstractmethod
+    def _get_reference(self):
+        """Get the reference of the WFS"""
+        pass
+
+    @Pyro4.expose
+    def get_reference(self):
+        """Return to what the WFS is currently referenced to."""
+        return self._get_reference()
+
+    @Pyro4.expose
+    @abc.abstractmethod
+    def acquire_dark_image(self):
+        """Acquire a dark image on the camera"""
+        pass
+
+    @Pyro4.expose
+    def get_zernike_indexes(self):
+        """Returns a list with the Zernike indexes that are returned in
+        a measurement"""
+        return self._zernike_indexes
+
+    @abc.abstractmethod
+    def _set_zernike_indexes(self, indexes):
+        """Set the indexes of the polynomials that have to be returned by the SDK or the hardware.
+
+        :param indexes: a list of integers representing the indexes to return
+        :return True if success
+        """
+        pass
+
+    @Pyro4.expose
+    def set_zernike_indexes(self, indexes):
+        """Set the indexes of the Zernike polynomials
+        that have to be returned by the WFS"""
+        if self._set_zernike_indexes(indexes):
+            self._zernike_indexes = indexes
+
+    @Pyro4.expose
+    def get_zernike_phase_filter(self):
+        return self._zernike_phase_filter
+
+    @abc.abstractmethod
+    def _set_zernike_phase_filter(self, phase_filter):
+        """Set a filter of Zernike polynomials by which the phase map has to be filtered.
+
+        :param phase_filter: a list of integers representing the indexes to filter. [] no filtering
+        :return True if success
+        """
+        pass
+
+    @Pyro4.expose
+    def set_zernike_phase_filter(self, phase_filter):
+        """Set a filter of Zernike polynomials by which the phase map has to be filtered.
+
+        :param phase_filter: a list of integers representing the indexes to filter. [] no filtering
+        """
+        if self._set_zernike_phase_filter(phase_filter):
+            self._zernike_phase_filter = phase_filter
+
+    @Pyro4.expose
+    def get_wavelength(self):
+        return self._wavelength
+
+    @abc.abstractmethod
+    def _set_wavelength(self, wavelength):
+        """Sets the wavelength that is used for tha phase calculation
+
+        :param wavelength: integer representing the wavelength in nm.
+        :return True if success
+        """
+        pass
+
+    @Pyro4.expose
+    def set_wavelength(self, wavelength):
+        if self._set_wavelength(wavelength):
+            self._wavelength = wavelength
 
