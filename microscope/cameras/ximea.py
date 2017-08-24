@@ -32,6 +32,29 @@ from microscope.filterwheel import FilterWheelBase
 from ximea import xiapi
 
 
+# Trigger mode to type.
+TRIGGER_MODES = {
+    'internal': None,
+    'external': devices.TRIGGER_BEFORE,
+    'external start': None,
+    'external exposure': devices.TRIGGER_DURATION,
+    'software': devices.TRIGGER_SOFT,
+}
+
+    #trig types from define file....
+    # #structure containing information about trigger source
+# XI_TRG_SOURCE = { 
+#     "XI_TRG_OFF": c_uint(0),    #Camera works in free run mode.
+#     "XI_TRG_EDGE_RISING": c_uint(1),    #External trigger (rising edge).
+#     "XI_TRG_EDGE_FALLING": c_uint(2),    #External trigger (falling edge).
+#     "XI_TRG_SOFTWARE": c_uint(3),    #Software(manual) trigger.
+#     "XI_TRG_LEVEL_HIGH": c_uint(4),    #Specifies that the trigger is considered valid as long as the level of the source signal is high.
+#     "XI_TRG_LEVEL_LOW": c_uint(5),    #Specifies that the trigger is considered valid as long as the level of the source signal is low.
+#    }
+
+
+
+
 @Pyro4.expose
 @Pyro4.behavior('single')
 class XimaeCamera(devices.CameraDevice):
@@ -120,8 +143,29 @@ class XimaeCamera(devices.CameraDevice):
     def _get_sensor_shape(self):
         return (self.img.width,self.image.height)
 
+    #trig types from define file....
+    # #structure containing information about trigger source
+# XI_TRG_SOURCE = { 
+#     "XI_TRG_OFF": c_uint(0),    #Camera works in free run mode.
+#     "XI_TRG_EDGE_RISING": c_uint(1),    #External trigger (rising edge).
+#     "XI_TRG_EDGE_FALLING": c_uint(2),    #External trigger (falling edge).
+#     "XI_TRG_SOFTWARE": c_uint(3),    #Software(manual) trigger.
+#     "XI_TRG_LEVEL_HIGH": c_uint(4),    #Specifies that the trigger is considered valid as long as the level of the source signal is high.
+#     "XI_TRG_LEVEL_LOW": c_uint(5),    #Specifies that the trigger is considered valid as long as the level of the source signal is low.
+#    }
+
     def get_trigger_type(self):
+        trig=self.handle.get_trigger_source()
         return devices.TRIGGER_SOFT
+
+    def set_trigger_type(self, trigger):
+        if (trigger == devices.TRIGGER_SOFT):
+            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
+        elif (trigger == devices.TRIGGER_BEFORE):
+            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
+            #define digial input mode of trigger
+            self.handle.set_gpi_selector(1)
+            self.handle.set_gpi_mode(XI_GPI_TRIGGER)
 
     def soft_trigger(self):
         self._logger.info('Trigger received; self._acquiring is %s.'
