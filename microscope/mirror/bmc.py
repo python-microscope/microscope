@@ -20,6 +20,7 @@
 """
 
 import ctypes
+import os
 
 import microscope.devices
 import microscope.sdk.bmc as BMC
@@ -28,10 +29,16 @@ class BMCDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):
     super(BMCDeformableMirror, self).__init__()
     self._dm = BMC.DM()
-    status = BMC.Open(self._dm)
+    BMC.ConfigureLog(os.devnull, BMC.LOG_OFF)
+    status = BMC.Open(self._dm, serial_number.encode("utf-8"))
     if status:
       msg = BMC.ErrorString(status)
       raise Exception(msg)
+
+  def initialize(self):
+    pass
+  def _on_shutdown(self):
+    pass
 
   def get_n_actuators(self):
     return self._dm.ActCount
@@ -39,7 +46,7 @@ class BMCDeformableMirror(microscope.devices.DeformableMirror):
   def send(self, values):
     if values.size != self.get_n_actuators():
       raise Exception("not right size")
-    data_pointer = values.ctypes.data_as(ctypes.POINTER(c_double))
+    data_pointer = values.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
     status = BMC.SetArray(self._dm, data_pointer, None)
     if status:
       msg = BMC.ErrorString(status)
@@ -51,4 +58,4 @@ class BMCDeformableMirror(microscope.devices.DeformableMirror):
 
   def __del__(self):
     BMC.Close(self._dm)
-    super(BMCDeformableMirror, seld).__del__()
+    super(BMCDeformableMirror, self).__del__()

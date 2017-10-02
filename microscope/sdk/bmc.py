@@ -17,6 +17,10 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """Wrapper to Boston MicroMachines Corporation (BMC) SDK.
+
+Provides a simple ctypes interface to BMC C API.  Consult the SDK
+documentation for the actual documentation.  The names are the same
+with the exception of the BMC prefix having been removed.
 """
 
 from ctypes import *
