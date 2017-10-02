@@ -29,8 +29,8 @@ else:
   SDK = cdll.LoadLibrary("libBMC.so.3")
 
 ## Definitions from BMCDefs.h
-BMC_MAX_PATH = 260
-BMC_SERIAL_NUMBER_LEN = 11
+MAX_PATH = 260
+SERIAL_NUMBER_LEN = 11
 MAX_DM_SIZE = 4096
 
 class DM_PRIV(Structure):
@@ -39,7 +39,7 @@ class DM_PRIV(Structure):
 class DM_DRIVER(Structure):
   _fields_ = [
       ("channel_count", c_uint),
-      ("serial_number", c_char * (BMC_SERIAL_NUMBER_LEN+1)),
+      ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
       ("reserved", c_uint * 7)
   ]
 
@@ -55,43 +55,50 @@ class DM(Structure):
       ("ActCount", c_uint),
       ("MaxVoltage", c_uint),
       ("VoltageLimit", c_uint),
-      ("mapping", c_char * BMC_MAX_PATH),
-      ("inactive", c_uint * MAX_DM_SIZE_),
-      ("profiles_path", c_char * BMC_MAX_PATH),
-      ("maps_path", c_char * BMC_MAX_PATH),
-      ("cals_path", c_char * BMC_MAX_PATH),
-      ("cal", c_char * BMC_MAX_PATH),
-      ("serial_number", c_char * (BMC_SERIALl_NUMBER_LEN+1)),
+      ("mapping", c_char * MAX_PATH),
+      ("inactive", c_uint * MAX_DM_SIZE),
+      ("profiles_path", c_char * MAX_PATH),
+      ("maps_path", c_char * MAX_PATH),
+      ("cals_path", c_char * MAX_PATH),
+      ("cal", c_char * MAX_PATH),
+      ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
       ("driver", DM_DRIVER),
       ("priv", POINTER(DM_PRIV)),
   ]
 
 DMHANDLE = POINTER(DM)
-BMCRC = c_int # an enum for the error codes
-BMCLOGLEVEL = c_int # enum for log-levels
+RC = c_int # an enum for the error codes
 
-def make_prototype(name, argtypes, restype=BMCRC):
+LOGLEVEL = c_int # enum for log-levels
+LOG_ALL = 0
+LOG_TRACE = LOG_ALL
+LOG_DEBUG = 1
+LOG_INFO = 2
+LOG_WARN = 3
+LOG_ERROR = 4
+LOG_FATAL = 5
+LOG_OFF = 6
+
+def make_prototype(name, argtypes, restype=RC):
   func = getattr(SDK, name)
   func.argtypes = argtypes
   func.restype = restype
   return func
 
-BMCOpen = make_prototype("BMCOpen", [DMHANDLE, c_char_p])
+Open = make_prototype("BMCOpen", [DMHANDLE, c_char_p])
 
-BMCSetSingle = make_prototype("BMCSetSingle", [DMHANDLE, c_uint32, c_double])
+SetArray = make_prototype("BMCSetArray", [DMHANDLE, POINTER(c_double),
+                                          POINTER(c_uint32)])
 
-BMCSetArray = make_prototype("BMCSetArray",
-                             [DMHANDLE, POINTER(c_double), POINTER(c_uint32)])
+GetArray = make_prototype("BMCGetArray", [DMHANDLE, POINTER(c_double),
+                                          c_uint32])
 
-BMCGetArray = make_prototype("BMCGetArray",
-                             [DMHANDLE, POINTER(c_double),c_uint32])
+ClearArray = make_prototype("BMCClearArray", [DMHANDLE])
 
-BMCClearArray = make_prototype ("BMCClearArray", [DMHANDLE])
+Close = make_prototype("BMCClose", [DMHANDLE])
 
-BMCClose = make_prototype("BMCClose", [DMHANDLE])
+ErrorString = make_prototype("BMCErrorString", [RC], c_char_p)
 
-BMCErrorString = make_prototype("BMCErrorString", [BMCRC], c_char_p)
+ConfigureLog = make_prototype("BMCConfigureLog", [c_char_p, LOGLEVEL])
 
-BMCConfigureLog = make_prototype("BMCConfigureLog", [c_char_p, BMCLOGLEVEL])
-
-BMCVersionString = make_prototype("BMCVersionString", [], c_char_p)
+VersionString = make_prototype("BMCVersionString", [], c_char_p)

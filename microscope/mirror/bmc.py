@@ -19,6 +19,36 @@
 """Boston MicroMachines Corporation deformable mirrors.
 """
 
-import microscope.bmc
+import ctypes
 
-import numpy
+import microscope.devices
+import microscope.sdk.bmc as BMC
+
+class BMCDeformableMirror(microscope.devices.DeformableMirror):
+  def __init__(self, serial_number, *args, **kwargs):
+    super(BMCDeformableMirror, self).__init__()
+    self._dm = BMC.DM()
+    status = BMC.Open(self._dm)
+    if status:
+      msg = BMC.ErrorString(status)
+      raise Exception(msg)
+
+  def get_n_actuators(self):
+    return self._dm.ActCount
+
+  def send(self, values):
+    if values.size != self.get_n_actuators():
+      raise Exception("not right size")
+    data_pointer = values.ctypes.data_as(ctypes.POINTER(c_double))
+    status = BMC.SetArray(self._dm, data_pointer, None)
+    if status:
+      msg = BMC.ErrorString(status)
+      raise Exception(msg)
+
+  def reset(self):
+    BMC.ClearArray(self._dm)
+    return
+
+  def __del__(self):
+    BMC.Close(self._dm)
+    super(BMCDeformableMirror, seld).__del__()
