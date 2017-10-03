@@ -5,6 +5,13 @@ Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
 
  ** New classes Client and DataClient.
 
+ ** New sub-package named wrappers to provide a wrapper of
+    manufacturers SDK and whatnot.
+
+ ** New microscope.wrappers modules libBMC and libasdk wrapping the C
+    libraries with the same, the SDK's for deformable mirrors from
+    Boston Micromachines Corporation (BMC) and Alpao.
+
  ** New dependency on six.
 
  ** Removed dependency on PyME.
