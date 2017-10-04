@@ -27,6 +27,7 @@ setuptools.setup(
     "microscope.cameras",
     "microscope.lasers",
     "microscope.testsuite",
+    "microscope._wrappers",
   ],
 
   install_requires = [
