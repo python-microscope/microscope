@@ -23,24 +23,11 @@ Exceptions:
 """
 
 import ctypes
-import time
 
 import numpy
 
 import microscope.devices
 import microscope._wrappers.asdk as asdk
-
-
-def _test_all_actuators(dm, time_interval=1):
-  """TODO: maybe move this to testsuite namespace?
-  """
-  data = numpy.full((dm.n_actuators), -1.0, dtype=_Scalar)
-  for i in range(dm.n_actuators):
-    data[i] = 1.0
-    dm.send(data)
-    time.sleep(time_interval)
-    data[i] = -1.0
-  dm.reset()
 
 
 class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
