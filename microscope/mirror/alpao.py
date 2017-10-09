@@ -28,7 +28,7 @@ import time
 import numpy
 
 import microscope.devices
-import microscope.wrappers.alpao as ASDK
+import microscope._wrappers.asdk as asdk
 
 
 def _test_all_actuators(dm, time_interval=1):
@@ -69,9 +69,9 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     ## TODO: report this upstream to Alpao and clean our code.
     self._err_msg[0:self._err_msg_len] = b'\x00' * self._err_msg_len
 
-    err = ctypes.pointer(ASDK.UInt(0))
-    status = ASDK.GetLastError(err, self._err_msg, self._err_msg_len)
-    if status == ASDK.SUCCESS:
+    err = ctypes.pointer(asdk.UInt(0))
+    status = asdk.GetLastError(err, self._err_msg, self._err_msg_len)
+    if status == asdk.SUCCESS:
       msg = self._err_msg.value
       if len(msg) > self._err_msg_len:
         msg = msg + "..."
@@ -92,7 +92,7 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     ## each time, have a buffer per instance.
     self._err_msg = ctypes.create_string_buffer(self._err_msg_len)
 
-    self._dm = ASDK.Init(serial_number.encode("utf-8"))
+    self._dm = asdk.Init(serial_number.encode("utf-8"))
     if not self._dm:
       raise Exception("Failed to initialise connection: don't know why")
 
@@ -104,9 +104,9 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     ## we check both.
     self._check_error()
 
-    value = ASDK.Scalar_p(ASDK.Scalar())
-    status = ASDK.Get(self._dm, "NbOfActuator".encode("utf-8"), value)
-    if status != ASDK.SUCCESS:
+    value = asdk.Scalar_p(asdk.Scalar())
+    status = asdk.Get(self._dm, "NbOfActuator".encode("utf-8"), value)
+    if status != asdk.SUCCESS:
       self._check_error()
     self.n_actuators = int(value.contents.value)
 
@@ -118,8 +118,8 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
       raise Exception(("Number of values '%d' differ from number of"
                        " actuators '%d'") % (values.size, self.n_actuators))
 
-    status = ASDK.Send(self._dm, values.ctypes.data_as(ASDK.Scalar_p))
-    if status != ASDK.SUCCESS:
+    status = asdk.Send(self._dm, values.ctypes.data_as(asdk.Scalar_p))
+    if status != asdk.SUCCESS:
       self._check_error()
 
   def send_patterns(self, patterns):
@@ -146,9 +146,9 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     ## what we want --- each trigger applies the next pattern --- but
     ## that requires nPatt and nRepeat to have the same value, hence
     ## the last two arguments here being 'n_patterns, n_patterns'.
-    status = ASDK.SendPattern(self._dm, patterns.ctypes.data_as(ASDK.Scalar_p),
+    status = asdk.SendPattern(self._dm, patterns.ctypes.data_as(asdk.Scalar_p),
                               n_patterns, n_patterns)
-    if status != ASDK.SUCCESS:
+    if status != asdk.SUCCESS:
       self._check_error()
 
   def set_trigger(self, mode):
@@ -157,13 +157,13 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     except KeyError:
       raise Exception("invalid trigger type '%d' for Alpao Mirrors." %trigger_type)
 
-    status = ASDK.Set(self._dm, "TriggerIn".encode( "utf-8"), value)
-    if status != ASDK.SUCCESS:
+    status = asdk.Set(self._dm, "TriggerIn".encode( "utf-8"), value)
+    if status != asdk.SUCCESS:
       raise Exception("failed to set trigger mode '%d'" %  value)
 
   def reset(self):
-    status = ASDK.Reset(self._dm)
-    if status != ASDK.SUCCESS:
+    status = asdk.Reset(self._dm)
+    if status != asdk.SUCCESS:
       self._check_error()
 
   def _on_shutdown(self):
@@ -173,4 +173,4 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
 
   def __del__(self):
     ## Will throw an OSError if it's already been releaed.
-    ASDK.Release(self._dm)
+    asdk.Release(self._dm)
