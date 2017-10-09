@@ -9,6 +9,15 @@
 ## without any warranty.
 
 import setuptools
+import sys
+
+extra_requires = []
+
+## The enum34 package will cause conflicts with the builtin enum
+## package so don't require it.  See
+## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
+if sys.version_info >= (3, 4):
+  extra_requires += ["enum34"]
 
 setuptools.setup(
   name = "microscope",
@@ -38,7 +47,7 @@ setuptools.setup(
     ## indirectly dependent on it due to serpent which is a Pyro4
     ## dependency.
     "six",
-  ],
+  ] + extra_requires,
 
   entry_points = {
     'console_scripts' : [
