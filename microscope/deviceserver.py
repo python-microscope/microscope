@@ -128,7 +128,7 @@ class DeviceServer(multiprocessing.Process):
         logger.debug("Debugging messages on.")
         self._device = self._device_def['cls'](index=self.count,
                                                **self._device_def)
-        while True:
+        while not self.exit_event.is_set():
             try:
                 self._device.initialize()
             except Exception as e:
@@ -164,18 +164,17 @@ class DeviceServer(multiprocessing.Process):
                                      False})
         pyro_thread.daemon = True
         pyro_thread.start()
-        if self.exit_event:
+        # Wait for termination event. We should just be able to call
+        # wait() on the exit_event, but this causes issues with locks
+        # in multiprocessing - see http://bugs.python.org/issue30975 .
+        while self.exit_event and not self.exit_event.is_set():
             # This tread waits for the termination event.
             try:
-                self.exit_event.wait()
-            except:
+                time.sleep(5)
+            except (KeyboardInterrupt, IOError):
                 pass
-            pyro_daemon.shutdown()
-            pyro_thread.join()
-            # Termination condition triggered.
-        else:
-            # This is the main process. Sleep until interrupt.
-            pyro_thread.join()
+        pyro_daemon.shutdown()
+        pyro_thread.join()
         self._device.shutdown()
 
 def serve_devices(devices):
@@ -195,7 +194,11 @@ def serve_devices(devices):
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
         if parent == multiprocessing.current_process ():
+            logger.debug("Shutting down all servers.")
             exit_event.set()
+            # Join keep_alive_thread so that it can't modify the list
+            # of servers.
+            keep_alive_thread.join()
             for this_server in servers:
                 this_server.join()
             sys.exit()
@@ -242,9 +245,11 @@ def serve_devices(devices):
     def keep_alive():
         """Keep DeviceServers alive."""
         while not exit_event.is_set():
-            time.sleep(1)
             for s in servers:
-                if not s.is_alive() and s.exitcode < 0:
+                if s.is_alive():
+                    logger.info("%s is alive." % s.pid)
+                    continue
+                else:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
                                  " exitcode %s. Restarting...")
                                 % (s.pid, s.exitcode))
@@ -271,14 +276,19 @@ def serve_devices(devices):
                 # if we add some interface to interactively restart servers.
                 logger.info("No servers running. Exiting.")
                 exit_event.set()
+            try:
+                time.sleep(5)
+            except (KeyboardInterrupt, IOError):
+                pass
 
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
 
-    for s in servers:
-        # This will iterate over all servers: those present when the loop
-        # is entered, and any added to the list later.
-        s.join()
+    while not exit_event.is_set():
+        try:
+            time.sleep(100)
+        except (KeyboardInterrupt, IOError):
+            pass
 
 def __main__():
     logger = logging.getLogger(__name__)

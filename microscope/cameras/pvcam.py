@@ -566,8 +566,13 @@ class OUTPUT(_meta):
         self.val = ctypes.POINTER(val)
 
     def get_var(self, buf_len=0):
-        v = self.type()
-        return v, ctypes.byref(v)
+        if self.type in [STRING, ctypes.c_void_p] and buf_len > 0:
+            v = ctypes.create_string_buffer(buf_len)
+            ref = ctypes.cast(ctypes.pointer(v), self.val)
+        else:
+            v = self.type()
+            ref = ctypes.byref(v)
+        return v, ref
 
 
 class _OUTSTRING(OUTPUT):
@@ -636,6 +641,7 @@ class dllFunction(object):
             bs = self.buf_len
         else:
             bs = 256
+        # May have been passed a ctype; if so, fetch its value.
         if isinstance(bs, ctypes._SimpleCData):
             bs = bs.value
 
@@ -652,9 +658,10 @@ class dllFunction(object):
                 ret.append(r)
                 # print r, r._type_
 
-        # print ars
+        # print (self.name, ars)
         res = self.f(*ars)
         # print res
+
 
         if res == False:
             err_code = _lib.pl_error_code()
@@ -1049,32 +1056,49 @@ class PVParam(object):
                 raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
         _set_param(self.cam.handle,
                    self.param_id,
+                   # TODO: this throws errors on strings, since need to put them into
+                   # a buffer before creating a pointer. Does any pvcam hardware let you
+                   # write to strings, though?
                    ctypes.byref(ctypes.c_void_p(new_value)))
-        # Read back the value to update cache..
+        # Read back the value to update cache.
         self._query(force_query=True)
+
 
 
     def _query(self, what=ATTR_CURRENT, force_query=False):
         """Query the DLL for an attribute for this parameter."""
-        key = (self, what)
+        err = None
+        key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
-            return self.__cache[key]
+            return self.__cache.get(key, None)
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
             raise Exception("Parameter %s is not available" % self.name)
-        # return type
-        rtype = _attr_map[what]
+        rtype = _attr_map[what] # return type
         if not rtype:
             rtype = _get_param(self.cam.handle, self.param_id, ATTR_TYPE)
         if rtype.value == TYPE_CHAR_PTR:
             buf_len = _length_map[self.param_id]
             if not buf_len:
                 raise Exception('pvcam: parameter %s not supported in python.' % self.name)
-            result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
+            try:
+                result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
+            except Exception as e:
+                err = e
         else:
-            result = _get_param(self.cam.handle, self.param_id, what)
-        self.__cache[key] = result
+            try:
+                result = _get_param(self.cam.handle, self.param_id, what)
+            except Exception as e:
+                err = e
+
+        if err and err.message.startswith('pvcam error 49'):
+            self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
+            result = None
+        elif err:
+            raise e
+        else:
+            self.__cache[key] = result
         return result
 
 
@@ -1139,8 +1163,12 @@ class PVParam(object):
         elif self._pvtype == TYPE_ENUM:
             value = int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
             vals, descs = zip(*self.values)
-            index = vals.index(value)
-            description = descs[index]
+            if value in vals:
+                index = vals.index(value)
+                description = descs[index]
+            else:
+                index = None
+                description = '*UNDEFINED*'
             return (value, description)
         else:
             return ctypes.POINTER(self._ctype)(self.raw).contents.value
@@ -1394,27 +1422,26 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             if param_id in self._params:
                 continue
             p = PVParam(self, param_id)
-            self._params[param_id] = p
-            name = name[6:]
             if not p.dtype or not p.available:
                 continue
+            self._params[param_id] = p
+            name = name[6:]
+
             try:
                 p.current
-            except Exception as e:
-                if not e.message.startswith('pvcam error 49'):
-                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=e.message)
+            except KeyError:
+                # Raise these here, as the message is a tuple, not a str.
+                raise
+            except Exception as err:
+                if not err.message.startswith('pvcam error 49'):
+                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=err.message)
                     continue
-            # Used to expose parameters as settings here, but need to rework the settings
-            # system to prevent reads when self._acquiring ... Even then, exposing all
-            # available parameters as settings seems to cause the camera hardware to fall
-            # over more frequently. Only expose what we need, for now.
-            # self.add_setting(p.name,
-            #                 p.dtype,
-            #                 lambda p=p: [p.current, None][self._acquiring],
-            #                 p.set_value,
-            #                 lambda p=p: p.values,
-            #                 not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
-
+            self.add_setting(p.name,
+                             p.dtype,
+                             lambda p=p: p.current,
+                             p.set_value,
+                             lambda p=p: p.values,
+                             not p.access in [ACC_READ_WRITE, ACC_WRITE_ONLY])
         if PARAM_GAIN_MULT_FACTOR in self._params:
             self.add_setting('gain',
                              self._params[PARAM_GAIN_MULT_FACTOR].dtype,
@@ -1431,11 +1458,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
         self.roi = (0, 0, self.shape[0], self.shape[1])
-
-        for param_id in [PARAM_GAIN_MULT_FACTOR, PARAM_GAIN_MULT_ENABLE, PARAM_ACTUAL_GAIN]:
-            p = self._params.get(param_id, None)
-            if not p or not p.dtype or not p.available:
-                continue
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.

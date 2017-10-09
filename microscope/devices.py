@@ -30,6 +30,7 @@ import logging
 import time
 from ast import literal_eval
 from collections import OrderedDict
+from six import string_types
 from threading import Thread
 import Pyro4
 import numpy
@@ -212,7 +213,6 @@ class Device(object):
                                          'get': get_func,
                                          'set': set_func,
                                          'values': values,
-                                         'current': None,
                                          'readonly': readonly}})
 
     @Pyro4.expose
@@ -285,7 +285,7 @@ class Device(object):
             my_keys = set(self.settings.keys())
             their_keys = set(incoming.keys())
             update_keys = set(key for key in my_keys & their_keys
-                              if self.settings[key]['current'] != incoming[key])
+                              if self.get_setting(key) != incoming[key])
         results = {}
         # Update values.
         for key in update_keys:
@@ -293,6 +293,8 @@ class Device(object):
                 # Setting not recognised or no set function implemented
                 results[key] = NotImplemented
                 update_keys.remove(key)
+                continue
+            if self.settings[key]['readonly']:
                 continue
             self.settings[key]['set'](incoming[key])
         # Read back values in second loop.
@@ -569,7 +571,7 @@ class CameraDevice(DataDevice):
     @Pyro4.expose
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, unicode)):
+        if isinstance(transform, (str, string_types)):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
@@ -585,14 +587,20 @@ class CameraDevice(DataDevice):
     @abc.abstractmethod
     @Pyro4.expose
     def set_exposure_time(self, value):
+        """Set the exposure time on the device.
+
+        :param value: exposure time in seconds
+        """
         pass
 
     @Pyro4.expose
     def get_exposure_time(self):
+        """Return the current exposure time, in seconds."""
         pass
 
     @Pyro4.expose
     def get_cycle_time(self):
+        """Return the cycle time, in seconds."""
         pass
 
     @Pyro4.expose
@@ -602,7 +610,7 @@ class CameraDevice(DataDevice):
 
     @abc.abstractmethod
     def _get_sensor_shape(self):
-        """Return a tuple of (width, height)"""
+        """Return a tuple of (width, height) indicating shape in pixels."""
         pass
 
     @Pyro4.expose
