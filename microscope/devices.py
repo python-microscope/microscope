@@ -33,12 +33,7 @@ from threading import Thread
 import Pyro4
 import numpy
 
-# Python 2.7 and 3 compatibility.
-try:
-    import queue
-except:
-    # noinspection PyPep8Naming
-    import Queue as queue
+from six.moves import queue
 
 from six import iteritems
 
