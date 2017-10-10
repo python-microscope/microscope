@@ -25,11 +25,8 @@ from microscope.devices import keep_acquiring
 import numpy as np
 import Pyro4
 import time
-# Python 2.7 to 3
-try:
-    import queue
-except:
-    import Queue as queue
+
+from six.moves import queue
 
 from .SDK3Cam import *
 
