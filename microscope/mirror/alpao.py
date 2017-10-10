@@ -26,26 +26,36 @@ import ctypes
 
 import numpy
 
-import microscope.devices
+from microscope.devices import TriggerType
+from microscope.devices import DeformableMirror
+from microscope.devices import TriggerTargetMixIn
+
 import microscope._wrappers.asdk as asdk
 
+def _normalize_patterns(self, patterns):
+  ## Alpao SDK expects values in the [-1 1] range, so we normalize
+  ## them from the [0 1] range we expect in our interface.
+  patterns = (patterns * 2) -1
+  return patterns
 
-class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
+
+class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
   ## The length of the buffer given to Alpao SDK to write error
   ## messages.
   _err_msg_len = 64
 
-  trigger_type_to_value = {
-    microscope.devices.TRIGGER_SOFT : 0,
-    microscope.devices.TRIGGER_AFTER : 1,
-    microscope.devices.TRIGGER_BEFORE: 2,
+  _TriggerType_to_asdkTriggerIn = {
+    TriggerType.SOFTWARE : 0,
+    TriggerType.RISING_EDGE : 1,
+    TriggerType.FALLING_EDGE : 2,
   }
 
-  def _check_error(self):
-    """Check for errors in the Alpao SDK.
+  def _find_error_str(self):
+    """Get an error string from the Alpao SDK error stack.
 
-    Checks if there is an error in the Alpao SDK stack and raise an
-    exception if so.
+    Returns
+    -------
+      A string.  Will be empty if there was no error on the stack.
     """
     ## asdkGetLastError should write a null-terminated string but
     ## doesn't seem like it (at least CannotOpenCfg does not ends in
@@ -62,8 +72,17 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
       msg = self._err_msg.value
       if len(msg) > self._err_msg_len:
         msg = msg + "..."
-      raise Exception("Failed to initialise connection: %s (error %i)"
-                      % (msg, err.contents.value))
+      msg += "(error %i)" % (err.contents.value)
+      return msg
+    else:
+      return ""
+
+  def _raise_if_error(self, status, exception_cls=Exception):
+    if status != asdk.SUCCESS:
+      msg = self._find_error_str()
+      if msg:
+        raise exception_cls(msg)
+
 
   def __init__(self, serial_number, *args, **kwargs):
     """
@@ -82,82 +101,65 @@ class AlpaoDeformableMirror(microscope.devices.DeformableMirror):
     self._dm = asdk.Init(serial_number.encode("utf-8"))
     if not self._dm:
       raise Exception("Failed to initialise connection: don't know why")
-
     ## In theory, asdkInit should return a NULL pointer in case of
-    ## failure.  However, at least in the case of a missing
-    ## configuration file it still returns a DM pointer so we check if
-    ## there's any error on the stack.  But maybe there are
-    ## initialisation errors that do make it return a NULL pointer so
-    ## we check both.
-    self._check_error()
+    ## failure and that should be enough to check.  However, at least
+    ## in the case of a missing configuration file it still returns a
+    ## DM pointer so we still need to check for errors on the stack.
+    self._raise_if_error(asdk.FAILURE)
 
     value = asdk.Scalar_p(asdk.Scalar())
     status = asdk.Get(self._dm, "NbOfActuator".encode("utf-8"), value)
-    if status != asdk.SUCCESS:
-      self._check_error()
+    self._raise_if_error(status)
     self.n_actuators = int(value.contents.value)
 
-  def get_n_actuators(self):
-    return self.n_actuators
+  def apply_pattern(self, pattern):
+    self._validate_patterns(pattern)
+    pattern = _normalize_patterns(pattern)
+    data_pointer = pattern.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
+    status = asdk.Send(self._dm, data_pointer)
+    self._raise_if_error(status)
 
-  def send(self, values):
-    if values.size != self.n_actuators:
-      raise Exception(("Number of values '%d' differ from number of"
-                       " actuators '%d'") % (values.size, self.n_actuators))
-
-    status = asdk.Send(self._dm, values.ctypes.data_as(asdk.Scalar_p))
-    if status != asdk.SUCCESS:
-      self._check_error()
-
-  def send_patterns(self, patterns):
-    """Send multiple patterns to the mirror.
-
-    Args:
-      patterns - numpy array with 2 dimensions, with one row per
-        pattern.  Even if sending only one pattern, the number of rows
-        must be 1, i.e., size (1, N) and not just N.
-    """
-    if patterns.ndim != 2:
-      raise Exception("patterns have %d dimensions instead of 2"
-                      % patterns.ndim)
-    elif (patterns.shape[1] != self.get_n_actuators()):
-      raise Exception(("PATTERNS length of second dimension '%d' must equal"
-                       " to the number of actuators '%d'"
-                       % (patterns.shape[1], self.n_actuators)))
-
-    n_patterns = patterns.shape[0]
-    ## There is an issue with Alpao SDK in that they don't really
-    ## support hardware trigger.  Instead, an hardware trigger will
-    ## signal the mirror to apply all the patterns as quickly as
-    ## possible.  We received a modified version from Alpao that does
-    ## what we want --- each trigger applies the next pattern --- but
-    ## that requires nPatt and nRepeat to have the same value, hence
-    ## the last two arguments here being 'n_patterns, n_patterns'.
-    status = asdk.SendPattern(self._dm, patterns.ctypes.data_as(asdk.Scalar_p),
-                              n_patterns, n_patterns)
-    if status != asdk.SUCCESS:
-      self._check_error()
-
-  def set_trigger(self, mode):
+  def set_trigger_type(self, ttype):
     try:
-      value = self.trigger_type_to_value[mode]
+      value = self._TriggerType_to_asdkTriggerIn[ttype]
     except KeyError:
-      raise Exception("invalid trigger type '%d' for Alpao Mirrors." %trigger_type)
+      raise Exception("unsupported trigger of type '%s' for Alpao Mirrors"
+                      % ttype.name)
+    status = asdk.Set(self._dm, "TriggerIn".encode("utf-8"), value)
+    self._raise_if_error(status)
 
-    status = asdk.Set(self._dm, "TriggerIn".encode( "utf-8"), value)
-    if status != asdk.SUCCESS:
-      raise Exception("failed to set trigger mode '%d'" %  value)
+  def queue_patterns(self, patterns):
+    if self.trigger_type == TriggerType.SOFTWARE:
+      super(AlpaoDeformableMirror, self).queue_patterns(patterns)
+    else:
+      self._validate_patterns(patterns)
+      patterns = numpy.atleast_2d(patterns)
+      n_patterns = patterns.shape[0]
+      ## There is an issue with Alpao SDK in that they don't really
+      ## support hardware trigger.  Instead, an hardware trigger will
+      ## signal the mirror to apply all the patterns as quickly as
+      ## possible.  We received a modified version from Alpao that does
+      ## what we want --- each trigger applies the next pattern --- but
+      ## that requires nPatt and nRepeat to have the same value, hence
+      ## the last two arguments here being 'n_patterns, n_patterns'.
+      data_pointer = patterns.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
+      status = asdk.SendPattern(self._dm, data_pointer
+                                n_patterns, n_patterns)
+      self._raise_if_error(status)
 
-  def reset(self):
+  def next_pattern(self):
+    if self.trigger_type == TriggerType.SOFTWARE:
+      super(AlpaoDeformableMirror, self).queue_patterns(patterns)
+    else:
+      raise Exception("software trigger received when set for hardware trigger")
+
+  def zero(self):
     status = asdk.Reset(self._dm)
-    if status != asdk.SUCCESS:
-      self._check_error()
-
-  def _on_shutdown(self):
-    pass
-  def initialize(self):
-    pass
+    self._raise_if_error(status)
 
   def __del__(self):
-    ## Will throw an OSError if it's already been releaed.
-    asdk.Release(self._dm)
+    status = asdk.Release(self._dm)
+    if status != asdk.SUCCESS:
+      msg = self._find_error_str()
+      warnings.warn(msg)
+    super(AlpaoDeformableMirror, self).__del__()

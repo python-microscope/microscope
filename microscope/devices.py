@@ -36,8 +36,11 @@ import Pyro4
 import numpy
 
 from six.moves import queue
+from enum import Enum
 
 from six import iteritems
+
+import numpy
 
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
@@ -700,6 +703,26 @@ class CameraDevice(DataDevice):
         """Optional software trigger - implement if available."""
         pass
 
+class TriggerType(Enum):
+    SOFTWARE = 0
+    RISING_EDGE = 1
+    FALLING_EDGE = 2
+    PULSE = 3
+
+class TriggerMode(Enum):
+    ONCE = 1
+    BULB = 2
+    STROBE = 3
+
+
+class TriggerTargetMixIn(object):
+    """MixIn for Device that may be the target of a hardware trigger.
+    """
+    def set_trigger_type(ttype):
+        raise NotImplemented()
+    def set_trigger_mode(tmode):
+        raise NotImplemented()
+
 
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
@@ -708,37 +731,92 @@ class DeformableMirror(Device):
 
     @abc.abstractmethod
     def __init__(self, *args, **kwargs):
-        Device.__init__(self, *args, **kwargs)
-        self._utype = UMIRROR
+        """Constructor.
+
+        Subclasses must define the following properties during
+        construction:
+
+            _n_actuators : int
+
+        In addition, the private properties `_patterns` and
+        `_pattern_idx` are initialized to None to support the queueing
+        of patterns and software triggering.
+        """
+        super(DeformableMirror, self).__init__(*args, **kwargs)
+
+        self._patterns = None
+        self._patterns_idx = None
+
+    @Pyro4.expose
+    def n_actuators(self):
+        return self._n_actuators
+
+    def _validate_patterns(self, patterns):
+        """
+        Only validates the shape of the patterns, not if the values
+        are actually in the [0 1] range.  The reason is that floating
+        point errors may get a value outside that range by a tiny
+        amount that the mirror would clip anyway.
+        """
+        if patterns.ndim > 2:
+            raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
+                            % patterns.ndim)
+        elif patterns.shape[-1] != self._n_actuators:
+            raise Exception(("PATTERNS length of second dimension '%d' differs"
+                             " differs from number of actuators '%d'"
+                             % (patterns.shape[-1], self._n_actuators)))
 
     @Pyro4.expose
     @abc.abstractmethod
-    def reset(self):
-        """Reset the deformable mirror.
-
-        Effectivelly set all actuators back to value zero.
+    def apply_pattern(self, pattern):
+        """Apply this pattern.
         """
         pass
 
     @Pyro4.expose
-    @abc.abstractmethod
-    def send(self, values):
+    def queue_patterns(self, patterns):
         """Set values to the mirror
 
         Parameters
         ----------
-        values: numpy array
-            An N elements array of values in the range [-1 1], where N
-            equals the number of actuators.
+        patterns : numpy.array
+            An KxN elements array of values in the range [0 1], where N
+            equals the number of actuators, and K is the number of
+            patterns.
+
+        A convenience fallback is provided for software triggering is
+        provided.
         """
-        pass
+        self._validate_patterns(patterns)
+        self._patterns(patterns)
+        self._pattern_idx = -1 # none is applied yet
 
     @Pyro4.expose
-    def get_n_actuators(self):
-        return self.n_actuators
+    def next_pattern(self):
+        """Apply the next pattern in the queue.
+
+        A convenience fallback is provided.
+        """
+        if self._patterns is None:
+            raise Exception("no pattern queued to apply")
+        self._pattern_idx += 1
+        self.apply_pattern(self._patterns[self._pattern_idx,:])
+
+    @Pyro4.expose
+    def zero(self):
+        """Reset the deformable mirror.
+
+        If the mirror does not provide this method, the parent has a
+        fallback that applies a pattern of zeros.
+        """
+        self.apply_pattern(numpy.zeros((self._n_actuators)))
+
+    def initialize(self):
+        pass
+    def _on_shutdown(self):
+        pass
 
 
-# === LaserDevice ===
 class LaserDevice(Device):
     __metaclass__ = abc.ABCMeta
 

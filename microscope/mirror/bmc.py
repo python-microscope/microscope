@@ -21,41 +21,39 @@
 
 import ctypes
 import os
+import warnings
 
 import microscope.devices
-import microscope._wrappers.BMC as BMC
+#import microscope._wrappers.BMC as BMC
 
 class BMCDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):
     super(BMCDeformableMirror, self).__init__()
     self._dm = BMC.DM()
-    BMC.ConfigureLog(os.devnull, BMC.LOG_OFF)
+
+    if __debug__:
+      BMC.ConfigureLog(os.devnull, BMC.LOG_ALL)
+    else:
+      BMC.ConfigureLog(os.devnull, BMC.LOG_OFF)
+
     status = BMC.Open(self._dm, serial_number.encode("utf-8"))
     if status:
-      msg = BMC.ErrorString(status)
-      raise Exception(msg)
+      raise Exception(BMC.ErrorString(status))
 
-  def initialize(self):
-    pass
-  def _on_shutdown(self):
-    pass
+    self._n_actuators = self._dm.ActCount
 
-  def get_n_actuators(self):
-    return self._dm.ActCount
-
-  def send(self, values):
-    if values.size != self.get_n_actuators():
-      raise Exception("not right size")
+  def apply_pattern(self, pattern):
+    self._validate_patterns(pattern)
     data_pointer = values.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
     status = BMC.SetArray(self._dm, data_pointer, None)
     if status:
-      msg = BMC.ErrorString(status)
-      raise Exception(msg)
+      raise Exception(BMC.ErrorString(status))
 
-  def reset(self):
+  def zero(self):
     BMC.ClearArray(self._dm)
-    return
 
   def __del__(self):
-    BMC.Close(self._dm)
+    status = BMC.Close(self._dm)
+    if status:
+      warnings.warn(BMC.ErrorString(status), RuntimeWarning)
     super(BMCDeformableMirror, self).__del__()
