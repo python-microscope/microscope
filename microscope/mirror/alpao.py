@@ -50,6 +50,11 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     TriggerType.FALLING_EDGE : 2,
   }
 
+  _supported_TriggerModes = [
+    TriggerMode.ONCE,
+    TriggerMode.START,
+  ]
+
   def _find_error_str(self):
     """Get an error string from the Alpao SDK error stack.
 
@@ -111,6 +116,8 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     status = asdk.Get(self._dm, "NbOfActuator".encode("utf-8"), value)
     self._raise_if_error(status)
     self.n_actuators = int(value.contents.value)
+    self._trigger_type = TriggerType.SOFTWARE
+    self._trigger_mode = TriggerMode.ONCE
 
   def apply_pattern(self, pattern):
     self._validate_patterns(pattern)
@@ -119,7 +126,15 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     status = asdk.Send(self._dm, data_pointer)
     self._raise_if_error(status)
 
-  def set_trigger_type(self, ttype):
+  def set_trigger(self, ttype, tmode):
+    if tmode not in self._supported_TriggerModes:
+      raise Exception("unsupported trigger of mode '%s' for Alpao Mirrors"
+                      % tmode.name)
+    elif ttype == TriggerType.SOFTWARE and tmode != TriggerMode.ONCE:
+      raise Exception("trigger mode '%s' only supports trigger type ONCE"
+                      % tmode.name)
+    self._trigger_mode = tmode
+
     try:
       value = self._TriggerType_to_asdkTriggerIn[ttype]
     except KeyError:
@@ -127,25 +142,36 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
                       % ttype.name)
     status = asdk.Set(self._dm, "TriggerIn".encode("utf-8"), value)
     self._raise_if_error(status)
+    self._trigger_type = ttype
 
   def queue_patterns(self, patterns):
-    if self.trigger_type == TriggerType.SOFTWARE:
+    if self._trigger_type == TriggerType.SOFTWARE:
       super(AlpaoDeformableMirror, self).queue_patterns(patterns)
+      return
+
+    self._validate_patterns(patterns)
+    patterns = _normalize_patterns(patterns)
+    patterns = numpy.atleast_2d(patterns)
+    n_patterns = patterns.shape[0]
+
+    ## The Alpao SDK seems to only support the trigger mode start.  It
+    ## still has option called nRepeats that we can't really figure
+    ## what is meant to do.  When set to 1, the mode is start.  What
+    ## we want it is to have trigger mode once which was not
+    ## supported.  We have received a modified version where if
+    ## nRepeats is set to same number of patterns, does trigger mode
+    ## once (not documented on Alpao SDK).
+    if self._trigger_mode == TriggerMode.ONCE:
+      n_repeats = n_patterns
+    elif self._trigger_mode == TriggerMode.START:
+      n_repeats = 1
     else:
-      self._validate_patterns(patterns)
-      patterns = numpy.atleast_2d(patterns)
-      n_patterns = patterns.shape[0]
-      ## There is an issue with Alpao SDK in that they don't really
-      ## support hardware trigger.  Instead, an hardware trigger will
-      ## signal the mirror to apply all the patterns as quickly as
-      ## possible.  We received a modified version from Alpao that does
-      ## what we want --- each trigger applies the next pattern --- but
-      ## that requires nPatt and nRepeat to have the same value, hence
-      ## the last two arguments here being 'n_patterns, n_patterns'.
-      data_pointer = patterns.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
-      status = asdk.SendPattern(self._dm, data_pointer
-                                n_patterns, n_patterns)
-      self._raise_if_error(status)
+      raise Exception("trigger type '%s' and trigger mode '%s'"
+                      % (self._trigger_type.name, self._trigger_mode.name))
+
+    data_pointer = patterns.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
+    status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
+    self._raise_if_error(status)
 
   def next_pattern(self):
     if self.trigger_type == TriggerType.SOFTWARE:

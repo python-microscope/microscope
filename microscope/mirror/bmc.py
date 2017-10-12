@@ -24,7 +24,7 @@ import os
 import warnings
 
 import microscope.devices
-#import microscope._wrappers.BMC as BMC
+import microscope._wrappers.BMC as BMC
 
 class BMCDeformableMirror(microscope.devices.DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):

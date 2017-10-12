@@ -703,6 +703,7 @@ class CameraDevice(DataDevice):
         """Optional software trigger - implement if available."""
         pass
 
+
 class TriggerType(Enum):
     SOFTWARE = 0
     RISING_EDGE = 1
@@ -713,17 +714,40 @@ class TriggerMode(Enum):
     ONCE = 1
     BULB = 2
     STROBE = 3
+    START = 4
 
 
+@Pyro4.expose
 class TriggerTargetMixIn(object):
     """MixIn for Device that may be the target of a hardware trigger.
+
+    Subclasses must also have a `_trigger_type` and `_trigger_mode`
+    property with the current trigger.
+
+    TODO: need some way to retrieve the supported list of trigger
+        types and modes.  We can require subclasses to define
+        `_trigger_types` and `_trigger_modes` listing what is
+        supported.  However, what if there are devices that support
+        certain combinations?
+
     """
-    def set_trigger_type(ttype):
-        raise NotImplemented()
-    def set_trigger_mode(tmode):
-        raise NotImplemented()
+    __metaclass__ = abc.ABCMeta
+
+    @property
+    def trigger_mode(self):
+        return self._trigger_mode
+    @property
+    def trigger_type(self):
+        return self._trigger_type
+
+    @abc.abstractmethod
+    def set_trigger(self, ttype, tmode):
+        """Set device for a specific trigger.
+        """
+        pass
 
 
+@Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
     """
@@ -747,16 +771,18 @@ class DeformableMirror(Device):
         self._patterns = None
         self._patterns_idx = None
 
-    @Pyro4.expose
+    @property
     def n_actuators(self):
         return self._n_actuators
 
     def _validate_patterns(self, patterns):
-        """
+        """Validate the shape of a series of patterns.
+
         Only validates the shape of the patterns, not if the values
-        are actually in the [0 1] range.  The reason is that floating
-        point errors may get a value outside that range by a tiny
-        amount that the mirror would clip anyway.
+        are actually in the [0 1] range.  If some hardware is unable
+        to handle values outside their defined range (most will simply
+        clip them), then it's the responsability of the subclass to do
+        the clipping before sending the values.
         """
         if patterns.ndim > 2:
             raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
@@ -766,16 +792,14 @@ class DeformableMirror(Device):
                              " differs from number of actuators '%d'"
                              % (patterns.shape[-1], self._n_actuators)))
 
-    @Pyro4.expose
     @abc.abstractmethod
     def apply_pattern(self, pattern):
         """Apply this pattern.
         """
         pass
 
-    @Pyro4.expose
     def queue_patterns(self, patterns):
-        """Set values to the mirror
+        """Send values to the mirror.
 
         Parameters
         ----------
@@ -791,7 +815,6 @@ class DeformableMirror(Device):
         self._patterns(patterns)
         self._pattern_idx = -1 # none is applied yet
 
-    @Pyro4.expose
     def next_pattern(self):
         """Apply the next pattern in the queue.
 
@@ -802,7 +825,6 @@ class DeformableMirror(Device):
         self._pattern_idx += 1
         self.apply_pattern(self._patterns[self._pattern_idx,:])
 
-    @Pyro4.expose
     def zero(self):
         """Reset the deformable mirror.
 
