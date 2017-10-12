@@ -32,11 +32,23 @@ wxPython and PyQt.
 
 import numpy
 
-## In python 2, tkinter was Tkinter
-try:
-  import tkinter
-except ImportError:
-  import Tkinter as tkinter
+import six.moves.tkinter as tkinter
+
+
+class Device(tkinter.Frame):
+  def __init__(self, device, master=None, *args, **kwargs):
+    tkinter.Frame.__init__(self, master, *args, **kwargs)
+    self.device = device
+    seld.draw_table()
+
+  def draw_table(self):
+    row_idx = 0
+    for key, val in sorted(self.device.get_all_settings().items()):
+      tkinter.Label(self, text=key).grid(row=row_idx, column=0)
+      entry = tkinter.Entry(self)
+      entry.grid(row=row_idx, column=1)
+      entry.insert(0, str(val))
+      row_idx +=1
 
 
 class DeformableMirror(tkinter.Frame):
