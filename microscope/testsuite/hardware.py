@@ -21,22 +21,23 @@
 
 import time
 
+import numpy
+
 def test_mirror_actuators(dm, time_interval=0.5):
   """Iterate over all actuators of a deformable mirror.
 
   Parameters
   ----------
-    dm : DeformableMirror
+    dm : microscope.device.DeformableMirror
       The mirror to test
     time_interval : number
       Number of seconds between trying each actuator.
   """
-  dm.reset()
+  dm.zero()
   data = numpy.full((dm.n_actuators))
   for i in range(dm.n_actuators):
     data[i] = 1.0
     dm.send(data)
     time.sleep(time_interval)
     data[i] = 0.0
-  dm.reset()
-  return
+  dm.zero()
