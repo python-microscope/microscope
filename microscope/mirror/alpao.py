@@ -28,12 +28,6 @@ from microscope.devices import TriggerType
 
 import microscope._wrappers.asdk as asdk
 
-def _normalize_patterns(self, patterns):
-  ## Alpao SDK expects values in the [-1 1] range, so we normalize
-  ## them from the [0 1] range we expect in our interface.
-  patterns = (patterns * 2) -1
-  return patterns
-
 
 class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
   """Class for Alpao deformable mirror.
@@ -54,6 +48,15 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     TriggerMode.ONCE,
     TriggerMode.START,
   ]
+
+  @staticmethod
+  def _normalize_patterns(patterns):
+    """
+    Alpao SDK expects values in the [-1 1] range, so we normalize
+    them from the [0 1] range we expect in our interface.
+    """
+    patterns = (patterns * 2) -1
+    return patterns
 
   def _find_error_str(self):
     """Get an error string from the Alpao SDK error stack.
@@ -121,7 +124,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
 
   def apply_pattern(self, pattern):
     self._validate_patterns(pattern)
-    pattern = _normalize_patterns(pattern)
+    pattern = self._normalize_patterns(pattern)
     data_pointer = pattern.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
     status = asdk.Send(self._dm, data_pointer)
     self._raise_if_error(status)
