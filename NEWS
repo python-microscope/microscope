@@ -1,3 +1,27 @@
+Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
+---------------------------------------------------------------
+
+ ** New device classes:
+
+      DeformableMirror
+
+ ** New MixIn classes:
+
+      TriggerTargetMixIn
+
+ ** Added Enum for `TriggerType` and `TriggerMode`.
+
+ ** New hardware supported:
+
+      * Alpao deformable mirrors
+      * Boston Micromachines Corporation (BMC) deformable mirrors
+
+ ** New module `microscope.gui` for simple testing of individual
+    devices.
+
+ ** Now dependent on the enum34 package for python pre 3.4.
+
+
 Summary of user-visible changes for version 0.1.0 (2017/05/04):
 ---------------------------------------------------------------
 
