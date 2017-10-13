@@ -23,6 +23,8 @@ import ctypes
 import os
 import warnings
 
+import six
+
 from microscope.devices import DeformableMirror
 
 import microscope._wrappers.BMC as BMC
@@ -33,11 +35,11 @@ class BMCDeformableMirror(DeformableMirror):
     self._dm = BMC.DM()
 
     if __debug__:
-      BMC.ConfigureLog(os.devnull, BMC.LOG_ALL)
+      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_ALL)
     else:
-      BMC.ConfigureLog(os.devnull, BMC.LOG_OFF)
+      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_OFF)
 
-    status = BMC.Open(self._dm, serial_number.encode("utf-8"))
+    status = BMC.Open(self._dm, six.b(serial_number))
     if status:
       raise Exception(BMC.ErrorString(status))
 
