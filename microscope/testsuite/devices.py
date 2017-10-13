@@ -198,17 +198,8 @@ class TestLaser(devices.LaserDevice):
 
 class TestDeformableMirror(devices.DeformableMirror):
     def __init__(self, n_actuators, *args, **kwargs):
-        devices.DeformableMirror.__init__(self, *args, **kwargs)
-        self.n_actuators = n_actuators
+        super(TestDeformableMirror, self).__init__(*args, **kwargs)
+        self._n_actuators = n_actuators
 
-    def _on_shutdown(self):
-        pass
-
-    def initialize(self):
-        pass
-
-    def reset(self):
-        pass
-
-    def send(self,p):
-        pass
+    def apply_pattern(self, pattern):
+        self._validate_patterns(pattern)
