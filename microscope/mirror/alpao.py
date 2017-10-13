@@ -17,6 +17,7 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import ctypes
+import warnings
 
 import numpy
 import six
@@ -32,7 +33,8 @@ import microscope._wrappers.asdk as asdk
 class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
   """Class for Alpao deformable mirror.
 
-  The Alpao mirrors have support for hardware triggering.
+  The Alpao mirrors have support for hardware triggering.  By default,
+  it will be configured for software triggering, and trigger once.
   """
   ## The length of the buffer given to Alpao SDK to write error
   ## messages.

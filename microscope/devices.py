@@ -46,7 +46,7 @@ import numpy
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER, UMIRROR) = range(7)
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -721,14 +721,15 @@ class TriggerMode(Enum):
 class TriggerTargetMixIn(object):
     """MixIn for Device that may be the target of a hardware trigger.
 
-    Subclasses must also have a `_trigger_type` and `_trigger_mode`
-    property with the current trigger.
+    Subclasses must set a `_trigger_type` and `_trigger_mode` property
+    with the current trigger during object construction.
 
     TODO: need some way to retrieve the supported trigger types and
         modes.  We could require subclasses to define `_trigger_types`
         and `_trigger_modes` listing what is supported but would still
         not be enough since often not all trigger type and mode are
         supported.
+
     """
     __metaclass__ = abc.ABCMeta
 

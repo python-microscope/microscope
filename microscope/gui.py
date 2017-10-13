@@ -137,9 +137,12 @@ def make_app(frame_cls, *args, **kwargs):
   A utility function that wraps a single tkinter Frame into its own
   application.
 
-  Args:
-    frame_cls - a tkinter Frame
-    *args - arguments used to initilize frame_cls
+  Parameters
+  ----------
+    frame_cls : Frame class
+
+    *args, **kwargs
+      Arguments used to initilize frame_cls.
   """
   toplevel = tkinter.Tk()
   frame = frame_cls(*args, master=toplevel, **kwargs)
