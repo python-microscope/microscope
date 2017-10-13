@@ -811,7 +811,7 @@ class DeformableMirror(Device):
         provided.
         """
         self._validate_patterns(patterns)
-        self._patterns(patterns)
+        self._patterns = patterns
         self._pattern_idx = -1 # none is applied yet
 
     def next_pattern(self):

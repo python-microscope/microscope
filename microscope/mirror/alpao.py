@@ -49,6 +49,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     TriggerMode.START,
   ]
 
+
   @staticmethod
   def _normalize_patterns(patterns):
     """
@@ -125,7 +126,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
   def apply_pattern(self, pattern):
     self._validate_patterns(pattern)
     pattern = self._normalize_patterns(pattern)
-    data_pointer = pattern.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
+    data_pointer = pattern.ctypes.data_as(asdk.Scalar_p)
     status = asdk.Send(self._dm, data_pointer)
     self._raise_if_error(status)
 
@@ -153,7 +154,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
       return
 
     self._validate_patterns(patterns)
-    patterns = _normalize_patterns(patterns)
+    patterns = self._normalize_patterns(patterns)
     patterns = numpy.atleast_2d(patterns)
     n_patterns = patterns.shape[0]
 
@@ -172,13 +173,13 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
       raise Exception("trigger type '%s' and trigger mode '%s'"
                       % (self._trigger_type.name, self._trigger_mode.name))
 
-    data_pointer = patterns.ctypes.data_as(ctypes.POINTER(asdk.Scalar_p))
+    data_pointer = patterns.ctypes.data_as(asdk.Scalar_p)
     status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
     self._raise_if_error(status)
 
   def next_pattern(self):
     if self.trigger_type == TriggerType.SOFTWARE:
-      super(AlpaoDeformableMirror, self).queue_patterns(patterns)
+      super(AlpaoDeformableMirror, self).next_pattern()
     else:
       raise Exception("software trigger received when set for hardware trigger")
 
