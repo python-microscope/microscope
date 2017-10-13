@@ -1,20 +1,21 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
-# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2016 Mick Phillips <mick.phillips@gmail.com>
+##
+## Microscope is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Microscope is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """Classes for control of microscope components.
 
@@ -22,6 +23,7 @@ This module provides base classes for experiment control and data
 acquisition devices that can be served over Pyro. This means that each
 device may be served from a separate process, or even from a different PC.
 """
+
 import abc
 import itertools
 import logging
@@ -34,8 +36,11 @@ import Pyro4
 import numpy
 
 from six.moves import queue
+from enum import Enum
 
 from six import iteritems
+
+import numpy
 
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
@@ -699,7 +704,141 @@ class CameraDevice(DataDevice):
         pass
 
 
-# === LaserDevice ===
+class TriggerType(Enum):
+    SOFTWARE = 0
+    RISING_EDGE = 1
+    FALLING_EDGE = 2
+    PULSE = 3
+
+class TriggerMode(Enum):
+    ONCE = 1
+    BULB = 2
+    STROBE = 3
+    START = 4
+
+
+@Pyro4.expose
+class TriggerTargetMixIn(object):
+    """MixIn for Device that may be the target of a hardware trigger.
+
+    Subclasses must set a `_trigger_type` and `_trigger_mode` property
+    with the current trigger during object construction.
+
+    TODO: need some way to retrieve the supported trigger types and
+        modes.  We could require subclasses to define `_trigger_types`
+        and `_trigger_modes` listing what is supported but would still
+        not be enough since often not all trigger type and mode are
+        supported.
+
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @property
+    def trigger_mode(self):
+        return self._trigger_mode
+    @property
+    def trigger_type(self):
+        return self._trigger_type
+
+    @abc.abstractmethod
+    def set_trigger(self, ttype, tmode):
+        """Set device for a specific trigger.
+        """
+        pass
+
+
+@Pyro4.expose
+class DeformableMirror(Device):
+    """Base class for Deformable Mirrors.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        """Constructor.
+
+        Subclasses must define the following properties during
+        construction:
+
+            _n_actuators : int
+
+        In addition, the private properties `_patterns` and
+        `_pattern_idx` are initialized to None to support the queueing
+        of patterns and software triggering.
+        """
+        super(DeformableMirror, self).__init__(*args, **kwargs)
+
+        self._patterns = None
+        self._patterns_idx = None
+
+    @property
+    def n_actuators(self):
+        return self._n_actuators
+
+    def _validate_patterns(self, patterns):
+        """Validate the shape of a series of patterns.
+
+        Only validates the shape of the patterns, not if the values
+        are actually in the [0 1] range.  If some hardware is unable
+        to handle values outside their defined range (most will simply
+        clip them), then it's the responsability of the subclass to do
+        the clipping before sending the values.
+        """
+        if patterns.ndim > 2:
+            raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
+                            % patterns.ndim)
+        elif patterns.shape[-1] != self._n_actuators:
+            raise Exception(("PATTERNS length of second dimension '%d' differs"
+                             " differs from number of actuators '%d'"
+                             % (patterns.shape[-1], self._n_actuators)))
+
+    @abc.abstractmethod
+    def apply_pattern(self, pattern):
+        """Apply this pattern.
+        """
+        pass
+
+    def queue_patterns(self, patterns):
+        """Send values to the mirror.
+
+        Parameters
+        ----------
+        patterns : numpy.array
+            An KxN elements array of values in the range [0 1], where N
+            equals the number of actuators, and K is the number of
+            patterns.
+
+        A convenience fallback is provided for software triggering is
+        provided.
+        """
+        self._validate_patterns(patterns)
+        self._patterns = patterns
+        self._pattern_idx = -1 # none is applied yet
+
+    def next_pattern(self):
+        """Apply the next pattern in the queue.
+
+        A convenience fallback is provided.
+        """
+        if self._patterns is None:
+            raise Exception("no pattern queued to apply")
+        self._pattern_idx += 1
+        self.apply_pattern(self._patterns[self._pattern_idx,:])
+
+    def zero(self):
+        """Reset the deformable mirror.
+
+        If the mirror does not provide this method, the parent has a
+        fallback that applies a pattern of zeros.
+        """
+        self.apply_pattern(numpy.zeros((self._n_actuators)))
+
+    def initialize(self):
+        pass
+    def _on_shutdown(self):
+        pass
+
+
 class LaserDevice(Device):
     __metaclass__ = abc.ABCMeta
 
@@ -760,4 +899,3 @@ class LaserDevice(Device):
         """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
-
