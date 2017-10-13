@@ -56,7 +56,7 @@ class DeformableMirror(tkinter.Frame):
     tkinter.Frame.__init__(self, master, *args, **kwargs)
 
     self.dm = dm
-    n = dm.get_n_actuators()
+    n = dm.n_actuators
     self.dm_pattern = numpy.zeros((n))
 
     ## We have a lot of Scales so we want a scrollbar.  For this,
@@ -75,17 +75,17 @@ class DeformableMirror(tkinter.Frame):
     self.canvas = tkinter.Canvas(self)
     self.canvas_frame = tkinter.Frame(self.canvas)
 
-    reset_button = tkinter.Button(self.canvas_frame,
-                                  text="Reset actuators",
-                                  command=self.reset)
-    reset_button.pack(fill='x')
-    self.reset_button = reset_button
+    zero_button = tkinter.Button(self.canvas_frame,
+                                  text="Zero actuators",
+                                  command=self.zero)
+    zero_button.pack(fill='x')
+    self.zero_button = zero_button
 
     self.sliders = [None] * n
     for i in range(n):
       callback = lambda s,i=i: self.set_actuator(i, float(s))
       slider = tkinter.Scale(self.canvas_frame, orient='horizontal',
-                             from_=-1, to=1, resolution=0.01,
+                             from_=0, to=1, resolution=0.01,
                              label="actuator #%i" % i,
                              command=callback)
       slider.pack(fill='x')
@@ -116,21 +116,19 @@ class DeformableMirror(tkinter.Frame):
 
   def on_canvas_frame_configure(self, event):
     self.canvas.configure(scrollregion=self.canvas.bbox('all'))
-
     ## We don't know what pattern is the DM currently set to, so set
     ## it to whatever is being displayed on the widget.
-#    print self.dm_pattern
-    self.dm.send(self.dm_pattern)
+    self.dm.apply_pattern(self.dm_pattern)
 
   def set_actuator(self, i, val):
     self.dm_pattern[i] = val
-#    print self.dm_pattern
-    self.dm.send(self.dm_pattern)
+    print self.dm_pattern
+    self.dm.apply_pattern(self.dm_pattern)
 
-  def reset(self):
+  def zero(self):
     for s in self.sliders:
       s.set(0)
-    self.dm.reset()
+    self.dm.zero()
 
 
 def make_app(frame_cls, *args, **kwargs):

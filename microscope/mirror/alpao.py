@@ -115,7 +115,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     value = asdk.Scalar_p(asdk.Scalar())
     status = asdk.Get(self._dm, six.b("NbOfActuator"), value)
     self._raise_if_error(status)
-    self.n_actuators = int(value.contents.value)
+    self._n_actuators = int(value.contents.value)
     self._trigger_type = TriggerType.SOFTWARE
     self._trigger_mode = TriggerMode.ONCE
 
