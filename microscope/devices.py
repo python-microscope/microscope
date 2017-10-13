@@ -724,12 +724,11 @@ class TriggerTargetMixIn(object):
     Subclasses must also have a `_trigger_type` and `_trigger_mode`
     property with the current trigger.
 
-    TODO: need some way to retrieve the supported list of trigger
-        types and modes.  We can require subclasses to define
-        `_trigger_types` and `_trigger_modes` listing what is
-        supported.  However, what if there are devices that support
-        certain combinations?
-
+    TODO: need some way to retrieve the supported trigger types and
+        modes.  We could require subclasses to define `_trigger_types`
+        and `_trigger_modes` listing what is supported but would still
+        not be enough since often not all trigger type and mode are
+        supported.
     """
     __metaclass__ = abc.ABCMeta
 

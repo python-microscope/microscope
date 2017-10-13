@@ -16,19 +16,14 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Class for Alpao deformable mirror.
-
-Exceptions:
-  May throw an OSError during import if the alpao SDK is not available.
-"""
-
 import ctypes
 
 import numpy
 
-from microscope.devices import TriggerType
 from microscope.devices import DeformableMirror
+from microscope.devices import TriggerMode
 from microscope.devices import TriggerTargetMixIn
+from microscope.devices import TriggerType
 
 import microscope._wrappers.asdk as asdk
 
@@ -40,6 +35,10 @@ def _normalize_patterns(self, patterns):
 
 
 class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
+  """Class for Alpao deformable mirror.
+
+  The Alpao mirrors have support for hardware triggering.
+  """
   ## The length of the buffer given to Alpao SDK to write error
   ## messages.
   _err_msg_len = 64
