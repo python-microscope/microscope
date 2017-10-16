@@ -750,6 +750,24 @@ class TriggerTargetMixIn(object):
 @Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
+
+    Reset
+    -----
+
+    There is no method to reset or clear a deformable mirror.  While
+    different vendors provide functions to do that, it is unclear
+    exactly what it does the actuators.  Does it set all actuators
+    back to something based on a calibration file?  Does it apply a
+    voltage of zero to each?  Does it set the values to zero and what
+    does that mean since different deformable mirrors expect values in
+    a different range?  For the sake of uniformity, it is better for
+    python-microscope users to pass the pattern they want, probably a
+    pattern that flattens the mirror.
+
+    It is also unclear what the use case for a reset.  If it just to
+    set the mirror to an initial state and not a specific shape, then
+    destroying and re-constructing the DeformableMirror object
+    provides the most obvious solution.
     """
     __metaclass__ = abc.ABCMeta
 
@@ -824,14 +842,6 @@ class DeformableMirror(Device):
             raise Exception("no pattern queued to apply")
         self._pattern_idx += 1
         self.apply_pattern(self._patterns[self._pattern_idx,:])
-
-    def zero(self):
-        """Reset the deformable mirror.
-
-        If the mirror does not provide this method, the parent has a
-        fallback that applies a pattern of zeros.
-        """
-        self.apply_pattern(numpy.zeros((self._n_actuators)))
 
     def initialize(self):
         pass

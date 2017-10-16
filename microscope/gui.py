@@ -57,7 +57,7 @@ class DeformableMirror(tkinter.Frame):
 
     self.dm = dm
     n = dm.n_actuators
-    self.dm_pattern = numpy.zeros((n))
+    self.dm_pattern = numpy.full((n), 0.5)
 
     ## We have a lot of Scales so we want a scrollbar.  For this,
     ## create a Canvas and insert the Scales inside.  The Scrollbar is
@@ -76,7 +76,7 @@ class DeformableMirror(tkinter.Frame):
     self.canvas_frame = tkinter.Frame(self.canvas)
 
     zero_button = tkinter.Button(self.canvas_frame,
-                                  text="Zero actuators",
+                                  text="Set all actuators to 0.5",
                                   command=self.zero)
     zero_button.pack(fill='x')
     self.zero_button = zero_button
@@ -88,6 +88,7 @@ class DeformableMirror(tkinter.Frame):
                              from_=0, to=1, resolution=0.01,
                              label="actuator #%i" % i,
                              command=callback)
+      slider.set(0.5)
       slider.pack(fill='x')
       self.sliders[i] = slider
 
@@ -122,13 +123,13 @@ class DeformableMirror(tkinter.Frame):
 
   def set_actuator(self, i, val):
     self.dm_pattern[i] = val
-    print self.dm_pattern
     self.dm.apply_pattern(self.dm_pattern)
 
   def zero(self):
     for s in self.sliders:
-      s.set(0)
-    self.dm.zero()
+      s.set(0.5)
+    self.dm_pattern[:] = 0.5
+    self.dm.apply_pattern(self.dm_pattern)
 
 
 def make_app(frame_cls, *args, **kwargs):

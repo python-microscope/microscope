@@ -104,8 +104,6 @@ SetArray = make_prototype("BMCSetArray", [DMHANDLE, ctypes.POINTER(c_double),
 GetArray = make_prototype("BMCGetArray", [DMHANDLE, ctypes.POINTER(c_double),
                                           c_uint32])
 
-ClearArray = make_prototype("BMCClearArray", [DMHANDLE])
-
 Close = make_prototype("BMCClose", [DMHANDLE])
 
 ErrorString = make_prototype("BMCErrorString", [RC], c_char_p)

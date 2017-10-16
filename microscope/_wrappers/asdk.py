@@ -67,8 +67,6 @@ Init = make_prototype("asdkInit", [CStr], pDM)
 
 Release = make_prototype("asdkRelease", [pDM])
 
-Reset = make_prototype("asdkReset", [pDM])
-
 Send = make_prototype("asdkSend", [pDM, Scalar_p])
 
 SendPattern = make_prototype("asdkSendPattern", [pDM, Scalar_p, UInt, UInt])

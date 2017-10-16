@@ -33,11 +33,16 @@ def test_mirror_actuators(dm, time_interval=0.5):
     time_interval : number
       Number of seconds between trying each actuator.
   """
-  dm.zero()
-  data = numpy.full((dm.n_actuators))
-  for i in range(dm.n_actuators):
-    data[i] = 1.0
-    dm.send(data)
-    time.sleep(time_interval)
-    data[i] = 0.0
-  dm.zero()
+  base_value = 0.5
+  data = numpy.full((dm.n_actuators), base_value)
+  dm.apply_pattern(data)
+
+  time.sleep(time_interval)
+  for new_value in [1.0, 0.0]:
+    for i in range(dm.n_actuators):
+      data[i] = new_value
+      dm.apply_pattern(data)
+      time.sleep(time_interval)
+      data[i] = base_value
+
+  dm.apply_pattern(data)

@@ -52,9 +52,6 @@ class BMCDeformableMirror(DeformableMirror):
     if status:
       raise Exception(BMC.ErrorString(status))
 
-  def zero(self):
-    BMC.ClearArray(self._dm)
-
   def __del__(self):
     status = BMC.Close(self._dm)
     if status:
