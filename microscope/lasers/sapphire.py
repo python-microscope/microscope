@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 #
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
+# and 2017 Ian Dobbie (Ian.Dobbie@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,21 +37,19 @@ def lock_comms(func):
     return wrapper
 
 
-class CoboltLaser(devices.LaserDevice):
-    def __init__(self, com=None, baud=None, timeout=0.01, **kwargs):
-        super(CoboltLaser, self).__init__()
+class SapphireLaser(devices.LaserDevice):
+    def __init__(self, com=None, baud=19200, timeout=0.01, **kwargs):
+        #laser controller must run at 19200 baud, 8+1 bits,
+        # no parity or flow control 
+        super(SapphireLaser, self).__init__()
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # Start a logger.
-        self._write('sn?')
+        self._write('?HID')
         response = self._readline()
-        self._logger.info("Cobolt laser serial number: [%s]" % response)
-        # We need to ensure that autostart is disabled so that we can switch emission
-        # on/off remotely.
-        self._write('@cobas 0')
-        self._logger.info("Response to @cobas 0 [%s]" % self._readline())
+        self._logger.info("Saphire laser serial number: [%s]" % int(response))
         self.comms_lock = threading.RLock()
 
     def send(self, command):
@@ -60,7 +59,7 @@ class CoboltLaser(devices.LaserDevice):
 
     @lock_comms
     def clearFault(self):
-        self._write('cf')
+        self._write('fl?')
         self._readline()
         return self.get_status()
 
@@ -78,11 +77,11 @@ class CoboltLaser(devices.LaserDevice):
     @lock_comms
     def get_status(self):
         result = []
-        for cmd, stat in [('l?', 'Emission on?'),
-                            ('p?', 'Target power:'),
-                            ('pa?', 'Measured power:'),
-                            ('f?', 'Fault?'),
-                            ('hrs?', 'Head operating hours:')]:
+        for cmd, stat in [('?l', 'Emission on?'),
+                            ('?sp', 'Target power:'),
+                            ('?p', 'Measured power:'),
+                            ('?fl', 'Fault?'),
+                            ('?hh', 'Head operating hours:')]:
             self._write(cmd)
             result.append(stat + ' ' + self._readline())
         return result
@@ -90,8 +89,7 @@ class CoboltLaser(devices.LaserDevice):
     @lock_comms
     def _on_shutdown(self):
         # Disable laser.
-        self.send('l0')
-        self.send('@cob0')
+        self.send('l=0')
         self.flush_buffer()
 
 
@@ -99,10 +97,6 @@ class CoboltLaser(devices.LaserDevice):
     @lock_comms
     def initialize(self):
         self.flush_buffer()
-        #We don't want 'direct control' mode.
-        self.send('@cobasdr 0')
-        # Force laser into autostart mode.
-        self.send('@cob1')
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
@@ -110,8 +104,8 @@ class CoboltLaser(devices.LaserDevice):
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
-        response = self.send('l1')
-        self._logger.info("l1: [%s]" % response)
+        response = self.send('l=1')
+        self._logger.info("l=1: [%s]" % response)
 
         if not self.get_is_on():
             # Something went wrong.
@@ -125,14 +119,14 @@ class CoboltLaser(devices.LaserDevice):
     @lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
-        self._write('l0')
+        self._write('l=0')
         return self._readline()
 
 
     ## Return True if the laser is currently able to produce light.
     @lock_comms
     def get_is_on(self):
-        self._write('l?')
+        self._write('?l')
         response = self._readline()
         return response == '1'
 
@@ -140,7 +134,7 @@ class CoboltLaser(devices.LaserDevice):
     @lock_comms
     def get_max_power_mw(self):
         # 'gmlp?' gets the maximum laser power in mW.
-        self._write('gmlp?')
+        self._write('?maxlp')
         response = self._readline()
         return float(response)
 
@@ -149,18 +143,18 @@ class CoboltLaser(devices.LaserDevice):
     def get_power_mw(self):
         if not self.get_is_on():
             return 0
-        self._write('pa?')
-        return 1000 * float(self._readline())
+        self._write('?p')
+        return float(self._readline())
 
 
     @lock_comms
     def _set_power_mw(self, mW):
         mW = min(mW, self.get_max_power_mw)
-        self._logger.info("Setting laser power to %.4fW."  % (mW / 1000.0, ))
-        return self.send("@cobasp %.4f" % (mW / 1000.0))
+        self._logger.info("Setting laser power to %.4fW."  % (mW ))
+        return self.send("@cobasp %.4f" % (mW))
 
 
     @lock_comms
     def get_set_power_mw(self):
-        self._write('p?')
-        return 1000 * float(self._readline())
+        self._write('?sp')
+        return float(self._readline())
