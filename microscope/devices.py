@@ -781,24 +781,16 @@ class WavefrontSensorDevice(CameraDevice):
     def __init__(self, *args, **kwargs):
         super(WavefrontSensorDevice, self).__init__(**kwargs)
         # Add WFS settings
-        # Zernike indexes to be returned
+        # list of Zernike indexes to be returned
         self._zernike_indexes = []
-        self.add_setting('zernike_indexes', 'int',
-                         self.get_zernike_indexes,
-                         self.set_zernike_indexes,
-                         'list of integers'))
         # Filter the phase map returned by a number of the Zernike measurements
         self._zernike_phase_filter = []
-        self.add_setting('zernike_phase_filter', 'bool',
-                         self.get_zernike_phase_filter,
-                         self.set_zernike_phase_filter,
-                         'list of integers')
         # WaveLength at which the phase map is calculated
-        self._wavelength = None
-        self.add_setting('wavelength', 'int',
-                         self.get_wavelength,
-                         self.set_wavelength,
-                         'wavelength in nm')
+        self._wavelength_nm = None
+        self.add_setting('wavelength_nm', 'float',
+                         self._get_wavelength_nm,
+                         self._set_wavelength_nm,
+                         (300.0, 2000,0))
 
     # Some acquisition related methods #
 
@@ -960,11 +952,11 @@ class WavefrontSensorDevice(CameraDevice):
             self._zernike_phase_filter = phase_filter
 
     @Pyro4.expose
-    def get_wavelength(self):
-        return self._wavelength
+    def get_wavelength_nm(self):
+        return self._wavelength_nm
 
     @abc.abstractmethod
-    def _set_wavelength(self, wavelength):
+    def _set_wavelength_nm(self, wavelength):
         """Sets the wavelength that is used for tha phase calculation
 
         :param wavelength: integer representing the wavelength in nm.
@@ -973,7 +965,7 @@ class WavefrontSensorDevice(CameraDevice):
         pass
 
     @Pyro4.expose
-    def set_wavelength(self, wavelength):
-        if self._set_wavelength(wavelength):
-            self._wavelength = wavelength
+    def set_wavelength_nm(self, wavelength):
+        if self._set_wavelength_nm(wavelength):
+            self._wavelength_nm = wavelength
 
