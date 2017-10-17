@@ -203,3 +203,4 @@ class TestDeformableMirror(devices.DeformableMirror):
 
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
+        self._current_pattern = pattern
