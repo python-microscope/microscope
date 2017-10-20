@@ -11,6 +11,11 @@
 import setuptools
 import sys
 
+
+project_name = 'microscope'
+project_version = '0.1.0+dev'
+
+
 extra_requires = []
 
 ## The enum34 package will cause conflicts with the builtin enum
@@ -19,9 +24,10 @@ extra_requires = []
 if sys.version_info >= (3, 4):
   extra_requires += ["enum34"]
 
+
 setuptools.setup(
-  name = "microscope",
-  version = "0.1.0+dev",
+  name = project_name,
+  version = project_version,
   description = "An extensible microscope hardware interface.",
   license = "GPL-3.0+",
 
@@ -62,4 +68,16 @@ setuptools.setup(
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   ],
   test_suite="microscope.testsuite",
+
+  command_options = {
+    'build_sphinx' : {
+      ## This is a bit silly but the dict for command_options must be
+      ## of the form '(option, (source, value))' where source is the
+      ## filename where that information came from.
+      'project': ('setup.py', project_name),
+      'version': ('setup.py', project_version),
+      'release': ('setup.py', project_version),
+      'source_dir' : ('setup.py', 'doc'),
+    },
+  },
 )
