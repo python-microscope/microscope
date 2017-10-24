@@ -8,9 +8,15 @@
 ## notice and this notice are preserved.  This file is offered as-is,
 ## without any warranty.
 
-import setuptools
 import sys
 
+import setuptools
+import sphinx.setup_command
+
+try:
+  import sphinx.ext.apidoc as apidoc
+except ImportError:
+  import sphinx.apidoc as apidoc
 
 project_name = 'microscope'
 project_version = '0.1.0+dev'
@@ -23,6 +29,15 @@ extra_requires = []
 ## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
 if sys.version_info >= (3, 4):
   extra_requires += ["enum34"]
+
+
+## Shadow the sphinx provided command, in order to run sphinx-apidoc
+## before sphinx-build.  This builds the rst files with the actual
+## package inline documentation.
+class BuildDoc(sphinx.setup_command.BuildDoc):
+  def run(self):
+    apidoc.main(["sphinx-apidoc", "--output-dir", "doc", "microscope"])
+    sphinx.setup_command.BuildDoc.run(self)
 
 
 setuptools.setup(
@@ -79,5 +94,9 @@ setuptools.setup(
       'release': ('setup.py', project_version),
       'source_dir' : ('setup.py', 'doc'),
     },
+  },
+
+  cmdclass = {
+    'build_sphinx' : BuildDoc,
   },
 )
