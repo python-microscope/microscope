@@ -1,5 +1,8 @@
-Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
----------------------------------------------------------------
+The following is a summary of the user-visible changes for each of
+python-microscope releases.
+
+Upcoming release
+----------------
 
  ** New device classes:
 
@@ -22,8 +25,8 @@ Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
  ** Now dependent on the enum34 package for python pre 3.4.
 
 
-Summary of user-visible changes for version 0.1.0 (2017/05/04):
----------------------------------------------------------------
+Version 0.1.0 (2017/05/04)
+--------------------------
 
  ** New abstract class FilterWheel.
 
@@ -38,7 +41,7 @@ Summary of user-visible changes for version 0.1.0 (2017/05/04):
  ** Start writing of user documentation.
 
 
-Summary of user-visible changes for version 0.0.1 (2016/11/24):
----------------------------------------------------------------
+Version 0.0.1 (2016/11/24)
+--------------------------
 
  ** Initial release of python-microscope.

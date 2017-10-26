@@ -1,5 +1,0 @@
-Run servers with
-  python -m microscope.deviceserver SERVERS
-
-Then run the example with
-  python example.py
