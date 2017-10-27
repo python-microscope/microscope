@@ -1,21 +1,32 @@
+.. Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+
+   Permission is granted to copy, distribute and/or modify this
+   document under the terms of the GNU Free Documentation License,
+   Version 1.3 or any later version published by the Free Software
+   Foundation; with no Invariant Sections, no Front-Cover Texts, and
+   no Back-Cover Texts.  A copy of the license is included in the
+   section entitled "GNU Free Documentation License".
+
 Microscope Documentation
-========================
+########################
 
 Microscope is a Python framework for the control of microscope devices
 and management of microscopy experiments.
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+   :maxdepth: 2
 
-  rationale
-  design
-  supported-devices
-  examples
-  news
+   design
+   examples
+   supported-devices
+   API <modules>
+   hacking
+   history
+   contributors
 
 Indices and tables
-==================
+******************
 
 * :ref:`genindex`
 * :ref:`modindex`
+* :ref:`search`

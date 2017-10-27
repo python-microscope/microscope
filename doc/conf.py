@@ -30,8 +30,15 @@ extensions = [
   'sphinx.ext.viewcode',
 ]
 
+#autodoc_mock_imports = ["microscope._wrappers"]
+
 ## Configuration for sphinx.ext.todo
 todo_include_todos = True
+
+## Configuration for sphinx.ext.napoleon
+napoleon_google_docstring = True
+napoleon_include_private_with_doc = True
+napoleon_include_special_with_doc = True
 
 
 ##

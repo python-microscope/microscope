@@ -67,9 +67,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-# A device definition for use in config files.
 def device(cls, host, port, uid=None, **kwargs):
     """Define a device and where to serve it.
+
+    A device definition for use in config files.
 
     Defines a device of type cls, served on host:port.
     UID is used to identify 'floating' devices (see below).
@@ -78,7 +79,6 @@ def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
-# === FloatingDeviceMixin ===
 class FloatingDeviceMixin(object):
     __metaclass__ = abc.ABCMeta
     """A mixin for devices that 'float'.
@@ -97,7 +97,6 @@ class FloatingDeviceMixin(object):
         pass
 
 
-# === Device ===
 class Device(object):
     __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
@@ -180,7 +179,6 @@ class Device(object):
         """Put the device into a safe state."""
         pass
 
-    # Methods for manipulating settings.
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
@@ -301,10 +299,8 @@ class Device(object):
         return results
 
 
-# === DataDevice ===
-
-# Wrapper to preserve acquiring state of data capture devices.
 def keep_acquiring(func):
+    """Wrapper to preserve acquiring state of data capture devices."""
     def wrapper(self, *args, **kwargs):
         if self._acquiring:
             self.abort()
@@ -508,14 +504,13 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
 
-# === CameraDevice ===
 class CameraDevice(DataDevice):
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
     """Adds functionality to DataDevice to support cameras.
 
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
 
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
@@ -752,7 +747,7 @@ class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
 
     Reset
-    -----
+    =====
 
     There is no method to reset or clear a deformable mirror.  While
     different vendors provide functions to do that, it is unclear

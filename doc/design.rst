@@ -1,4 +1,4 @@
-.. Copyright (C) 2017 David Pinto <carandraug+dev@gmail.com>
+.. Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
 
    Permission is granted to copy, distribute and/or modify this
    document under the terms of the GNU Free Documentation License,
@@ -7,7 +7,6 @@
    no Back-Cover Texts.  A copy of the license is included in the
    section entitled "GNU Free Documentation License".
 
-******
 Design
 ******
 

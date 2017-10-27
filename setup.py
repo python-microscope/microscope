@@ -21,7 +21,6 @@ except ImportError:
 project_name = 'microscope'
 project_version = '0.1.0+dev'
 
-
 extra_requires = []
 
 ## The enum34 package will cause conflicts with the builtin enum
@@ -36,7 +35,15 @@ if sys.version_info >= (3, 4):
 ## package inline documentation.
 class BuildDoc(sphinx.setup_command.BuildDoc):
   def run(self):
-    apidoc.main(["sphinx-apidoc", "--output-dir", "doc", "microscope"])
+    apidoc.main(["sphinx-apidoc", "--output-dir", "doc", "microscope",
+                 ## TODO: a list of modules to exclude because they
+                 ##       can't be imported, which will be required by
+                 ##       autodoc.  They can't be imported because of
+                 ##       the shared libraries are not on the system
+                 ##       building the docs.  Remove this when we
+                 ##       figure out mock libraries for all of them.
+                 "microscope/cameras/*",
+                 "microscope/mirror/*"])
     sphinx.setup_command.BuildDoc.run(self)
 
 

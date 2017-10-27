@@ -27,7 +27,6 @@ Tk was chosen for sake of simplicity.  It is part of Python core so
 will be the easiest for users to test microscope and their hardware.
 It also prevents the version compatibility problems we have had with
 wxPython and PyQt.
-
 """
 
 import numpy
