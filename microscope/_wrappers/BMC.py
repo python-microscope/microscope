@@ -20,7 +20,7 @@
 """
 
 import ctypes
-import sys
+import os
 
 from ctypes import c_char
 from ctypes import c_char_p
@@ -30,11 +30,11 @@ from ctypes import c_uint
 from ctypes import c_uint32
 
 
-if sys.platform == "win32":
+if os.name in ("nt", "ce"):
   ## Not actually tested yet
-  SDK = ctypes.windll.BMC
+  SDK = ctypes.WinDLL("BMC")
 else:
-  SDK = ctypes.cdll.LoadLibrary("libBMC.so.3")
+  SDK = ctypes.CDLL("libBMC.so.3")
 
 
 ## Definitions from BMCDefs.h
