@@ -24,11 +24,9 @@ a SID4 wavefront sensor from Phasics and all its settings to be exposed over Pyr
 from cffi import FFI
 
 
-# We import the headers from a file in order to avoid copyright issues
-wfs_profile_path = b'C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\SID4-079b default profile.txt'
+
 header_defs = "C:\\Users\\omxt\\PycharmProjects\\microscope\\microscope\\wavefront_sensors\\SID4_SDK_defs"
 header_path = "C:\\Program Files (x86)\\SID4_SDK\\DLL SDK\\Headers\\SID4_SDK.h"
-dll_path = "SID4_SDK.dll"
 cdef_from_file = ''
 
 try:
@@ -49,19 +47,31 @@ ffi = FFI()
 
 ffi.cdef(cdef_from_file)
 
-SDK = ffi.dlopen(dll_path)
+SDK = ffi.dlopen("SID4_SDK.dll")
+ZernikeSDK = ffi.dlopen("Zernike_SDK.dll")
 
 buffer_size = 1024
 
-nrow = 0
-ncol = 0
+user_profile_file_in = ffi.new("char[]", buffer_size)
+user_profile_file_in_bs = ffi.cast("long", buffer_size)
+user_profile_file_in = b'C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\SID4-079b default profile.txt'
+
+interferogram_file = ffi.new("char[]", buffer_size)
+interferogram_file_bs = ffi.cast("long", buffer_size)
+interferogram_file = "C:\\Program Files (x86)\\SID4_SDK\\Examples\\Labview\\Interferograms\\Interferogram.tif"
+
+session_id = ffi.new('SDK_Reference *', 0)
+
+nrow = ffi.new("int *", 0)
+ncol = ffi.new("int *", 0)
+
+error_code = ffi.new('long *', 0)
 
 user_profile_name = ffi.new("char[]", buffer_size) # initialize first with a certain buffer size
 user_profile_name_bs = ffi.cast("long", buffer_size)
 
-user_profile_file = ffi.new("char[]", buffer_size)
-user_profile_file_bs = ffi.cast("long", buffer_size)
-user_profile_file = wfs_profile_path
+user_profile_file_out = ffi.new("char[]", buffer_size)
+user_profile_file_out_bs = ffi.cast("long", buffer_size)
 
 user_profile_description = ffi.new("char[]", buffer_size)
 user_profile_description_bs = ffi.cast("long", buffer_size)
@@ -82,16 +92,37 @@ camera_information = ffi.new("CameraInfo *")
 camera_sn = ffi.new("char[]", buffer_size)
 camera_sn_bs = ffi.cast("long", buffer_size)
 
-session_id = ffi.new('SDK_Reference *')
-error_code = ffi.new('long *', 0)
+image_size = ffi.new("ArraySize *")
 
-tilt_information = ffi.new('TiltInfo *')
-analysis_array_size = ffi.new('ArraySize *', [64,64])
-camera_array_size = ffi.new('ArraySize *')
+# tilt_information = ffi.new('TiltInfo *')
+# analysis_array_size = ffi.new('ArraySize *', [64,64])
 
 print('Opening SDK...')
-SDK.OpenSID4(user_profile_file, session_id, error_code)
+SDK.OpenSID4(user_profile_file_in, session_id, error_code)
+print('Session ID:')
+print(session_id)
+print('Error code:')
 print(error_code[0])
+
+SDK.GetUserProfile(session_id,
+                   user_profile_name,
+                   user_profile_name_bs,
+                   user_profile_file_out,
+                   user_profile_file_out_bs,
+                   user_profile_description,
+                   user_profile_description_bs,
+                   user_profile_last_reference,
+                   user_profile_last_reference_bs,
+                   user_profile_last_directory,
+                   user_profile_last_directory_bs,
+                   sdk_version,
+                   sdk_version_bs,
+                   analysis_information,
+                   camera_information,
+                   camera_sn,
+                   camera_sn_bs,
+                   image_size,
+                   error_code)
 
 print('Initializing WFS...')
 SDK.CameraInit(session_id, error_code)
@@ -105,25 +136,6 @@ print(error_code[0])
 ##SDK.CameraStop(session_id, error_code)
 ##print(error_code[0])
 
-SDK.GetUserProfile(session_id,
-                   user_profile_name,
-                   user_profile_name_bs,
-                   user_profile_file,
-                   user_profile_file_bs,
-                   user_profile_description,
-                   user_profile_description_bs,
-                   user_profile_last_reference,
-                   user_profile_last_reference_bs,
-                   user_profile_last_directory,
-                   user_profile_last_directory_bs,
-                   sdk_version,
-                   sdk_version_bs,
-                   analysis_information,
-                   camera_information,
-                   camera_sn,
-                   camera_sn_bs,
-                   camera_array_size,
-                   error_code)
 
 ffi.string(user_profile_name)
 int(user_profile_name_bs)
@@ -131,8 +143,10 @@ int(user_profile_name_bs)
 print('Grating Position', analysis_information.GratingPositionMm)
 print('wavelengthNm', analysis_information.wavelengthNm)
 print('RemoveBackgroundImage', analysis_information.RemoveBackgroundImage)
-print('PhaseSize_width', analysis_information.PhaseSize_width)
-print('PhaseSize_Height', analysis_information.PhaseSize_Height)
+print('Analysis information PhaseSize_Height:')
+print(int.from_bytes(ffi.buffer(analysis_information)[21:25], 'little'))
+print('Analysis information PhaseSize_width:')
+print(int.from_bytes(ffi.buffer(analysis_information)[17:21], 'little'))
 
 print('FrameRate', camera_information.FrameRate)
 print('TriggerMode', camera_information.TriggerMode)
@@ -177,8 +191,6 @@ print('Min values:')
 print(ffi.unpack(attribute_min, nr_of_attributes[0]))
 print('Max values:')
 print(ffi.unpack(attribute_max, nr_of_attributes[0]))
-
-
 
 phase = ffi.new('float[]', 4096)
 phase_bs = ffi.cast('long', 16384)

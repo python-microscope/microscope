@@ -75,13 +75,11 @@ CAMERA_ATTRIBUTES = {
     'AE_On/Off': (8, -1, -1)
 }
 
-INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
+INVALIDATES_SETTINGS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_binning', '_aoi_left', '_aoi_top',
                        '_aoi_width', '_aoi_height', ]
 
-# We setup some necessary configuration parameters
-# TODO: Move this into the config file
-
+# We setup some necessary configuration parameters. TODO: Move this into the config file
 # This is the default profile path of the camera
 WFS_PROFILE_PATH = b'C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\SID4-079b default profile.txt'
 
@@ -100,10 +98,14 @@ class SID4Device(WavefrontSensorDevice):
     the SID4_SDK.h file with some modifications. Namely all #include and #ifdef have been  
     removed. Also, the typedef of LVBoolean has been changed for 'unsigned char'
     
-    :param header_defs: Absolute path to the header definitions from the SDK.
-    :param dll_path: name of, or absolute path to the SID4_SDK.dll file
+    :param header_definitions: Absolute path to the header definitions from the SDK.
+    :param sid4_sdk_dll_path: name of, or absolute path to, the SID4_SDK.dll file
+    :param zernike_sdk_dll_path: name of, or absolute path to, the Zernike_SDK.dll file
     :param wfs_profile_path: Absolute path to the profile file that has to be loaded at startup.
     Must be a byte encoded string.
+    :param camera_attributes: This is a dictionary containing a reference to the camera attributes
+    returned by the SDK's 'Camera_GetAttributeList'. The dictionary has as keys the attribute name
+    and as values a tuple containing (attribute_id, min_value, max_value).
     """
     def __init__(self,
                  header_definitions=HEADER_DEFINITIONS,
@@ -170,8 +172,8 @@ class SID4Device(WavefrontSensorDevice):
         self.camera_sn = self.ffi.new("char[]", self.buffer_size)
         self.camera_sn_bs = self.ffi.cast("long", self.buffer_size)
 
-        self.camera_array_size = self.ffi.new('ArraySize *')
-        self.analysis_array_size = self.ffi.new('ArraySize *')
+        self.camera_array_size = self.ffi.new("ArraySize *")
+        self.analysis_array_size = self.ffi.new("ArraySize *")
 
         # Create zernike-related parameters
         self.zernike_information = self.ffi.new("ZernikeInformation *")
@@ -196,11 +198,12 @@ class SID4Device(WavefrontSensorDevice):
                          self.buffer_size,
                          readonly=True)
         self.add_setting('user_profile_file', 'str',
-                         lambda: self.ffi.string(self.user_profile_file),  # TODO: this lambda will probably not work
-                         self._set_user_profile_file,
-                         self.buffer_size)
+                         lambda: self.ffi.string(self.user_profile_file),
+                         None,
+                         self.buffer_size,
+                         readonly=True)
         self.add_setting('user_profile_description', 'str',
-                         lambda: self.ffi.string(self.user_profile_description),
+                         lambda: self.ffi.string(self.user_profile_description),  # TODO: Fix here
                          None,
                          self.buffer_size,
                          readonly=True)
@@ -219,10 +222,15 @@ class SID4Device(WavefrontSensorDevice):
                          None,
                          self.buffer_size,
                          readonly=True)
+        self.add_setting('camera_sn', 'str',
+                         lambda: self.ffi.string(self.camera_sn),
+                         None,
+                         self.buffer_size,
+                         readonly=True)
 
         # Add camera settings
         self.add_setting('frame_rate', 'enum',
-                         lambda: FRAME_RATES[self.camera_information.FrameRate],
+                         self._get_frame_rate,
                          self._set_frame_rate,
                          lambda: FRAME_RATES.keys())
         self.add_setting('trigger_mode', 'enum',
@@ -286,22 +294,22 @@ class SID4Device(WavefrontSensorDevice):
                          self._set_remove_background_image,
                          None)
         self.add_setting('phase_size_width', 'int',
-                         lambda: self.analysis_information.PhaseSize_width,
+                         self._get_phase_size_width,
                          None,
                          (0, 160),
                          readonly=True)
         self.add_setting('phase_size_height', 'int',
-                         lambda: self.analysis_information.PhaseSize_Height,
+                         self._get_phase_size_height,
                          None,
                          (0, 120),
                          readonly=True)
         self.add_setting('zernike_base', 'enum',
-                         self._get_zernike_base,
+                         lambda: self.zernike_information.Base,
                          self._set_zernike_base,
                          lambda: ZERNIKE_BASES.values())
-        self.add_setting('zernike_polynomials', 'int',
-                         self._get_zernike_polynomials,
-                         self._set_zernike_polynomials,
+        self.add_setting('nr_zernike_polynomials', 'int',
+                         lambda: self.zernike_information.Polynomials,
+                         self._set_nr_zernike_polynomials,
                          (0, 254))
         self.add_setting('image_row_size', 'int',
                          lambda: self.zernike_parameters.ImageRowSize,
@@ -329,21 +337,9 @@ class SID4Device(WavefrontSensorDevice):
                          self.buffer_size,
                          readonly=True)
 
-        # Software buffers and parameters for data conversion.
-        self.num_buffers = 32
-        self.add_setting('num_buffers', 'int',
-                         lambda: self.num_buffers,
-                         lambda val: self.set_num_buffers(val),
-                         (1, 100))
-        self.buffers = queue.Queue()
-        self.filled_buffers = queue.Queue()
-        self._buffer_size = None
-        self._buffers_valid = False
-        self._exposure_callback = None
-
     # @property
     # def _acquiring(self):
-    #     return self._camera_acquiring.get_value()
+    #     return self._camera_acquiring.get_value()  # TODO: Verify if we need this
     #
     # @keep_acquiring
     # def _enable_callback(self, use=False):
@@ -353,98 +349,125 @@ class SID4Device(WavefrontSensorDevice):
     # def _acquiring(self, value):
     #     pass # TODO: Verify if we need this
 
-    def set_num_buffers(self, num):
-        self.num_buffers = num
-        self._buffers_valid = False
+    def get_id(self):
+        self.get_setting('camera_sn')
 
-    def _purge_buffers(self):
-        """Purge buffers on both camera and PC."""
-        self._logger.debug("Purging buffers.")
-        self._buffers_valid = False
-        if self._acquiring:
-            raise Exception('Can not modify buffers while camera acquiring.')
-        # TODO: implement the flush
-        while True:
-            try:
-                self.buffers.get(block=False)
-            except queue.Empty:
-                break
 
-    def _create_buffers(self, num=None):
-        """Create buffers and store values needed to remove padding later."""
-        if self._buffers_valid:
-            return
-        if num is None:
-            num = self.num_buffers
-        self._purge_buffers()
-        self._logger.debug("Creating %d buffers." % num)
-        intensity_map_size = self._intensity_map_size.get_value()
-        phase_map_size = self._phase_map_size.get_value()
-        zernike_indexes_size = self._zernike_indexes_size.get_value()
-        for i in range(num):
-            intensity_buf = np.require(np.empty(intensity_map_size),
-                                       dtype='uint32',
-                                       requirements=['C_CONTIGUOUS',
-                                                     'ALIGNED',
-                                                     'OWNDATA'])
-            phase_buf = np.require(np.empty(phase_map_size),
-                                   dtype='float32',
-                                   requirements=['C_CONTIGUOUS',
-                                                 'ALIGNED',
-                                                 'OWNDATA'])
-            # Create data instances in either way
-            self.tilt_information = self.ffi.new('TiltInfo *')
-            self.projection_coefficients_in = self.ffi.new("double[]", zernike_indexes_size)
-
-            tilts_buf = np.require(np.empty(2),
-                                   dtype='float32',
-                                   requirements=['C_CONTIGUOUS',
-                                                 'ALIGNED',
-                                                 'OWNDATA'])
-            rms_buf = np.require(np.empty(1),
-                                 dtype='float32',
-                                 requirements=['C_CONTIGUOUS',
-                                               'ALIGNED',
-                                               'OWNDATA'])
-            ptv_buf = np.require(np.empty(1),
-                                 dtype='int32',
-                                 requirements=['C_CONTIGUOUS',
-                                               'ALIGNED',
-                                               'OWNDATA'])
-            zernike_buf = np.require(np.empty(zernike_indexes_size),
-                                     dtype='float64',
-                                     requirements=['C_CONTIGUOUS',
-                                                   'ALIGNED',
-                                                   'OWNDATA'])
-
-            self.buffers.put([intensity_buf,
-                              phase_buf,
-                              tilts_buf,
-                              rms_buf,
-                              ptv_buf,
-                              zernike_buf])
-        self._buffers_valid = True
-
-    def invalidate_buffers(self, func):
-        """Wrap functions that invalidate buffers so buffers are recreated."""
-        outerself = self
-        def wrapper(self, *args, **kwargs):
-            func(self, *args, **kwargs)
-            outerself._buffers_valid = False
-        return wrapper
+    # def invalidate_settings(self, func):
+    #     """Wrap functions that invalidate settings so settings are reloaded."""
+    #     outerself = self
+    #     def wrapper(self, *args, **kwargs):
+    #         func(self, *args, **kwargs)
+    #         outerself._buffers_valid = False
+    #     return wrapper
 
     def _fetch_data(self, timeout=5, debug=False):
-        """Fetch data and recycle buffers."""
+        """Fetch data."""
         try:
-            raw = self.filled_buffers.get(timeout=timeout)
+            raw_data = self._grab_data()
         except:
-            raise Exception('There is no data in the buffer')
-        data = [np.copy(x) for x in raw]
+            if debug:
+                self._logger.debug('There is no data to grab')
+            return None
 
-        # Requeue the buffer. TODO: we should check if buffer size has not been changed elsewhere.
-        self.buffers.put(raw)
+        return raw_data
 
-        return data
+    def _grab_data(self):
+        """Uses the SDK's GrabLiveMode to get the phase and intensity maps and
+        calls the Zernike functions to calculate the projection of the polynomials"""
+        # TODO: This is wrong it should be a multiplication but the SDK returns a wrong settup of the array size
+        phase_map_width = intensity_map_width = self.get_setting('phase_size_width')
+        phase_map_height = intensity_map_height = self.get_setting('phase_size_height')
+        nr_zernike_polynomials = self.get_setting('nr_zernike_polynomials')
+        # phase_map = self.ffi.new("double[]", phase_map_size)
+        phase_map = np.require(np.empty((phase_map_width, phase_map_height)),
+                               dtype='float64',
+                               requirements=['C_CONTIGUOUS',
+                                             'ALIGNED',
+                                             'WRITEABLE',
+                                             'OWNDATA'])
+        # intensity_map = self.ffi.new("double[]", intensity_map_size)
+        intensity_map = np.require(np.empty((intensity_map_width, intensity_map_height)),
+                                   dtype='float64',
+                                   requirements=['C_CONTIGUOUS',
+                                                 'ALIGNED',
+                                                 'WRITEABLE',
+                                                 'OWNDATA'])
+        tilt = self.ffi.new('TiltInfo *')
+        # projection_coefficients = self.ffi.new("double[]", nr_zernike_polynomials)
+        projection_coefficients = np.require(np.empty(nr_zernike_polynomials),
+                                             dtype='float64',
+                                             requirements=['C_CONTIGUOUS',
+                                                           'ALIGNED',
+                                                           'WRITEABLE',
+                                                           'OWNDATA'])
+
+        phase_pt = self.ffi.cast('double *', phase_map.ctypes.data)
+        phase_size = self.ffi.sizeof(phase_pt)
+        intensity_pt = self.ffi.cast('double *', intensity_map.ctypes.data)
+        intensity_size = self.ffi.sizeof(intensity_pt)
+        zernike_polynomials = self.ffi.cast('double *', projection_coefficients.ctypes.data)
+        zernike_polynomials_size = self.ffi.sizeof(zernike_polynomials)
+        try:
+            self.SID4_SDK.GrabLiveMode(self.session_id,
+                                       phase_pt,
+                                       phase_size,
+                                       intensity_pt,
+                                       intensity_size,
+                                       tilt,
+                                       self.analysis_array_size,
+                                       self.error_code)
+            print('error after GrabLiveMode')
+            print(self.error_code[0])
+        except:
+            print(self.error_code[0])
+            Exception('Could not GrabLiveMode')
+
+        try:
+            self.zernike_SDK.Zernike_PhaseProjection(phase_map,
+                                                     phase_size,
+                                                     self.analysis_array_size,
+                                                     zernike_polynomials,
+                                                     zernike_polynomials_size,
+                                                     self.error_code)
+        except:
+            Exception('Could not do PhaseProjection')
+
+    def _process_data(self, data):
+        """Apply necessary transformations to data to be served to the client.
+
+        Return as a dictionary:
+        - intensity_map: a 2D array containing the intensity
+        - linearity: some measure of the linearity of the data.
+            Simple saturation at the intensity map might not be enough to indicate
+            if we are exposing correctly to get a accurate measure of the phase.
+        - phase_map: a 2D array containing the phase
+        - tilts: a tuple containing X and Y tilts
+        - RMS: the root mean square measurement
+        - PtoV: peak to valley measurement
+        - zernike_polynomials: a list with the relevant Zernike polynomials
+        """
+        # input data contains [intensity_map, phase_map, tilt, projection_coefficients]
+        processed_data = {'intensity_map': self._apply_transform(data[0]),
+                          'phase_map': self._apply_transform(data[1]),
+                          'tilts': data[2],
+                          'zernike_polynomials': data[3],
+                          'RMS': data[1].std(),
+                          'PtoV': data[3].ptp()}
+
+        return processed_data
+
+    def _apply_transform(self, array):
+        """Apply self._transform to a numpy array"""
+        flips = (self._transform[0], self._transform[1])
+        rot = self._transform[2]
+
+        # Choose appropriate transform based on (flips, rot).
+        return {(0, 0): np.rot90(array, rot),
+                (0, 1): np.flipud(np.rot90(array, rot)),
+                (1, 0): np.fliplr(np.rot90(array, rot)),
+                (1, 1): np.fliplr(np.flipud(np.rot90(array, rot)))
+                }[flips]
 
     def abort(self):
         """Abort acquisition."""
@@ -459,89 +482,36 @@ class SID4Device(WavefrontSensorDevice):
         from the input profile"""
         self._logger.debug('Opening SDK...')
         try:
-            self._set_user_profile_file(self.user_profile_file)
+            self.SID4_SDK.OpenSID4(self.user_profile_file, self.session_id, self.error_code)
+            print(self.error_code[0])
+            self._refresh_user_profile_params()
         except:
             raise Exception('SDK could not open.')
 
-        # get the camera attributes and populate them
-        # self._get_camera_attribute_list()
+        # Load zernike analysis settings
+        try:
+            self._set_zernike_attributes()
+        except:
+            Exception('Could not load zernike attributes')
 
-        # Default setup
-        # self.trigger_mode.set_string('Software')z
-        # self._cycle_mode.set_string('Continuous')
-
-        # def callback(*args):
-        #     data = self._fetch_data(timeout=500)
-        #     timestamp = time.time()
-        #     if data is not None:
-        #         self._dispatch_buffer.put((data, timestamp))
-        #         return 0
-        #     else:
-        #         return -1
-        #
-        # self._exposure_callback = SDK3.CALLBACKTYPE(callback)
-
-    # def _get_camera_attribute_list(self):
-    #     """This method updates the camera attributes stored in the camera_attributes dict
-    #
-    #     To call at camera initialization"""
-    #     self.nr_of_attributes = self.ffi.new('long *')
-    #     print(self.nr_of_attributes[0])
-    #     # try:
-    #     #     self.SID4_SDK.Camera_GetNumberOfAttribute(self.session_id, self.nr_of_attributes, self.error_code)
-    #     # except:
-    #     #     raise Exception('Could not get nr_of_attributes.')
-    #     print(self.error_code[0])
-    #     print(self.nr_of_attributes[0])
-    #
-    #     self.attribute_id = self.ffi.new('unsigned short int[]', self.nr_of_attributes[0])
-    #     self.attribute_id_bs = self.ffi.cast('long', self.nr_of_attributes[0])
-    #     self.attributes = self.ffi.new('char[]', self.buffer_size)
-    #     self.attributes_bs = self.ffi.cast('long', self.buffer_size)
-    #     self.attribute_min = self.ffi.new('long[]', self.nr_of_attributes[0])
-    #     self.attribute_min_bs = self.ffi.cast('long', self.nr_of_attributes[0] * 4)
-    #     self.attribute_max = self.ffi.new('long[]', self.nr_of_attributes[0])
-    #     self.attribute_max_bs = self.ffi.cast('long', self.nr_of_attributes[0] * 4)
-    #     # self.attribute_id = self.ffi.new('unsigned short int[]', 9)
-    #     # self.attribute_id_bs = self.ffi.cast('long', 36)
-    #     # self.attributes = self.ffi.new('char[]', 1024)
-    #     # self.attributes_bs = self.ffi.cast('long', 1024)
-    #     # self.attribute_min = self.ffi.new('long[]', 9)
-    #     # self.attribute_min_bs = self.ffi.cast('long', 36)
-    #     # self.attribute_max = self.ffi.new('long[]', 9)
-    #     # self.attribute_max_bs = self.ffi.cast('long', 36)
-    #
-    #     self.SID4_SDK.Camera_GetAttributeList(self.session_id,
-    #                                           self.attribute_id,
-    #                                           self.attribute_id_bs,
-    #                                           self.attributes,
-    #                                           self.attributes_bs,
-    #                                           self.attribute_min,
-    #                                           self.attribute_min_bs,
-    #                                           self.attribute_max,
-    #                                           self.attribute_max_bs,
-    #                                           self.error_code)
-    #
-    #     print(self.error_code[0])
-    #
-    #     self.attributes_list = self.ffi.string(self.attributes)  # [:-2].split(sep = b'\t')
-    #
-    #     for i in range(self.nr_of_attributes[0]):
-    #         self.camera_attributes[self.attributes_list[i]] = (self.attribute_id[i],
-    #                                                            self.attribute_min[i],
-    #                                                            self.attribute_max[i])
-
-    def _on_enable(self):
-        self._logger.debug('Enabling SID4.')
-        if self._acquiring:
-            self._acquisition_stop()
-        self._create_buffers()
+        # update the settings that are not implemented through the user profile or the camera attributes
+        self.update_settings(settings={'nr_zernike_polynomials': 5})
 
         self._logger.debug('Initializing SID4...')
         try:
             self.SID4_SDK.CameraInit(self.session_id, self.error_code)
         except:
             raise Exception('SID4 could not Init. Error code: ', self.error_code[0])
+
+    def _on_enable(self):
+        self._logger.debug('Enabling SID4.')
+        if self._acquiring:
+            self._acquisition_stop()
+        self._logger.debug('Starting SID4 acquisition...')
+
+        self._acquisition_start()
+        self._logger.debug('Acquisition enabled: %s' % self._acquiring)
+        return True
 
     def _acquisition_start(self):
         try:
@@ -561,14 +531,12 @@ class SID4Device(WavefrontSensorDevice):
 
     def _on_disable(self):
         self.abort()
-        self._buffers_valid = False
         try:
             self.SID4_SDK.CameraClose(self.session_id, self.error_code)
         except:
             raise Exception('Unable to close camera. Error code: ', str(self.error_code[0]))
 
     def _on_shutdown(self):
-        self.abort()
         self.disable()
         try:
             self.SID4_SDK.CloseSID4(self.session_id, self.error_code)
@@ -639,12 +607,10 @@ class SID4Device(WavefrontSensorDevice):
         ##a = phase
 
     @keep_acquiring
-    def _set_user_profile_file(self, path=None):
+    def _refresh_user_profile_params(self):
         """Sets the user profile file but also reloads the SDK with OpenSID4 and
         repopulates the settings with GetUserProfile"""
-        self.user_profile_file = path
         try:
-            self.SID4_SDK.OpenSID4(self.user_profile_file, self.session_id, self.error_code)
             self.SID4_SDK.GetUserProfile(self.session_id,
                                          self.user_profile_name,
                                          self.user_profile_name_bs,
@@ -664,43 +630,26 @@ class SID4Device(WavefrontSensorDevice):
                                          self.camera_sn_bs,
                                          self.analysis_array_size,
                                          self.error_code)
+
         except:
             raise Exception('SDK could not open. Error code: ', self.error_code[0])
 
-        print(self.session_id[0])
-        print(self.ffi.string(self.user_profile_name))
-        print(int(self.user_profile_name_bs))
-        print(self.user_profile_file)
-        print(int(self.user_profile_file_bs))
-        print(self.ffi.string(self.user_profile_description))
-        print(int(self.user_profile_description_bs))
-        print(self.ffi.string(self.user_profile_last_reference))
-        print(int(self.user_profile_last_reference_bs))
-        print(self.ffi.string(self.user_profile_directory))
-        print(int(self.user_profile_directory_bs))
-        print(self.ffi.string(self.sdk_version))
-        print(int(self.sdk_version_bs))
-        print(self.analysis_information.GratingPositionMm)
-        print(self.analysis_information.wavelengthNm)
-        print(self.analysis_information.RemoveBackgroundImage)
-        print(self.analysis_information.PhaseSize_width)
-        print(self.analysis_information.PhaseSize_Height)
-        print(self.camera_information.FrameRate)
-        print(self.camera_information.TriggerMode)
-        print(self.camera_information.Gain)
-        print(self.camera_information.ExposureTime)
-        print(self.camera_information.PixelSizeM)
-        print(self.camera_information.NumberOfCameraRecorded)
-        print(self.ffi.string(self.camera_sn))
-        print(int(self.camera_sn_bs))
-        print(self.analysis_array_size.nRow)
-        print(self.analysis_array_size.nCol)
-        print(self.error_code[0])
+    def _get_camera_attribute(self, attribute):
+        attribute_id = self.ffi.cast('unsigned short int', self.camera_attributes[attribute][0])
+        value = self.ffi.new('double *')
+        try:
+            self.SID4_SDK.Camera_GetAttribute(self.session_id,
+                                              attribute_id,
+                                              value,self.error_code)
+        except:
+            raise Exception('Could not get camera attribute: %s', attribute)
+
+        return value[0]
 
     @keep_acquiring
     def _set_camera_attribute(self, attribute, value):
         attribute_id = self.ffi.cast('unsigned short int', self.camera_attributes[attribute][0])
-        new_value = self.ffi.cast('double', value)
+        new_value = self.ffi.new('double *', value)
         try:
             self.SID4_SDK.Camera_SetAttribute(self.session_id,
                                               attribute_id,
@@ -709,8 +658,19 @@ class SID4Device(WavefrontSensorDevice):
         except:
             raise Exception('Could not change camera attribute: %s', attribute)
 
-    def _modify_user_profile(self, save=False):
+    def _set_zernike_attributes(self, ):
+        self.zernike_array_size = self.ffi.new("ArraySize *", [20,20])
+        self.zernike_max_pol = self.ffi.cast("unsigned char", 5)
+        self.zernike_SDK.Zernike_GetZernikeInfo(self.zernike_information,
+                                                self.zernike_array_size,
+                                                self.zernike_version,
+                                                self.zernike_version_bs)
 
+        self.zernike_SDK.Zernike_UpdateProjection_fromUserProfile(self.user_profile_directory,
+                                                                  self.zernike_max_pol,
+                                                                  self.error_code)
+
+    def _modify_user_profile(self, save=False):
         try:
             self.SID4_SDK.ModifyUserProfile(self.session_id,
                                             self.analysis_information,
@@ -730,6 +690,9 @@ class SID4Device(WavefrontSensorDevice):
             self.SID4_SDK.SaveCurrentUserProfile(self.session_id, self.error_code)
         except:
             Exception('Could not save user profile')
+
+    def _get_frame_rate(self):
+        return self._get_camera_attribute(attribute='FrameRate')
 
     def _set_frame_rate(self, rate):
         self._set_camera_attribute('FrameRate', rate)
@@ -774,40 +737,44 @@ class SID4Device(WavefrontSensorDevice):
 
         self._modify_user_profile(save=save)
 
-    def _set_phase_size_width(self, width, save=False):
-        self.analysis_information.PhaseSize_width = width
-        self._modify_user_profile(save=save)
+    def _get_phase_size_width(self):
+        # HACK: This is actually not the right way to collect this info but cffi is
+        # otherwise getting different bytes from memory
+        return int.from_bytes(self.ffi.buffer(self.analysis_information)[17:21], 'little')
 
-    def _set_phase_size_height(self, height, save=False):
-        self.analysis_information.PhaseSize_Height = height
-        self._modify_user_profile(save=save)
+    # def _set_phase_size_width(self, width, save=False):
+    #     self.analysis_information.PhaseSize_width = width
+    #     self._modify_user_profile(save=save)
 
-    def _get_intensity_size_width(self):
-        pass
+    def _get_phase_size_height(self):
+        # HACK: This is actually not the right way to collect this info but cffi is
+        # otherwise getting different bytes from memory
+        return int.from_bytes(self.ffi.buffer(self.analysis_information)[21:25], 'little')
 
-    def _set_intensity_size_width(self):
-        pass
-
-    def _get_intensity_size_height(self):
-        pass
-
-    def _set_intensity_size_height(self):
-        pass
-
-    def _get_zernike_base(self):
-        pass
+    # def _set_phase_size_height(self, height, save=False):
+    #     self.analysis_information.PhaseSize_Height = height
+    #     self._modify_user_profile(save=save)
 
     def _set_zernike_base(self):
         pass
 
-    def _get_zernike_polynomials(self):
-        pass
-
-    def _set_zernike_polynomials(self):
-        pass
+    def _set_nr_zernike_polynomials(self, polynomials):
+        self.zernike_information.Polynomials = polynomials
+        # Zernike_UpdateProjection_fromUserProfile(char
+        # UserProfileDirectory[], unsigned
+        # char
+        # PolynomialOrder, long * ErrorCode);
+    #     self.zernike_SDK.Zernike_UpdateProjection_fromParameter
 
 
 if __name__ == '__main__':
 
     wfs = SID4Device()
     wfs.initialize()
+    wfs.enable()
+    print(wfs.get_setting('frame_rate'))
+    wfs.set_setting('frame_rate', 3)
+    print(wfs.get_setting('frame_rate'))
+    data = wfs._fetch_data()
+    wfs.disable()
+    wfs.shutdown()

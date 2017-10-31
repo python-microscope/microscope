@@ -1,5 +1,5 @@
 /*
-	© Copyright 2008 by PHASICS.
+	ï¿½ Copyright 2008 by PHASICS.
 	All rights reserved.
 
 	@File:	SID4_SDK_FileAnalysis_Example.cpp
@@ -20,6 +20,12 @@
 	"CloseSID4" closes the SID4 session. It releases memory devoted to the session.
 */
 
+/*compile like
+cd C:\Users\omxt\PycharmProjects\microscope\microscope\wavefront_sensors
+cl -I "C:\Users\omxt\PycharmProjects\microscope\microscope\wavefront_sensors\DLL SDK\Headers" SID4_SDK_FileAnalysis_Example.cpp /link "C:\Users\omxt\PycharmProjects\microscope\microscope\wavefront_sensors\DLL SDK\LIB\SID4_SDK.lib"
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
@@ -30,10 +36,10 @@ const int bufSize=1024;
 
 void main(void)
 {
-	char userProfile_File[]="C:\\Program Files\\SID4_SDK\\Examples\\User Profile\\UserProfileExample.txt";
-	char inteferogram_File[]="C:\\Program Files\\SID4_SDK\\Examples\\Interferograms\\Interferogram.tif";
+	char userProfile_File[]="C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\SID4-079b default profile.txt";
+	char inteferogram_File[]="C:\\Program Files (x86)\\SID4_SDK\\Examples\\Labview\\Interferograms\\Interferogram.tif";
 	SDK_Reference SessionID=0;
-	int nrow, ncol;
+	long nrow, ncol;
 	long Error=0;
 	char UserProfile_Name[bufSize]="";
 	long uspName_bufSize = bufSize;
@@ -74,14 +80,18 @@ void main(void)
 	nrow = AnalysisInformation.PhaseSize_Height;    
 	ncol = AnalysisInformation.PhaseSize_width;
 
+    printf ("AnalysisInfo-H=%d\n",nrow);
+    printf ("AnalysisInfo-W=%d\n",ncol);
+    printf ("pixelsizeM=%g\n",CameraInformation.PixelSizeM);
+
 	//// memory allocation for Phase and Intensity before calling FileAnalysis
 	TiltInfo TiltInformation;
 	long Intensity_bufSize = nrow*ncol;
 	long Phase_bufSize = nrow*ncol;
 	ArraySize AnalysisArraySize;
 
-	AnalysisArraySize.height=nrow;
-	AnalysisArraySize.width=ncol;
+	AnalysisArraySize.nRow=nrow;
+	AnalysisArraySize.nCol=ncol;
 
 	float *Intensity = (float*)malloc(sizeof(float)* Intensity_bufSize);
 	float *Phase = (float*)malloc(sizeof(float)* Phase_bufSize);

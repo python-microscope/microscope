@@ -243,7 +243,6 @@ class Device(object):
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
-
     @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
@@ -809,16 +808,7 @@ class WavefrontSensorDevice(CameraDevice):
         - PtoV: peak to valley measurement
         - zernike_polynomials: a list with the relevant Zernike polynomials
         """
-
-        flips = (self._transform[0], self._transform[1])
-        rot = self._transform[2]
-
-        # Choose appropriate transform based on (flips, rot).
-        return {(0, 0): numpy.rot90(data, rot),
-                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
-                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
-                }[flips]
+        return data
 
     # Some measurements related methods
     # We made the distinction here between ROI (form CameraDevice superclass)
