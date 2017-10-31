@@ -80,7 +80,6 @@ def device(cls, host, port, uid=None, **kwargs):
 
 
 class FloatingDeviceMixin(object):
-    __metaclass__ = abc.ABCMeta
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -89,6 +88,7 @@ class FloatingDeviceMixin(object):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
+    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -98,8 +98,8 @@ class FloatingDeviceMixin(object):
 
 
 class Device(object):
-    __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         self.enabled = None
@@ -314,20 +314,22 @@ def keep_acquiring(func):
 
 
 class DataDevice(Device):
-    __metaclass__ = abc.ABCMeta
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
     it to a client.  The client is set using set_client(uri) or (legacy)
     receiveClient(uri).
-    Derived classed should implement:
-        abort(self)                ---  required
-        start_acquisition(self)    ---  required
-        _fetch_data(self)          ---  required
-        _process_data(self, data)  ---  optional
+
+    Derived classed should implement::
+      * abort(self)                ---  required
+      * start_acquisition(self)    ---  required
+      * _fetch_data(self)          ---  required
+      * _process_data(self, data)  ---  optional
+
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
@@ -745,9 +747,6 @@ class TriggerTargetMixIn(object):
 @Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
-
-    Reset
-    =====
 
     There is no method to reset or clear a deformable mirror.  While
     different vendors provide functions to do that, it is unclear

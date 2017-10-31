@@ -33,13 +33,11 @@ class BaseTestServeDevices(unittest.TestCase):
 
   Subclasses may overload class properties defaults as needed.
 
-  Class Attributes:
-    DEVICES: list of microscope.devices to initialise.
-    TIMEOUT: time given for service to terminate after receiving
-      signal to terminate.
-
-  Instance Attributes:
-    p: multiprocessing.Process
+  Attributes:
+    DEVICES (list): list of :class:`microscope.devices` to initialise.
+    TIMEOUT (number): time given for service to terminate after
+      receiving signal to terminate.
+    p (multiprocessing.Process): device server process.
   """
   DEVICES = []
   TIMEOUT = 2

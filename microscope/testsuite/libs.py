@@ -45,9 +45,11 @@ class MockFuncPtr(object):
 class MockSharedLib(object):
   """Base class for mock shared libraries.
 
-  Subclasses must define `libs`, an array of library names (as passed
-  to :class:`ctypes.CDLL`) that it mocks, and `functions`, an array of
-  function names that the library will provide.
+  Attributes:
+    libs (list): list of library names (as passed to
+      :class:`ctypes.CDLL`) that this class can mock.
+    functions (list): list of of function names from the library that
+       it can mock.
   """
   libs = []
   functions = []
