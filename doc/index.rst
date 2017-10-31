@@ -10,8 +10,7 @@
 Microscope Documentation
 ########################
 
-Microscope is a Python framework for the control of microscope devices
-and management of microscopy experiments.
+.. include:: ../README
 
 .. toctree::
    :maxdepth: 2
@@ -19,7 +18,7 @@ and management of microscopy experiments.
    design
    examples
    supported-devices
-   API <modules>
+   API <api/modules>
    hacking
    history
    contributors

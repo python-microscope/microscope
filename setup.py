@@ -35,7 +35,7 @@ if sys.version_info >= (3, 4):
 ## package inline documentation.
 class BuildDoc(sphinx.setup_command.BuildDoc):
   def run(self):
-    apidoc.main(["sphinx-apidoc", "--output-dir", "doc", "microscope",
+    apidoc.main(["sphinx-apidoc", "--output-dir", "doc/api", "microscope",
                  ## TODO: a list of modules to exclude because they
                  ##       can't be imported, which will be required by
                  ##       autodoc.  They can't be imported because of
