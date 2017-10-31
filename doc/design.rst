@@ -14,11 +14,9 @@ Problem
 =======
 
 Bespoke microscopes are built in research labs by physicists and
-biologists that are often not interested in programming.  We found no
-satisfying solution 
-
-
-writing software t
+biologists that are often not interested in programming.  The end
+result is in-house software that is both limited in scope and unusable
+in other projects.
 
 
 Project aims
@@ -46,6 +44,10 @@ Choices
 
 Python
 ------
+
+Python is extensively used for scientific computing, and know for its
+readability.  The hope is that it will make it even easier for users.
+
 
 Use cases
 =========
