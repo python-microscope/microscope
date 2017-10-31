@@ -28,7 +28,9 @@ Documentation is inline within docstrings and must follow the `Google
 Python docstrings format
 <http://google.github.io/styleguide/pyguide.html?showone=Comments#Comments>`_.
 These will be parsed by `Sphinx's Napoleon extension
-<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_.
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_ so `its own
+examples
+<http://www.sphinx-doc.org/en/stable/ext/example_google.html>`_.
 
 
 Versioning
