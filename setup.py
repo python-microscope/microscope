@@ -13,10 +13,17 @@ import sys
 import setuptools
 import sphinx.setup_command
 
-try:
+try: # In sphinx 1.7, apidoc was moved to the ext subpackage
   import sphinx.ext.apidoc as apidoc
 except ImportError:
   import sphinx.apidoc as apidoc
+
+try: # In Python 3.3, mock was merged into unittest package
+  import unittest.mock as mock
+except ImportError:
+  import mock
+
+import microscope.testsuite.libs
 
 project_name = 'microscope'
 project_version = '0.1.0+dev'
@@ -34,16 +41,9 @@ if sys.version_info >= (3, 4):
 ## before sphinx-build.  This builds the rst files with the actual
 ## package inline documentation.
 class BuildDoc(sphinx.setup_command.BuildDoc):
+  @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
   def run(self):
-    apidoc.main(["sphinx-apidoc", "--output-dir", "doc/api", "microscope",
-                 ## TODO: a list of modules to exclude because they
-                 ##       can't be imported, which will be required by
-                 ##       autodoc.  They can't be imported because of
-                 ##       the shared libraries are not on the system
-                 ##       building the docs.  Remove this when we
-                 ##       figure out mock libraries for all of them.
-                 "microscope/cameras/*",
-                 "microscope/mirror/*"])
+    apidoc.main(["sphinx-apidoc", "--output-dir", "doc/api", "microscope"])
     sphinx.setup_command.BuildDoc.run(self)
 
 
