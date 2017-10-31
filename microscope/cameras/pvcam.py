@@ -23,6 +23,7 @@ TODO: support camera metadata.
 """
 import ctypes
 import numpy as np
+import os
 import platform
 import Pyro4
 from microscope import devices
@@ -542,9 +543,8 @@ class md_frame(ctypes.Structure):
     ]
 
 
-arch, plat = platform.architecture()
-if plat.startswith('Windows'):
-    if arch == '32bit':
+if os.name in ('nt', 'ce'):
+    if platform.architecture()[0] == '32bit':
         _lib = ctypes.WinDLL('pvcam32')
     else:
         _lib = ctypes.WinDLL('pvcam64')

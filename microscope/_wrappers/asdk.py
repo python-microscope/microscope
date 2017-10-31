@@ -20,7 +20,7 @@
 """
 
 import ctypes
-import sys
+import os
 
 from ctypes import c_char_p
 from ctypes import c_double
@@ -29,11 +29,11 @@ from ctypes import c_size_t
 from ctypes import c_uint32
 
 
-if sys.platform == "win32":
-  SDK = ctypes.windll.ASDK
+if os.name in ("nt", "ce"):
+  SDK = ctypes.WinDLL("ASDK")
 else:
   ## Not actually tested yet
-  SDK = ctypes.cdll.LoadLibrary("libasdk.so")
+  SDK = ctypes.CDLL("libasdk.so")
 
 
 class DM(ctypes.Structure):
