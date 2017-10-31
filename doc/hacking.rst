@@ -7,8 +7,29 @@
    no Back-Cover Texts.  A copy of the license is included in the
    section entitled "GNU Free Documentation License".
 
-Developer instructions
-**********************
+Contributor instructions
+************************
+
+Tests
+=====
+
+Microscope testsuite can be ran with setuptools, like so::
+
+    python setup.py test
+
+All test units, as well as other tools for testing purposes, are part
+of the :py:mod:`microscope.testsuite` package.
+
+
+Documentation
+=============
+
+Documentation is inline within docstrings and must follow the `Google
+Python docstrings format
+<http://google.github.io/styleguide/pyguide.html?showone=Comments#Comments>`_.
+These will be parsed by `Sphinx's Napoleon extension
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_.
+
 
 Versioning
 ==========
@@ -49,7 +70,7 @@ Steps to make a release
       "Added tag release-$VERSION for commit $COMMIT" release-$VERSION
 
 #. Build a source distribution from an export (in case of any non
-   commited or ignored files)::
+   committed or ignored files)::
 
     rm -rf target/
     git archive --format=tar --prefix="target/" HEAD | tar -x
@@ -65,3 +86,5 @@ Steps to make a release
     sed -i 's,\(version[ ]*=[ ]*"[^+]*\)",\1+dev",' setup.py
     git commit setup.py -m \
       "maint: set version to $VERSION+dev after $VERSION release."
+    git push upstream master
+    git push upstream release-$VERSION
