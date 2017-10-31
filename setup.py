@@ -43,7 +43,11 @@ if sys.version_info >= (3, 4):
 class BuildDoc(sphinx.setup_command.BuildDoc):
   @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
   def run(self):
-    apidoc.main(["sphinx-apidoc", "--output-dir", "doc/api", "microscope"])
+    apidoc.main(["sphinx-apidoc",
+                 "--separate", # each module on its own page
+                 "--module-first",
+                 "--output-dir", "doc/api",
+                 "microscope"])
     sphinx.setup_command.BuildDoc.run(self)
 
 
