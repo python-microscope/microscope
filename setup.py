@@ -11,6 +11,8 @@
 import setuptools
 import sys
 
+import setuptools.command.sdist
+
 extra_requires = []
 
 ## The enum34 package will cause conflicts with the builtin enum
@@ -18,6 +20,27 @@ extra_requires = []
 ## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
 if sys.version_info >= (3, 4):
   extra_requires += ["enum34"]
+
+
+## Modify the sdist command class to include extra files in the source
+## distribution.  Seems a bit ridiculous that we have to do this but
+## the only alternative is to have a MANIFEST file and we don't want
+## to have yet another configuration file.
+##
+## The package_data (from setuptools) and data_files (from distutils)
+## options are for files that will be installed and we don't want to
+## install this files, we just want them on the source distribution
+## for user information.
+manifest_files = [
+  "COPYING",
+  "NEWS",
+  "README",
+]
+class sdist(setuptools.command.sdist.sdist):
+  def make_distribution(self):
+    self.filelist.extend(manifest_files)
+    setuptools.command.sdist.sdist.make_distribution(self)
+
 
 setuptools.setup(
   name = "microscope",
@@ -62,4 +85,8 @@ setuptools.setup(
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   ],
   test_suite="microscope.testsuite",
+
+  cmdclass = {
+    'sdist' : sdist,
+  }
 )
