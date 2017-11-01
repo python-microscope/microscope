@@ -18,7 +18,7 @@ extra_requires = []
 ## The enum34 package will cause conflicts with the builtin enum
 ## package so don't require it.  See
 ## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
-if sys.version_info >= (3, 4):
+if sys.version_info < (3, 4):
   extra_requires += ["enum34"]
 
 
