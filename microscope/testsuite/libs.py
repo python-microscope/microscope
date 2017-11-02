@@ -35,28 +35,58 @@ import inspect
 import sys
 
 class MockFuncPtr(object):
+  """A mock for a C function.
+
+  To identify where it is called unintentionally, this mock will raise
+  :exc:`NotImplementedError` if it is called.  To make it callable,
+  replace the :meth:`__call` method like so::
+
+    >>> func = MockFuncPtr()
+    >>> func()
+    Traceback (most recent call last):
+    ...
+    NotImplementedError: call of mock function not yet implemented
+    >>> func._call = lambda : ctypes.c_int(1)
+    >>> func()
+    c_int(1)
+
+  The reason to replace `__call` instead of `__call__` is that
+  implicit invocations of special methods are `not guaranteed to work
+  correctly when defined in an object instance
+  <https://docs.python.org/3/reference/datamodel.html#special-method-lookup>`_,
+  i.e., patching `instance.__call__` may not affect `instance()`.
+  This is at least true in CPython.
+
+  .. note:
+     This is meant to be a mock of `_FuncPtr` which is a class created
+     on the fly in ctypes from the private `_ctypes._CFuncPtr`.
+  """
   def __init__(self):
     self.argtypes = None
-    self.restype = None
-  def __call__(self):
-    return 0
+    self.restype = ctypes.c_int
+  def _call(self, *args, **kwargs):
+    raise NotImplementedError("call of mock function not yet implemented")
+  def __call__(self, *args, **kwargs):
+    return self._call(*args, **kwargs)
 
 
 class MockSharedLib(object):
   """Base class for mock shared libraries.
 
-  Subclasses must define `libs`, an array of library names (as passed
-  to :class:`ctypes.CDLL`) that it mocks, and `functions`, an array of
-  function names that the library will provide.
+  Subclasses must list the name of functions from the library it mocks
+  in :attr:`functions`.
+
+  Attributes:
+    libs (list): list of library names (as passed to
+      :class:`ctypes.CDLL`) that this class can mock.
+    functions (list): list of of function names from the library to be
+      mocked.
   """
   libs = []
   functions = []
-  def __getattr__(self, name):
-    if name in self.functions:
-      return MockFuncPtr()
-    else:
-      raise AttributeError("no symbol '%s' in this mock library '%s'"
-                           % (name, type(self).__name__))
+  def __init__(self):
+    for fname in self.functions:
+      setattr(self, fname, MockFuncPtr())
 
 
 class MockLibasdk(MockSharedLib):
@@ -131,6 +161,10 @@ class MockLibatutility(MockSharedLib):
     'AT_FinaliseUtilityLibrary',
     'AT_InitialiseUtilityLibrary',
   ]
+  def __init__(self):
+    super(MockLibatutility, self).__init__()
+    ## This gets called during import of microscope.cameras.SDK3
+    self.AT_InitialiseUtilityLibrary._call = lambda : 0 # AT_SUCCESS
 
 class MockLibBMC(MockSharedLib):
   """Mock BMC's SDK for microscope._wrappers.BMC.
