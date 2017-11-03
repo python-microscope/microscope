@@ -26,7 +26,30 @@ machines will actually have all those libraries installed.
 This module provides mocks for all C functions wrapped by microscope.
 In addition, the :class:`CDLL` class can be used to patch
 :class:`ctypes.CDLL` to enable the importing of all microscope
-modules.
+modules.  Like so::
+
+    >>> import microscope.testsuite.libs
+    >>> import ctypes
+    >>> ctypes.CDLL = microscope.testsuite.libs.CDLL
+    >>> import microscope._wrappers.asdk # no longer fails due to missing libasdk.so
+    >>> import microscope.cameras.SDK3 # also does not fail despite calling InitialiseUtilityLibrary
+
+Most mock libraries do not have implementations of the functions.
+They can be implemented like so::
+
+    >>> import microscope._wrappers.asdk
+    >>> microscope._wrappers.asdk.Init()
+    Traceback (most recent call last):
+    ...
+    NotImplementedError: call of mock function not yet implemented
+    >>> microscope._wrappers.asdk.Init._call = lambda : "initialised"
+    >>> microscope._wrappers.asdk.Init()
+    'initialised'
+
+.. todo:
+   Our CDLL implementation always intercepts all libraries that we
+   know about.  We may want to instead replace this with a function
+   that generates a class that intercepts a subset of them.
 
 """
 
