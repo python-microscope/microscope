@@ -188,13 +188,15 @@ class TestLaser(devices.LaserDevice):
         return self._emission
 
     def _set_power_mw(self, level):
+        self._logger.info("Power set to %s." % level)
         self._power = level
 
     def get_max_power_mw(self):
         return 100
 
     def get_power_mw(self):
-        return self._power
+        return [0, self._power][self._emission]
+
 
 class TestDeformableMirror(devices.DeformableMirror):
     def __init__(self, n_actuators, *args, **kwargs):
