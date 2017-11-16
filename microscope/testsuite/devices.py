@@ -24,6 +24,7 @@ import time
 
 import Pyro4
 import numpy as np
+from PIL import Image, ImageFont, ImageDraw
 
 from microscope import devices
 from microscope.devices import keep_acquiring
@@ -47,7 +48,11 @@ class TestCamera(devices.CameraDevice):
                          lambda: (0, 100))
         self._acquiring = False
         self._exposure_time = 0.1
-        self._triggered = False
+        self._triggered = 0
+        # Count number of images sent since last enable.
+        self._sent = 0
+        # Font for rendering counter in images.
+        self._font = ImageFont.load_default()
 
     def _set_error_percent(self, value):
         self._error_percent = value
@@ -64,18 +69,29 @@ class TestCamera(devices.CameraDevice):
         #time.sleep(0.5)
 
     def _fetch_data(self):
-        if self._acquiring and self._triggered:
+        if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
                 self._logger.info('Raising exception')
                 raise Exception('Exception raised in TestCamera._fetch_data')
             self._logger.info('Sending image')
             time.sleep(self._exposure_time)
-            self._triggered = False
-            return np.random.random_integers(255,
-                                             size=(512,512)).astype(np.int16)
+            self._triggered -= 1
+            # Create an image
+            size = (512,512)
+            image = Image.fromarray(
+                np.random.random_integers(255, size=size).astype(np.uint8), 'L')
+            # Render text
+            text = "%d" % self._sent
+            tsize = self._font.getsize(text)
+            ctx = ImageDraw.Draw(image)
+            ctx.rectangle([size[0]-tsize[0]-8, 0, size[0], tsize[1]+8], fill=0)
+            ctx.text((size[0]-tsize[0]-4, 4), text, fill=255)
+
+            self._sent += 1
+            return np.asarray(image).T
 
     def abort(self):
-        self._logger.info('Disabling acquisition.')
+        self._logger.info("Disabling acquisition; %d images sent." % self._sent)
         if self._acquiring:
             self._acquiring = False
 
@@ -100,6 +116,7 @@ class TestCamera(devices.CameraDevice):
             self.abort()
         self._create_buffers()
         self._acquiring = True
+        self._sent = 0
         self._logger.info("Acquisition enabled.")
         return True
 
@@ -122,7 +139,7 @@ class TestCamera(devices.CameraDevice):
         self._logger.info('Trigger received; self._acquiring is %s.'
                           % self._acquiring)
         if self._acquiring:
-            self._triggered = True
+            self._triggered += 1
 
     def _get_binning(self):
          return (1,1)
