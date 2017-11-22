@@ -250,7 +250,7 @@ def serve_devices(devices):
         while not exit_event.is_set():
             for s in servers:
                 if s.is_alive():
-                    logger.info("%s is alive." % s.pid)
+                    #logger.info("%s is alive." % s.pid)
                     continue
                 else:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
