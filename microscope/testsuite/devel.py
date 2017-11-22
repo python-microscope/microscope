@@ -49,14 +49,14 @@ from microscope import devices
 #     def _on_shutdown(self):
 #         pass
 
+@Pyro4.expose
+@Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, *args, **kwargs):
         devices.Device.__init__(self, args, kwargs)
         self._digi = 0
         self._ana = [0,0,0,0]
         self._client = None
-        self.receiveClient = devices.DataDevice.receiveClient
-        self.setClient = devices.DataDevice.set_client
 
     def initialize(self, *args, **kwargs):
         pass
@@ -103,3 +103,6 @@ class DummyDSP(devices.Device):
     def ReadDigital(self):
         self._logger.info('ReadDigital')
         return self._digi
+
+DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
+DummyDSP.set_client = devices.DataDevice.set_client.im_func
