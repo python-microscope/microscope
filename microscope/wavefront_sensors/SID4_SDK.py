@@ -197,6 +197,10 @@ class SID4Device(WavefrontSensorDevice):
         # Create camera attributes. TODO: this should be created programmatically
         self.camera_attributes = camera_attributes
 
+        # Create a queue to trigger software acquisitions
+        self._trigger_queue = queue.Queue()
+        self._set_trigger_mode(0)
+
         # Add profile settings
         self.add_setting('user_profile_name', 'str',
                          lambda: self.ffi.string(self.user_profile_name),
@@ -261,12 +265,12 @@ class SID4Device(WavefrontSensorDevice):
                          None,
                          lambda: (0.0, 0.1),
                          readonly=True)
-        self.add_setting('camera_number_rows', 'int', # TODO: Not initialized
+        self.add_setting('camera_number_rows', 'int',  # TODO: Not initialized
                          lambda: self.camera_array_size.nRow,
                          None,
                          lambda: (0, 480),
                          readonly=True)
-        self.add_setting('camera_number_cols', 'int', # TODO: Not initialized
+        self.add_setting('camera_number_cols', 'int',  # TODO: Not initialized
                          lambda: self.camera_array_size.nCol,
                          None,
                          lambda: (0, 640),
@@ -361,6 +365,14 @@ class SID4Device(WavefrontSensorDevice):
             outerself._settings_valid = False
         return wrapper
 
+    @Pyro4.expose()
+    def soft_trigger(self):
+        if self._acquiring and self._is_software_trigger:
+            self._trigger_queue.put(1)
+        else:
+            raise Exception('cannot trigger if camera is not acquiring or is not in software trigger mode.')
+
+
     def _create_buffers(self):
         """Creates a buffer to store the data. It also reloads all necessary parameters"""
         self._refresh_zernike_attributes()
@@ -410,6 +422,10 @@ class SID4Device(WavefrontSensorDevice):
     def _fetch_data(self, timeout=5, debug=False):
         """Uses the SDK's GrabLiveMode to get the phase and intensity maps and
         calls the Zernike functions to calculate the projection of the polynomials"""
+        if self._is_software_trigger:  # TODO: fix this with a proper interrupt
+            if self._trigger_queue.empty(): return None
+            self._trigger_queue.get()
+
         try:
             self.SID4_SDK.GrabLiveMode(self.session_id,
                                        self.acquisition_buffer['phase_map'],
@@ -452,7 +468,6 @@ class SID4Device(WavefrontSensorDevice):
         - PtoV: peak to valley measurement
         - zernike_polynomials: a list with the relevant Zernike polynomials
         """
-        # input data contains [intensity_map, phase_map, tilt, projection_coefficients]
         processed_data = {'intensity_map': self._apply_transform(data['intensity_map']),
                           'phase_map': self._apply_transform(data['phase_map']),
                           'tilts': data['tilts'],
@@ -716,6 +731,10 @@ class SID4Device(WavefrontSensorDevice):
         self._set_camera_attribute('Trigger', mode)
         if self.error_code[0]:
             self.camera_information.TriggerMode = mode
+        if mode == 0:
+            self._is_software_trigger = True
+        else:
+            self._is_software_trigger = False
 
     def _set_gain(self, gain):
         self._set_camera_attribute('Gain', gain)
