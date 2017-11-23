@@ -62,9 +62,6 @@ interferogram_file = "C:\\Program Files (x86)\\SID4_SDK\\Examples\\Labview\\Inte
 
 session_id = ffi.new('SDK_Reference *', 0)
 
-nrow = ffi.new("int *", 0)
-ncol = ffi.new("int *", 0)
-
 error_code = ffi.new('long *', 0)
 
 user_profile_name = ffi.new("char[]", buffer_size) # initialize first with a certain buffer size
@@ -94,13 +91,13 @@ camera_sn_bs = ffi.cast("long", buffer_size)
 
 image_size = ffi.new("ArraySize *")
 
-# tilt_information = ffi.new('TiltInfo *')
-# analysis_array_size = ffi.new('ArraySize *', [64,64])
+tilt_information = ffi.new('TiltInfo *')
+analysis_array_size = ffi.new('ArraySize *', [80,80])
 
 print('Opening SDK...')
 SDK.OpenSID4(user_profile_file_in, session_id, error_code)
 print('Session ID:')
-print(session_id)
+print(session_id[0])
 print('Error code:')
 print(error_code[0])
 
@@ -192,28 +189,126 @@ print(ffi.unpack(attribute_min, nr_of_attributes[0]))
 print('Max values:')
 print(ffi.unpack(attribute_max, nr_of_attributes[0]))
 
-phase = ffi.new('float[]', 4096)
-phase_bs = ffi.cast('long', 16384)
-intensity = ffi.new('float[]', 4096)
-intensity_bs = ffi.cast('long', 16384)
+phase = ffi.new('float[]', 6400)
+phase_bs = ffi.cast('long', 25600)
+intensity = ffi.new('float[]', 6400)
+intensity_bs = ffi.cast('long', 25600)
 
 image = ffi.new("short int[307200]")
-image_bs = ffi.cast("long", 307200)
+image_bs = ffi.cast("long", 614400)
 
 print('Starting Live mode...')
 SDK.StartLiveMode(session_id, error_code)
 print(error_code[0])
 
-print('Grabbing image...')
-SDK.GrabImage(session_id, image, image_bs, camera_array_size, error_code)
-print(error_code[0])
-
-print('Part of the image')
-print([x for x in image[0:20]])
+# print('Grabbing image...')
+# SDK.GrabImage(session_id, image, image_bs, camera_array_size, error_code)
+# print(error_code[0])
+#
+# print('Part of the image')
+# print([x for x in image[0:20]])
 
 print('Grabbing Live mode...')
-SDK.GrabLiveMode(session_id, phase, phase_bs, intensity, intensity_bs, tilt_information, analysis_array_size, error_code)
+SDK.GrabLiveMode(session_id,
+                 phase,
+                 phase_bs,
+                 intensity,
+                 intensity_bs,
+                 tilt_information,
+                 analysis_array_size,
+                 error_code)
 print(error_code[0])
+
+print('creating zernike parameters')
+zernike_parameters = ffi.new("ZernikeParam *")
+zernike_information = ffi.new("ZernikeInformation *")
+phase_map_array_size = ffi.new("ArraySize *")
+zernike_version = ffi.new("char[]", buffer_size)
+zernike_version_bs = ffi.cast("long", buffer_size)
+
+proj_coefficients = ffi.new("double[]", 253)
+proj_coefficients_bs = ffi.cast("long", 2024)
+max_nr_polynomials = ffi.cast("unsigned char", 21)
+
+print('Populating zernike parameters')
+ZernikeSDK.Zernike_GetZernikeInfo(zernike_information,
+                                  phase_map_array_size,
+                                  zernike_version,
+                                  zernike_version_bs)
+
+print('Changing zernike parameters')
+# # Using Zernike_UpdateProjection_fromUserProfile: updates analysis array size but not nr of polynomials
+# ZernikeSDK.Zernike_UpdateProjection_fromUserProfile(user_profile_file_out,
+#                                                     max_nr_polynomials,
+#                                                     error_code)
+#
+# # Using Zernike_UpdateProjection_fromArray: Not in library!!!
+# ZernikeSDK.Zernike_UpdateProjection_fromArray(phase,
+#                                               phase_bs,
+#                                               analysis_array_size,
+#                                               max_nr_polynomials,
+#                                               error_code)
+#
+# Using Zernike_UpdateProjection_fromParameter: updates analysis array size but not nr of polynomials
+zernike_parameters.ImageRowSize = 80
+zernike_parameters.ImageColSize = 80
+zernike_parameters.MaskRowSize = 80
+zernike_parameters.MaskColSize = 80
+zernike_parameters.Base = 0
+ZernikeSDK.Zernike_UpdateProjection_fromParameter(zernike_parameters,
+                                                  max_nr_polynomials,
+                                                  error_code)
+
+# Using Zernike_UpdateProjection_fromParameters2
+
+'''
+/*!
+ * Zernike_UpdateProjection_fromParameters2
+ * This function computes the Projection Basis (Zernike or Legendre) according
+ * the input parameters which are:
+ * - Dimension & Position of the analysis pupil
+ * - Dimension of the image that will contain the analysis pupil
+ * - Choice of the Basis that will be computed (Zernike or Legendre)
+ *
+ * If the input "Mask_Obstruction" array is not empty, the program will used
+ * it  for computing the Projection Basis. In this case, the dimension of the
+ * "Mask_Obstruction" array should be identic to the image dimension specified
+ * in the ProjectionBasis_Parameters.
+ */
+void __cdecl Zernike_UpdateProjection_fromParameters2(
+	ZKLParam *ProjectionBasis_Parameters, float Mask_Obstruction[],
+	long mask_bufSize, ArraySize *MaskArraySize, unsigned char PolynomialsOrder,
+	long *ErrorCode);
+'''
+#
+# # Using Zernike_UpdateProjection_fromPhaseFile
+# phase_file = ffi.new("char[]", buffer_size)
+# phase_file = b'C:\\Program Files (x86)\\SID4_SDK\\Examples\\Labview\\Results\\PHA example.tif'
+#
+# ZernikeSDK.Zernike_UpdateProjection_fromPhaseFile(phase_file,
+#                                                   max_nr_polynomials,
+#                                                   error_code)
+#
+print(error_code[0])
+
+# zernike_information.Polynomials = 5
+
+print('Getting parameters back')
+ZernikeSDK.Zernike_GetZernikeInfo(zernike_information,
+                                  phase_map_array_size,
+                                  zernike_version,
+                                  zernike_version_bs)
+
+print('Getting polynomials...')
+ZernikeSDK.Zernike_PhaseProjection(phase,
+                                   phase_bs,
+                                   analysis_array_size,
+                                   proj_coefficients,
+                                   proj_coefficients_bs,
+                                   error_code)
+#
+print(error_code[0])
+
 ##
 ##print('Part of the phase')
 ##print([x for x in phase[0:20]])
@@ -221,17 +316,14 @@ print(error_code[0])
 ##print('Part of the intensity')
 ##print([x for x in intensity[0:20]])
 ##
-##print('Stopping Live mode...')
-##SDK.StopLiveMode(session_id, error_code)
-##print(error_code[0])
-##
-##print('Closing camera...')
-##SDK.CameraClose(session_id, error_code)
-##print(error_code[0])
-##
-##print('Closing SDK...')
-##SDK.CloseSID4(session_id, error_code)
-##print(error_code[0])
-##
-### keep phase alive
-##a = phase
+print('Stopping Live mode...')
+SDK.StopLiveMode(session_id, error_code)
+print(error_code[0])
+
+print('Closing camera...')
+SDK.CameraClose(session_id, error_code)
+print(error_code[0])
+
+print('Closing SDK...')
+SDK.CloseSID4(session_id, error_code)
+print(error_code[0])
