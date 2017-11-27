@@ -36,9 +36,9 @@ except:
 
 # Trigger mode to type.
 TRIGGER_MODES = {
-    0: devices.TRIGGER_SOFT,  # 0:'continuous mode' TODO: check all this
-    1: devices.TRIGGER_SOFT,  # 1:'mode0'
-    2: devices.TRIGGER_BEFORE  # 2:'mode1'
+    0: devices.TRIGGER_SOFT,  # 0:'continuous mode'
+    1: devices.TRIGGER_BEFORE,  # 1:'mode0'
+    2: devices.TRIGGER_DURATION  # 2:'mode1'
 }
 FRAME_RATES = {
     0: '3.75hz',
@@ -198,8 +198,8 @@ class SID4Device(WavefrontSensorDevice):
         self.camera_attributes = camera_attributes
 
         # Create a queue to trigger software acquisitions
+        self._is_software_trigger = True
         self._trigger_queue = queue.Queue()
-        self._set_trigger_mode(0)
 
         # Add profile settings
         self.add_setting('user_profile_name', 'str',
@@ -249,11 +249,11 @@ class SID4Device(WavefrontSensorDevice):
                          lambda: TRIGGER_MODES.keys())
         self.add_setting('gain', 'int',
                          lambda: self.camera_information.Gain,
-                         self._set_gain,  # TODO: not working
+                         self._set_gain,
                          lambda: (40, 210))
         self.add_setting('exposure_time', 'enum',
                          lambda: self.camera_information.ExposureTime,
-                         self._set_exposure_time,  # TODO: Not working
+                         self._set_exposure_time,
                          lambda: EXPOSURE_TIMES.keys())
         self.add_setting('exposure_time_ms', 'float',
                          lambda: EXPOSURE_TIMES[self.camera_information.ExposureTime][1],
@@ -357,6 +357,12 @@ class SID4Device(WavefrontSensorDevice):
     def get_id(self):
         self.get_setting('camera_sn')
 
+    def get_error(self):
+        return self.error_code[0]
+
+    def get_camera_session(self):
+        return self.session_id[0]
+
     def invalidate_settings(self, func):
         """Wrap functions that invalidate settings so settings are reloaded."""
         outerself = self
@@ -371,7 +377,6 @@ class SID4Device(WavefrontSensorDevice):
             self._trigger_queue.put(1)
         else:
             raise Exception('cannot trigger if camera is not acquiring or is not in software trigger mode.')
-
 
     def _create_buffers(self):
         """Creates a buffer to store the data. It also reloads all necessary parameters"""
@@ -435,7 +440,6 @@ class SID4Device(WavefrontSensorDevice):
                                        self.acquisition_buffer['tilts'],
                                        self.analysis_array_size,
                                        self.error_code)
-            self._logger.debug('Grabbed image...')
         except:
             print(self.error_code[0])
             Exception('Could not GrabLiveMode')
@@ -518,6 +522,7 @@ class SID4Device(WavefrontSensorDevice):
             self.SID4_SDK.CameraInit(self.session_id, self.error_code)
         except:
             raise Exception('SID4 could not Init. Error code: ', self.error_code[0])
+        self._logger.debug('...SID4 Initialized')
 
     def _on_enable(self):
         self._logger.debug('Enabling SID4.')
@@ -549,80 +554,18 @@ class SID4Device(WavefrontSensorDevice):
 
     def _on_disable(self):
         self.abort()
+
+    def _on_shutdown(self):
+        self.disable()
         try:
             self.SID4_SDK.CameraClose(self.session_id, self.error_code)
         except:
             raise Exception('Unable to close camera. Error code: ', str(self.error_code[0]))
 
-    def _on_shutdown(self):
-        self.disable()
         try:
             self.SID4_SDK.CloseSID4(self.session_id, self.error_code)
         except:
             raise Exception('Unable to close SDK. Error code: ', str(self.error_code[0]))
-
-            # phase = ffi.new('float[]', 4096)
-        # phase_bs = ffi.cast('long', 16384)
-        # intensity = ffi.new('float[]', 4096)
-        # intensity_bs = ffi.cast('long', 16384)
-        #
-        # image = ffi.new("short int[307200]")
-        # image_bs = ffi.cast("long", 307200)
-        #
-        #
-        #
-        # ffi.string(self.user_profile_name)
-        # int(user_profile_name_bs)
-        
-        # print(analysis_information.GratingPositionMm)
-        # print(analysis_information.wavelengthNm)
-        # print(analysis_information.RemoveBackgroundImage)
-        # print(analysis_information.PhaseSize_width)
-        # print(analysis_information.PhaseSize_Height)
-        #
-        # print(camera_information.FrameRate)
-        # print(camera_information.TriggerMode)
-        # print(camera_information.Gain)
-        # print(camera_information.ExposureTime)
-        # print(camera_information.PixelSizeM)
-        # print(camera_information.NumberOfCameraRecorded)
-        #
-        #
-        # print('Starting Live mode...')
-        # SDK.StartLiveMode(self.session_id, self.error_code)
-        # print(self.error_code[0])
-        #
-        # print('Grabbing image...')
-        # SDK.GrabImage(self.session_id, image, image_bs, camera_array_size, self.error_code)
-        # print(self.error_code[0])
-        #
-        # print('Part of the image')
-        # print([x for x in image[0:20]])
-        #
-        # print('Grabbing Live mode...')
-        # SDK.GrabLiveMode(self.session_id, phase, phase_bs, intensity, intensity_bs, self.tilt_information, self.analysis_array_size, self.error_code)
-        # print(self.error_code[0])
-        ##
-        ##print('Part of the phase')
-        ##print([x for x in phase[0:20]])
-        ##
-        ##print('Part of the intensity')
-        ##print([x for x in intensity[0:20]])
-        ##
-        ##print('Stopping Live mode...')
-        ##SDK.StopLiveMode(session_id, error_code)
-        ##print(error_code[0])
-        ##
-        ##print('Closing camera...')
-        ##SDK.CameraClose(session_id, error_code)
-        ##print(error_code[0])
-        ##
-        ##print('Closing SDK...')
-        ##SDK.CloseSID4(session_id, error_code)
-        ##print(error_code[0])
-        ##
-        ### keep phase alive
-        ##a = phase
 
     @keep_acquiring
     def _refresh_user_profile_params(self):
@@ -680,7 +623,8 @@ class SID4Device(WavefrontSensorDevice):
         try:
             self.SID4_SDK.Camera_GetAttribute(self.session_id,
                                               attribute_id,
-                                              value,self.error_code)
+                                              value,
+                                              self.error_code)
         except:
             raise Exception('Could not get camera attribute: %s', attribute)
 
@@ -724,12 +668,12 @@ class SID4Device(WavefrontSensorDevice):
 
     def _set_frame_rate(self, rate):
         self._set_camera_attribute('FrameRate', rate)
-        if self.error_code[0]:
+        if not self.error_code[0]:
             self.camera_information.FrameRate = rate
 
     def _set_trigger_mode(self, mode):
         self._set_camera_attribute('Trigger', mode)
-        if self.error_code[0]:
+        if not self.error_code[0]:
             self.camera_information.TriggerMode = mode
         if mode == 0:
             self._is_software_trigger = True
@@ -738,12 +682,14 @@ class SID4Device(WavefrontSensorDevice):
 
     def _set_gain(self, gain):
         self._set_camera_attribute('Gain', gain)
-        if self.error_code[0]:
+        if not self.error_code[0]:
             self.camera_information.Gain = gain
 
     def _set_exposure_time(self, index):
+        # if type(index) == str:
+        #     index = EXPOSURE_TIME_TO_INDEX['incex']
         self._set_camera_attribute('Exposure', index)
-        if self.error_code[0]:
+        if not self.error_code[0]:
             self.camera_information.ExposureTime = index
 
     def _set_reference_source(self, source, save=False):
@@ -810,3 +756,35 @@ class SID4Device(WavefrontSensorDevice):
     def _set_zernike_mask_col_size(self, col_size):
         pass
 
+if __name__=='__main__':
+
+    wfs = SID4Device()
+    wfs.initialize()
+    wfs.enable()
+    print('Current gain: ', wfs.get_setting('gain'))
+    print('Changing gain')
+    wfs.set_setting('gain', 190)
+    print('Current gain: ', wfs.get_setting('gain'))
+    exposure_time = wfs.get_setting('exposure_time')
+    print(exposure_time)
+    wfs.set_setting('exposure_time', 5)
+    # wfs.set_setting('exposure_time', '1/200s')
+    print('Changing Exposure time')
+    exposure_time = wfs.get_setting('exposure_time')
+    print(exposure_time)
+    frame_rate = wfs.get_setting('frame_rate')
+    print('FrameRate: ', frame_rate)
+    wfs.set_setting('frame_rate', 0.0)
+    frame_rate = wfs.get_setting('frame_rate')
+    print('FrameRate: ', frame_rate)
+    for i in range(10):
+        wfs.soft_trigger()
+        print(wfs._fetch_data()['tilts'])
+    wfs.set_setting('frame_rate', 4)
+    frame_rate = wfs.get_setting('frame_rate')
+    print('FrameRate: ', frame_rate)
+    for i in range(10):
+        wfs.soft_trigger()
+        print(wfs._fetch_data()['tilts'])
+
+    wfs.shutdown()
