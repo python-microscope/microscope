@@ -70,7 +70,7 @@ class DummyDSP(devices.Device):
 # self.connection.receiveClient(uri)
     def WriteDigital(self, value):
         self._logger.info('WriteDigital: %s' % "{0:b}".format(value))
-        self.digi = value
+        self._digi = value
 
     def MoveAbsoluteADU(self, aline, pos):
         self._logger.info('MoveAbsoluteADU: line %d, value %d' % (line, pos))
