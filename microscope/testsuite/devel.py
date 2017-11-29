@@ -73,7 +73,7 @@ class DummyDSP(devices.Device):
         self._digi = value
 
     def MoveAbsoluteADU(self, aline, pos):
-        self._logger.info('MoveAbsoluteADU: line %d, value %d' % (line, pos))
+        self._logger.info('MoveAbsoluteADU: line %d, value %d' % (aline, pos))
         self._ana[aline] = pos
 
     def arcl(self, mask, pairs):
