@@ -101,7 +101,7 @@ class DummyDSP(devices.Device):
         return self._ana[aline]
 
     def ReadDigital(self):
-        self._logger.info('ReadDigital')
+        self._logger.info('ReadDigital: %s' % "{0:b}".format(self._digi))
         return self._digi
 
 DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
