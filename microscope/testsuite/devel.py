@@ -97,7 +97,7 @@ class DummyDSP(devices.Device):
         self._logger.info(kwargs)
 
     def ReadPosition(self, aline):
-        self._logger.info('ReadPosition: %d' % aline)
+        self._logger.info('ReadPosition   : line %d, value %d' % (aline, self._ana[aline]))
         return self._ana[aline]
 
     def ReadDigital(self):
