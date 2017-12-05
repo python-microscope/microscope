@@ -51,6 +51,48 @@ from microscope import devices
 
 @Pyro4.expose
 @Pyro4.behavior('single')
+class DummySLM(devices.Device):
+    def __init__(self, *args, **kwargs):
+        devices.Device.__init__(self, args, kwargs)
+        self.sim_diffraction_angle = 0.
+        self.sequence_params = []
+        self.sequence_index = 0
+
+    def initialize(self, *args, **kwargs):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
+    def set_sim_diffraction_angle(self, theta):
+        self._logger.info('set_sim_diffraction_angle %f' % theta)
+        self.sim_diffraction_angle = theta
+
+    def get_sim_diffraction_angle(self):
+        return self.sim_diffraction_angle
+
+    def run(self):
+        self._logger.info('run')
+        return
+
+    def stop(self):
+        self._logger.info('stop')
+        return
+
+    def get_sim_seqeunce(self):
+        return self.sequence_params
+
+    def set_sim_sequence(self, seq):
+        self._logger.info('set_sim_sequence')
+        self.sequence_params = seq
+        return
+
+    def get_sequence_index(self):
+        return self.sequence_index
+
+
+@Pyro4.expose
+@Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, *args, **kwargs):
         devices.Device.__init__(self, args, kwargs)
