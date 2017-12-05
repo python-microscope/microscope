@@ -57,6 +57,7 @@ class DummyDSP(devices.Device):
         self._digi = 0
         self._ana = [0,0,0,0]
         self._client = None
+        self._actions = []
 
     def initialize(self, *args, **kwargs):
         pass
@@ -103,6 +104,22 @@ class DummyDSP(devices.Device):
     def ReadDigital(self):
         self._logger.info('ReadDigital: %s' % "{0:b}".format(self._digi))
         return self._digi
+
+    def PrepareActions(self, actions, numReps=1):
+        self._logger.info('PrepareActions')
+        self._actions = actions
+        self._repeats = numReps
+
+    def RunActions(self):
+        self._logger.info('RunActions ...')
+        for i in range(self._repeats):
+            for a in self._actions:
+                self._logger.info(a)
+                time.sleep(a[0] / 1000.)
+        if self._client:
+            self._client.receiveData("DSP done")
+        self._logger.info('... RunActions done.')
+
 
 DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
 DummyDSP.set_client = devices.DataDevice.set_client.im_func
