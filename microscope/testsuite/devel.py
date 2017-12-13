@@ -112,7 +112,6 @@ class DummyDSP(devices.Device):
     def Abort(self):
         self._logger.info('Abort')
 
-# self.connection.receiveClient(uri)
     def WriteDigital(self, value):
         self._logger.info('WriteDigital: %s' % "{0:b}".format(value))
         self._digi = value
