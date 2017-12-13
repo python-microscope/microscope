@@ -72,10 +72,12 @@ class DummySLM(devices.Device):
         return self.sim_diffraction_angle
 
     def run(self):
+        self.enabled = True
         self._logger.info('run')
         return
 
     def stop(self):
+        self.enabled = False
         self._logger.info('stop')
         return
 
