@@ -81,7 +81,7 @@ class DummySLM(devices.Device):
         self._logger.info('stop')
         return
 
-    def get_sim_seqeunce(self):
+    def get_sim_sequence(self):
         return self.sequence_params
 
     def set_sim_sequence(self, seq):
