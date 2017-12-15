@@ -22,6 +22,11 @@ a SID4 wavefront sensor from Phasics and all its settings to be exposed over Pyr
 
 The interface with the SID4 SDK has been implemented using cffi API 'in line'
 """
+# TODO: implement timeout setting
+# TODO: implement change mask/pupil
+# TODO: Better error handling
+# TODO: write UniTests
+
 from microscope import devices
 from microscope.devices import WavefrontSensorDevice, keep_acquiring
 from cffi import FFI
@@ -41,11 +46,11 @@ TRIGGER_MODES = {
     2: devices.TRIGGER_DURATION  # 2:'mode1'
 }
 FRAME_RATES = {
-    0: '3.75hz',
-    1: '7.5hz',
-    2: '15hz',
-    3: '30hz',
-    4: '60hz'
+    1: '3.75hz',
+    2: '7.5hz',
+    3: '15hz',
+    4: '30hz',
+    5: '60hz'
 }
 EXPOSURE_TIMES = {  # Asa string and in msec
     0: ('1/60s', 16.6667),
@@ -82,12 +87,12 @@ INVALIDATES_SETTINGS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
 # We setup some necessary configuration parameters. TODO: Move this into the config file
 # This is the default profile path of the camera
 WFS_PROFILE_PATH = b'C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\SID4-079b default profile.txt'
+WFS_MASK_PATH = b'C:\\Users\\omxt\\Documents\\PHASICS\\User Profiles\\SID4-079b default profile\\Imasque.msk'
 
 # We import the headers definitions used by cffi from a file in order to avoid copyright issues
 HEADER_DEFINITIONS = "C:\\Users\\omxt\\PycharmProjects\\microscope\\microscope\\wavefront_sensors\\SID4_SDK_defs"
 SID4_SDK_DLL_PATH = "SID4_SDK.dll"
 ZERNIKE_SDK_DLL_PATH = "Zernike_SDK.dll"
-
 
 @Pyro4.expose
 # @Pyro4.behavior('single')
@@ -112,6 +117,7 @@ class SID4Device(WavefrontSensorDevice):
                  sid4_sdk_dll_path=SID4_SDK_DLL_PATH,
                  zernike_sdk_dll_path=ZERNIKE_SDK_DLL_PATH,
                  wfs_profile_path=WFS_PROFILE_PATH,
+                 wfs_mask_path=WFS_MASK_PATH,
                  camera_attributes=CAMERA_ATTRIBUTES,
                  **kwargs):
         self.header_definitions = header_definitions
@@ -172,9 +178,25 @@ class SID4Device(WavefrontSensorDevice):
         self.camera_sn = self.ffi.new("char[]", self.buffer_size)
         self.camera_sn_bs = self.ffi.cast("long", self.buffer_size)
 
-        self.camera_array_size = self.ffi.new("ArraySize *")
+        # self.camera_array_size = self.ffi.new("ArraySize *")
         self.interferogram_array_size = self.ffi.new("ArraySize *")
         self.analysis_array_size = self.ffi.new("ArraySize *")
+
+        # Create ROI and pupil (mask) related parameters
+        self.user_mask_file = self.ffi.new("char[]", self.buffer_size)
+        self.user_mask_file_bs = self.ffi.cast("long", self.buffer_size)
+        self.user_mask_file = wfs_mask_path
+
+        self.roi_global_rectangle = self.ffi.new("long []", 4)
+        self.roi_global_rectangle_bs = self.ffi.cast("long", 4)
+
+        self.roi_nb_contours = self.ffi.new("unsigned short int *", 1)
+
+        self.roi_contours_info = self.ffi.new("unsigned long []", 3)
+        self.roi_contours_info_bs = self.ffi.cast("long", 3)
+
+        self.roi_contours_coordinates = self.ffi.new("long []", 4)
+        self.roi_contours_coordinates_bs = self.ffi.cast("long", 4)
 
         # Create zernike-related parameters
         self.zernike_information = self.ffi.new("ZernikeInformation *")
@@ -196,6 +218,11 @@ class SID4Device(WavefrontSensorDevice):
 
         # Create camera attributes. TODO: this should be created programmatically
         self.camera_attributes = camera_attributes
+
+        # We compute a dict with exposure_times (in seconds) to Index.
+        self.exposure_time_s_to_index = {}
+        for key, exposure in EXPOSURE_TIMES.items():
+            self.exposure_time_s_to_index[exposure[1]] = key
 
         # Create a queue to trigger software acquisitions
         self._is_software_trigger = True
@@ -265,13 +292,13 @@ class SID4Device(WavefrontSensorDevice):
                          None,
                          lambda: (0.0, 0.1),
                          readonly=True)
-        self.add_setting('camera_number_rows', 'int',  # TODO: Not initialized
-                         lambda: self.camera_array_size.nRow,
+        self.add_setting('camera_number_rows', 'int',
+                         lambda: self._get_camera_attribute('ImageHeight'),
                          None,
                          lambda: (0, 480),
                          readonly=True)
-        self.add_setting('camera_number_cols', 'int',  # TODO: Not initialized
-                         lambda: self.camera_array_size.nCol,
+        self.add_setting('camera_number_cols', 'int',
+                         lambda: self._get_camera_attribute('ImageWidth'),
                          None,
                          lambda: (0, 640),
                          readonly=True)
@@ -337,7 +364,7 @@ class SID4Device(WavefrontSensorDevice):
                          (0, 120),
                          readonly=True)
         self.add_setting('zernike_version', 'str',
-                         lambda: self.zernike_version, # TODO: error
+                         lambda: self.zernike_version,  # TODO: error
                          None,
                          self.buffer_size,
                          readonly=True)
@@ -516,6 +543,11 @@ class SID4Device(WavefrontSensorDevice):
 
         # Load zernike analysis settings
         self._refresh_zernike_attributes()
+        self._logger.debug('Loading zernike analysis settings...')
+
+        # Load mask descriptor file
+        self._load_pupil_descriptor()
+        self._logger.debug('Loading pupil settings...')
 
         self._logger.debug('Initializing SID4...')
         try:
@@ -685,9 +717,19 @@ class SID4Device(WavefrontSensorDevice):
         if not self.error_code[0]:
             self.camera_information.Gain = gain
 
+    def get_exposure_time(self):
+        return 1000 * self.get_setting('exposure_time_ms')
+
+    def set_exposure_time(self, value):
+        """The SID4 does not accept arbitrary exposure times but a limited
+        number of values that are expressed in EXPOSURE_TIMES.
+        We here take the closest value and apply that exposure time"""
+        index = min(self.exposure_time_s_to_index, key=lambda x: abs(x - value))
+        self._set_exposure_time(index=index)
+
     def _set_exposure_time(self, index):
-        # if type(index) == str:
-        #     index = EXPOSURE_TIME_TO_INDEX['incex']
+        if type(index) == str:
+            index = EXPOSURE_TIME_TO_INDEX['index']
         self._set_camera_attribute('Exposure', index)
         if not self.error_code[0]:
             self.camera_information.ExposureTime = index
@@ -714,6 +756,104 @@ class SID4Device(WavefrontSensorDevice):
             self.analysis_information.RemoveBackgroundImage = 0
 
         self._modify_user_profile(save=save)
+
+    def _get_sensor_shape(self):
+        return (self.get_setting('camera_number_cols'),
+                self.get_setting('camera_number_rows'))
+
+    def _get_binning(self):
+        # TODO: Check if it is not better to put here the 'natural' binning that we get after interferogram analysis
+        return 1, 1
+
+    def _set_binning(self, h_bin, v_bin):
+        """binning is not implemented"""
+        return False
+
+    def _get_roi(self):
+        roi = (self.roi_global_rectangle[0],
+               self.roi_global_rectangle[1],
+               self.roi_global_rectangle[2] - self.roi_global_rectangle[0],
+               self.roi_global_rectangle[3] - self.roi_global_rectangle[1])
+        return roi
+
+    def _set_roi(self, left, top, width, height):
+        right = left + width
+        bottom = top + height
+        self.roi_global_rectangle = [left, top, right, bottom]
+        return self.set_pupil()
+
+    def _get_pupil(self):
+        return self._pupil_shape, self._pupil_edge
+
+    def _set_pupil(self, shape, edge):
+        """Implementation of a simple version to set the pupil to a circle or rectangle
+        (shape) embedded into the main ROI with a certain margin (edge). It is possible
+        to generate more complex pupils but I don't currently see the need."""
+        self.roi_nb_contours[0] = 1  # number of sub-ROIs defining the pupil
+        # sub-ROI characteristics, there are three value for each sub-ROI
+        self.roi_contours_info[0] = 1  # contour is the external (0) or internal edge (1) of an sub-ROI
+        self.roi_contours_info[1] = 4  # shape of the contour: 3 = Rectangle, 4 = Oval or Circle
+        self.roi_contours_info[2] = 4  # Nb of coordinates defining the contour. The minimum value is 4 in the case of a simple form (rectangle, circle, ellipse) and can be higher in the case of a polygon
+        self.roi_contours_info_bs = 3 * self.roi_nb_contours[0]
+        # Coordinates of the Rectangle of each sub-ROI the ones behind the others.
+        # They are not referred to the global ROI so we have to calculate them according to it
+        # Note that the global rectangle must be defined before setting the pupil
+        self.roi_contours_coordinates[0] = self.roi_global_rectangle[0] + edge
+        self.roi_contours_coordinates[1] = self.roi_global_rectangle[1] + edge
+        self.roi_contours_coordinates[2] = self.roi_global_rectangle[2] - edge
+        self.roi_contours_coordinates[3] = self.roi_global_rectangle[3] - edge
+        self.roi_contours_coordinates_bs = 4 * self.roi_nb_contours[0]
+
+        return self._change_mask()
+
+    @keep_acquiring
+    def _change_mask(self):
+        """Calls SDK ChangeMask using the current parameters. Checks for coherence
+        Return False if not successful"""
+        # TODO check coherence
+        mask_file = self.ffi.new("char[]", self.buffer_size)
+        mask_file = b''
+        try:
+            self.SID4_SDK.ChangeMask(self.session_id,
+                                     mask_file,
+                                     self.roi_global_rectangle,
+                                     self.roi_global_rectangle_bs,
+                                     self.roi_nb_contours,
+                                     self.roi_contours_info,
+                                     self.roi_contours_info_bs,
+                                     self.roi_contours_coordinates,
+                                     self.roi_contours_coordinates_bs,
+                                     self.error_code)
+        except:
+            Exception('Could not change mask')
+            return False
+
+        return True
+
+    def _load_pupil_descriptor(self, mask_descriptor_path=None):
+        """Loads the mask parameters from a file"""
+        if mask_descriptor_path is None:
+            mask_descriptor_path = self.user_mask_file
+
+        self.error_code[0] = 0
+        self.SID4_SDK.LoadMaskDescriptor(self.session_id,
+                                         mask_descriptor_path,
+                                         self.roi_global_rectangle,
+                                         self.roi_global_rectangle_bs,
+                                         self.roi_nb_contours,
+                                         self.roi_contours_info,
+                                         self.roi_contours_info_bs,
+                                         self.roi_contours_coordinates,
+                                         self.roi_contours_coordinates_bs,
+                                         self.error_code)
+        # catch if the allocated arrays were not enough to contain all subROIs.
+        if self.error_code[0] == 7005:
+            self.roi_contours_info = self.ffi.new("unsigned long []", 3 * self.roi_nb_contours[0])
+            self.roi_contours_info_bs = self.ffi.cast("long", 3 * self.roi_nb_contours[0])
+
+            self.roi_contours_coordinates = self.ffi.new("long []", 4 * self.roi_nb_contours[0])
+            self.roi_contours_coordinates_bs = self.ffi.cast("long", 4 * self.roi_nb_contours[0])
+            self._load_pupil_descriptor(mask_descriptor_path=mask_descriptor_path)
 
     def _get_phase_size_width(self):
         # HACK: This is actually not the right way to collect this info but cffi is
@@ -756,15 +896,33 @@ class SID4Device(WavefrontSensorDevice):
     def _set_zernike_mask_col_size(self, col_size):
         pass
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
     wfs = SID4Device()
     wfs.initialize()
     wfs.enable()
-    print('Current gain: ', wfs.get_setting('gain'))
-    print('Changing gain')
-    wfs.set_setting('gain', 190)
-    print('Current gain: ', wfs.get_setting('gain'))
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    print('Changing exposure_time')
+    wfs.set_setting('exposure_time', 0)
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    for i in range(10):
+        wfs.soft_trigger()
+        print(wfs._fetch_data()['intensity_map'][30, 30])
+    print('Changing exposure_time')
+    wfs.set_setting('exposure_time', 2)
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    print('Changing exposure_time')
+    wfs.set_setting('exposure_time', 3)
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    print('Changing exposure_time')
+    wfs.set_setting('exposure_time', 6)
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    print('Changing exposure_time')
+    wfs.set_setting('exposure_time', 8)
+    print('Current exposure_time: ', wfs.get_setting('exposure_time'))
+    for i in range(10):
+        wfs.soft_trigger()
+        print(wfs._fetch_data()['intensity_map'][30, 30])
     exposure_time = wfs.get_setting('exposure_time')
     print(exposure_time)
     wfs.set_setting('exposure_time', 5)
@@ -774,17 +932,19 @@ if __name__=='__main__':
     print(exposure_time)
     frame_rate = wfs.get_setting('frame_rate')
     print('FrameRate: ', frame_rate)
-    wfs.set_setting('frame_rate', 0.0)
+    wfs.set_setting('frame_rate', 1)
     frame_rate = wfs.get_setting('frame_rate')
     print('FrameRate: ', frame_rate)
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['tilts'])
-    wfs.set_setting('frame_rate', 4)
+        print(wfs._fetch_data()['intensity_map'][30,30])
+    wfs.set_setting('frame_rate', 5)
     frame_rate = wfs.get_setting('frame_rate')
     print('FrameRate: ', frame_rate)
+    print('Changing mask to 80')
+    wfs.set_roi(100, 100, 80, 80)
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['tilts'])
+        print(wfs._fetch_data()['intensity_map'][30,30])
 
     wfs.shutdown()
