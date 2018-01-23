@@ -17,6 +17,7 @@
 ##
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
+import sys
 import time
 import Pyro4
 
@@ -137,5 +138,9 @@ class DummyDSP(devices.Device):
         self._logger.info('... RunActions done.')
 
 
-DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
-DummyDSP.set_client = devices.DataDevice.set_client.im_func
+if sys.version_info[0] < 3:
+    DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
+    DummyDSP.set_client = devices.DataDevice.set_client.im_func
+else:
+    DummyDSP.receiveClient = devices.DataDevice.receiveClient
+    DummyDSP.set_client = devices.DataDevice.set_client
