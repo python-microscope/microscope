@@ -21,33 +21,6 @@ import time
 import Pyro4
 
 from microscope import devices
-#
-# class __MockMethod__(object):
-#     def __init__(self, parent, attr):
-#         self.__parent__ = parent
-#         self.__mname__ = attr
-#
-#     def __call__(self, *args, **kwargs):
-#         self.__parent__._logger.info(self.__mname__, args, kwargs)
-#
-#
-# @Pyro4.expose
-# @Pyro4.behavior('single')
-# class LoggingMock(devices.Device):
-#     def __init__(self):
-#         super(self.__class__, self).__init__(self)
-#
-#     def __getattr__(self, attr):
-#         try:
-#             return super(self.__class__, self).__getattr__(attr)
-#         except AttributeError:
-#             return __MockMethod__(self, attr)
-#
-#     def initialize(self, *args, **kwargs):
-#         pass
-#
-#     def _on_shutdown(self):
-#         pass
 
 @Pyro4.expose
 @Pyro4.behavior('single')
