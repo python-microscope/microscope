@@ -32,7 +32,7 @@ from ctypes import c_uint32
 
 if os.name in ("nt", "ce"):
   ## Not actually tested yet
-  SDK = ctypes.WinDLL("BMC")
+  SDK = ctypes.WinDLL("BMC2")
 else:
   SDK = ctypes.CDLL("libBMC.so.3")
 
