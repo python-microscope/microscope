@@ -47,7 +47,7 @@ class BMCDeformableMirror(DeformableMirror):
 
   def apply_pattern(self, pattern):
     self._validate_patterns(pattern)
-    data_pointer = values.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+    data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
     status = BMC.SetArray(self._dm, data_pointer, None)
     if status:
       raise Exception(BMC.ErrorString(status))

@@ -11,6 +11,7 @@
 import sys
 
 import setuptools
+import setuptools.command.sdist
 import sphinx.setup_command
 
 try: # In sphinx 1.7, apidoc was moved to the ext subpackage
@@ -33,7 +34,7 @@ extra_requires = []
 ## The enum34 package will cause conflicts with the builtin enum
 ## package so don't require it.  See
 ## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
-if sys.version_info >= (3, 4):
+if sys.version_info < (3, 4):
   extra_requires += ["enum34"]
 
 
@@ -49,6 +50,25 @@ class BuildDoc(sphinx.setup_command.BuildDoc):
                  "--output-dir", "doc/api",
                  "microscope"])
     sphinx.setup_command.BuildDoc.run(self)
+
+## Modify the sdist command class to include extra files in the source
+## distribution.  Seems a bit ridiculous that we have to do this but
+## the only alternative is to have a MANIFEST file and we don't want
+## to have yet another configuration file.
+##
+## The package_data (from setuptools) and data_files (from distutils)
+## options are for files that will be installed and we don't want to
+## install this files, we just want them on the source distribution
+## for user information.
+manifest_files = [
+  "COPYING",
+  "NEWS",
+  "README",
+]
+class sdist(setuptools.command.sdist.sdist):
+  def make_distribution(self):
+    self.filelist.extend(manifest_files)
+    setuptools.command.sdist.sdist.make_distribution(self)
 
 
 setuptools.setup(
@@ -109,5 +129,6 @@ setuptools.setup(
 
   cmdclass = {
     'build_sphinx' : BuildDoc,
+    'sdist' : sdist,
   },
 )
