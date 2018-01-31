@@ -45,19 +45,5 @@ napoleon_include_special_with_doc = True
 ## Options for HTML output
 ##
 
-html_theme = 'alabaster'
+html_theme = 'agogo'
 html_static_path = ['_static']
-
-html_theme_options = {
-  'show_powered_by' : False,
-}
-
-## This is required for the alabaster theme
-## http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
-html_sidebars = {
-  '**': [
-    'about.html',
-    'navigation.html',
-    'searchbox.html',
-  ]
-}

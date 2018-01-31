@@ -14,9 +14,11 @@ Problem
 =======
 
 Bespoke microscopes are built in research labs by physicists and
-biologists that are often not interested in programming.  The end
-result is in-house software that is both limited in scope and unusable
-in other projects.
+biologists that are often not interested in programming.  However,
+such microscopes are complex systems that rely on the tight
+integration between many components and can only be controlled by
+custom software.  The end result is in-house software that is both
+limited in scope and unusable in other projects.
 
 
 Project aims
@@ -27,10 +29,12 @@ Project aims
   want other people building or using microscopes to be able to use it
   and contribute back.  This means we should consider use cases other
   than our own on design choices.
+
 * Free (libre) software.  Even though we consider other use cases when
   designing it we will still be resources limited on what we can
   implement.  The users should be able to help themselves and
   contribute the fixes back to everyone else.
+
 * Ease of use.  Microscopes are built by physicists and biologists.
   They are the main target for Microscope, not software engineers.
   They should be able to use and install it without much trouble.
@@ -42,51 +46,62 @@ Choices
 µManager
 --------
 
+Why we didn't choose µManager...
+
 Python
 ------
 
-Python is extensively used for scientific computing, and know for its
-readability.  The hope is that it will make it even easier for users.
+Python is extensively used for scientific computing, and is the most
+likely language the projects users will be familiar with.
 
 
 Use cases
 =========
 
-All devices on local machine
-----------------------------
+Microscope GUI
+--------------
 
-The simplest typical microscope.  All devices are controlled from one
-computer, the same computer where the user is, and is being controlled
-by only one program.
+This provides the device and experiment interface that a GUI
+microscope interface would need to be viable.
 
-Multiple computers controlling different devices
+Devices on local machine
+------------------------
+
+The simplest typical microscope.  All devices are controlled from a
+single computer, the same computer where the user is.  The
+synchronisation between devices is all done in software.
+
+Devices over multiple computers in local network
 ------------------------------------------------
 
 The user is in one computer but the devices are actually connected to
-one other computer, possible multiple computers.  Some devices may be
-on the local machine.  This may be to reduce load on the machine or
-because devices are only supported on specific OSes, not compatible
-with each other.
+multiple other computers.  This may be for performance but also
+because different microscope devices may require different
+incompatible OS.
 
-Controlling single device, no microscope
-----------------------------------------
+Synchronisation of devices during an experiment will likely be
+performed by a separate device with high time precision based on a
+table of events.
 
-There is no actual a microscope, only playing with a single device.
-For example, just testing out a camera or deformable mirror.
+Controlling an independent device
+---------------------------------
 
-Automated microscope control as function of analysis
+There is no actual a microscope, only experiment with a single device.
+For example, just testing of a camera or deformable mirror.  This
+device may be in a local or a remote machine.
+
+Programmed image acquisition based on image analysis
 ----------------------------------------------------
 
-Images are acquired and analysed.  The result of such analysis is the
-control for consequent acquisition.  For example, imaging of a whole
-plate and analyse images looking for specific features.  If found,
-image different settings.
+Automated image analysis can make decisions during image acquisition.
+For example, scanning slides for specific features; tracking of moving
+particles; and automatically changing imaging parameters over time.
 
 Multiple microscopes controlled by one central server
 -----------------------------------------------------
 
-If image acquisition is automated, a single powerful computer can
-control multiple microscopes as it analyses the images.
+If image acquisition is automated, a single system can automatically
+control multiple microscopes without user interaction.
 
 
 Realities
@@ -101,15 +116,3 @@ State machine
 Devices do not report back their state which prevents from modelling
 Microscope as a state machine.  For example, users will change
 objectives or move the stage.
-
-Buggy SDK
----------
-
-A device may be initialised only once per process.  We have this issue
-with PVCAM cameras.  All processes that load or hook in any way to the
-PVCAM SDK must be terminated before initialising the camera again,
-even if we use the camera deactivation camera.
-
-This prevents us from using device object creation and destruction as
-device initialisation and deactivation and why we have specific enable
-and disable methods instead.

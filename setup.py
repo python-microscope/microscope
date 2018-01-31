@@ -97,9 +97,9 @@ setuptools.setup(
 
   command_options = {
     'build_sphinx' : {
-      ## This is a bit silly but the dict for command_options must be
-      ## of the form '(option, (source, value))' where source is the
-      ## filename where that information came from.
+      ## This seems a bit silly but the dict for command_options must
+      ## be of the form '(option, (source, value))' where source is
+      ## the filename where that information came from.
       'project': ('setup.py', project_name),
       'version': ('setup.py', project_version),
       'release': ('setup.py', project_version),

@@ -1,9 +1,15 @@
-Microscope is a Python framework for the control of microscope devices
-and management of microscopy experiments.
+Python's microscope package is a free and open source framework for:
 
-The aim of this project is to create a generic open source microscope
-control package. The plan is to have two separable components, one to
-drive the microscope and a second gui front end. The microscope
-driving component will be fully scriptable and not reliant on the gui
-for its functionality, but the gui will implement a flexible and
-powerful front end for microscope users.
+* control of local and remote microscope devices
+* aggregation of microscope devices into complex microscopes
+* automate microscope experiments
+
+It is aimed at those that are building their own microscopes, or need
+programmatic control for microscope experiments.
+
+This package does *not* provide a graphical user interface that a
+typical microscope user would expect.  Instead, it provides the
+foundation over which such interfaces can be built.
+
+For a microscope graphical user interface, consider the sister project
+`microscope cockpit <https://github.com/MicronOxford/cockpit>`_.

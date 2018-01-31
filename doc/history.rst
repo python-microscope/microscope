@@ -11,13 +11,18 @@ Project History
 ***************
 
 Over several years we have been involved in building a number of
-bespoke optical setups. A number of these have been in collaboration
-with John Sedat and his group at UCSF. They developed Cockpit, a easy to drive
-microscope front end written in Python. We have done extensive work
-adding additional hardware support, bug fixing, and improving the
-front end. The system has grown beyond its design assumptions and we are
-therefore trying to start again to have a more sustainable code base
-for the future.
+bespoke optical setups.  A number of these have been in collaboration
+with John Sedat and his group at UCSF.  They developed Cockpit, a easy
+to drive microscope front end written in Python.
+
+We have done extensive work adding additional hardware support, bug
+fixing, and improving the front end.  The system has grown beyond its
+design assumptions and we are therefore trying to start again to have
+a more sustainable code base for the future.
+
+While a new version implementation of cockpit is being developed
+elsewhere, Microscope is the package that Cockpit needs so it can be
+only the GUI.
 
 Versions
 ========
