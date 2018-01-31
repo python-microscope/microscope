@@ -30,7 +30,10 @@ Python docstrings format
 These will be parsed by `Sphinx's Napoleon extension
 <http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_ so `its own
 examples
-<http://www.sphinx-doc.org/en/stable/ext/example_google.html>`_.
+<http://www.sphinx-doc.org/en/stable/ext/example_google.html>`_.  This
+can be generated like so::
+
+      python setup.py build_sphinx
 
 
 Versioning
@@ -61,7 +64,7 @@ examples:
 Steps to make a release
 =======================
 
-#. Change version number on setup.py and commit that change only.
+#. Change version number on `setup.py` and commit that change only.
    Note that we use `release-N` for tag and not `v.N` to allow one day
    for snapshot releases with tags such as `snapshot-N`::
 
@@ -85,7 +88,7 @@ Steps to make a release
 
 #. Add `+dev` to version string::
 
-    sed -i 's,\(version[ ]*=[ ]*"[^+]*\)",\1+dev",' setup.py
+    sed -i "s,\(^project_version = '[^+]*\)',\1+dev'," setup.py
     git commit setup.py -m \
       "maint: set version to $VERSION+dev after $VERSION release."
     git push upstream master
