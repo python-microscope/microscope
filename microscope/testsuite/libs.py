@@ -173,6 +173,10 @@ class MockLibatcore(MockSharedLib):
     'AT_UnregisterFeatureCallback',
     'AT_WaitBuffer',
   ]
+  def __init__(self):
+    super(MockLibatcore, self).__init__()
+    ## This gets called during import of microscope.cameras.SDK3Cam
+    self.AT_InitialiseLibrary._call = lambda : 0 # AT_SUCCESS
 
 class MockLibatutility(MockSharedLib):
   """Mock Andor's atutility (SDK3) for microscope.cameras.SDK3.
