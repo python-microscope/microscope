@@ -8,10 +8,26 @@
 ## notice and this notice are preserved.  This file is offered as-is,
 ## without any warranty.
 
-import setuptools
 import sys
 
+import setuptools
 import setuptools.command.sdist
+import sphinx.setup_command
+
+try: # In sphinx 1.7, apidoc was moved to the ext subpackage
+  import sphinx.ext.apidoc as apidoc
+except ImportError:
+  import sphinx.apidoc as apidoc
+
+try: # In Python 3.3, mock was merged into unittest package
+  import unittest.mock as mock
+except ImportError:
+  import mock
+
+import microscope.testsuite.libs
+
+project_name = 'microscope'
+project_version = '0.1.0+dev'
 
 extra_requires = []
 
@@ -21,6 +37,19 @@ extra_requires = []
 if sys.version_info < (3, 4):
   extra_requires += ["enum34"]
 
+
+## Shadow the sphinx provided command, in order to run sphinx-apidoc
+## before sphinx-build.  This builds the rst files with the actual
+## package inline documentation.
+class BuildDoc(sphinx.setup_command.BuildDoc):
+  @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
+  def run(self):
+    apidoc.main(["sphinx-apidoc",
+                 "--separate", # each module on its own page
+                 "--module-first",
+                 "--output-dir", "doc/api",
+                 "microscope"])
+    sphinx.setup_command.BuildDoc.run(self)
 
 ## Modify the sdist command class to include extra files in the source
 ## distribution.  Seems a bit ridiculous that we have to do this but
@@ -43,8 +72,8 @@ class sdist(setuptools.command.sdist.sdist):
 
 
 setuptools.setup(
-  name = "microscope",
-  version = "0.1.0+dev",
+  name = project_name,
+  version = project_version,
   description = "An extensible microscope hardware interface.",
   license = "GPL-3.0+",
 
@@ -86,7 +115,20 @@ setuptools.setup(
   ],
   test_suite="microscope.testsuite",
 
+  command_options = {
+    'build_sphinx' : {
+      ## This seems a bit silly but the dict for command_options must
+      ## be of the form '(option, (source, value))' where source is
+      ## the filename where that information came from.
+      'project': ('setup.py', project_name),
+      'version': ('setup.py', project_version),
+      'release': ('setup.py', project_version),
+      'source_dir' : ('setup.py', 'doc'),
+    },
+  },
+
   cmdclass = {
+    'build_sphinx' : BuildDoc,
     'sdist' : sdist,
-  }
+  },
 )
