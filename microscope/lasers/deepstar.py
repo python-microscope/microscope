@@ -70,7 +70,7 @@ class DeepstarLaser(devices.LaserDevice):
     @_flush_buffer
     def get_status(self):
         result = []
-        for i in xrange(4):
+        for i in range(4):
             self._write('STAT%d' % i)
             result.append(self._readline())
         return result
