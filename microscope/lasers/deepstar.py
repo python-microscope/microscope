@@ -18,6 +18,7 @@
 import serial
 import threading
 import functools
+import Pyro4
 
 from microscope import devices
 
@@ -37,7 +38,7 @@ def _flush_buffer(func):
 
     return wrapper
 
-
+@Pyro4.expose
 class DeepstarLaser(devices.LaserDevice):
     def __init__(self, com, baud, timeout, **kwargs):
         super(DeepstarLaser, self).__init__()
