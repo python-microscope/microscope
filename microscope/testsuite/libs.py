@@ -50,7 +50,6 @@ They can be implemented like so::
    Our CDLL implementation always intercepts all libraries that we
    know about.  We may want to instead replace this with a function
    that generates a class that intercepts a subset of them.
-
 """
 
 import ctypes

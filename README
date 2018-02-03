@@ -1,37 +1,23 @@
-Aims and scope of the Python Microscope Project.
---------------------------------------------------
+Python's microscope package is a free and open source framework for:
 
-V1.0 10/10/2016 Ian Dobbie - ian.dobbie@bioch.ox.ac.uk
+* control of local and remote microscope devices
+* aggregation of microscope devices into complex microscopes
+* automate microscope experiments
 
+It is aimed at those that are building their own microscopes or need
+programmatic control for microscope experiments.
 
-Aims:
------
+This package does *not* provide a graphical user interface that a
+typical microscope user would expect.  Instead, it provides the
+foundation over which such interfaces can be built.  For a microscope
+graphical user interface, consider the sister project `microscope
+cockpit <https://github.com/MicronOxford/cockpit>`_.
 
-The aim of this project is to create a generic open source microscope
-control package. The plan is to have two separable components, one to
-drive the microscope and a second gui front end. The microscope
-driving component will be fully scriptable and not reliant on the gui
-for its functionality, but the gui will implement a flexible and
-powerful front end for microscope users.
+Microscope is distributed as a source distribution in `PyPI
+<https://pypi.python.org/pypi/microscope>`_ and can be easily
+installed with `pip`::
 
+    pip install microscope
 
-
-History:
--------
-
-Over several years we have been involved in building a number of
-bespoke optical setups. A number of these have been in collaboration
-with John Sedat and his group at UCSF. They developed Cockpit, a easy to drive
-microscope front end written in Python. We have done extensive work
-adding additional hardware support, bug fixing, and improving the
-front end. The system has grown beyond its design assumptions and we are
-therefore trying to start again to have a more sustainable code base
-for the future.
-
-
-Contributors:
---------------------
-
-* Ian Dobbie
-* David Miguel Susano Pinto
-* Mick Phillips
+Alternatively, the development sources are also available on `github
+<https://github.com/MicronOxford/microscope.git>`_.

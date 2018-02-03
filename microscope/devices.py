@@ -67,9 +67,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-# A device definition for use in config files.
 def device(cls, host, port, uid=None, **kwargs):
     """Define a device and where to serve it.
+
+    A device definition for use in config files.
 
     Defines a device of type cls, served on host:port.
     UID is used to identify 'floating' devices (see below).
@@ -78,9 +79,7 @@ def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
-# === FloatingDeviceMixin ===
 class FloatingDeviceMixin(object):
-    __metaclass__ = abc.ABCMeta
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -89,6 +88,7 @@ class FloatingDeviceMixin(object):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
+    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -97,10 +97,9 @@ class FloatingDeviceMixin(object):
         pass
 
 
-# === Device ===
 class Device(object):
-    __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         self.enabled = None
@@ -180,7 +179,6 @@ class Device(object):
         """Put the device into a safe state."""
         pass
 
-    # Methods for manipulating settings.
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
@@ -301,10 +299,8 @@ class Device(object):
         return results
 
 
-# === DataDevice ===
-
-# Wrapper to preserve acquiring state of data capture devices.
 def keep_acquiring(func):
+    """Wrapper to preserve acquiring state of data capture devices."""
     def wrapper(self, *args, **kwargs):
         if self._acquiring:
             self.abort()
@@ -318,20 +314,22 @@ def keep_acquiring(func):
 
 
 class DataDevice(Device):
-    __metaclass__ = abc.ABCMeta
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
     it to a client.  The client is set using set_client(uri) or (legacy)
     receiveClient(uri).
-    Derived classed should implement:
-        abort(self)                ---  required
-        start_acquisition(self)    ---  required
-        _fetch_data(self)          ---  required
-        _process_data(self, data)  ---  optional
+
+    Derived classed should implement::
+      * abort(self)                ---  required
+      * start_acquisition(self)    ---  required
+      * _fetch_data(self)          ---  required
+      * _process_data(self, data)  ---  optional
+
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
@@ -508,14 +506,13 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
 
-# === CameraDevice ===
 class CameraDevice(DataDevice):
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
     """Adds functionality to DataDevice to support cameras.
 
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
 
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
@@ -750,9 +747,6 @@ class TriggerTargetMixIn(object):
 @Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
-
-    Reset
-    -----
 
     There is no method to reset or clear a deformable mirror.  While
     different vendors provide functions to do that, it is unclear
