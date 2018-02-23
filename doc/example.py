@@ -1,21 +1,22 @@
 from microscope import clients
 
-camera = clients.DataClient('PYRO:TestCamera@127.0.0.1:8005')
-laser =  clients.Client('PYRO:TestLaser@127.0.0.1:8006')
+# camera = clients.DataClient('PYRO:TestCamera@127.0.0.1:8005')
+# laser =  clients.Client('PYRO:TestLaser@127.0.0.1:8006')
+wfs = clients.DataClient('PYRO:SID4Device@127.0.0.1:8005')
 
-laser.enable()
-laser.set_power_mw(30)
+# laser.enable()
+# laser.set_power_mw(30)
+#
+# camera.enable()
+# camera.set_exposure_time(0.15)
 
-camera.enable()
-camera.set_exposure_time(0.15)
-
-data = []
+wfs.enable()
 
 for i in range(10):
-    data.append(camera.trigger_and_wait())
-    print("Frame %d captured." % i)
+    data = wfs.trigger_and_wait()
+    print(data[0]['tilts'])
 
-print(data)
-
-laser.disable()
-camera.disable()
+# laser.disable()
+# camera.disable()
+wfs.disable()
+wfs.shutdown()

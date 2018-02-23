@@ -23,7 +23,6 @@ a SID4 wavefront sensor from Phasics and all its settings to be exposed over Pyr
 The interface with the SID4 SDK has been implemented using cffi API 'in line'
 """
 # TODO: implement timeout setting
-# TODO: implement change mask/pupil
 # TODO: Better error handling
 # TODO: write UniTests
 
@@ -314,7 +313,7 @@ class SID4Device(WavefrontSensorDevice):
                          self._set_reference_source,
                          lambda: REFERENCE_SOURCES.keys())
         self.add_setting('reference_path', 'str',
-                         lambda: int(self.reference_path),  # TODO: error
+                         lambda: self.ffi.string(self.reference_path),  # TODO: verify
                          self._set_reference_path,
                          self.buffer_size)
         self.add_setting('grating_position_mm', 'float',
@@ -364,22 +363,10 @@ class SID4Device(WavefrontSensorDevice):
                          (0, 120),
                          readonly=True)
         self.add_setting('zernike_version', 'str',
-                         lambda: self.zernike_version,  # TODO: error
+                         lambda: self.ffi.string(self.zernike_version),  # TODO: error
                          None,
                          self.buffer_size,
                          readonly=True)
-
-    # @property
-    # def _acquiring(self):
-    #     return self._camera_acquiring.get_value()  # TODO: Verify if we need this
-    #
-    # @keep_acquiring
-    # def _enable_callback(self, use=False):
-    #     pass # TODO: Verify if we need this
-    #
-    # @_acquiring.setter
-    # def _acquiring(self, value):
-    #     pass # TODO: Verify if we need this
 
     def get_id(self):
         self.get_setting('camera_sn')
@@ -455,7 +442,8 @@ class SID4Device(WavefrontSensorDevice):
         """Uses the SDK's GrabLiveMode to get the phase and intensity maps and
         calls the Zernike functions to calculate the projection of the polynomials"""
         if self._is_software_trigger:  # TODO: fix this with a proper interrupt
-            if self._trigger_queue.empty(): return None
+            if self._trigger_queue.empty():
+                return None
             self._trigger_queue.get()
 
         try:
@@ -479,6 +467,9 @@ class SID4Device(WavefrontSensorDevice):
                                                      self.error_code)
         except:
             Exception('Could not get PhaseProjection')
+
+        if self._is_software_trigger:
+            self._trigger_queue.task_done()
 
         return {'phase_map': np.copy(self.acquisition_buffer['np_phase_map']),
                 'intensity_map': np.copy(self.acquisition_buffer['np_intensity_map']),
@@ -628,12 +619,13 @@ class SID4Device(WavefrontSensorDevice):
             raise Exception('SDK could not open. Error code: ', self.error_code[0])
 
     def _refresh_zernike_attributes(self):
+        """Applies changes to the zernike parameters.
+        :returns True if sucessful and False otherwise"""
         self.zernike_parameters.ImageRowSize = self.zernike_array_size.nCol = self.get_setting('phase_size_width')
         self.zernike_parameters.ImageColSize = self.zernike_array_size.nRow = self.get_setting('phase_size_height')
         # TODO: the two following are not necessarily true
         self.zernike_parameters.MaskRowSize = self.get_setting('phase_size_width')
         self.zernike_parameters.MaskColSize = self.get_setting('phase_size_height')
-        self.zernike_parameters.Base = self.get_setting('zernike_base')
 
         try:
             self.zernike_SDK.Zernike_UpdateProjection_fromParameter(self.zernike_parameters,
@@ -641,6 +633,7 @@ class SID4Device(WavefrontSensorDevice):
                                                                     self.error_code)
         except:
             Exception('Could not update zernike parameters')
+            return False
         try:
             self.zernike_SDK.Zernike_GetZernikeInfo(self.zernike_information,
                                                     self.zernike_array_size,
@@ -648,6 +641,9 @@ class SID4Device(WavefrontSensorDevice):
                                                     self.zernike_version_bs)
         except:
             Exception('Could not get zernike info')
+            return False
+
+        return True
 
     def _get_camera_attribute(self, attribute):
         attribute_id = self.ffi.cast('unsigned short int', self.camera_attributes[attribute][0])
@@ -729,7 +725,7 @@ class SID4Device(WavefrontSensorDevice):
 
     def _set_exposure_time(self, index):
         if type(index) == str:
-            index = EXPOSURE_TIME_TO_INDEX['index']
+            index = self.exposure_time_s_to_index['index']
         self._set_camera_attribute('Exposure', index)
         if not self.error_code[0]:
             self.camera_information.ExposureTime = index
@@ -860,32 +856,29 @@ class SID4Device(WavefrontSensorDevice):
         # otherwise getting different bytes from memory
         return int.from_bytes(self.ffi.buffer(self.analysis_information)[17:21], 'little')
 
-    # def _set_phase_size_width(self, width, save=False):
-    #     self.analysis_information.PhaseSize_width = width
-    #     self._modify_user_profile(save=save)
-
     def _get_phase_size_height(self):
         # HACK: This is actually not the right way to collect this info but cffi is
         # otherwise getting different bytes from memory
         return int.from_bytes(self.ffi.buffer(self.analysis_information)[21:25], 'little')
 
-    # def _set_phase_size_height(self, height, save=False):
-    #     self.analysis_information.PhaseSize_Height = height
-    #     self._modify_user_profile(save=save)
-
-    def _set_zernike_base(self):
-        pass
+    def _set_zernike_base(self, base):
+        current_base = self.zernike_parameters.Base
+        self.zernike_parameters.Base = base
+        if self._refresh_zernike_attributes():
+            return
+        else:
+            self.zernike_parameters.Base = current_base
 
     def _get_nr_zernike_orders(self):
         return self.zernike_orders
 
     def _set_nr_zernike_orders(self, orders):
+        current_orders = self.zernike_orders
         self.zernike_orders = orders
-        # Zernike_UpdateProjection_fromUserProfile(char
-        # UserProfileDirectory[], unsigned
-        # char
-        # PolynomialOrder, long * ErrorCode);
-    #     self.zernike_SDK.Zernike_UpdateProjection_fromParameter
+        if self._refresh_zernike_attributes():
+            return
+        else:
+            self.zernike_orders = current_orders
 
     def _get_nr_zernike_polynomials(self):
         return int.from_bytes(self.ffi.buffer(self.zernike_information)[2:6], 'little')
@@ -907,7 +900,7 @@ if __name__ == '__main__':
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['intensity_map'][30, 30])
+        print(wfs._fetch_data()['intensity_map'][15, 15])
     print('Changing exposure_time')
     wfs.set_setting('exposure_time', 2)
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
@@ -922,7 +915,7 @@ if __name__ == '__main__':
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['intensity_map'][30, 30])
+        print(wfs._fetch_data()['intensity_map'][15, 15])
     exposure_time = wfs.get_setting('exposure_time')
     print(exposure_time)
     wfs.set_setting('exposure_time', 5)
@@ -937,7 +930,7 @@ if __name__ == '__main__':
     print('FrameRate: ', frame_rate)
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['intensity_map'][30,30])
+        print(wfs._fetch_data()['intensity_map'][15,15])
     wfs.set_setting('frame_rate', 5)
     frame_rate = wfs.get_setting('frame_rate')
     print('FrameRate: ', frame_rate)
@@ -945,6 +938,6 @@ if __name__ == '__main__':
     wfs.set_roi(100, 100, 80, 80)
     for i in range(10):
         wfs.soft_trigger()
-        print(wfs._fetch_data()['intensity_map'][30,30])
+        print(wfs._fetch_data()['intensity_map'][15,15])
 
     wfs.shutdown()

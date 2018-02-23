@@ -786,10 +786,22 @@ class WavefrontSensorDevice(CameraDevice):
         self._zernike_phase_filter = []
         # WaveLength at which the phase map is calculated
         self._wavelength_nm = None
+        self._pupil_shape = 4  # Defaults to circular shape
+        self._pupil_edge = 0  # Defaults to no edge
         self.add_setting('wavelength_nm', 'float',
                          self._get_wavelength_nm,
                          self._set_wavelength_nm,
                          (300.0, 2000,0))
+        self.add_setting('pupil_shape', 'int',
+                         lambda: self._pupil_shape,
+                         None,
+                         (3, 4),
+                         readonly=True)
+        self.add_setting('pupil_edge', 'int',
+                         lambda: self._pupil_edge,
+                         None,
+                         (0, 100),
+                         readonly=True)
 
     # Some acquisition related methods #
 
@@ -798,11 +810,11 @@ class WavefrontSensorDevice(CameraDevice):
         """Apply necessary transformations to data to be served to the client.
 
         Return as a dictionary:
+        - phase_map: a 2D array containing the phase
         - intensity_map: a 2D array containing the intensity
         - linearity: some measure of the linearity of the data.
             Simple saturation at the intensity map might not be enough to indicate
             if we are exposing correctly to get a accurate measure of the phase.
-        - phase_map: a 2D array containing the phase
         - tilts: a tuple containing X and Y tilts
         - RMS: the root mean square measurement
         - PtoV: peak to valley measurement
@@ -844,21 +856,34 @@ class WavefrontSensorDevice(CameraDevice):
         return pupil
 
     @abc.abstractmethod
-    def _set_pupil(self):
-        """Set the pupil on the hardware, return True if successful."""
+    def _set_pupil(self, shape=None, edge=None):
+        """Set the pupil on the hardware, return True if successful.
+        If type and edge are not specified, they should not change and follow the main ROI."""
         return False
 
     @Pyro4.expose
-    def set_pupil(self, pupil):
-        """Set the pupil according to the provided parameters.
+    def set_pupil(self, shape=None, edge=None):
+        """Set the pupil referenced to the main ROI.
 
+        :param shape: this is defining the shape of the pupil.
+                    3 = Rectangle, 4 = Oval or Circle
+        :param edge: distance in pixels from the edge of the main ROI
         Return True if pupil set correctly, False otherwise."""
         # TODO: depending on the format of the pupil, we might have to transform it
         # if self._transform[2]:
         #     roi = (top, left, height, width)
         # else:
         #     roi = (left, top, width, height)
-        return self._set_pupil(pupil)
+        if not edge:
+            edge = self._pupil_edge
+        else:
+            self._pupil_edge = edge
+        if not shape:
+            shape = self._pupil_shape
+        else:
+            self._pupil_shape = shape
+
+        return self._set_pupil(shape=shape, edge=edge)
 
     @abc.abstractmethod
     def _set_reference(self, source):
