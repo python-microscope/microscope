@@ -1,20 +1,21 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
-# Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2016 Mick Phillips <mick.phillips@gmail.com>
+##
+## Microscope is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Microscope is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """Classes for control of microscope components.
 
@@ -22,6 +23,7 @@ This module provides base classes for experiment control and data
 acquisition devices that can be served over Pyro. This means that each
 device may be served from a separate process, or even from a different PC.
 """
+
 import abc
 import itertools
 import logging
@@ -33,14 +35,12 @@ from threading import Thread
 import Pyro4
 import numpy
 
-# Python 2.7 and 3 compatibility.
-try:
-    import queue
-except:
-    # noinspection PyPep8Naming
-    import Queue as queue
+from six.moves import queue
+from enum import Enum
 
 from six import iteritems
+
+import numpy
 
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
@@ -67,9 +67,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-# A device definition for use in config files.
 def device(cls, host, port, uid=None, **kwargs):
     """Define a device and where to serve it.
+
+    A device definition for use in config files.
 
     Defines a device of type cls, served on host:port.
     UID is used to identify 'floating' devices (see below).
@@ -78,9 +79,7 @@ def device(cls, host, port, uid=None, **kwargs):
     return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
 
 
-# === FloatingDeviceMixin ===
 class FloatingDeviceMixin(object):
-    __metaclass__ = abc.ABCMeta
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -89,6 +88,7 @@ class FloatingDeviceMixin(object):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
+    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     @Pyro4.expose
@@ -97,10 +97,9 @@ class FloatingDeviceMixin(object):
         pass
 
 
-# === Device ===
 class Device(object):
-    __metaclass__ = abc.ABCMeta
     """A base device class. All devices should subclass this class."""
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, *args, **kwargs):
         self.enabled = None
@@ -180,7 +179,6 @@ class Device(object):
         """Put the device into a safe state."""
         pass
 
-    # Methods for manipulating settings.
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
@@ -300,10 +298,8 @@ class Device(object):
         return results
 
 
-# === DataDevice ===
-
-# Wrapper to preserve acquiring state of data capture devices.
 def keep_acquiring(func):
+    """Wrapper to preserve acquiring state of data capture devices."""
     def wrapper(self, *args, **kwargs):
         if self._acquiring:
             self.abort()
@@ -317,20 +313,22 @@ def keep_acquiring(func):
 
 
 class DataDevice(Device):
-    __metaclass__ = abc.ABCMeta
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
     it to a client.  The client is set using set_client(uri) or (legacy)
     receiveClient(uri).
-    Derived classed should implement:
-        abort(self)                ---  required
-        start_acquisition(self)    ---  required
-        _fetch_data(self)          ---  required
-        _process_data(self, data)  ---  optional
+
+    Derived classed should implement::
+      * abort(self)                ---  required
+      * start_acquisition(self)    ---  required
+      * _fetch_data(self)          ---  required
+      * _process_data(self, data)  ---  optional
+
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
@@ -507,14 +505,13 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
 
-# === CameraDevice ===
 class CameraDevice(DataDevice):
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
     """Adds functionality to DataDevice to support cameras.
 
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
 
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
@@ -703,7 +700,148 @@ class CameraDevice(DataDevice):
         pass
 
 
-# === LaserDevice ===
+class TriggerType(Enum):
+    SOFTWARE = 0
+    RISING_EDGE = 1
+    FALLING_EDGE = 2
+    PULSE = 3
+
+class TriggerMode(Enum):
+    ONCE = 1
+    BULB = 2
+    STROBE = 3
+    START = 4
+
+
+@Pyro4.expose
+class TriggerTargetMixIn(object):
+    """MixIn for Device that may be the target of a hardware trigger.
+
+    Subclasses must set a `_trigger_type` and `_trigger_mode` property
+    with the current trigger during object construction.
+
+    TODO: need some way to retrieve the supported trigger types and
+        modes.  We could require subclasses to define `_trigger_types`
+        and `_trigger_modes` listing what is supported but would still
+        not be enough since often not all trigger type and mode are
+        supported.
+
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @property
+    def trigger_mode(self):
+        return self._trigger_mode
+    @property
+    def trigger_type(self):
+        return self._trigger_type
+
+    @abc.abstractmethod
+    def set_trigger(self, ttype, tmode):
+        """Set device for a specific trigger.
+        """
+        pass
+
+
+@Pyro4.expose
+class DeformableMirror(Device):
+    """Base class for Deformable Mirrors.
+
+    There is no method to reset or clear a deformable mirror.  While
+    different vendors provide functions to do that, it is unclear
+    exactly what it does the actuators.  Does it set all actuators
+    back to something based on a calibration file?  Does it apply a
+    voltage of zero to each?  Does it set the values to zero and what
+    does that mean since different deformable mirrors expect values in
+    a different range?  For the sake of uniformity, it is better for
+    python-microscope users to pass the pattern they want, probably a
+    pattern that flattens the mirror.
+
+    It is also unclear what the use case for a reset.  If it just to
+    set the mirror to an initial state and not a specific shape, then
+    destroying and re-constructing the DeformableMirror object
+    provides the most obvious solution.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def __init__(self, *args, **kwargs):
+        """Constructor.
+
+        Subclasses must define the following properties during
+        construction:
+
+            _n_actuators : int
+
+        In addition, the private properties `_patterns` and
+        `_pattern_idx` are initialized to None to support the queueing
+        of patterns and software triggering.
+        """
+        super(DeformableMirror, self).__init__(*args, **kwargs)
+
+        self._patterns = None
+        self._patterns_idx = None
+
+    @property
+    def n_actuators(self):
+        return self._n_actuators
+
+    def _validate_patterns(self, patterns):
+        """Validate the shape of a series of patterns.
+
+        Only validates the shape of the patterns, not if the values
+        are actually in the [0 1] range.  If some hardware is unable
+        to handle values outside their defined range (most will simply
+        clip them), then it's the responsability of the subclass to do
+        the clipping before sending the values.
+        """
+        if patterns.ndim > 2:
+            raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
+                            % patterns.ndim)
+        elif patterns.shape[-1] != self._n_actuators:
+            raise Exception(("PATTERNS length of second dimension '%d' differs"
+                             " differs from number of actuators '%d'"
+                             % (patterns.shape[-1], self._n_actuators)))
+
+    @abc.abstractmethod
+    def apply_pattern(self, pattern):
+        """Apply this pattern.
+        """
+        pass
+
+    def queue_patterns(self, patterns):
+        """Send values to the mirror.
+
+        Parameters
+        ----------
+        patterns : numpy.array
+            An KxN elements array of values in the range [0 1], where N
+            equals the number of actuators, and K is the number of
+            patterns.
+
+        A convenience fallback is provided for software triggering is
+        provided.
+        """
+        self._validate_patterns(patterns)
+        self._patterns = patterns
+        self._pattern_idx = -1 # none is applied yet
+
+    def next_pattern(self):
+        """Apply the next pattern in the queue.
+
+        A convenience fallback is provided.
+        """
+        if self._patterns is None:
+            raise Exception("no pattern queued to apply")
+        self._pattern_idx += 1
+        self.apply_pattern(self._patterns[self._pattern_idx,:])
+
+    def initialize(self):
+        pass
+    def _on_shutdown(self):
+        pass
+
+
 class LaserDevice(Device):
     __metaclass__ = abc.ABCMeta
 

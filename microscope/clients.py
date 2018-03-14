@@ -22,13 +22,7 @@ import Pyro4
 import socket
 import threading
 
-# Python 2.7 and 3 compatibility.
-try:
-    import queue
-except:
-    # noinspection PyPep8Naming
-    import Queue as queue
-
+from six.moves import queue
 
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')

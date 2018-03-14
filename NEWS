@@ -1,20 +1,47 @@
-Summary of user-visible changes for version x.y.z (yyyy/mm/dd):
----------------------------------------------------------------
+The following is a summary of the user-visible changes for each of
+python-microscope releases.
 
- ** New abstract class FilterWheel.
+Upcoming release
+----------------
 
- ** New classes Client and DataClient.
+* New device classes:
 
- ** New dependency on six.
+  * DeformableMirror
 
- ** Removed dependency on PyME.
+* New MixIn classes:
 
- ** Now works in Linux too.
+  * TriggerTargetMixIn
 
- ** Start writing of user documentation.
+* Added Enum for `TriggerType` and `TriggerMode`.
+
+* New hardware supported:
+
+  * Alpao deformable mirrors
+  * Boston Micromachines Corporation (BMC) deformable mirrors
+
+* New module `microscope.gui` for simple testing of individual
+  devices.
+
+* Now dependent on the enum34 package for python pre 3.4.
 
 
-Summary of user-visible changes for version 0.0.1 (2016/11/24):
----------------------------------------------------------------
+Version 0.1.0 (2017/05/04)
+--------------------------
 
- ** Initial release of python-microscope.
+* New abstract class FilterWheel.
+
+* New classes Client and DataClient.
+
+* New dependency on six.
+
+* Removed dependency on PyME.
+
+* Now works in Linux too.
+
+* Start writing of user documentation.
+
+
+Version 0.0.1 (2016/11/24)
+--------------------------
+
+* Initial release of python-microscope.

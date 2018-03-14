@@ -39,9 +39,9 @@ def _flush_buffer(func):
 
 
 class DeepstarLaser(devices.LaserDevice):
-    def __init__(self, port, baud, timeout, **kwargs):
+    def __init__(self, com, baud, timeout, **kwargs):
         super(DeepstarLaser, self).__init__()
-        self.connection = serial.Serial(port = port,
+        self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)

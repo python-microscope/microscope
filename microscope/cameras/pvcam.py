@@ -19,10 +19,117 @@
 
 This module exposes pvcam C library functions in python.
 
-TODO: support camera metadata.
+.. todo::
+   Support frame metadata.  The following functions are still not implemented::
+
+    /*****************************************************************************/
+    /*****************************************************************************/
+    /*                                                                           */
+    /*                         Frame metadata functions                          */
+    /*                                                                           */
+    /*****************************************************************************/
+    /*****************************************************************************/
+
+    /**
+    Decodes all the raw frame buffer metadata into a friendly structure.
+    @param pDstFrame A pre-allocated helper structure that will be filled with
+                     information from the given raw buffer.
+    @param pSrcBuf A raw frame buffer as retrieved from PVCAM
+    @param srcBufSize The size of the raw frame buffer
+    @return #PV_FAIL in case of failure.
+    */
+    rs_bool PV_DECL pl_md_frame_decode (md_frame* pDstFrame, void* pSrcBuf, uns32 srcBufSize);
+
+    /**
+    Optional function that recomposes a multi-ROI frame into a displayable image buffer.
+    Every ROI will be copied into its appropriate location in the provided buffer.
+    Please note that the function will subtract the Implied ROI position from each ROI
+    position which essentially moves the entire Implied ROI to a [0, 0] position.
+    Use the Offset arguments to shift all ROIs back to desired positions if needed.
+    If you use the Implied ROI position for offset arguments the frame will be recomposed
+    as it appears on the full frame.
+    The caller is responsible for black-filling the input buffer. Usually this function
+    is called during live/preview mode where the destination buffer is re-used. If the
+    ROIs do move during acquisition it is essential to black-fill the destination buffer
+    before calling this function. This is not needed if the ROIs do not move.
+    If the ROIs move during live mode it is also recommended to use the offset arguments
+    and recompose the ROI to a full frame - with moving ROIs the implied ROI may change
+    with each frame and this may cause undesired ROI "twitching" in the displayable image.
+
+    @param pDstBuf An output buffer, the buffer must be at least the size of the implied
+                   ROI that is calculated during the frame decoding process. The buffer
+                   must be of type uns16. If offset is set the buffer must be large
+                   enough to allow the entire implied ROI to be shifted.
+    @param offX    Offset in the destination buffer, in pixels. If 0 the Implied
+                   ROI will be shifted to position 0 in the target buffer.
+                   Use (ImpliedRoi.s1 / ImplierRoi.sbin) as offset value to
+                   disable the shift and keep the ROIs in their absolute positions.
+    @param offY    Offset in the destination buffer, in pixels. If 0 the Implied
+                   ROI will be shifted to position 0 in the target buffer.
+                   Use (ImpliedRoi.p1 / ImplierRoi.pbin) as offset value to
+                   disable the shift and keep the ROIs in their absolute positions.
+    @param dstWidth  Width, in pixels of the destination image buffer. The buffer
+                     must be large enough to hold the entire Implied ROI, including
+                     the offsets (if used).
+    @param dstHeight Height, in pixels of the destination image buffer.
+    @param pSrcFrame A helper structure, previously decoded using the frame
+                     decoding function.
+    @return #PV_FAIL in case of failure.
+    */
+    rs_bool PV_DECL pl_md_frame_recompose (void* pDstBuf, uns16 offX, uns16 offY,
+                                           uns16 dstWidth, uns16 dstHeight,
+                                           md_frame* pSrcFrame);
+
+    /**
+    This method creates an empty md_frame structure for known number of ROIs.
+    Use this method to prepare and pre-allocate one structure before starting
+    continous acquisition. Once callback arrives fill the structure with
+    pl_md_frame_decode() and display the metadata.
+    Release the structure when not needed.
+    @param pFrame a pointer to frame helper structure address where the structure
+                  will be allocated.
+    @param roiCount Number of ROIs the structure should be prepared for.
+    @return #PV_FAIL in case of failure.
+    */
+    rs_bool PV_DECL pl_md_create_frame_struct_cont (md_frame** pFrame, uns16 roiCount);
+
+    /**
+    This method creates an empty md_frame structure from an existing buffer.
+    Use this method when loading buffers from disk or when performance is not
+    critical. Do not forget to release the structure when not needed.
+    For continous acquisition where the number or ROIs is known it is recommended
+    to use the other provided method to avoid frequent memory allocation.
+    @param pFrame A pointer address where the newly created structure will be stored.
+    @param pSrcBuf A raw frame data pointer as returned from the camera
+    @param srcBufSize Size of the raw frame data buffer
+    @return #PV_FAIL in case of failure
+    */
+    rs_bool PV_DECL pl_md_create_frame_struct (md_frame** pFrame, void* pSrcBuf,
+                                               uns32 srcBufSize);
+
+    /**
+    Releases the md_frame struct
+    @param pFrame a pointer to the previously allocated structure
+    */
+    rs_bool PV_DECL pl_md_release_frame_struct (md_frame* pFrame);
+
+    /**
+    Reads all the extended metadata from the given ext. metadata buffer.
+    @param pOutput A pre-allocated structure that will be filled with metadata
+    @param pExtMdPtr A pointer to the ext. MD buffer, this can be obtained from
+                    the md_frame and md_frame_roi structures.
+    @param extMdSize Size of the ext. MD buffer, also retrievable from the helper
+                     structures.
+    @return #PV_FAIL in case the metadata cannot be decoded.
+    */
+    rs_bool PV_DECL pl_md_read_extended (md_ext_item_collection* pOutput, void* pExtMdPtr,
+                                         uns32 extMdSize);
+
 """
+
 import ctypes
 import numpy as np
+import os
 import platform
 import Pyro4
 from microscope import devices
@@ -542,9 +649,8 @@ class md_frame(ctypes.Structure):
     ]
 
 
-arch, plat = platform.architecture()
-if plat.startswith('Windows'):
-    if arch == '32bit':
+if os.name in ('nt', 'ce'):
+    if platform.architecture()[0] == '32bit':
         _lib = ctypes.WinDLL('pvcam32')
     else:
         _lib = ctypes.WinDLL('pvcam64')
@@ -828,122 +934,6 @@ _dtypemap = {
     TYPE_SMART_STREAM_TYPE_PTR: None,
     TYPE_FLT32: 'float',
 }
-"""
-    /*****************************************************************************/
-    /*****************************************************************************/
-    /*                                                                           */
-    /*                         Frame metadata functions                          */
-    /*                                                                           */
-    /*****************************************************************************/
-    /*****************************************************************************/
-
-    /**
-    Decodes all the raw frame buffer metadata into a friendly structure.
-    @param pDstFrame A pre-allocated helper structure that will be filled with
-                     information from the given raw buffer.
-    @param pSrcBuf A raw frame buffer as retrieved from PVCAM
-    @param srcBufSize The size of the raw frame buffer
-    @return #PV_FAIL in case of failure.
-    */
-    rs_bool PV_DECL pl_md_frame_decode (md_frame* pDstFrame, void* pSrcBuf, uns32 srcBufSize);
-
-    /**
-    Optional function that recomposes a multi-ROI frame into a displayable image buffer.
-    Every ROI will be copied into its appropriate location in the provided buffer.
-    Please note that the function will subtract the Implied ROI position from each ROI
-    position which essentially moves the entire Implied ROI to a [0, 0] position.
-    Use the Offset arguments to shift all ROIs back to desired positions if needed.
-    If you use the Implied ROI position for offset arguments the frame will be recomposed
-    as it appears on the full frame.
-    The caller is responsible for black-filling the input buffer. Usually this function
-    is called during live/preview mode where the destination buffer is re-used. If the
-    ROIs do move during acquisition it is essential to black-fill the destination buffer
-    before calling this function. This is not needed if the ROIs do not move.
-    If the ROIs move during live mode it is also recommended to use the offset arguments
-    and recompose the ROI to a full frame - with moving ROIs the implied ROI may change
-    with each frame and this may cause undesired ROI "twitching" in the displayable image.
-
-    @param pDstBuf An output buffer, the buffer must be at least the size of the implied
-                   ROI that is calculated during the frame decoding process. The buffer
-                   must be of type uns16. If offset is set the buffer must be large
-                   enough to allow the entire implied ROI to be shifted.
-    @param offX    Offset in the destination buffer, in pixels. If 0 the Implied
-                   ROI will be shifted to position 0 in the target buffer.
-                   Use (ImpliedRoi.s1 / ImplierRoi.sbin) as offset value to
-                   disable the shift and keep the ROIs in their absolute positions.
-    @param offY    Offset in the destination buffer, in pixels. If 0 the Implied
-                   ROI will be shifted to position 0 in the target buffer.
-                   Use (ImpliedRoi.p1 / ImplierRoi.pbin) as offset value to
-                   disable the shift and keep the ROIs in their absolute positions.
-    @param dstWidth  Width, in pixels of the destination image buffer. The buffer
-                     must be large enough to hold the entire Implied ROI, including
-                     the offsets (if used).
-    @param dstHeight Height, in pixels of the destination image buffer.
-    @param pSrcFrame A helper structure, previously decoded using the frame
-                     decoding function.
-    @return #PV_FAIL in case of failure.
-    */
-    rs_bool PV_DECL pl_md_frame_recompose (void* pDstBuf, uns16 offX, uns16 offY,
-                                           uns16 dstWidth, uns16 dstHeight,
-                                           md_frame* pSrcFrame);
-
-    /**
-    This method creates an empty md_frame structure for known number of ROIs.
-    Use this method to prepare and pre-allocate one structure before starting
-    continous acquisition. Once callback arrives fill the structure with
-    pl_md_frame_decode() and display the metadata.
-    Release the structure when not needed.
-    @param pFrame a pointer to frame helper structure address where the structure
-                  will be allocated.
-    @param roiCount Number of ROIs the structure should be prepared for.
-    @return #PV_FAIL in case of failure.
-    */
-    rs_bool PV_DECL pl_md_create_frame_struct_cont (md_frame** pFrame, uns16 roiCount);
-
-    /**
-    This method creates an empty md_frame structure from an existing buffer.
-    Use this method when loading buffers from disk or when performance is not
-    critical. Do not forget to release the structure when not needed.
-    For continous acquisition where the number or ROIs is known it is recommended
-    to use the other provided method to avoid frequent memory allocation.
-    @param pFrame A pointer address where the newly created structure will be stored.
-    @param pSrcBuf A raw frame data pointer as returned from the camera
-    @param srcBufSize Size of the raw frame data buffer
-    @return #PV_FAIL in case of failure
-    */
-    rs_bool PV_DECL pl_md_create_frame_struct (md_frame** pFrame, void* pSrcBuf,
-                                               uns32 srcBufSize);
-
-    /**
-    Releases the md_frame struct
-    @param pFrame a pointer to the previously allocated structure
-    */
-    rs_bool PV_DECL pl_md_release_frame_struct (md_frame* pFrame);
-
-    /**
-    Reads all the extended metadata from the given ext. metadata buffer.
-    @param pOutput A pre-allocated structure that will be filled with metadata
-    @param pExtMdPtr A pointer to the ext. MD buffer, this can be obtained from
-                    the md_frame and md_frame_roi structures.
-    @param extMdSize Size of the ext. MD buffer, also retrievable from the helper
-                     structures.
-    @return #PV_FAIL in case the metadata cannot be decoded.
-    */
-    rs_bool PV_DECL pl_md_read_extended (md_ext_item_collection* pOutput, void* pExtMdPtr,
-                                         uns32 extMdSize);
-
-#ifdef PV_C_PLUS_PLUS
-};
-#endif
-
-#endif /* PV_EMBEDDED */
-
-/******************************************************************************/
-/* End of function prototypes.                                                */
-/******************************************************************************/
-
-#endif /* _PVCAM_H */
-"""
 
 # Mapping of param ids to maximum string lengths.
 # PARAM_DD_INFO is a variable length string, and its length can be found by

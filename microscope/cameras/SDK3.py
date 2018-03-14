@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 ##################
-# AndorCam.py
 #
 # Copyright David Baddeley, 2009
 # d.baddeley@auckland.ac.nz
@@ -22,8 +21,7 @@
 ##################
 
 import ctypes
-import platform
-#import ctypes
+import os
 from ctypes import POINTER, c_int, c_uint, c_double, c_void_p
 
 #### typedefs
@@ -35,16 +33,9 @@ AT_WC = ctypes.c_wchar
 
 _stdcall_libraries = {}
 
-arch, plat = platform.architecture()
-
-#if 'WinDLL' in dir():
-if plat.startswith('Windows'):
-    if arch == '32bit':
-        _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
-        _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
-    else:
-        _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
-        _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
+if os.name in ('nt', 'ce'):
+    _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
+    _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 else:
     _stdcall_libraries['ATCORE'] = ctypes.CDLL('atcore.so')
