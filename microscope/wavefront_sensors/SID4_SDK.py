@@ -223,9 +223,12 @@ class SID4Device(WavefrontSensorDevice):
         for key, exposure in EXPOSURE_TIMES.items():
             self.exposure_time_s_to_index[exposure[1]] = key
 
-        # Create a queue to trigger software acquisitions
+        # TODO: Soft_trigger
         self._is_software_trigger = True
-        self._trigger_queue = queue.Queue()
+        # HACK: as fetching the data from the camera is triggering we use this
+        # variable to control that not the same data is acquired twice. Note the camera
+        # uses no buffers
+        self._valid_data = False
 
         # Add profile settings
         self.add_setting('user_profile_name', 'str',
@@ -380,17 +383,11 @@ class SID4Device(WavefrontSensorDevice):
     def invalidate_settings(self, func):
         """Wrap functions that invalidate settings so settings are reloaded."""
         outerself = self
+
         def wrapper(self, *args, **kwargs):
             func(self, *args, **kwargs)
             outerself._settings_valid = False
         return wrapper
-
-    @Pyro4.expose()
-    def soft_trigger(self):
-        if self._acquiring and self._is_software_trigger:
-            self._trigger_queue.put(1)
-        else:
-            raise Exception('cannot trigger if camera is not acquiring or is not in software trigger mode.')
 
     def _create_buffers(self):
         """Creates a buffer to store the data. It also reloads all necessary parameters"""
@@ -438,14 +435,9 @@ class SID4Device(WavefrontSensorDevice):
                                         'zernike_polynomials_bs': projection_coefficients_bs,
                                         'np_zernike_polynomials': np_projection_coefficients})
 
-    def _fetch_data(self, timeout=5, debug=False):
+    def _grab_live(self):
         """Uses the SDK's GrabLiveMode to get the phase and intensity maps and
         calls the Zernike functions to calculate the projection of the polynomials"""
-        if self._is_software_trigger:  # TODO: fix this with a proper interrupt
-            if self._trigger_queue.empty():
-                return None
-            self._trigger_queue.get()
-
         try:
             self.SID4_SDK.GrabLiveMode(self.session_id,
                                        self.acquisition_buffer['phase_map'],
@@ -456,7 +448,7 @@ class SID4Device(WavefrontSensorDevice):
                                        self.analysis_array_size,
                                        self.error_code)
         except:
-            print(self.error_code[0])
+            self._logger.debug('Could not use GrabLiveMode. Error: ', self.error_code[0])
             Exception('Could not GrabLiveMode')
         try:
             self.zernike_SDK.Zernike_PhaseProjection(self.acquisition_buffer['phase_map'],
@@ -466,10 +458,25 @@ class SID4Device(WavefrontSensorDevice):
                                                      self.acquisition_buffer['zernike_polynomials_bs'],
                                                      self.error_code)
         except:
+            self._logger.debug('Could not use PhaseProjection. Error: ', self.error_code[0])
             Exception('Could not get PhaseProjection')
 
-        if self._is_software_trigger:
-            self._trigger_queue.task_done()
+    @Pyro4.expose()
+    def soft_trigger(self):
+        if self._acquiring and self._is_software_trigger:
+            self._grab_live()
+            self._valid_data = True
+        else:
+            raise Exception('cannot trigger if camera is not acquiring or is not in software trigger mode.')
+
+    def _fetch_data(self, timeout=5, debug=False):
+        if not self._is_software_trigger:  # Camera is not using software trigger
+            self._grab_live()
+        else:  # Camera is using software trigger:
+            if not self._valid_data:
+                return None
+
+        self._valid_data = False
 
         return {'phase_map': np.copy(self.acquisition_buffer['np_phase_map']),
                 'intensity_map': np.copy(self.acquisition_buffer['np_intensity_map']),
@@ -681,7 +688,6 @@ class SID4Device(WavefrontSensorDevice):
                                             self.error_code)
         except:
             Exception('Could not modify user profile')
-
         if save:
             self._save_user_profile()
 
@@ -699,14 +705,16 @@ class SID4Device(WavefrontSensorDevice):
         if not self.error_code[0]:
             self.camera_information.FrameRate = rate
 
-    def _set_trigger_mode(self, mode):
+    def _set_trigger_mode(self, mode):  # TODO: SoftTrigger
         self._set_camera_attribute('Trigger', mode)
         if not self.error_code[0]:
             self.camera_information.TriggerMode = mode
         if mode == 0:
             self._is_software_trigger = True
+            self._valid_data = False
         else:
             self._is_software_trigger = False
+            self._valid_data = False
 
     def _set_gain(self, gain):
         self._set_camera_attribute('Gain', gain)
@@ -896,11 +904,11 @@ if __name__ == '__main__':
     wfs.enable()
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
     print('Changing exposure_time')
-    wfs.set_setting('exposure_time', 0)
+    wfs.set_setting('exposure_time', 2)
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
-    for i in range(10):
-        wfs.soft_trigger()
-        print(wfs._fetch_data()['intensity_map'][15, 15])
+    wfs.soft_trigger()
+
+    print(wfs._fetch_data()['intensity_map'][15, 15])
     print('Changing exposure_time')
     wfs.set_setting('exposure_time', 2)
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))

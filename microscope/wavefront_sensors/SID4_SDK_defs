@@ -1,0 +1,353 @@
+//****************************************************************//
+// This file is containing the headers from the SID4_SDK.h file   //
+// with some modifications. Namely #include and #ifdef have been  //
+// removed. Also, the typedef of LVBoolean has been changed       //
+//****************************************************************//
+
+#pragma pack(push)
+#pragma pack(1)
+
+// In the original headers LVBoolean is defined as another type
+typedef unsigned char LVBoolean;
+
+typedef int SDK_Reference;
+
+//****************************************************************//
+// Definitions of structures used in the SID4_SDK functions       //
+//****************************************************************//
+
+// Tilt Information
+typedef struct {
+	float XTilt;
+	float YTilt;
+	} TiltInfo;
+
+// Size Information on the 2D arrays given as input parameters
+typedef struct {
+	long nRow;
+	long nCol;
+	} ArraySize;
+
+
+// Analysis Information, to be used with GetUserProfile
+typedef struct {
+	double GratingPositionMm;
+	double wavelengthNm;
+	LVBoolean RemoveBackgroundImage;
+	long PhaseSize_width;
+	long PhaseSize_Height;
+	} AnalysisInfo;
+
+// Camera Information, to be used with GetUserProfile
+typedef struct {
+	long FrameRate;
+	unsigned long TriggerMode;
+	long Gain;
+	unsigned long ExposureTime;
+	float PixelSizeM;
+	unsigned char NumberOfCameraRecorded;
+	} CameraInfo;
+
+//**************************************************************//
+// SID4_SDK Basic functions                                        //
+//**************************************************************//
+
+
+// Configuration functions
+void __cdecl OpenSID4(char UserProfileLocation[], SDK_Reference *SessionID,
+	long *ErrorCode);
+
+void __cdecl CloseSID4(SDK_Reference *SessionID, long *ErrorCode);
+
+void __cdecl GetUserProfile(SDK_Reference *SDKSessionID, char UserProfile_Name[],
+	long uspName_bufSize, char UserProfile_File[], long uspFile_bufSize,
+	char UserProfile_Description[], long uspDesc_bufSize,
+	char UsrP_LatestReference[], long uspLastRef_bufSize,
+	char UserProfile_Directory[], long uspDir_bufSize, char SDKVersion[],
+	long version_bufSize, AnalysisInfo *AnalysisInformation, CameraInfo *CameraInformation,
+	char SNPhasics[], long SNPhasics_bufSize, ArraySize *AnalysisArraySize,
+	long *ErrorCode);
+
+void __cdecl ChangeReference(SDK_Reference *SDKSessionID, char ReferencePath[],
+	unsigned short int ReferenceSource, char ArchivedPath[], long ArchivedPath_bufSize,
+	long *ErrorCode);
+
+	void __cdecl SetBackground(SDK_Reference *SDKSessionID, unsigned short int Source,
+	char BackgroundFile[], char UpdatedBackgoundImageFile[],
+	long updatedImageFile_bufSize, long *ErrorCode);
+
+void __cdecl ChangeMask(SDK_Reference *SDKSessionID, char MaskFile[],
+	long ROI_GlobalRectangle[], long globalRect_bufSize,
+	unsigned short int *ROI_NbOfContours, unsigned long ROI_Contours_info[],
+	long contoursInfo_bufSize, long ROI_Contours_coordinates[],
+	long contoursCoord_bufSize, long *ErrorCode);
+
+void __cdecl LoadMaskDescriptorInfo(SDK_Reference *SDKSessionID, char MaskFile[],
+	long ROI_GlobalRectangle[], long globalRect_bufSize,
+	unsigned short int *ROI_NbOfContours, unsigned long ROI_Contours_info[],
+	long contoursInfo_bufSize, long ROI_Contours_coordinates[],
+	long contoursCoord_bufSize, long *ErrorCode);
+
+void __cdecl LoadMaskDescriptor(SDK_Reference *SDKSessionID, char MaskFile[],
+	long ROI_GlobalRectangle[], long globalRect_bufSize,
+	unsigned short int *ROI_NbOfContours, unsigned long ROI_Contours_info[],
+	long contoursInfo_bufSize, long ROI_Contours_coordinates[],
+	long contoursCoord_bufSize, long *ErrorCode);
+
+void __cdecl ModifyUserProfile(SDK_Reference *SDKSessionID,
+	AnalysisInfo *AnalysisInformation, unsigned short int ReferenceSource, char ReferencePath[],
+	char UserProfile_Description[], LVBoolean *ReferenceChanged,
+	long *ErrorCode);
+
+void __cdecl NewUserProfile(SDK_Reference *SDKSessionID, char CameraSNPhasics[],
+	char ProfileName[], char UserProfileDirectory[], char ProfilePathFileOut[],
+	long pathFileOut_bufSize, long *ErrorCode);
+
+void __cdecl SaveCurrentUserProfile(SDK_Reference *SDKSessionID,
+	long *ErrorCode);
+
+void __cdecl SaveMaskDescriptor(SDK_Reference *SDKSessionID, char MaskFile[],
+	long ROI_GlobalRectangle[], long globalRect_bufSize,
+	unsigned short int ROI_NbOfContours, unsigned long ROI_Contours_info[],
+	long contoursInfo_bufSize, long ROI_Contours_coordinates[],
+	long contoursCoord_bufSize, long *ErrorCode);
+
+
+// Camera control functions
+void __cdecl StartLiveMode(SDK_Reference *SDKSessionID, long *ErrorCode);
+
+void __cdecl StopLiveMode(SDK_Reference *SDKSessionID, long *ErrorCodeID);
+
+void __cdecl CameraInit(SDK_Reference *SDKSessionID, long *ErrorCode);
+
+void __cdecl CameraStart(SDK_Reference *SDKSessionID, long *ErrorCode);
+
+void __cdecl CameraStop(SDK_Reference *SDKSessionID, long *ErrorCode);
+
+void __cdecl CameraClose(SDK_Reference *SDKSessionID, long *ErrorCode);
+
+void __cdecl CameraList(SDK_Reference *SDKSessionID, char CameraList_SNPhasics[],
+	long camList_bufSize, long *ErrorCode);
+
+void __cdecl CameraSetup(SDK_Reference *SDKSessionID, unsigned short int CameraParameter,
+	unsigned long Value, long *ErrorCode);
+
+void __cdecl Camera_ConvertExposureMs(SDK_Reference *SDKSessionID,
+	double ExposureRawValueIn, double *ExposureValueMsOut, long *ErrorCode);
+void __cdecl Camera_GetNumberOfAttribute(SDK_Reference *SDKSessionID,
+	long *NumberOfAttribute, long *ErrorCode);
+
+void __cdecl Camera_GetAttribute(SDK_Reference *SDKSessionID,
+	unsigned short int AttributeID, double *AttributeValueOut, long *ErrorCode);
+void __cdecl Camera_SetAttribute(SDK_Reference *SDKSessionID,
+	unsigned short int AttributeID, double *AttributeValue, long *ErrorCode);
+
+void __cdecl Camera_GetAttributeList(SDK_Reference *SDKSessionID,
+	unsigned short int AttributeID[], long attribID_bufSize,
+	char AttributeName_SeparatedByTab[], long attribName_bufSize,
+	long AttributeGmin[], long attribGmin_bufSize, long AttributeGmax[],
+	long attribGmax_bufSize, long *ErrorCode);
+
+// Interferogram analysis functions
+void __cdecl ArrayAnalysis(SDK_Reference *SDKSessionID,
+	short int InterferogramInArrayI16[], long Interfero_bufSize,
+	float Intensity[], long Intensity_bufSize, float Phase[],
+	long Phase_bufSize, TiltInfo *TiltInformation, ArraySize *AnalysisArraySize,
+	ArraySize *ImageCameraSize, long *ErrorCode);
+
+void __cdecl FileAnalysis(SDK_Reference *SDKSessionID, ArraySize *AnalysisArraySize,
+	char InterferogramFile[], float Intensity[], long Intensity_bufSize,
+	float Phase[], long Phase_bufSize, TiltInfo *TiltInformation,
+	long *ErrorCode);
+
+void __cdecl GrabLiveMode(SDK_Reference *SDKSessionID, float Phase[],
+	long Phase_bufSize, float Intensity[], long Intensity_bufSize,
+	TiltInfo *TiltInformation, ArraySize *AnalysisArraySize, long *ErrorCode);
+
+void __cdecl GrabImage(SDK_Reference *SDKSessionID, short int Image[],
+	long Image_bufSize, ArraySize *ImageCameraSize, long *ErrorCode);
+
+void __cdecl Snap(SDK_Reference *SDKSessionID, float Phase[],
+	long Phase_bufSize, float Intensity[], long Intensity_bufSize,
+	TiltInfo *TiltInformation, long *ErrorCode);
+
+void __cdecl GrabToFile(SDK_Reference *SDKSessionID, unsigned long PaletteNumber,
+	char InterferogramFile[], LVBoolean *CheckOverWrite, long *ErrorCode);
+
+void __cdecl GetPhaseGradients(SDK_Reference *SDKSessionID,
+	ArraySize *AnalysisArraySize, float GradientX[], long GradX_bufSize,
+	float GradientY[], long GradY_bufSize, long *ErrorCode);
+
+void __cdecl SetIntegrationParam(SDK_Reference *SDKSessionID,
+	unsigned char Adv_Activation, unsigned short int Adv_Niter, float Adv_MSE_Threshold,
+	long *ErrorCode);
+
+void __cdecl GetQualityMap(SDK_Reference *SDKSessionID, ArraySize *AnalysisArraySize,
+	float QualityMap[], long qualityMap_bufSize, long *ErrorCode);
+
+void __cdecl GetIntegrationParam(SDK_Reference *SDKSessionID,
+	unsigned char *Adv_Activation, unsigned short int *Adv_Niter, float *Adv_MSE_Threshold,
+	long *ErrorCode);
+
+void __cdecl SetUnwrapParam(SDK_Reference *SDKSessionID,
+	unsigned short int UnwrappingAlgorithm, unsigned char UnwrappingOptions[],
+	long unwrapOptions_bufSize, long *ErrorCode);
+
+void __cdecl GetUnwrapParam(SDK_Reference *SDKSessionID,
+	unsigned short int *UnwrappingAlgoritm, unsigned char UnwrappingOptions[],
+	long unwrapOptions_bufSize, long *ErrorCode);
+
+void __cdecl getIntegrationParamOut(SDK_Reference *SDKSessionID,
+	LVBoolean *Adv_Activation, unsigned short int *Adv_Niter, float *Adv_MSE_Threshold,
+	long *ErrorCode);
+
+void __cdecl ADVTR_GetAnalysisArraySize(SDK_Reference *SDKSessionID,
+	double TR_AnalyseIn, ArraySize *AnalysisArraySize, long *ErrorCode);
+
+void __cdecl ADVTR_ComputeAnalysisTr(SDK_Reference *SDKSessionID, ArraySize *ImageSize,
+	short int InterferogramI16[], long interfero_bufSize, double *TR_AnalyseOut,
+	long *ErrorCode);
+
+void __cdecl ADVTR_ArrayAnalysisTr(SDK_Reference *SDKSessionID, ArraySize *ImageSize,
+	short int InterferogramI16[], long interfero_bufSize, double TR_AnalyseIn,
+	ArraySize *AnalysisArraySize, float Phase[], long phase_bufSize,
+	float Intensity[], long intensity_bufSize, TiltInfo *TiltInformation,
+	long *ErrorCode);
+
+void __cdecl GetImageInfo(SDK_Reference *SDKSessionID, char InterferogramFile[],
+	ArraySize *ImageSize, long *ErrorCode);
+
+
+// Input-Output functions
+void __cdecl LoadInterferogram(SDK_Reference *SDKSessionID,
+	char InterferogramFile[], ArraySize *ImageSize, short int InterferogramI16[],
+	long interfero_bufSize, long *ErrorCode);
+
+void __cdecl LoadMeasurementInfo(SDK_Reference *SDKSessionID, char PhaseFile[],
+	ArraySize *AnalysisArraySize, long *ErrorCode);
+
+void __cdecl LoadMeasurement(SDK_Reference *SDKSessionID, char PhaseFile[],
+	ArraySize *AnalysisArraySize, float Phase[], long Phase_bufSize,
+	float Intensity[], long Intensity_bufSize, long *ErrorCode);
+
+void __cdecl SaveLastMeasurement(SDK_Reference *SDKSessionID, char GenericPath[],
+	unsigned short int MeasurementList[], long measurementList_bufSize,
+	char MeasurementFilesOut[], long filesOut_bufSize, long *ErrorCode);
+
+void __cdecl SaveMeasurement(SDK_Reference *SDKSessionID, char GenericPath[],
+	ArraySize *AnalysisArraySize, float Phase[], long Phase_bufSize,
+	float Intensity[], long Intensity_bufSize, char PhaseFileOut[],
+	long phaseFileOut_bufSize, char IntensityFileOut[],
+	long intensityFileOut_bufSize, long *ErrorCode);
+
+
+long __cdecl LVDLLStatus(char *errStr, int errStrLen, void *module);
+
+
+//****************************************************************//
+// Definitions of structures used in the Zernike_SDK functions    //
+//****************************************************************//
+
+
+// Zernike Information structure giving on information on the projection base and the number of polynomials.
+typedef struct {
+	unsigned short int Base;
+	long Polynomials;
+	} ZernikeInformation;
+
+//Zernike Parameters giving usefull information for the Zernike calculation
+typedef struct {
+	unsigned long ImageRowSize;
+	unsigned long ImageColSize;
+	unsigned long MaskRowSize;
+	unsigned long MaskColSize;
+	unsigned short int Base;
+	} ZernikeParam;
+
+// Projection Basis Parameters, used with MET_GetProjectionBasisParameters
+// defines the position and dimension of the pupil in the image array,
+// as well as, the Basis type: Zernike or Legendre
+typedef struct {
+	unsigned long PupilSize_Height;
+	unsigned long PupilSize_Width;
+	float PupilPosition_CH;
+	float PupilPosition_CW;
+	unsigned long ImageSize_Height;
+	unsigned long ImageSize_Width;
+	unsigned short Basis;
+	} ZKLParam;
+
+//**************************************************************//
+// Zernike_SDK Basic functions                                        //
+//**************************************************************//
+
+/*!
+ * Zernike_PhaseFiltering
+ */
+void __cdecl Zernike_PhaseFiltering(float PhaseMap[], long phase_bufSize,
+	ArraySize *PhaseMapArraySize, double ProjectionCoefficients[],
+	long projCoef_bufSize, unsigned char PolyListToFilter[],
+	long polyList_bufSize, unsigned short int Filtering_Option, long *ErrorCode);
+/*!
+ * Zernike_GetZernikeInfo
+ */
+void __cdecl Zernike_GetZernikeInfo(ZernikeInformation *ZernikeInfo, ArraySize *PhaseMapArraySize,
+	char ZernikeVersion[], long version_bufSize);
+/*!
+ * Zernike_PhaseProjection
+ */
+void __cdecl Zernike_PhaseProjection(float PhaseMap[], long phase_bufSize,
+	ArraySize *PhaseMapArraySize, double ProjectionCoefficientsIn[],
+	long projCoef_bufSize, long *ErrorCode);
+/*!
+ * Zernike_GetProjectionSet
+ */
+void __cdecl Zernike_GetProjectionSet(float ProjectionSetIn[],
+	long ZLprojSet_bufSize, ZernikeInformation *ZernikeInfo, ArraySize *PhaseMapArraySize,
+	long *ErrorCode);
+/*!
+ * Zernike_UpdateProjection_fromUserProfile
+ */
+long __cdecl Zernike_UpdateProjection_fromUserProfile(
+	char UserProfileDirectory[], unsigned char PolynomialOrder, long *ErrorCode);
+/*!
+ * Zernike_UpdateProjection_fromPhaseFile
+ */
+long __cdecl Zernike_UpdateProjection_fromPhaseFile(char PhaseFile[],
+	unsigned char PolynomialOrder, long *ErrorCode);
+/*!
+ * Zernike_UpdateProjection_fromParameter
+ */
+long __cdecl Zernike_UpdateProjection_fromParameter(ZernikeParam *ZernkeParameters,
+	unsigned char PolynomialOrder, long *ErrorCode);
+
+/*!
+ * Zernike_UpdateProjection_fromParameters2
+ * This function computes the Projection Basis (Zernike or Legendre) according
+ * the input parameters which are:
+ * - Dimension & Position of the analysis pupil
+ * - Dimension of the image that will contain the analysis pupil
+ * - Choice of the Basis that will be computed (Zernike or Legendre)
+ *
+ * If the input "Mask_Obstruction" array is not empty, the program will used
+ * it  for computing the Projection Basis. In this case, the dimension of the
+ * "Mask_Obstruction" array should be identic to the image dimension specified
+ * in the ProjectionBasis_Parameters.
+ */
+void __cdecl Zernike_UpdateProjection_fromParameters2(
+	ZKLParam *ProjectionBasis_Parameters, float Mask_Obstruction[],
+	long mask_bufSize, ArraySize *MaskArraySize, unsigned char PolynomialsOrder,
+	long *ErrorCode);
+
+/*!
+ * Zernike_FreeMemory
+ */
+long __cdecl Zernike_FreeMemory(long *ErrorCode);
+/*!
+ * Zernike_GetPolynomialsList
+ */
+void __cdecl Zernike_GetPolynomialsList(char PlynomialsList[],
+	long polyList_bufSize);
+
+
+#pragma pack(pop)
