@@ -51,8 +51,6 @@ class ObisLaser(LaserDevice):
         self._logger.info('OBIS laser model: [%s]' % response)
         response = self.send('SYSTem:INFormation:SNUMber?')
         self._logger.info('OBIS laser serial number: [%s]' % response)
-        response = self.send('SYSTem:INFormation:SNUMber?')
-        self._logger.info('OBIS laser serial number: [%s]' % response)
         response = self.send('SYSTem:CDRH?')
         self._logger.info('CDRH safety: [%s]' % response)
         response = self.send('SOURce:TEMPerature:APRobe?')
@@ -155,7 +153,7 @@ class ObisLaser(LaserDevice):
     def get_max_power_mw(self):
         """Gets the maximum laser power in mW."""
         power_w = self.send('SYSTem:INFormation:POWer?')
-        return float(power_w / 1000)
+        return float(power_w * 1000)
 
     @lock_comms
     def get_power_mw(self):
@@ -168,8 +166,8 @@ class ObisLaser(LaserDevice):
     @lock_comms
     def _set_power_mw(self, mW):
         mW = min(mW, self.get_max_power_mw)
-        self._logger.info("Setting laser power to %.4fW." % (mW * 1000.0))
-        self.send("SOURce:POWer:LEVel:IMMediate:AMPLitude %.4f" % mW * 1000.0)
+        self._logger.info("Setting laser power to %.4fW." % (mW / 1000.0))
+        self.send("SOURce:POWer:LEVel:IMMediate:AMPLitude %.4f" % mW / 1000.0)
 
     @lock_comms
     def get_set_power_mw(self):
