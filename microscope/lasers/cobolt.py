@@ -20,6 +20,7 @@ import threading
 import time
 from microscope import devices
 import functools
+import Pyro4
 
 
 def lock_comms(func):
@@ -36,6 +37,7 @@ def lock_comms(func):
     return wrapper
 
 
+@Pyro4.expose
 class CoboltLaser(devices.LaserDevice):
     def __init__(self, com=None, baud=None, timeout=0.01, **kwargs):
         super(CoboltLaser, self).__init__()
