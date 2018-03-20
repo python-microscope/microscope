@@ -20,7 +20,9 @@
 import abc
 from microscope import devices
 import Pyro4
-import time
+import serial
+import io
+
 
 class FilterWheelBase(devices.Device):
     __metaclass__ = abc.ABCMeta
@@ -54,3 +56,92 @@ class FilterWheelBase(devices.Device):
     @Pyro4.expose
     def get_filters(self):
         return self._filters.items()
+
+
+@Pyro4.expose
+class ThorlabsFilterWheel(FilterWheelBase):
+    """Implements FilterServer wheel interface for Thorlabs FW102C."""
+    def __init__(self, com, baud, timeout, **kwargs):
+        super(self.__class__, self).__init__(com, baud, timeout, **kwargs)
+        self.eol = '\r'
+        # The EOL character means the serial connection must be wrapped in a
+        # TextIOWrapper.
+        rawSerial = serial.Serial(port=com,
+                baudrate=baud, timeout=timeout,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+                xonxoff=0)
+        # Use a buffer size of 1 in the BufferedRWPair. Without this,
+        # either 8192 chars need to be read before data is passed upwards,
+        # or he buffer needs to be flushed, incurring a serial timeout.
+        self.connection = io.TextIOWrapper(io.BufferedRWPair(rawSerial, rawSerial, 1))
+        # Last received wheel position.
+        self.lastPosition = None
+        # Last requested position.
+        self.requestedPosition = None
+
+
+    def initialize(self, *args, **kwargs):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
+    def _set_position(self, n):
+        """Private function to move to position n."""
+        command = 'pos=%d' % n
+        self.connection.write(unicode(command + self.eol))
+        # The serial connection will timeout until new position is reached.
+        # Count timeouts to detect failure to return to responsive state.
+        count = 0
+        maxCount = 1000
+        response = None
+        while True:
+            response = self.connection.readline().strip()
+            if response == command:
+                # Command echo received - reset counter.
+                count = 0
+            elif response == '>':
+                # Command input caret received - connection is responsive again.
+                break
+            else:
+                # Increment counter and test against maxCount.
+                count += 1
+                if count > maxCount:
+                    self.connection.flush()
+                    raise Exception('fw102c: Communication error.')
+                time.sleep(0.01)
+
+
+    def _get_position(self):
+        """Private function to read current position."""
+        try:
+            currentPosition = int(self._send_command('pos?'))
+        except:
+            return self.lastPosition
+        else:
+            self.lastPosition = currentPosition
+            return self.lastPosition
+
+
+    def getPosition(self):
+        """Public function to fetch current position."""
+        return self.lastPosition
+
+
+    def _send_command(self, command):
+        """Send a command and return any result."""
+        result = None
+        self.connection.write(unicode(command + self.eol))
+        response = 'dummy'
+        while response not in [command, '']:
+            # Read until we receive the command echo.
+            response = self.connection.readline().strip()
+        if command.endswith('?'):
+            # Last response was the command. Next is result.
+            result = self.connection.readline().strip()
+        while response not in ['>', '']:
+            # Read until we receive the input caret.
+            response = self.connection.readline().strip()
+        return result
+
