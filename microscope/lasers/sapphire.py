@@ -3,6 +3,7 @@
 #
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
 # and 2017 Ian Dobbie (Ian.Dobbie@gmail.com)
+# and 2018 Tiago Susano Pinto (tiagosusanopinto@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,6 +50,7 @@ class SapphireLaser(devices.LaserDevice):
         # Start a logger.
         self._write('?HID')
         response = self._readline()
+        # response = self.send('?HID')
         self._logger.info("Saphire laser serial number: [%s]" % int(response))
         self.comms_lock = threading.RLock()
 
@@ -59,8 +61,9 @@ class SapphireLaser(devices.LaserDevice):
 
     @lock_comms
     def clearFault(self):
-        self._write('fl?')
+        self._write('?fl')
         self._readline()
+        # self.send('?fl')
         return self.get_status()
 
     def flush_buffer(self):
@@ -70,13 +73,35 @@ class SapphireLaser(devices.LaserDevice):
 
     @lock_comms
     def is_alive(self):
-        self._write('l?')
+        self._write('?l')
         response = self._readline()
         return response in '01'
+        # return self.send('?l') in '01'
+
+    def parseLaserStatus(status):
+        if status == 1:
+            return 'Start up'
+        elif status == 2:
+            return 'Warmup'
+        elif status == 3:
+            return 'Standby'
+        elif status == 4:
+            return 'Laser on'
+        elif status == 5:
+            return 'Laser ready'
+        elif status == 6:
+            return 'Error'
+        else:
+            return 'Undefined'
 
     @lock_comms
     def get_status(self):
         result = []
+        self._write('?sta')
+        result.append('Laser status: ' +
+            SapphireLaser.parseLaserStatus(self._readline()))
+            # SapphireLaser.parseLaserStatus(self.send('?sta')))
+
         for cmd, stat in [('?l', 'Emission on?'),
                             ('?sp', 'Target power:'),
                             ('?p', 'Measured power:'),
@@ -84,12 +109,13 @@ class SapphireLaser(devices.LaserDevice):
                             ('?hh', 'Head operating hours:')]:
             self._write(cmd)
             result.append(stat + ' ' + self._readline())
+            # result.append(stat + ' ' + self.send(cmd))
         return result
 
     @lock_comms
     def _on_shutdown(self):
         # Disable laser.
-        self.send('l=0')
+        self._write('l=0')
         self.flush_buffer()
 
 
@@ -121,6 +147,7 @@ class SapphireLaser(devices.LaserDevice):
         self._logger.info("Turning laser OFF.")
         self._write('l=0')
         return self._readline()
+        # return self.send('l=0')
 
 
     ## Return True if the laser is currently able to produce light.
@@ -129,6 +156,7 @@ class SapphireLaser(devices.LaserDevice):
         self._write('?l')
         response = self._readline()
         return response == '1'
+        # return self.send('?l') == '1'
 
 
     @lock_comms
@@ -137,6 +165,7 @@ class SapphireLaser(devices.LaserDevice):
         self._write('?maxlp')
         response = self._readline()
         return float(response)
+        # return float(self.send('?maxlp'))
 
 
     @lock_comms
@@ -145,16 +174,18 @@ class SapphireLaser(devices.LaserDevice):
             return 0
         self._write('?p')
         return float(self._readline())
+        # return float(self.send('?p'))
 
 
     @lock_comms
     def _set_power_mw(self, mW):
         mW = min(mW, self.get_max_power_mw)
-        self._logger.info("Setting laser power to %.4fW."  % (mW ))
-        return self.send("@cobasp %.4f" % (mW))
+        self._logger.info("Setting laser power to %.4fmW."  % (mW ))
+        return self.send('p=%.4f' % mW)
 
 
     @lock_comms
     def get_set_power_mw(self):
         self._write('?sp')
         return float(self._readline())
+        # return float(self.send('?sp'))
