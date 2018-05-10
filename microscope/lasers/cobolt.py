@@ -155,7 +155,7 @@ class CoboltLaser(devices.LaserDevice):
 
     @lock_comms
     def _set_power_mw(self, mW):
-        mW = min(mW, self.get_max_power_mw)
+        mW = min(mW, self.get_max_power_mw())
         self._logger.info("Setting laser power to %.4fW."  % (mW / 1000.0, ))
         return self.send("@cobasp %.4f" % (mW / 1000.0))
 
