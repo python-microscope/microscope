@@ -24,6 +24,8 @@ Upcoming release
 
 * Now dependent on the enum34 package for python pre 3.4.
 
+* Python 3 fixes for controlling lasers.
+
 
 Version 0.1.0 (2017/05/04)
 --------------------------
