@@ -39,31 +39,47 @@ def lock_comms(func):
 
 
 class SapphireLaser(devices.LaserDevice):
-    def __init__(self, com=None, baud=19200, timeout=0.01, **kwargs):
-        #laser controller must run at 19200 baud, 8+1 bits,
-        # no parity or flow control 
+    def __init__(self, com=None, baud=19200, timeout=0.5, **kwargs):
+        # laser controller must run at 19200 baud, 8+1 bits,
+        # no parity or flow control
+        # timeout is recomended to be over 0.5
         super(SapphireLaser, self).__init__()
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
-        # Start a logger.
-        self._write('?HID')
-        response = self._readline()
-        # response = self.send('?HID')
-        self._logger.info("Saphire laser serial number: [%s]" % int(response))
+        # Turning off command prompt
+        self.send('>=0')
+        # Head ID value is a float point value,
+        # but only the integer part is significant
+        headID = int(float(self.send('?hid')))
+        self._logger.info("Sapphire laser serial number: [%s]" % int(headID))
+
         self.comms_lock = threading.RLock()
+
+    def _read(self, num_chars):
+        """Simple passthrough to read numChars from connection."""
+        return self.connection.read(num_chars).decode()
+
+    def _readline(self):
+        """Simple passthrough to read one line from connection."""
+        return self.connection.readline().strip().decode()
+
+    def _write(self, command):
+        """Send a command to the device."""
+        # Overrided with a specific format.
+        commandEncoded = (command + '\r\n').encode()
+        self.connection.write(commandEncoded)
+        return self._readline()
 
     def send(self, command):
         """Send command and retrieve response."""
-        self._write(str(command))
+        self._write(command)
         return self._readline()
 
     @lock_comms
     def clearFault(self):
-        self._write('?fl')
-        self._readline()
-        # self.send('?fl')
+        self.flush_buffer()
         return self.get_status()
 
     def flush_buffer(self):
@@ -73,23 +89,20 @@ class SapphireLaser(devices.LaserDevice):
 
     @lock_comms
     def is_alive(self):
-        self._write('?l')
-        response = self._readline()
-        return response in '01'
-        # return self.send('?l') in '01'
+        return self.send('?l') in '01'
 
     def parseLaserStatus(status):
-        if status == 1:
+        if status == '1':
             return 'Start up'
-        elif status == 2:
+        elif status == '2':
             return 'Warmup'
-        elif status == 3:
+        elif status == '3':
             return 'Standby'
-        elif status == 4:
+        elif status == '4':
             return 'Laser on'
-        elif status == 5:
+        elif status == '5':
             return 'Laser ready'
-        elif status == 6:
+        elif status == '6':
             return 'Error'
         else:
             return 'Undefined'
@@ -97,19 +110,26 @@ class SapphireLaser(devices.LaserDevice):
     @lock_comms
     def get_status(self):
         result = []
-        self._write('?sta')
-        result.append('Laser status: ' +
-            SapphireLaser.parseLaserStatus(self._readline()))
-            # SapphireLaser.parseLaserStatus(self.send('?sta')))
 
-        for cmd, stat in [('?l', 'Emission on?'),
+        result.append('Laser status: ' +
+            SapphireLaser.parseLaserStatus(self.send('?sta')))
+
+        for cmd, stat in [('?l', 'Ligh Emission on?'),
+                            ('?t', 'TEC Servo on?'),
+                            ('?k', 'Key Switch on?'),
                             ('?sp', 'Target power:'),
                             ('?p', 'Measured power:'),
-                            ('?fl', 'Fault?'),
                             ('?hh', 'Head operating hours:')]:
-            self._write(cmd)
-            result.append(stat + ' ' + self._readline())
-            # result.append(stat + ' ' + self.send(cmd))
+            result.append(stat + ' ' + self.send(cmd))
+
+        self._write('?fl')
+        faults = self._readline()
+        response = self._readline()
+        while response:
+            faults += ' ' + response
+            response = self._readline()
+
+        result.append(faults)
         return result
 
     @lock_comms
@@ -130,10 +150,16 @@ class SapphireLaser(devices.LaserDevice):
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
-        response = self.send('l=1')
+        response = self._write('l=1')
         self._logger.info("l=1: [%s]" % response)
 
-        if not self.get_is_on():
+        # Enabling laser might take more than 500ms (default timeout)
+        prevTimeout = self.connection.timeout
+        self.connection.timeout = max(1, prevTimeout)
+        isON = self.get_is_on()
+        self.connection.timeout = prevTimeout
+
+        if not isON:
             # Something went wrong.
             self._logger.error("Failed to turn on. Current status:\r\n")
             self._logger.error(self.get_status())
@@ -145,47 +171,41 @@ class SapphireLaser(devices.LaserDevice):
     @lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
-        self._write('l=0')
-        return self._readline()
-        # return self.send('l=0')
+        return self._write('l=0')
 
 
     ## Return True if the laser is currently able to produce light.
     @lock_comms
-    def get_is_on(self):
-        self._write('?l')
-        response = self._readline()
-        return response == '1'
-        # return self.send('?l') == '1'
+    def get_is_on(self, waitForResponse = 0):
+        return self.send('?l') == '1'
 
 
     @lock_comms
     def get_max_power_mw(self):
-        # 'gmlp?' gets the maximum laser power in mW.
-        self._write('?maxlp')
-        response = self._readline()
-        return float(response)
-        # return float(self.send('?maxlp'))
+        # '?maxlp' gets the maximum laser power in mW.
+        return float(self.send('?maxlp'))
 
+    @lock_comms
+    def get_min_power_mw(self):
+        # '?minlp' gets the minimum laser power in mW.
+        return float(self.send('?minlp'))
 
     @lock_comms
     def get_power_mw(self):
         if not self.get_is_on():
             return 0
-        self._write('?p')
-        return float(self._readline())
-        # return float(self.send('?p'))
+        return float(self.send('?p'))
 
 
     @lock_comms
     def _set_power_mw(self, mW):
-        mW = min(mW, self.get_max_power_mw)
-        self._logger.info("Setting laser power to %.4fmW."  % (mW ))
-        return self.send('p=%.4f' % mW)
+        mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
+        self._logger.info("Setting laser power to %.4fmW." % (mW))
+        # using send instead of _write, because
+        # if laser is not on, warning is returned
+        return self.send('p=%.3f' % mW)
 
 
     @lock_comms
     def get_set_power_mw(self):
-        self._write('?sp')
-        return float(self._readline())
-        # return float(self.send('?sp'))
+        return float(self.send('?sp'))
