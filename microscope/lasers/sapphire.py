@@ -200,7 +200,7 @@ class SapphireLaser(devices.LaserDevice):
     @lock_comms
     def _set_power_mw(self, mW):
         mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
-        self._logger.info("Setting laser power to %.4fmW." % (mW))
+        self._logger.info("Setting laser power to %.3fmW." % mW)
         # using send instead of _write, because
         # if laser is not on, warning is returned
         return self.send('p=%.3f' % mW)
