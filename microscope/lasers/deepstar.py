@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 #
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
+# Copyright 2018 David Pinto <david.pinto@bioch.ox.ac.uk>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,20 +48,18 @@ class DeepstarLaser(devices.LaserDevice):
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # If the laser is currently on, then we need to use 7-byte mode; otherwise we need to
         # use 16-byte mode.
-        self._write('S?')
+        self._write(b'S?')
         response = self._readline()
-        self._logger.info("Current laser state: [%s]" % response)
+        self._logger.info("Current laser state: [%s]", response.decode())
         self.comms_lock = threading.RLock()
-        
 
     def _write(self, command):
         """Send a command."""
-        # We'll need to pad the command out to 16 bytes. There's also a 7-byte mode but
-        # we never need to use it.
-        commandLength = 16
-        # CR/LF count towards the byte limit, hence the -2.
-        command = command + (' ' * (commandLength - 2 - len(command)))
-        response = self.connection.write(command + '\r\n')
+        # We'll need to pad the command out to 16 bytes. There's also
+        # a 7-byte mode but we never need to use it.  CR/LF counts
+        # towards the byte limit, hence 14 (16-2)
+        command = command.ljust(14) + b'\r\n'
+        response = self.connection.write(command)
         return response
 
 
@@ -70,8 +69,8 @@ class DeepstarLaser(devices.LaserDevice):
     def get_status(self):
         result = []
         for i in xrange(4):
-            self._write('STAT%d' % i)
-            result.append(self._readline())
+            self._write(('STAT%d' % i).encode())
+            result.append(self._readline().decode())
         return result
 
 
@@ -79,27 +78,23 @@ class DeepstarLaser(devices.LaserDevice):
     @_flush_buffer
     def enable(self):
         self._logger.info("Turning laser ON.")
-        self._write('LON')
-        response = self._readline()
-        #Turn on deepstar mode with internal voltage ref
-        self._logger.info("Enable response: [%s]" % response)
-        self._write('L2')
-        response = self._readline()
-        self._logger.info("L2 response: [%s]" % response)
-        #Enable internal peak power
-        self._write('IPO')
-        response = self._readline()
-        self._logger.info("Enable-internal peak power response: [%s]" % response)
-        #Set MF turns off internal digital and bias modulation
-        self._write('MF')
-        response = self._readline()
-        self._logger.info("MF response [%s]" % response)
+        # Turn on deepstar mode with internal voltage ref
+        # Enable internal peak power
+        # Set MF turns off internal digital and bias modulation
+        for cmd, msg in [(b'LON', 'Enable response: [%s]'),
+                         (b'L2', 'L2 response: [%s]'),
+                         (b'IPO', 'Enable-internal peak power response: [%s]'),
+                         (b'MF', 'MF response [%s]')]:
+            self._write(cmd)
+            response = self._readline()
+            self._logger.info(msg, response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
-            self._write('S?')
+            self._write(b'S?')
             response = self._readline()
-            self._logger.error("Failed to turn on. Current status: %s" % response)
+            self._logger.error("Failed to turn on. Current status: [%s]",
+                               response.decode())
             return False
         return True
 
@@ -113,46 +108,46 @@ class DeepstarLaser(devices.LaserDevice):
     @_flush_buffer
     def disable(self):
         self._logger.info("Turning laser OFF.")
-        self._write('LF')
-        return self._readline()
+        self._write(b'LF')
+        return self._readline().decode()
 
 
     @_flush_buffer
     def isAlive(self):
-        self._write('S?')
+        self._write(b'S?')
         response = self._readline()
-        return response.startswith('S')
+        return response.startswith(b'S')
 
 
     ## Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
     @_flush_buffer
     def get_is_on(self):
-        self._write('S?')
+        self._write(b'S?')
         response = self._readline()
-        self._logger.info("Are we on? [%s]" % response)
-        return response == 'S2'
+        self._logger.info("Are we on? [%s]", response.decode())
+        return response == b'S2'
 
 
     @_flush_buffer
     def _set_power(self, level):
         if (level > 1.0) :
             return
-        self._logger.info("level=%d" % level)
+        self._logger.info("level=%d", level)
         power=int (level*0xFFF)
-        self._logger.info("power=%d" % power)
+        self._logger.info("power=%d", power)
         strPower = "PP%03X" % power
-        self._logger.info("power level=%s" %strPower)
-        self._write(strPower)
+        self._logger.info("power level=%s", strPower)
+        self._write(six.b(strPower))
         response = self._readline()
-        self._logger.info("Power response [%s]" % response)
+        self._logger.info("Power response [%s]", response.decode())
         return response
 
 
     @_flush_buffer
     def get_max_power_mw(self):
         # Max power in mW is third token of STAT0.
-        self._write('STAT0')
+        self._write(b'STAT0')
         response = self._readline()
         return int(response.split()[2])
 
@@ -162,9 +157,9 @@ class DeepstarLaser(devices.LaserDevice):
         if not self.get_is_on():
             # Laser is not on.
             return 0
-        self._write('PP?')
+        self._write(b'PP?')
         response = self._readline()
-        return int('0x' + response.strip('PP'), 16)
+        return int(b'0x' + response.strip(b'P'), 16)
 
 
     def get_power_mw(self):

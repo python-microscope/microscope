@@ -863,7 +863,7 @@ class LaserDevice(Device):
     def _write(self, command):
         """Send a command to the device."""
         # Override if a specific format is required.
-        response = self.connection.write(command + '\r\n')
+        response = self.connection.write(command + b'\r\n')
         return response
 
     @abc.abstractmethod

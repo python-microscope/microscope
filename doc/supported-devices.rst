@@ -27,4 +27,3 @@ Lasers
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
 - Deepstar (:class:`microscope.lasers.deepstar`)
-- Sapphire (:class:`microscope.lasers.saphhire`)
