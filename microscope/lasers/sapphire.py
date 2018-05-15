@@ -53,7 +53,7 @@ class SapphireLaser(devices.LaserDevice):
         # Head ID value is a float point value,
         # but only the integer part is significant
         headID = int(float(self.send('?hid')))
-        self._logger.info("Sapphire laser serial number: [%s]" % int(headID))
+        self._logger.info("Sapphire laser serial number: [%s]" % headID)
 
         self.comms_lock = threading.RLock()
 
@@ -163,8 +163,7 @@ class SapphireLaser(devices.LaserDevice):
             # Something went wrong.
             self._logger.error("Failed to turn on. Current status:\r\n")
             self._logger.error(self.get_status())
-            return False
-        return True
+        return isON
 
 
     ## Turn the laser OFF.
@@ -176,7 +175,7 @@ class SapphireLaser(devices.LaserDevice):
 
     ## Return True if the laser is currently able to produce light.
     @lock_comms
-    def get_is_on(self, waitForResponse = 0):
+    def get_is_on(self):
         return self.send('?l') == '1'
 
 
@@ -192,8 +191,6 @@ class SapphireLaser(devices.LaserDevice):
 
     @lock_comms
     def get_power_mw(self):
-        if not self.get_is_on():
-            return 0
         return float(self.send('?p'))
 
 
