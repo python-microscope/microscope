@@ -25,6 +25,7 @@ device may be served from a separate process, or even from a different PC.
 """
 
 import abc
+import functools
 import itertools
 import logging
 import time
@@ -32,6 +33,7 @@ from ast import literal_eval
 from collections import OrderedDict
 from six import string_types
 from threading import Thread
+import threading
 import Pyro4
 import numpy
 
@@ -745,6 +747,59 @@ class TriggerTargetMixIn(object):
 
 
 @Pyro4.expose
+class SerialDeviceMixIn(object):
+    """MixIn for devices that are controlled via serial.
+
+    Currently handles the flushing and locking of the comms channel
+    until a command has finished, and the passthrough to the serial
+    channel.
+
+    TODO: add more logic to handle the code duplication of serial
+    devices.
+    """
+    def __init__(self, *args, **kwargs):
+        super(SerialDeviceMixIn, self).__init__(*args, **kwargs)
+        ## TODO: We should probably construct the connection here but
+        ##       the Serial constructor takes a lot of arguments, and
+        ##       it becomes tricky to separate those from arguments to
+        ##       the constructor of other parent classes.
+        self.connection = None # serial.Serial (to be constructed by child)
+        self._comms_lock = threading.RLock()
+
+    def _readline(self):
+        """Read a line from connection without leading and trailing whitespace.
+        """
+        return self.connection.readline().strip()
+
+    def _write(self, command):
+        """Send a command to the device.
+
+        This is not a simple passthrough to serial.Serial.write, it
+        will append `b'\r\n'` to command.  Override this method if a
+        device requires a specific format.
+        """
+        return self.connection.write(command + b'\r\n')
+
+    @staticmethod
+    def lock_comms(func):
+        """Decorator to flush input buffer and lock communications.
+
+        There have been problems with the DeepStar lasers returning
+        junk characters after the expected response, so it is
+        advisable to flush the input buffer prior to running a command
+        and subsequent readline.  It also locks the comms channel so
+        that a function must finish all its communications before
+        another can run.
+        """
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            with self._comms_lock:
+                self.connection.flushInput()
+                return func(self, *args, **kwargs)
+        return wrapper
+
+
+@Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
 
@@ -849,22 +904,7 @@ class LaserDevice(Device):
     @abc.abstractmethod
     def __init__(self, *args, **kwargs):
         super(LaserDevice, self).__init__(*args, **kwargs)
-        self.connection = None
         self._set_point = None
-
-    def _read(self, num_chars):
-        """Simple passthrough to read numChars from connection."""
-        return self.connection.read(num_chars)
-
-    def _readline(self):
-        """Simple passthrough to read one line from connection."""
-        return self.connection.readline().strip()
-
-    def _write(self, command):
-        """Send a command to the device."""
-        # Override if a specific format is required.
-        response = self.connection.write(command + b'\r\n')
-        return response
 
     @abc.abstractmethod
     def get_status(self):

@@ -16,32 +16,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import serial
-import threading
-import functools
 
 from microscope import devices
 
-def _flush_buffer(func):
-    """A decorator to flush the input buffer prior to issuing a command.
 
-    There have been problems with the DeepStar lasers returning junk characters
-    after the expected response, so it is advisable to flush the input buffer
-    prior to running a command and subsequent readline. It also locks the comms
-    channel so that a function must finish all its comms before another can run.
-    """
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self.comms_lock:
-            self.connection.flushInput()
-            return func(self, *args, **kwargs)
-
-    return wrapper
-
-
-class DeepstarLaser(devices.LaserDevice):
-    def __init__(self, com, baud, timeout, **kwargs):
-        super(DeepstarLaser, self).__init__()
+class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+    def __init__(self, com, baud, timeout, *args, **kwargs):
+        super(DeepstarLaser, self).__init__(*args, **kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -51,7 +34,6 @@ class DeepstarLaser(devices.LaserDevice):
         self._write(b'S?')
         response = self._readline()
         self._logger.info("Current laser state: [%s]", response.decode())
-        self.comms_lock = threading.RLock()
 
     def _write(self, command):
         """Send a command."""
@@ -65,7 +47,7 @@ class DeepstarLaser(devices.LaserDevice):
 
     ## Get the status of the laser, by sending the
     # STAT0, STAT1, STAT2, and STAT3 commands.
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
         for i in xrange(4):
@@ -75,7 +57,7 @@ class DeepstarLaser(devices.LaserDevice):
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on deepstar mode with internal voltage ref
@@ -105,14 +87,14 @@ class DeepstarLaser(devices.LaserDevice):
         pass
 
     ## Turn the laser OFF.
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
         self._write(b'LF')
         return self._readline().decode()
 
 
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def isAlive(self):
         self._write(b'S?')
         response = self._readline()
@@ -121,7 +103,7 @@ class DeepstarLaser(devices.LaserDevice):
 
     ## Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
         self._write(b'S?')
         response = self._readline()
@@ -129,7 +111,7 @@ class DeepstarLaser(devices.LaserDevice):
         return response == b'S2'
 
 
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def _set_power(self, level):
         if (level > 1.0) :
             return
@@ -144,7 +126,7 @@ class DeepstarLaser(devices.LaserDevice):
         return response
 
 
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
         # Max power in mW is third token of STAT0.
         self._write(b'STAT0')
@@ -152,7 +134,7 @@ class DeepstarLaser(devices.LaserDevice):
         return int(response.split()[2])
 
 
-    @_flush_buffer
+    @devices.SerialDeviceMixIn.lock_comms
     def _get_power(self):
         if not self.get_is_on():
             # Laser is not on.

@@ -11,6 +11,7 @@ Upcoming release
 * New MixIn classes:
 
   * TriggerTargetMixIn
+  * SerialDeviceMixIn
 
 * Added Enum for `TriggerType` and `TriggerMode`.
 

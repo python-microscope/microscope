@@ -18,32 +18,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import serial
-import threading
-import time
+
 from microscope import devices
-import functools
 
 
-def lock_comms(func):
-    """A decorator to flush the input buffer prior to issuing a command.
-
-    Locks the comms channel so that a function must finish all its comms
-    before another can run.
-    """
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self.comms_lock:
-            return func(self, *args, **kwargs)
-
-    return wrapper
-
-
-class SapphireLaser(devices.LaserDevice):
-    def __init__(self, com=None, baud=19200, timeout=0.5, **kwargs):
+class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+    def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__()
+        super(SapphireLaser, self).__init__(*args, **kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -54,8 +38,6 @@ class SapphireLaser(devices.LaserDevice):
         # but only the integer part is significant
         headID = int(float(self.send('?hid')))
         self._logger.info("Sapphire laser serial number: [%s]" % headID)
-
-        self.comms_lock = threading.RLock()
 
     def _read(self, num_chars):
         """Simple passthrough to read numChars from connection."""
@@ -77,7 +59,7 @@ class SapphireLaser(devices.LaserDevice):
         self._write(command)
         return self._readline()
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def clearFault(self):
         self.flush_buffer()
         return self.get_status()
@@ -87,7 +69,7 @@ class SapphireLaser(devices.LaserDevice):
         while len(line) > 0:
             line = self._readline()
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
         return self.send('?l') in '01'
 
@@ -107,7 +89,7 @@ class SapphireLaser(devices.LaserDevice):
         else:
             return 'Undefined'
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
 
@@ -132,7 +114,7 @@ class SapphireLaser(devices.LaserDevice):
         result.append(faults)
         return result
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def _on_shutdown(self):
         # Disable laser.
         self._write('l=0')
@@ -140,13 +122,13 @@ class SapphireLaser(devices.LaserDevice):
 
 
     ##  Initialization to do when cockpit connects.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def initialize(self):
         self.flush_buffer()
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
@@ -167,34 +149,34 @@ class SapphireLaser(devices.LaserDevice):
 
 
     ## Turn the laser OFF.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
         return self._write('l=0')
 
 
     ## Return True if the laser is currently able to produce light.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
         return self.send('?l') == '1'
 
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
         # '?maxlp' gets the maximum laser power in mW.
         return float(self.send('?maxlp'))
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_min_power_mw(self):
         # '?minlp' gets the minimum laser power in mW.
         return float(self.send('?minlp'))
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
         return float(self.send('?p'))
 
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
         mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
         self._logger.info("Setting laser power to %.3fmW." % mW)
@@ -203,6 +185,6 @@ class SapphireLaser(devices.LaserDevice):
         return self.send('p=%.3f' % mW)
 
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
         return float(self.send('?sp'))
