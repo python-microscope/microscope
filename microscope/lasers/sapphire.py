@@ -23,6 +23,16 @@ from microscope import devices
 
 
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+
+    laser_status = {
+        '1': 'Start up',
+        '2': 'Warmup',
+        '3': 'Standby',
+        '4': 'Laser on',
+        '5': 'Laser ready',
+        '6': 'Error',
+    }
+
     def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
@@ -73,28 +83,13 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def is_alive(self):
         return self.send('?l') in '01'
 
-    def parseLaserStatus(status):
-        if status == '1':
-            return 'Start up'
-        elif status == '2':
-            return 'Warmup'
-        elif status == '3':
-            return 'Standby'
-        elif status == '4':
-            return 'Laser on'
-        elif status == '5':
-            return 'Laser ready'
-        elif status == '6':
-            return 'Error'
-        else:
-            return 'Undefined'
-
     @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
 
-        result.append('Laser status: ' +
-            SapphireLaser.parseLaserStatus(self.send('?sta')))
+        status_code = self.send('?sta')
+        result.append(('Laser status: '
+                       + self.laser_status.get(status_code, 'Undefined')))
 
         for cmd, stat in [('?l', 'Ligh Emission on?'),
                             ('?t', 'TEC Servo on?'),
