@@ -159,6 +159,8 @@ class TestCamera(devices.CameraDevice):
     def _on_shutdown(self):
         pass
 
+
+@Pyro4.expose
 class TestFilterWheel(FilterWheelBase):
     def __init__(self, filters=[], *args, **kwargs):
         super(TestFilterWheel, self).__init__(filters, *args, **kwargs)
@@ -176,6 +178,7 @@ class TestFilterWheel(FilterWheelBase):
 
     def _on_shutdown(self):
         pass
+
 
 @Pyro4.expose
 class TestLaser(devices.LaserDevice):
@@ -216,6 +219,7 @@ class TestLaser(devices.LaserDevice):
         return [0, self._power][self._emission]
 
 
+@Pyro4.expose
 class TestDeformableMirror(devices.DeformableMirror):
     def __init__(self, n_actuators, *args, **kwargs):
         super(TestDeformableMirror, self).__init__(*args, **kwargs)

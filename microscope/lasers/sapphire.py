@@ -19,9 +19,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import serial
 
+import Pyro4
+
 from microscope import devices
 
 
+@Pyro4.expose
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     laser_status = {
