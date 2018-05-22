@@ -16,50 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""A dummy filter wheel class. """
-import abc
-from microscope import devices
-import Pyro4
-import serial
 import io
 
+import Pyro4
+import serial
 
-class FilterWheelBase(devices.Device):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, filters, *args, **kwargs):
-        super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._utype = devices.UFILTER
-        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
-        self._inv_filters = {val: key for key, val in self._filters.items()}
-        # The position as an integer.
-        self.add_setting('position',
-                         'int',
-                         self._get_position,
-                         self._set_position,
-                         (0, 5))
-        # The selected filter.
-        self.add_setting('filter',
-                         'enum',
-                         lambda: self._filters[self._get_position()],
-                         lambda val: self._set_position(self._inv_filters[val]),
-                         self._filters.values)
-
-    @abc.abstractmethod
-    def _get_position(self):
-        return self._position
-
-    @abc.abstractmethod
-    def _set_position(self, position):
-        self._position = position
-
-    @Pyro4.expose
-    def get_filters(self):
-        return self._filters.items()
-
+import microscope.devices
 
 @Pyro4.expose
-class ThorlabsFilterWheel(FilterWheelBase):
+class ThorlabsFilterWheel(microscope.devices.FilterWheelBase):
     """Implements FilterServer wheel interface for Thorlabs FW102C."""
     def __init__(self, com, baud, timeout, **kwargs):
         super(self.__class__, self).__init__(com, baud, timeout, **kwargs)
@@ -112,7 +77,6 @@ class ThorlabsFilterWheel(FilterWheelBase):
                     raise Exception('fw102c: Communication error.')
                 time.sleep(0.01)
 
-
     def _get_position(self):
         """Private function to read current position."""
         try:
@@ -123,11 +87,9 @@ class ThorlabsFilterWheel(FilterWheelBase):
             self.lastPosition = currentPosition
             return self.lastPosition
 
-
     def getPosition(self):
         """Public function to fetch current position."""
         return self.lastPosition
-
 
     def _send_command(self, command):
         """Send a command and return any result."""
@@ -144,4 +106,3 @@ class ThorlabsFilterWheel(FilterWheelBase):
             # Read until we receive the input caret.
             response = self.connection.readline().strip()
         return result
-

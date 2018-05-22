@@ -28,7 +28,7 @@ from PIL import Image, ImageFont, ImageDraw
 
 from microscope import devices
 from microscope.devices import keep_acquiring
-from microscope.filterwheel import FilterWheelBase
+from microscope.devices import FilterWheelBase
 
 @Pyro4.expose
 @Pyro4.behavior('single')

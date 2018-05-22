@@ -22,6 +22,11 @@ Deformable Mirrors
 - Alpao (:class:`microscope.mirror.alpao`)
 - Boston Micromachines Corporation (:class:`microscope.mirror.bmc`)
 
+Filter Wheels
+-------------
+
+- Thorlabs (:class:`microscope.filterwheels.thorlabs`)
+
 Lasers
 ------
 

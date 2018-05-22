@@ -903,3 +903,37 @@ class LaserDevice(Device):
         """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
+
+
+class FilterWheelBase(Device):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, filters, *args, **kwargs):
+        super(FilterWheelBase, self).__init__(*args, **kwargs)
+        self._utype = UFILTER
+        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
+        self._inv_filters = {val: key for key, val in self._filters.items()}
+        # The position as an integer.
+        self.add_setting('position',
+                         'int',
+                         self._get_position,
+                         self._set_position,
+                         (0, 5))
+        # The selected filter.
+        self.add_setting('filter',
+                         'enum',
+                         lambda: self._filters[self._get_position()],
+                         lambda val: self._set_position(self._inv_filters[val]),
+                         self._filters.values)
+
+    @abc.abstractmethod
+    def _get_position(self):
+        return self._position
+
+    @abc.abstractmethod
+    def _set_position(self, position):
+        self._position = position
+
+    @Pyro4.expose
+    def get_filters(self):
+        return self._filters.items()
