@@ -22,6 +22,7 @@ import serial
 from microscope import devices
 
 
+@Pyro4.expose
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com, baud, timeout, *args, **kwargs):
         super(DeepstarLaser, self).__init__(*args, **kwargs)
@@ -50,7 +51,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
-        for i in xrange(4):
+        for i in range(4):
             self._write(('STAT%d' % i).encode())
             result.append(self._readline().decode())
         return result

@@ -19,6 +19,10 @@ Upcoming release
 
   * Alpao deformable mirrors
   * Boston Micromachines Corporation (BMC) deformable mirrors
+  * Thorlabs filter wheels
+
+* Abstract class for FilterWheel moved to the `microscope.devices`
+  module, where all other abstract device class are.
 
 * New module `microscope.gui` for simple testing of individual
   devices.

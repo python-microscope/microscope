@@ -21,6 +21,7 @@ import serial
 from microscope import devices
 
 
+@Pyro4.expose
 class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com=None, baud=None, timeout=0.01, *args, **kwargs):
         super(CoboltLaser, self).__init__(*args, **kwargs)
