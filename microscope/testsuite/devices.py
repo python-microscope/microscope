@@ -20,6 +20,7 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
+import sys
 import time
 
 import Pyro4
@@ -223,3 +224,125 @@ class TestDeformableMirror(devices.DeformableMirror):
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
         self._current_pattern = pattern
+
+
+@Pyro4.expose
+@Pyro4.behavior('single')
+class DummySLM(devices.Device):
+    def __init__(self, *args, **kwargs):
+        devices.Device.__init__(self, args, kwargs)
+        self.sim_diffraction_angle = 0.
+        self.sequence_params = []
+        self.sequence_index = 0
+
+    def initialize(self, *args, **kwargs):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
+    def set_sim_diffraction_angle(self, theta):
+        self._logger.info('set_sim_diffraction_angle %f' % theta)
+        self.sim_diffraction_angle = theta
+
+    def get_sim_diffraction_angle(self):
+        return self.sim_diffraction_angle
+
+    def run(self):
+        self.enabled = True
+        self._logger.info('run')
+        return
+
+    def stop(self):
+        self.enabled = False
+        self._logger.info('stop')
+        return
+
+    def get_sim_sequence(self):
+        return self.sequence_params
+
+    def set_sim_sequence(self, seq):
+        self._logger.info('set_sim_sequence')
+        self.sequence_params = seq
+        return
+
+    def get_sequence_index(self):
+        return self.sequence_index
+
+
+@Pyro4.expose
+@Pyro4.behavior('single')
+class DummyDSP(devices.Device):
+    def __init__(self, *args, **kwargs):
+        devices.Device.__init__(self, args, kwargs)
+        self._digi = 0
+        self._ana = [0,0,0,0]
+        self._client = None
+        self._actions = []
+
+    def initialize(self, *args, **kwargs):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
+    def Abort(self):
+        self._logger.info('Abort')
+
+    def WriteDigital(self, value):
+        self._logger.info('WriteDigital: %s' % "{0:b}".format(value))
+        self._digi = value
+
+    def MoveAbsoluteADU(self, aline, pos):
+        self._logger.info('MoveAbsoluteADU: line %d, value %d' % (aline, pos))
+        self._ana[aline] = pos
+
+    def arcl(self, mask, pairs):
+        self._logger.info('arcl: %s, %s' % (mask, pairs))
+
+    def profileSet(self, pstr, digitals, *analogs):
+        self._logger.info('profileSet ...')
+        self._logger.info('... ', pstr)
+        self._logger.info('... ', digitals)
+        self._logger.info('... ', analogs)
+
+    def DownloadProfile(self):
+        self._logger.info('DownloadProfile')
+
+    def InitProfile(self, numReps):
+        self._logger.info('InitProfile')
+
+    def trigCollect(self, *args, **kwargs):
+        self._logger.info('trigCollect: ... ')
+        self._logger.info(args)
+        self._logger.info(kwargs)
+
+    def ReadPosition(self, aline):
+        self._logger.info('ReadPosition   : line %d, value %d' % (aline, self._ana[aline]))
+        return self._ana[aline]
+
+    def ReadDigital(self):
+        self._logger.info('ReadDigital: %s' % "{0:b}".format(self._digi))
+        return self._digi
+
+    def PrepareActions(self, actions, numReps=1):
+        self._logger.info('PrepareActions')
+        self._actions = actions
+        self._repeats = numReps
+
+    def RunActions(self):
+        self._logger.info('RunActions ...')
+        for i in range(self._repeats):
+            for a in self._actions:
+                self._logger.info(a)
+                time.sleep(a[0] / 1000.)
+        if self._client:
+            self._client.receiveData("DSP done")
+        self._logger.info('... RunActions done.')
+
+if sys.version_info[0] < 3:
+    DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
+    DummyDSP.set_client = devices.DataDevice.set_client.im_func
+else:
+    DummyDSP.receiveClient = devices.DataDevice.receiveClient
+    DummyDSP.set_client = devices.DataDevice.set_client
