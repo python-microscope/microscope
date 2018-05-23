@@ -28,12 +28,12 @@ from microscope import devices
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     laser_status = {
-        '1': 'Start up',
-        '2': 'Warmup',
-        '3': 'Standby',
-        '4': 'Laser on',
-        '5': 'Laser ready',
-        '6': 'Error',
+        b'1': 'Start up',
+        b'2': 'Warmup',
+        b'3': 'Standby',
+        b'4': 'Laser on',
+        b'5': 'Laser ready',
+        b'6': 'Error',
     }
 
     def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
@@ -46,26 +46,11 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # Turning off command prompt
-        self.send('>=0')
+        self.send(b'>=0')
         # Head ID value is a float point value,
         # but only the integer part is significant
-        headID = int(float(self.send('?hid')))
+        headID = int(float(self.send(b'?hid')))
         self._logger.info("Sapphire laser serial number: [%s]" % headID)
-
-    def _read(self, num_chars):
-        """Simple passthrough to read numChars from connection."""
-        return self.connection.read(num_chars).decode()
-
-    def _readline(self):
-        """Simple passthrough to read one line from connection."""
-        return self.connection.readline().strip().decode()
-
-    def _write(self, command):
-        """Send a command to the device."""
-        # Overrided with a specific format.
-        commandEncoded = (command + '\r\n').encode()
-        self.connection.write(commandEncoded)
-        return self._readline()
 
     def send(self, command):
         """Send command and retrieve response."""
@@ -78,44 +63,44 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         return self.get_status()
 
     def flush_buffer(self):
-        line = ' '
+        line = b' '
         while len(line) > 0:
             line = self._readline()
 
     @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
-        return self.send('?l') in '01'
+        return self.send(b'?l') in b'01'
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
 
-        status_code = self.send('?sta')
+        status_code = self.send(b'?sta')
         result.append(('Laser status: '
                        + self.laser_status.get(status_code, 'Undefined')))
 
-        for cmd, stat in [('?l', 'Ligh Emission on?'),
-                            ('?t', 'TEC Servo on?'),
-                            ('?k', 'Key Switch on?'),
-                            ('?sp', 'Target power:'),
-                            ('?p', 'Measured power:'),
-                            ('?hh', 'Head operating hours:')]:
-            result.append(stat + ' ' + self.send(cmd))
+        for cmd, stat in [(b'?l', 'Ligh Emission on?'),
+                          (b'?t', 'TEC Servo on?'),
+                          (b'?k', 'Key Switch on?'),
+                          (b'?sp', 'Target power:'),
+                          (b'?p', 'Measured power:'),
+                          (b'?hh', 'Head operating hours:')]:
+            result.append(stat + ' ' + self.send(cmd).decode())
 
-        self._write('?fl')
+        self._write(b'?fl')
         faults = self._readline()
         response = self._readline()
         while response:
-            faults += ' ' + response
+            faults += b' ' + response
             response = self._readline()
 
-        result.append(faults)
+        result.append(faults.decode())
         return result
 
     @devices.SerialDeviceMixIn.lock_comms
     def _on_shutdown(self):
         # Disable laser.
-        self._write('l=0')
+        self._write(b'l=0')
         self.flush_buffer()
 
 
@@ -130,8 +115,8 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
-        response = self._write('l=1')
-        self._logger.info("l=1: [%s]" % response)
+        response = self._write(b'l=1')
+        self._logger.info("l=1: [%s]" % response.decode())
 
         # Enabling laser might take more than 500ms (default timeout)
         prevTimeout = self.connection.timeout
@@ -150,39 +135,38 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
-        return self._write('l=0')
+        return self._write(b'l=0')
 
 
     ## Return True if the laser is currently able to produce light.
     @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
-        return self.send('?l') == '1'
+        return self.send(b'?l') == b'1'
 
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
         # '?maxlp' gets the maximum laser power in mW.
-        return float(self.send('?maxlp'))
+        return float(self.send(b'?maxlp'))
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_min_power_mw(self):
         # '?minlp' gets the minimum laser power in mW.
-        return float(self.send('?minlp'))
+        return float(self.send(b'?minlp'))
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
-        return float(self.send('?p'))
-
+        return float(self.send(b'?p'))
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
         mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
-        self._logger.info("Setting laser power to %.3fmW." % mW)
+        mW_str = '%.3f' % mW
+        self._logger.info("Setting laser power to %s mW." % mW_str)
         # using send instead of _write, because
         # if laser is not on, warning is returned
-        return self.send('p=%.3f' % mW)
-
+        return self.send(b'p=%s' % mW_str.encode())
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
-        return float(self.send('?sp'))
+        return float(self.send('b?sp'))
