@@ -19,6 +19,8 @@
 
 import serial
 
+import Pyro4
+
 from microscope import devices
 
 
