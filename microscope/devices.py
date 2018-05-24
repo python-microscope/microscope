@@ -774,9 +774,9 @@ class SerialDeviceMixIn(object):
     def _write(self, command):
         """Send a command to the device.
 
-        This is not a simple passthrough to serial.Serial.write, it
-        will append `b'\r\n'` to command.  Override this method if a
-        device requires a specific format.
+        This is not a simple passthrough to ``serial.Serial.write``,
+        it will append ``b'\\r\\n'`` to command.  Override this method
+        if a device requires a specific format.
         """
         return self.connection.write(command + b'\r\n')
 
