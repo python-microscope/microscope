@@ -75,11 +75,13 @@ setuptools.setup(
   name = project_name,
   version = project_version,
   description = "An extensible microscope hardware interface.",
+  long_description = open('README', 'r').read(),
   license = "GPL-3.0+",
 
-  ## Do not use author_email because that won't play nice once there
-  ## are multiple authors.
-  author = "Mick Phillips <mick.phillips@bioch.ox.ac.uk>",
+  ## We need an author and an author_email value or PyPI rejects us.
+  ## For multiple authors, they tell us to get a mailing list :/
+  author = "See homepage for a complete list of contributors",
+  author_email = " ",
 
   url = "https://github.com/MicronOxford/microscope",
 
