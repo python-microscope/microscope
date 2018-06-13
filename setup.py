@@ -33,7 +33,7 @@ except ImportError:
 import microscope.testsuite.libs
 
 project_name = 'microscope'
-project_version = '0.2.0'
+project_version = '0.2.0+dev'
 
 extra_requires = []
 
