@@ -4,16 +4,13 @@ python-microscope releases.
 Upcoming release
 ----------------
 
-* New device classes:
+* New classes:
 
   * DeformableMirror
-
-* New MixIn classes:
-
   * TriggerTargetMixIn
   * SerialDeviceMixIn
-
-* Added Enum for `TriggerType` and `TriggerMode`.
+  * TriggerType
+  * TriggerMode
 
 * New hardware supported:
 
@@ -29,7 +26,7 @@ Upcoming release
 
 * Now dependent on the enum34 package for python pre 3.4.
 
-* Python 3 fixes for controlling lasers.
+* Multiple fixes to support Python 3.
 
 * This is the last release with planned support for Python 2.
 
