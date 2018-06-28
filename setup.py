@@ -91,13 +91,7 @@ setuptools.setup(
 
   url = "https://github.com/MicronOxford/microscope",
 
-  packages = [
-    "microscope",
-    "microscope.cameras",
-    "microscope.lasers",
-    "microscope.testsuite",
-    "microscope._wrappers",
-  ],
+  packages = setuptools.find_packages(),
 
   install_requires = [
     "numpy",
