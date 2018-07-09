@@ -175,13 +175,23 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.join()
         self._device.shutdown()
 
-def serve_devices(devices):
+
+def serve_devices(devices, exit_event=None):
     logger = logging.getLogger(__name__)
+    log_handler = RotatingFileHandler("__MAIN__.log")
+    log_handler.setFormatter(LOG_FORMATTER)
+    logger.addHandler(log_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.info("Test info message.")
+    logger.debug("Test debug message.")
+
+
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
-    exit_event = multiprocessing.Event()
+    if exit_event is None:
+        exit_event = multiprocessing.Event()
 
     servers = [] # DeviceServers instances that we need to wait for when exiting
 
@@ -201,8 +211,8 @@ def serve_devices(devices):
                 this_server.join()
             sys.exit()
 
-    signal.signal(signal.SIGTERM, term_func)
-    signal.signal(signal.SIGINT, term_func)
+    #signal.signal(signal.SIGTERM, term_func)
+    #signal.signal(signal.SIGINT, term_func)
 
     # Group devices by class.
     by_class = {}
@@ -283,9 +293,27 @@ def serve_devices(devices):
 
     while not exit_event.is_set():
         try:
-            time.sleep(100)
+            logger.debug("Sleeping.")
+            time.sleep(5)
         except (KeyboardInterrupt, IOError):
+            logger.debug("KeyboardInterrupt or IOError")
             pass
+
+    logger.debug("Exit event.is_set must be True. Should exit now.")
+    logger.debug("Shutting down servers.")
+    while len(servers) > 0:
+        logger.debug("There are %d servers still running" % len(servers))
+        for s in servers:
+            if not s.is_alive():
+                servers.remove(s)
+                del(s)
+        time.sleep(5)
+    logger.info("No servers running. Exiting.")
+    logger.debug("Joining threads.")
+    keep_alive_thread.join()
+    logger.debug("Exiting.")
+    return
+
 
 def __main__():
     logger = logging.getLogger(__name__)
