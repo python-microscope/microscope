@@ -16,8 +16,14 @@ import sphinx.setup_command
 
 try: # In sphinx 1.7, apidoc was moved to the ext subpackage
   import sphinx.ext.apidoc as apidoc
+  ## In addition of changing the subpackage, the signature for main()
+  ## also changed https://github.com/sphinx-doc/sphinx/issues/5088 If
+  ## we are building in older versions, the program name needs to be
+  ## included in the args passed to apidoc.main()
+  apidoc_ini_args = []
 except ImportError:
   import sphinx.apidoc as apidoc
+  apidoc_ini_args = ['sphinx-apidoc']
 
 try: # In Python 3.3, mock was merged into unittest package
   import unittest.mock as mock
@@ -27,7 +33,7 @@ except ImportError:
 import microscope.testsuite.libs
 
 project_name = 'microscope'
-project_version = '0.1.0+dev'
+project_version = '0.2.0+dev'
 
 extra_requires = []
 
@@ -44,7 +50,7 @@ if sys.version_info < (3, 4):
 class BuildDoc(sphinx.setup_command.BuildDoc):
   @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
   def run(self):
-    apidoc.main(["sphinx-apidoc",
+    apidoc.main(apidoc_ini_args + [
                  "--separate", # each module on its own page
                  "--module-first",
                  "--output-dir", "doc/api",
@@ -75,21 +81,17 @@ setuptools.setup(
   name = project_name,
   version = project_version,
   description = "An extensible microscope hardware interface.",
+  long_description = open('README', 'r').read(),
   license = "GPL-3.0+",
 
-  ## Do not use author_email because that won't play nice once there
-  ## are multiple authors.
-  author = "Mick Phillips <mick.phillips@bioch.ox.ac.uk>",
+  ## We need an author and an author_email value or PyPI rejects us.
+  ## For multiple authors, they tell us to get a mailing list :/
+  author = "See homepage for a complete list of contributors",
+  author_email = " ",
 
   url = "https://github.com/MicronOxford/microscope",
 
-  packages = [
-    "microscope",
-    "microscope.cameras",
-    "microscope.lasers",
-    "microscope.testsuite",
-    "microscope._wrappers",
-  ],
+  packages = setuptools.find_packages(),
 
   install_requires = [
     "numpy",
