@@ -299,7 +299,6 @@ class Device(object):
             results[key] = self.settings[key]['get']()
         return results
 
-
 def keep_acquiring(func):
     """Wrapper to preserve acquiring state of data capture devices."""
     def wrapper(self, *args, **kwargs):
