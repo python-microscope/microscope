@@ -48,7 +48,7 @@ import numpy
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER, UWAVEFRONTSENSOR) = range(7)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -243,7 +243,6 @@ class Device(object):
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
-
     @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
@@ -299,7 +298,6 @@ class Device(object):
         for key in update_keys:
             results[key] = self.settings[key]['get']()
         return results
-
 
 def keep_acquiring(func):
     """Wrapper to preserve acquiring state of data capture devices."""
