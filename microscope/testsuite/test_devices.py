@@ -22,6 +22,7 @@ import unittest
 import unittest.mock
 
 import numpy
+import serial
 import six
 
 import microscope.testsuite.devices as dummies
@@ -126,6 +127,55 @@ class TestSerialMock(unittest.TestCase):
     self.serial.write(b'echo qux\r\n')
     self.assertEqual(self.serial.readline(), b'qux\r\n')
 
+
+class TestCoherentSapphireLaser(unittest.TestCase):
+  def setUp(self):
+    from microscope.lasers.sapphire import SapphireLaser
+    from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
+    with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
+                             new=CoherentSapphireLaserMock):
+      self.laser = SapphireLaser('/dev/null')
+
+  def test_connection_defaults(self):
+    self.assertEqual(self.laser.connection.baudrate, 19200)
+    self.assertEqual(self.laser.connection.parity, serial.PARITY_NONE)
+    self.assertEqual(self.laser.connection.bytesize, serial.EIGHTBITS)
+    self.assertEqual(self.laser.connection.stopbits, serial.STOPBITS_ONE)
+    self.assertEqual(self.laser.connection.rtscts, False)
+    self.assertEqual(self.laser.connection.dsrdtr, False)
+
+  def test_being(self):
+     self.assertTrue(self.laser.is_alive())
+
+  def test_turning_on_and_off(self):
+     self.assertTrue(self.laser.get_is_on())
+     self.laser.disable()
+     self.assertFalse(self.laser.get_is_on())
+     self.laser.enable()
+     self.assertTrue(self.laser.get_is_on())
+
+  def test_query_power_range(self):
+    min_mw = self.laser.get_min_power_mw()
+    max_mw = self.laser.get_max_power_mw()
+    self.assertIsInstance(min_mw, float)
+    self.assertIsInstance(max_mw, float)
+    self.assertEqual(round(min_mw), 20.0)
+    self.assertEqual(round(max_mw), 220.0)
+
+  def test_setting_power(self):
+    power = self.laser.get_power_mw()
+    self.assertIsInstance(power, float)
+    self.assertEqual(round(power), 50.0)
+    self.laser.set_power_mw(100.0)
+    self.assertEqual(round(self.laser.get_power_mw()), 100.0)
+
+  def test_setting_power_outside_limit(self):
+    self.laser.set_power_mw(5)
+    self.assertEqual(self.laser.get_power_mw(), self.laser.get_min_power_mw(),
+                     'clip setting power to the valid range')
+    self.laser.set_power_mw(250)
+    self.assertEqual(self.laser.get_power_mw(), self.laser.get_max_power_mw(),
+                     'clip setting power to the valid range')
 
 if __name__ == '__main__':
   unittest.main()

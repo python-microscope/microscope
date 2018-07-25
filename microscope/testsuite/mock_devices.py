@@ -101,3 +101,158 @@ class SerialMock(serial.serialutil.SerialBase):
 
     def reset_output_buffer(self):
         pass
+
+
+class CoherentSapphireLaserMock(SerialMock):
+    """Modelled after a Coherent Sapphire LP 561nm laser.
+
+    This mocked device is constructed into the ready state.  That is,
+    after the laser has been turned on enough time to warmup (~ 30
+    seconds), and then the key has been turned on for enough time to
+    actual get the laser ready (~10 seconds).
+
+    We don't mock the turning of the key, that's much trickier and we
+    don't need it yet.  We'll do it if it ever becomes an issue, and
+    probably use a state machine library for that.
+
+    """
+    eol = b'\r\n'
+    def __init__(self, *args, **kwargs):
+        super(CoherentSapphireLaserMock, self).__init__(*args, **kwargs)
+
+        self.key = 'on'
+        self.status = 'ready' # Laser ready, status code 5
+        self.light = True # Light Servo
+        self.tec = True # TEC (Thermo-Electric Cooler) Servo
+        self.echo = True
+        self.prompt = True
+        self.power = 50.0 # in mW
+
+    def write(self, data):
+        ## Echo as soon as we get data, do not wait for an EOL.  Also,
+        ## echo before handling the command because if will echo even
+        ## if the command is to turn the echo off.
+        if self.echo:
+            self.in_buffer.write(data)
+        else:
+            ## If echo is off, we still echo EOLs
+            self.in_buffer.write(self.eol * data.count(self.eol))
+        return super(CoherentSapphireLaserMock, self).write(data)
+
+    def handle(self, command):
+        ## Operator's manual mentions all commands in uppercase.
+        ## Experimentation shows that they are case insensitive.
+        command = command.upper()
+
+        answer = None
+
+        ## Prompt
+        if command == b'>=0':
+            self.prompt = False
+        elif command == b'>=1':
+            self.prompt = True
+
+        ## Echo
+        elif command == b'E=0':
+            self.echo = False
+        elif command == b'E=1':
+            self.echo = True
+
+        ## Head ID
+        elif command == b'?HID':
+            answer = b'505925.000'
+
+        ## Key switch
+        elif command == b'?K':
+            if self.key == 'standby':
+                answer = b'0'
+            elif self.key == 'on':
+                answer = b'1'
+            else:
+                raise RuntimeError("unknown key state '%s'" % self.key)
+
+        ## Light servo
+        elif command == b'L=0':
+            self.light = False
+        elif command == b'L=1':
+            if self.tec:
+                if self.key == 'on':
+                    self.light = True
+                ## if key switch is not on, keep light off
+            else:
+                answer = b'TEC must be ON (T=1) to enable Light Output!'
+        elif command == b'?L':
+            if self.light:
+                answer = b'1'
+            else:
+                answer = b'0'
+
+        ## TEC servo
+        elif command == b'T=0':
+            ## turning this off, also turns light servo off
+            self.tec = False
+            self.light = False
+        elif command == b'T=1':
+            self.tec = True
+        elif command == b'?T':
+            if self.tec:
+                answer = b'1'
+            else:
+                answer = b'0'
+
+        ## Laser power
+        elif command == b'?MINLP':
+            answer = b'20.000'
+        elif command == b'?MAXLP':
+            answer = b'220.000'
+        elif command == b'?P':
+            if not self.light:
+                answer = b'0.000'
+            else:
+                answer = b'%.3f' % (self.power)
+        elif command.startswith(b'P='):
+            new_power = float(command[2:])
+            if new_power < 19.999999 or new_power > 220.00001:
+                answer = b'value must be between 20.000 and 220.000'
+            else:
+                if not self.light:
+                    answer = b'Note: Laser_Output is OFF (L=0)'
+                self.power = new_power
+
+        ## Nominal output power
+        elif command == b'NOMP':
+            answer = b'200'
+
+        ## Laser type and nominal power
+        elif command == b'LT':
+            answer = b'Sapphire 200mW'
+
+        ## Laser head status
+        elif command == b'?STA':
+            status_codes = {
+                'start up' : b'1',
+                'warmup' : b'2',
+                'standby' : b'3',
+                'laser on' : b'4',
+                'laser ready' : b'5',
+            }
+            answer = status_codes[self.status]
+
+        ## Software version
+        elif command in [b'sv', b'svps']:
+            answer = b'8.005'
+
+        ## Nominal laser wavelength
+        elif command == b'?WAVE':
+            answer = b'561'
+
+        else:
+            raise NotImplementedError("no handling for command '%s'"
+                                      % command.decode('utf-8'))
+
+        if answer is not None:
+            self.in_buffer.write(answer + self.eol)
+
+        if self.prompt:
+            self.in_buffer.write(b'Sapphire:0-> ')
+        return
