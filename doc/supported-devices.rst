@@ -22,9 +22,14 @@ Deformable Mirrors
 - Alpao (:class:`microscope.mirror.alpao`)
 - Boston Micromachines Corporation (:class:`microscope.mirror.bmc`)
 
+Filter Wheels
+-------------
+
+- Thorlabs (:class:`microscope.filterwheels.thorlabs`)
+
 Lasers
 ------
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
-- Deepstar (:class:`microscope.lasers.deepstar`)
-- Sapphire (:class:`microscope.lasers.saphhire`)
+- Coherent Sapphire (:class:`microscope.lasers.saphhire`)
+- Omicron Deepstar (:class:`microscope.lasers.deepstar`)

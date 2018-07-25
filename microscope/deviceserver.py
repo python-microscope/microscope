@@ -157,13 +157,11 @@ class DeviceServer(multiprocessing.Process):
 
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
-        pyro_thread = Thread(target=Pyro4.Daemon.serveSimple,
-                             args=({self._device:
-                                    type(self._device).__name__},),
-                             kwargs={'daemon': pyro_daemon, 'ns':
-                                     False})
+        pyro_daemon.register(self._device, type(self._device).__name__)
+        pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
+        logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .
@@ -247,7 +245,6 @@ def serve_devices(devices):
         while not exit_event.is_set():
             for s in servers:
                 if s.is_alive():
-                    logger.info("%s is alive." % s.pid)
                     continue
                 else:
                     logger.info(("DeviceServer Failure. Process %s is dead with"
