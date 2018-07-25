@@ -191,7 +191,7 @@ class TestLaser(devices.LaserDevice):
         result = [self._emission, self._power, self._set_point]
         return result
 
-    def enable(self):
+    def _on_enable(self):
         self._emission = True
         return self._emission
 
@@ -201,7 +201,7 @@ class TestLaser(devices.LaserDevice):
     def initialize(self):
         pass
 
-    def disable(self):
+    def _on_disable(self):
         self._emission = False
         return self._emission
 
@@ -297,7 +297,7 @@ class DummyDSP(devices.Device):
         self._logger.info('WriteDigital: %s' % "{0:b}".format(value))
         self._digi = value
 
-    def MoveAbsoluteADU(self, aline, pos):
+    def MoveAbsolute(self, aline, pos):
         self._logger.info('MoveAbsoluteADU: line %d, value %d' % (aline, pos))
         self._ana[aline] = pos
 
