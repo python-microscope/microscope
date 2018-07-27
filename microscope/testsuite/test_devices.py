@@ -128,21 +128,33 @@ class TestSerialMock(unittest.TestCase):
     self.assertEqual(self.serial.readline(), b'qux\r\n')
 
 
-class TestCoherentSapphireLaser(unittest.TestCase):
-  def setUp(self):
-    from microscope.lasers.sapphire import SapphireLaser
-    from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
-    with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
-                             new=CoherentSapphireLaserMock):
-      self.laser = SapphireLaser('/dev/null')
+class LaserTests:
+  """Base class for :class:`LaserDevice` tests.
+
+  This class implements all the general laser tests and is meant to be
+  mixed with :class:`unittest.TestCase`.  The subclass must implement
+  the `setUp` method which must add two properties:
+
+  `device`
+    Instance of the :class:`LaserDevice` implementation being tested.
+
+  `laser`
+    Object with a multiple attributes that specify the hardware and
+    control the tests, such as the device max and min power values.
+    Such attributes may as well be attributes in the class that mocks
+    the hardware.
+  """
+  def __init__(self):
+    self.laser = None
+    self.device = None
 
   def test_connection_defaults(self):
-    self.assertEqual(self.laser.connection.baudrate, 19200)
-    self.assertEqual(self.laser.connection.parity, serial.PARITY_NONE)
-    self.assertEqual(self.laser.connection.bytesize, serial.EIGHTBITS)
-    self.assertEqual(self.laser.connection.stopbits, serial.STOPBITS_ONE)
-    self.assertEqual(self.laser.connection.rtscts, False)
-    self.assertEqual(self.laser.connection.dsrdtr, False)
+    self.assertEqual(self.laser.connection.baudrate, self.device.baudrate)
+    self.assertEqual(self.laser.connection.parity, self.device.parity)
+    self.assertEqual(self.laser.connection.bytesize, self.device.bytesize)
+    self.assertEqual(self.laser.connection.stopbits, self.device.stopbits)
+    self.assertEqual(self.laser.connection.rtscts, self.device.rtscts)
+    self.assertEqual(self.laser.connection.dsrdtr, self.device.dsrdtr)
 
   def test_being(self):
      self.assertTrue(self.laser.is_alive())
@@ -159,23 +171,39 @@ class TestCoherentSapphireLaser(unittest.TestCase):
     max_mw = self.laser.get_max_power_mw()
     self.assertIsInstance(min_mw, float)
     self.assertIsInstance(max_mw, float)
-    self.assertEqual(round(min_mw), 20.0)
-    self.assertEqual(round(max_mw), 220.0)
+    self.assertEqual(round(min_mw), self.device.min_power)
+    self.assertEqual(round(max_mw), self.device.max_power)
 
   def test_setting_power(self):
     power = self.laser.get_power_mw()
     self.assertIsInstance(power, float)
-    self.assertEqual(round(power), 50.0)
-    self.laser.set_power_mw(100.0)
-    self.assertEqual(round(self.laser.get_power_mw()), 100.0)
+    self.assertEqual(round(power), self.device.default_power)
+
+    new_power = (self.device.min_power
+                 + ((self.device.max_power - self.device.min_power) /2.0))
+    self.laser.set_power_mw(new_power)
+    self.assertEqual(round(self.laser.get_power_mw()), round(new_power))
 
   def test_setting_power_outside_limit(self):
-    self.laser.set_power_mw(5)
+    below_limit = self.device.min_power - 10.0
+    above_limit = self.device.max_power + 10.0
+    self.laser.set_power_mw(below_limit)
     self.assertEqual(self.laser.get_power_mw(), self.laser.get_min_power_mw(),
                      'clip setting power to the valid range')
-    self.laser.set_power_mw(250)
+    self.laser.set_power_mw(above_limit)
     self.assertEqual(self.laser.get_power_mw(), self.laser.get_max_power_mw(),
                      'clip setting power to the valid range')
+
+
+class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
+  def setUp(self):
+    from microscope.lasers.sapphire import SapphireLaser
+    from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
+    with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
+                             new=CoherentSapphireLaserMock):
+      self.laser = SapphireLaser('/dev/null')
+    self.device = CoherentSapphireLaserMock
+
 
 if __name__ == '__main__':
   unittest.main()

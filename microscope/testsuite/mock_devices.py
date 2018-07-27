@@ -117,6 +117,20 @@ class CoherentSapphireLaserMock(SerialMock):
 
     """
     eol = b'\r\n'
+
+    ## Communication parameters
+    baudrate = 19200
+    parity = serial.PARITY_NONE
+    bytesize = serial.EIGHTBITS
+    stopbits = serial.STOPBITS_ONE
+    rtscts = False
+    dsrdtr = False
+
+    ## Laser is 200mW, range is 10 to 110%
+    default_power = 50.0
+    min_power = 20.0
+    max_power = 220.0
+
     def __init__(self, *args, **kwargs):
         super(CoherentSapphireLaserMock, self).__init__(*args, **kwargs)
 
@@ -126,7 +140,7 @@ class CoherentSapphireLaserMock(SerialMock):
         self.tec = True # TEC (Thermo-Electric Cooler) Servo
         self.echo = True
         self.prompt = True
-        self.power = 50.0 # in mW
+        self.power = CoherentSapphireLaserMock.default_power
 
     def write(self, data):
         ## Echo as soon as we get data, do not wait for an EOL.  Also,
