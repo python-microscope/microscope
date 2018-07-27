@@ -159,12 +159,22 @@ class LaserTests:
   def test_being(self):
      self.assertTrue(self.laser.is_alive())
 
+  def test_off_after_constructor(self):
+    ## Some lasers, such as our Coherent Sapphire emit laser radiation
+    ## as soon as the key is switched on.  We should ensure that the
+    ## laser is turned off during the construction.
+    self.assertFalse(self.laser.get_is_on())
+
   def test_turning_on_and_off(self):
-     self.assertTrue(self.laser.get_is_on())
-     self.laser.disable()
-     self.assertFalse(self.laser.get_is_on())
-     self.laser.enable()
-     self.assertTrue(self.laser.get_is_on())
+    self.laser.enable()
+    self.assertTrue(self.laser.get_is_on())
+    self.laser.disable()
+    self.assertFalse(self.laser.get_is_on())
+
+  def test_shutdown(self):
+    self.laser.enable()
+    self.laser.disable()
+    self.laser.shutdown()
 
   def test_query_power_range(self):
     min_mw = self.laser.get_min_power_mw()
@@ -174,17 +184,27 @@ class LaserTests:
     self.assertEqual(round(min_mw), self.device.min_power)
     self.assertEqual(round(max_mw), self.device.max_power)
 
+  def test_power_when_off(self):
+    self.laser.disable()
+    power = self.laser.get_power_mw()
+    self.assertIsInstance(power, float)
+    self.assertEqual(power, 0.0)
+
   def test_setting_power(self):
+    self.laser.enable()
     power = self.laser.get_power_mw()
     self.assertIsInstance(power, float)
     self.assertEqual(round(power), self.device.default_power)
+    self.assertEqual(power, self.laser.get_set_power_mw())
 
     new_power = (self.device.min_power
                  + ((self.device.max_power - self.device.min_power) /2.0))
     self.laser.set_power_mw(new_power)
     self.assertEqual(round(self.laser.get_power_mw()), round(new_power))
+    self.assertEqual(new_power, self.laser.get_set_power_mw())
 
   def test_setting_power_outside_limit(self):
+    self.laser.enable()
     below_limit = self.device.min_power - 10.0
     above_limit = self.device.max_power + 10.0
     self.laser.set_power_mw(below_limit)
@@ -194,6 +214,11 @@ class LaserTests:
     self.assertEqual(self.laser.get_power_mw(), self.laser.get_max_power_mw(),
                      'clip setting power to the valid range')
 
+  def test_status(self):
+    status = self.laser.get_status()
+    self.assertIsInstance(status, list)
+    for msg in status:
+      self.assertIsInstance(msg, str)
 
 class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
   def setUp(self):
@@ -202,7 +227,20 @@ class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
     with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
                              new=CoherentSapphireLaserMock):
       self.laser = SapphireLaser('/dev/null')
+    self.laser.initialize()
+
     self.device = CoherentSapphireLaserMock
+
+class TestCoboltLaser(unittest.TestCase, LaserTests):
+  def setUp(self):
+    from microscope.lasers.cobolt import CoboltLaser
+    from microscope.testsuite.mock_devices import CoboltLaserMock
+    with unittest.mock.patch('microscope.lasers.cobolt.serial.Serial',
+                             new=CoboltLaserMock):
+      self.laser = CoboltLaser('/dev/null')
+    self.laser.initialize()
+
+    self.device = CoboltLaserMock
 
 
 if __name__ == '__main__':
