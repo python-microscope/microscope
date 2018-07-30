@@ -940,7 +940,17 @@ class LaserDevice(Device):
 
     @Pyro4.expose
     def set_power_mw(self, mw):
-        """Set the power from an argument in mW and save the set point."""
+        """Set the power from an argument in mW and save the set point.
+
+        Args:
+            mw (float): Power in mW.  Value will be clipped to the
+                valid range for the laser.  See the methods
+                :func:`get_max_power_mw` and :func:`get_min_power_mw`
+                to retrieve the valid range.
+
+        Returns:
+            void
+        """
         self._set_point = mw
         self._set_power_mw(mw)
 
