@@ -22,7 +22,7 @@
 ################
 
 
-from . import SDK3
+from .import SDK3
 
 class ATProperty(object):
     def connect(self, handle, propertyName):
