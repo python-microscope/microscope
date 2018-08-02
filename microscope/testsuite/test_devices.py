@@ -19,11 +19,15 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
+import unittest.mock
 
 import numpy
+import serial
 import six
 
 import microscope.testsuite.devices as dummies
+import microscope.testsuite.mock_devices as mocks
+
 
 class TestDeformableMirror(unittest.TestCase):
   def setUp(self):
@@ -76,6 +80,129 @@ class TestDeformableMirror(unittest.TestCase):
     with six.assertRaisesRegex(self, Exception,
                                "dimensions \(must be 1 or 2\)"):
       self.dm.apply_pattern(patterns)
+
+
+class TestSerialMock(unittest.TestCase):
+  ## Our tests for serial devices depend on our SerialMock base class
+  ## working properly so yeah, we need tests for that too.
+  class Serial(mocks.SerialMock):
+    eol = b'\r\n'
+    def handle(self, command):
+      if command.startswith(b'echo '):
+        self.in_buffer.write(command[5:] + self.eol)
+      elif command in [b'foo', b'bar']:
+        pass
+      else:
+        raise RuntimeError("unknown command '%s'" % command.decode())
+
+  def setUp(self):
+    self.serial = TestSerialMock.Serial()
+    patcher = unittest.mock.patch.object(TestSerialMock.Serial, 'handle',
+                                         wraps=self.serial.handle)
+    self.addCleanup(patcher.stop)
+    self.mock = patcher.start()
+
+  def test_simple_commands(self):
+      self.serial.write(b'foo\r\n')
+      self.mock.assert_called_once_with(b'foo')
+
+  def test_partial_commands(self):
+    self.serial.write(b'fo')
+    self.serial.write(b'o')
+    self.serial.write(b'\r\n')
+    self.serial.handle.assert_called_once_with(b'foo')
+
+  def test_multiple_commands(self):
+    self.serial.write(b'foo\r\nbar\r\n')
+    calls = [unittest.mock.call(x) for x in [b'foo', b'bar']]
+    self.assertEqual(self.serial.handle.mock_calls, calls)
+
+  def test_unix_eol(self):
+    self.serial.eol = b'\n'
+    self.serial.write(b'foo\nbar\n')
+    calls = [unittest.mock.call(x) for x in [b'foo', b'bar']]
+    self.assertEqual(self.serial.handle.mock_calls, calls)
+
+  def test_write(self):
+    self.serial.write(b'echo qux\r\n')
+    self.assertEqual(self.serial.readline(), b'qux\r\n')
+
+
+class LaserTests:
+  """Base class for :class:`LaserDevice` tests.
+
+  This class implements all the general laser tests and is meant to be
+  mixed with :class:`unittest.TestCase`.  The subclass must implement
+  the `setUp` method which must add two properties:
+
+  `device`
+    Instance of the :class:`LaserDevice` implementation being tested.
+
+  `laser`
+    Object with a multiple attributes that specify the hardware and
+    control the tests, such as the device max and min power values.
+    Such attributes may as well be attributes in the class that mocks
+    the hardware.
+  """
+  def __init__(self):
+    self.laser = None
+    self.device = None
+
+  def test_connection_defaults(self):
+    self.assertEqual(self.laser.connection.baudrate, self.device.baudrate)
+    self.assertEqual(self.laser.connection.parity, self.device.parity)
+    self.assertEqual(self.laser.connection.bytesize, self.device.bytesize)
+    self.assertEqual(self.laser.connection.stopbits, self.device.stopbits)
+    self.assertEqual(self.laser.connection.rtscts, self.device.rtscts)
+    self.assertEqual(self.laser.connection.dsrdtr, self.device.dsrdtr)
+
+  def test_being(self):
+     self.assertTrue(self.laser.is_alive())
+
+  def test_turning_on_and_off(self):
+     self.assertTrue(self.laser.get_is_on())
+     self.laser.disable()
+     self.assertFalse(self.laser.get_is_on())
+     self.laser.enable()
+     self.assertTrue(self.laser.get_is_on())
+
+  def test_query_power_range(self):
+    min_mw = self.laser.get_min_power_mw()
+    max_mw = self.laser.get_max_power_mw()
+    self.assertIsInstance(min_mw, float)
+    self.assertIsInstance(max_mw, float)
+    self.assertEqual(round(min_mw), self.device.min_power)
+    self.assertEqual(round(max_mw), self.device.max_power)
+
+  def test_setting_power(self):
+    power = self.laser.get_power_mw()
+    self.assertIsInstance(power, float)
+    self.assertEqual(round(power), self.device.default_power)
+
+    new_power = (self.device.min_power
+                 + ((self.device.max_power - self.device.min_power) /2.0))
+    self.laser.set_power_mw(new_power)
+    self.assertEqual(round(self.laser.get_power_mw()), round(new_power))
+
+  def test_setting_power_outside_limit(self):
+    below_limit = self.device.min_power - 10.0
+    above_limit = self.device.max_power + 10.0
+    self.laser.set_power_mw(below_limit)
+    self.assertEqual(self.laser.get_power_mw(), self.laser.get_min_power_mw(),
+                     'clip setting power to the valid range')
+    self.laser.set_power_mw(above_limit)
+    self.assertEqual(self.laser.get_power_mw(), self.laser.get_max_power_mw(),
+                     'clip setting power to the valid range')
+
+
+class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
+  def setUp(self):
+    from microscope.lasers.sapphire import SapphireLaser
+    from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
+    with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
+                             new=CoherentSapphireLaserMock):
+      self.laser = SapphireLaser('/dev/null')
+    self.device = CoherentSapphireLaserMock
 
 
 if __name__ == '__main__':
