@@ -56,7 +56,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # on/off remotely.
         self._write(b'SYSTem:AUTostart?')
         response = self._readline()
-        self._logger.info('Response to Autostart: [%s]' % response)
+        self._logger.info('Response to Autostart: [%s]' % response.decode())
 
     def _write(self, command):
         """Send a command."""
@@ -69,7 +69,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         """
         response = self.connection.readline().strip()
         if self.connection.readline().strip() != b'OK':
-            print('Did not get a proper answer from the laser serial comm.')
+            raise Exception('Did not get a proper answer from the laser serial comm.')
         return response
 
     def _flush_handshake(self):
