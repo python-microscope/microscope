@@ -48,7 +48,7 @@ import numpy
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER, UWAVEFRONTSENSOR) = range(7)
+(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -243,6 +243,7 @@ class Device(object):
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
+
     @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
@@ -291,9 +292,10 @@ class Device(object):
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if self.settings[key]['readonly']:
+            if _call_if_callable(self.settings[key]['readonly']):
                 continue
             self.settings[key]['set'](incoming[key])
+
         # Read back values in second loop.
         for key in update_keys:
             results[key] = self.settings[key]['get']()
@@ -938,7 +940,17 @@ class LaserDevice(Device):
 
     @Pyro4.expose
     def set_power_mw(self, mw):
-        """Set the power from an argument in mW and save the set point."""
+        """Set the power from an argument in mW and save the set point.
+
+        Args:
+            mw (float): Power in mW.  Value will be clipped to the
+                valid range for the laser.  See the methods
+                :func:`get_max_power_mw` and :func:`get_min_power_mw`
+                to retrieve the valid range.
+
+        Returns:
+            void
+        """
         self._set_point = mw
         self._set_power_mw(mw)
 

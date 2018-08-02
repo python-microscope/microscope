@@ -52,6 +52,14 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         headID = int(float(self.send(b'?hid')))
         self._logger.info("Sapphire laser serial number: [%s]" % headID)
 
+    def _write(self, command):
+        count = super(SapphireLaser, self)._write(command)
+        ## This device always writes backs something.  If echo is on,
+        ## it's the whole command, otherwise just an empty line.  Read
+        ## it and throw it away.
+        self._readline()
+        return count
+
     def send(self, command):
         """Send command and retrieve response."""
         self._write(command)
@@ -115,7 +123,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
-        response = self._write(b'l=1')
+        response = self.send(b'l=1')
         self._logger.info("l=1: [%s]" % response.decode())
 
         # Enabling laser might take more than 500ms (default timeout)
