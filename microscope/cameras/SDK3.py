@@ -21,8 +21,10 @@
 ##################
 
 import ctypes
-import os
+import platform
 from ctypes import POINTER, c_int, c_uint, c_double, c_void_p
+
+arch, plat = platform.architecture()
 
 #### typedefs
 AT_H = ctypes.c_int
@@ -33,13 +35,17 @@ AT_WC = ctypes.c_wchar
 
 _stdcall_libraries = {}
 
-if os.name in ('nt', 'ce'):
+if plat.startswith('Windows'):
+    if arch == '32bit':
     _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
     _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
+    else:
+        _stdcall_libraries['ATCORE'] = ctypes.OleDLL('atcore')
+        _stdcall_libraries['ATUTIL'] = ctypes.OleDLL('atutility')
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 else:
-    _stdcall_libraries['ATCORE'] = ctypes.CDLL('atcore.so')
-    _stdcall_libraries['ATUTIL'] = ctypes.CDLL('atutility.so')
+    _stdcall_libraries['ATCORE'] = ctypes.CDLL('libatcore.so')
+    _stdcall_libraries['ATUTIL'] = ctypes.CDLL('libatutility.so')
     CALLBACKTYPE = ctypes.CFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 
 #### Defines
@@ -92,6 +98,7 @@ errCode('AT_ERR_NULL_QUEUE_PTR', 34)
 errCode('AT_ERR_NULL_WAIT_PTR', 35)
 errCode('AT_ERR_NULL_PTRSIZE', 36)
 errCode('AT_ERR_NOMEMORY', 37)
+errCode('AT_ERR_DEVICEINUSE', 38)
 
 errCode('AT_ERR_HARDWARE_OVERFLOW', 100)
 
@@ -203,9 +210,7 @@ class dllFunction(object):
                 ret.append(r)
                 #print r, r._type_
 
-        #print ars
         res = self.f(*ars)
-        #print res
 
         if not res == AT_SUCCESS:
             if res == AT_ERR_TIMEDOUT or res == AT_ERR_NODATA:
