@@ -292,14 +292,14 @@ class Device(object):
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if _call_if_callable(self.settings[key]['readonly']):
+            if self.settings[key]['readonly']:
                 continue
             self.settings[key]['set'](incoming[key])
-
         # Read back values in second loop.
         for key in update_keys:
             results[key] = self.settings[key]['get']()
         return results
+
 
 def keep_acquiring(func):
     """Wrapper to preserve acquiring state of data capture devices."""
@@ -940,17 +940,7 @@ class LaserDevice(Device):
 
     @Pyro4.expose
     def set_power_mw(self, mw):
-        """Set the power from an argument in mW and save the set point.
-
-        Args:
-            mw (float): Power in mW.  Value will be clipped to the
-                valid range for the laser.  See the methods
-                :func:`get_max_power_mw` and :func:`get_min_power_mw`
-                to retrieve the valid range.
-
-        Returns:
-            void
-        """
+        """Set the power from an argument in mW and save the set point."""
         self._set_point = mw
         self._set_power_mw(mw)
 

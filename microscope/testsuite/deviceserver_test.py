@@ -40,7 +40,7 @@ class BaseTestServeDevices(unittest.TestCase):
     p (multiprocessing.Process): device server process.
   """
   DEVICES = []
-  TIMEOUT = 5
+  TIMEOUT = 2
   def setUp(self):
     init = microscope.deviceserver.serve_devices
     self.p = multiprocessing.Process(target=init, args=(self.DEVICES,))
