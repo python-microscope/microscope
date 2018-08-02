@@ -21,7 +21,7 @@ import setuptools.command.sdist
 
 has_sphinx = True
 try:
-import sphinx.setup_command
+  import sphinx.setup_command
 except ImportError:
   has_sphinx = False
 
@@ -32,7 +32,7 @@ try:
   import unittest.mock as mock
 except ImportError:
   try:
-  import mock
+    import mock
   except ImportError:
     has_mock = False
 
@@ -65,15 +65,15 @@ if has_sphinx and has_mock:
 
   import microscope.testsuite.libs
 
-class BuildDoc(sphinx.setup_command.BuildDoc):
-  @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
-  def run(self):
+  class BuildDoc(sphinx.setup_command.BuildDoc):
+    @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
+    def run(self):
       apidoc.main(apidoc_ini_args + [
-                 "--separate", # each module on its own page
-                 "--module-first",
-                 "--output-dir", "doc/api",
-                 "microscope"])
-    sphinx.setup_command.BuildDoc.run(self)
+        "--separate", # each module on its own page
+        "--module-first",
+        "--output-dir", "doc/api",
+        "microscope"])
+      sphinx.setup_command.BuildDoc.run(self)
 
 else:
   class BuildDoc(distutils.cmd.Command):

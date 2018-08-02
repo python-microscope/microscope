@@ -179,6 +179,7 @@ class TestFilterWheel(FilterWheelBase):
     def _on_shutdown(self):
         pass
 
+
 @Pyro4.expose
 class TestLaser(devices.LaserDevice):
     def __init__(self, *args, **kwargs):

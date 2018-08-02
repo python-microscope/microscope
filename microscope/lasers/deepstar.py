@@ -16,6 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import serial
 
 import Pyro4
@@ -62,15 +63,15 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def enable(self):
         self._logger.info("Turning laser ON.")
-        #Turn on deepstar mode with internal voltage ref
-        #Enable internal peak power
-        #Set MF turns off internal digital and bias modulation
+        # Turn on deepstar mode with internal voltage ref
+        # Enable internal peak power
+        # Set MF turns off internal digital and bias modulation
         for cmd, msg in [(b'LON', 'Enable response: [%s]'),
                          (b'L2', 'L2 response: [%s]'),
                          (b'IPO', 'Enable-internal peak power response: [%s]'),
                          (b'MF', 'MF response [%s]')]:
             self._write(cmd)
-        response = self._readline()
+            response = self._readline()
             self._logger.info(msg, response.decode())
 
         if not self.get_is_on():
