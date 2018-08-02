@@ -23,12 +23,15 @@ import ctypes
 import os
 import warnings
 
+import Pyro4
 import six
 
 from microscope.devices import DeformableMirror
 
 import microscope._wrappers.BMC as BMC
 
+
+@Pyro4.expose
 class BMCDeformableMirror(DeformableMirror):
   def __init__(self, serial_number, *args, **kwargs):
     super(BMCDeformableMirror, self).__init__()

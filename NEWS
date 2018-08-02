@@ -1,28 +1,34 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
-Upcoming release
-----------------
+Version 0.2.0 (2018/06/13)
+--------------------------
 
-* New device classes:
+* New classes:
 
   * DeformableMirror
-
-* New MixIn classes:
-
   * TriggerTargetMixIn
-
-* Added Enum for `TriggerType` and `TriggerMode`.
+  * SerialDeviceMixIn
+  * TriggerType
+  * TriggerMode
 
 * New hardware supported:
 
   * Alpao deformable mirrors
   * Boston Micromachines Corporation (BMC) deformable mirrors
+  * Thorlabs filter wheels
+
+* Abstract class for FilterWheel moved to the `microscope.devices`
+  module, where all other abstract device class are.
 
 * New module `microscope.gui` for simple testing of individual
   devices.
 
 * Now dependent on the enum34 package for python pre 3.4.
+
+* Multiple fixes to support Python 3.
+
+* This is the last release with planned support for Python 2.
 
 
 Version 0.1.0 (2017/05/04)

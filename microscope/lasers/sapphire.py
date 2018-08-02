@@ -2,6 +2,8 @@
 # -*- coding: utf-8
 #
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
+# and 2017 Ian Dobbie (Ian.Dobbie@gmail.com)
+# and 2018 Tiago Susano Pinto (tiagosusanopinto@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,151 +18,163 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import serial
-import threading
-import time
+
+import Pyro4
+
 from microscope import devices
-import functools
 
 
-def lock_comms(func):
-    """A decorator to flush the input buffer prior to issuing a command.
+@Pyro4.expose
+class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
-    Locks the comms channel so that a function must finish all its comms
-    before another can run.
-    """
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self.comms_lock:
-            return func(self, *args, **kwargs)
+    laser_status = {
+        b'1': 'Start up',
+        b'2': 'Warmup',
+        b'3': 'Standby',
+        b'4': 'Laser on',
+        b'5': 'Laser ready',
+        b'6': 'Error',
+    }
 
-    return wrapper
-
-
-class CoboltLaser(devices.LaserDevice):
-    def __init__(self, com=None, baud=None, timeout=0.01, **kwargs):
-        super(CoboltLaser, self).__init__()
+    def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
+        # laser controller must run at 19200 baud, 8+1 bits,
+        # no parity or flow control
+        # timeout is recomended to be over 0.5
+        super(SapphireLaser, self).__init__(*args, **kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
-        # Start a logger.
-        self._write('sn?')
-        response = self._readline()
-        self._logger.info("Cobolt laser serial number: [%s]" % response)
-        # We need to ensure that autostart is disabled so that we can switch emission
-        # on/off remotely.
-        self._write('@cobas 0')
-        self._logger.info("Response to @cobas 0 [%s]" % self._readline())
-        self.comms_lock = threading.RLock()
+        # Turning off command prompt
+        self.send(b'>=0')
+        # Head ID value is a float point value,
+        # but only the integer part is significant
+        headID = int(float(self.send(b'?hid')))
+        self._logger.info("Sapphire laser serial number: [%s]" % headID)
+
+    def _write(self, command):
+        count = super(SapphireLaser, self)._write(command)
+        ## This device always writes backs something.  If echo is on,
+        ## it's the whole command, otherwise just an empty line.  Read
+        ## it and throw it away.
+        self._readline()
+        return count
 
     def send(self, command):
         """Send command and retrieve response."""
-        self._write(str(command))
+        self._write(command)
         return self._readline()
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def clearFault(self):
-        self._write('cf')
-        self._readline()
+        self.flush_buffer()
         return self.get_status()
 
     def flush_buffer(self):
-        line = ' '
+        line = b' '
         while len(line) > 0:
             line = self._readline()
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
-        self._write('l?')
-        response = self._readline()
-        return response in '01'
+        return self.send(b'?l') in b'01'
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_status(self):
         result = []
-        for cmd, stat in [('l?', 'Emission on?'),
-                            ('p?', 'Target power:'),
-                            ('pa?', 'Measured power:'),
-                            ('f?', 'Fault?'),
-                            ('hrs?', 'Head operating hours:')]:
-            self._write(cmd)
-            result.append(stat + ' ' + self._readline())
+
+        status_code = self.send(b'?sta')
+        result.append(('Laser status: '
+                       + self.laser_status.get(status_code, 'Undefined')))
+
+        for cmd, stat in [(b'?l', 'Ligh Emission on?'),
+                          (b'?t', 'TEC Servo on?'),
+                          (b'?k', 'Key Switch on?'),
+                          (b'?sp', 'Target power:'),
+                          (b'?p', 'Measured power:'),
+                          (b'?hh', 'Head operating hours:')]:
+            result.append(stat + ' ' + self.send(cmd).decode())
+
+        self._write(b'?fl')
+        faults = self._readline()
+        response = self._readline()
+        while response:
+            faults += b' ' + response
+            response = self._readline()
+
+        result.append(faults.decode())
         return result
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def _on_shutdown(self):
         # Disable laser.
-        self.send('l0')
-        self.send('@cob0')
+        self._write(b'l=0')
         self.flush_buffer()
 
 
     ##  Initialization to do when cockpit connects.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def initialize(self):
         self.flush_buffer()
-        #We don't want 'direct control' mode.
-        self.send('@cobasdr 0')
-        # Force laser into autostart mode.
-        self.send('@cob1')
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
-        response = self.send('l1')
-        self._logger.info("l1: [%s]" % response)
+        response = self.send(b'l=1')
+        self._logger.info("l=1: [%s]" % response.decode())
 
-        if not self.get_is_on():
+        # Enabling laser might take more than 500ms (default timeout)
+        prevTimeout = self.connection.timeout
+        self.connection.timeout = max(1, prevTimeout)
+        isON = self.get_is_on()
+        self.connection.timeout = prevTimeout
+
+        if not isON:
             # Something went wrong.
             self._logger.error("Failed to turn on. Current status:\r\n")
             self._logger.error(self.get_status())
-            return False
-        return True
+        return isON
 
 
     ## Turn the laser OFF.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
         self._logger.info("Turning laser OFF.")
-        self._write('l0')
-        return self._readline()
+        return self._write(b'l=0')
 
 
     ## Return True if the laser is currently able to produce light.
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
-        self._write('l?')
-        response = self._readline()
-        return response == '1'
+        return self.send(b'?l') == b'1'
 
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
-        # 'gmlp?' gets the maximum laser power in mW.
-        self._write('gmlp?')
-        response = self._readline()
-        return float(response)
+        # '?maxlp' gets the maximum laser power in mW.
+        return float(self.send(b'?maxlp'))
 
+    @devices.SerialDeviceMixIn.lock_comms
+    def get_min_power_mw(self):
+        # '?minlp' gets the minimum laser power in mW.
+        return float(self.send(b'?minlp'))
 
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
-        if not self.get_is_on():
-            return 0
-        self._write('pa?')
-        return 1000 * float(self._readline())
+        return float(self.send(b'?p'))
 
-
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = min(mW, self.get_max_power_mw)
-        self._logger.info("Setting laser power to %.4fW."  % (mW / 1000.0, ))
-        return self.send("@cobasp %.4f" % (mW / 1000.0))
+        mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
+        mW_str = '%.3f' % mW
+        self._logger.info("Setting laser power to %s mW." % mW_str)
+        # using send instead of _write, because
+        # if laser is not on, warning is returned
+        return self.send(b'p=%s' % mW_str.encode())
 
-
-    @lock_comms
+    @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
-        self._write('p?')
-        return 1000 * float(self._readline())
+        return float(self.send('b?sp'))

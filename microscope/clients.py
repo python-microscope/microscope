@@ -18,6 +18,7 @@
 """TODO: complete this docstring
 """
 import inspect
+import itertools
 import Pyro4
 import socket
 import threading
@@ -43,11 +44,16 @@ class Client(object):
         """Connect to a proxy and set up self passthrough to proxy methods."""
         self._proxy = Pyro4.Proxy(self._url)
         self._proxy._pyroGetMetadata()
-        # Derived classes my over-ride some methods. Leave these alone.
+
+        # Derived classes may over-ride some methods. Leave these alone.
         my_methods = [m[0] for m in inspect.getmembers(self, predicate=inspect.ismethod)]
         methods = set(self._proxy._pyroMethods).difference(my_methods)
-        for method in methods:
-            setattr(self, method, getattr(self._proxy, method))
+        # But in the case of propertyes, we need to inspect the class.
+        my_properties = [m[0] for m in inspect.getmembers(self.__class__, predicate=inspect.isdatadescriptor)]
+        properties = set(self._proxy._pyroAttrs).difference(my_properties)
+
+        for attr in itertools.chain(methods, properties):
+            setattr(self, attr, getattr(self._proxy, attr))
 
 
 class DataClient(Client):

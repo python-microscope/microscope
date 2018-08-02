@@ -8,26 +8,36 @@
 ## notice and this notice are preserved.  This file is offered as-is,
 ## without any warranty.
 
-import setuptools
-import setuptools.command.sdist
+import distutils.cmd
 import sys
 
+import setuptools
+import setuptools.command.sdist
+
+## setup.py is used for both maintainers actions (build documentation,
+## run testuite, etc), and users actions (mainly install).  We need to
+## be careful to not require maintainer tools (such as sphinx) for
+## users actions.  See issue #47.
+
+has_sphinx = True
+try:
 import sphinx.setup_command
-
-try: # In sphinx 1.7, apidoc was moved to the ext subpackage
-  import sphinx.ext.apidoc as apidoc
 except ImportError:
-  import sphinx.apidoc as apidoc
+  has_sphinx = False
 
-try: # In Python 3.3, mock was merged into unittest package
+## Since Python 3.3, the mock package is included in the unittest
+## package which is part of the Python standard library.
+has_mock = True
+try:
   import unittest.mock as mock
 except ImportError:
+  try:
   import mock
-
-import microscope.testsuite.libs
+  except ImportError:
+    has_mock = False
 
 project_name = 'microscope'
-project_version = '0.1.0+dev'
+project_version = '0.2.0+dev'
 
 extra_requires = []
 
@@ -41,15 +51,38 @@ if sys.version_info < (3, 4):
 ## Shadow the sphinx provided command, in order to run sphinx-apidoc
 ## before sphinx-build.  This builds the rst files with the actual
 ## package inline documentation.
+if has_sphinx and has_mock:
+  try: # In sphinx 1.7, apidoc was moved to the ext subpackage
+    import sphinx.ext.apidoc as apidoc
+    ## In addition of changing the subpackage, the signature for main()
+    ## also changed https://github.com/sphinx-doc/sphinx/issues/5088 If
+    ## we are building in older versions, the program name needs to be
+    ## included in the args passed to apidoc.main()
+    apidoc_ini_args = []
+  except ImportError:
+    import sphinx.apidoc as apidoc
+    apidoc_ini_args = ['sphinx-apidoc']
+
+  import microscope.testsuite.libs
+
 class BuildDoc(sphinx.setup_command.BuildDoc):
   @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
   def run(self):
-    apidoc.main(["sphinx-apidoc",
+      apidoc.main(apidoc_ini_args + [
                  "--separate", # each module on its own page
                  "--module-first",
                  "--output-dir", "doc/api",
                  "microscope"])
     sphinx.setup_command.BuildDoc.run(self)
+
+else:
+  class BuildDoc(distutils.cmd.Command):
+    user_options = []
+    def __init__(self, *args, **kwargs):
+      raise RuntimeError(('sphinx and mock are required to build the'
+                          ' documentation'))
+
+
 
 ## Modify the sdist command class to include extra files in the source
 ## distribution.  Seems a bit ridiculous that we have to do this but
@@ -75,21 +108,17 @@ setuptools.setup(
   name = project_name,
   version = project_version,
   description = "An extensible microscope hardware interface.",
+  long_description = open('README', 'r').read(),
   license = "GPL-3.0+",
 
-  ## Do not use author_email because that won't play nice once there
-  ## are multiple authors.
-  author = "Mick Phillips <mick.phillips@bioch.ox.ac.uk>",
+  ## We need an author and an author_email value or PyPI rejects us.
+  ## For multiple authors, they tell us to get a mailing list :/
+  author = "See homepage for a complete list of contributors",
+  author_email = " ",
 
   url = "https://github.com/MicronOxford/microscope",
 
-  packages = [
-    "microscope",
-    "microscope.cameras",
-    "microscope.lasers",
-    "microscope.testsuite",
-    "microscope._wrappers",
-  ],
+  packages = setuptools.find_packages(),
 
   install_requires = [
     "numpy",
