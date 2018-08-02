@@ -37,8 +37,8 @@ _stdcall_libraries = {}
 
 if plat.startswith('Windows'):
     if arch == '32bit':
-    _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
-    _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
+        _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
+        _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
     else:
         _stdcall_libraries['ATCORE'] = ctypes.OleDLL('atcore')
         _stdcall_libraries['ATUTIL'] = ctypes.OleDLL('atutility')
