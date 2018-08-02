@@ -22,7 +22,7 @@
 ################
 
 
-from .import SDK3
+from . import SDK3
 
 class ATProperty(object):
     def connect(self, handle, propertyName):
@@ -157,14 +157,14 @@ class SDK3Camera(object):
         for name, var in self.__dict__.items():
             if isinstance(var, ATProperty):
                 var.connect(self.handle, name)
-                
-        
+
+
     def shutdown(self):
         SDK3.Close(self.handle)
         #camReg.unregCamera()
-        
-    
-        
-        
+
+
+
+
         
     

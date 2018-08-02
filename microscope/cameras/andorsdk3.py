@@ -27,7 +27,6 @@ import Pyro4
 import time
 
 from six.moves import queue
-
 from .SDK3Cam import *
 
 # SDK data pointer type
@@ -103,8 +102,6 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)
         self.handle = None
-        #self._sdk3cam = SDK3Camera(self._index)
-        #SDK3Camera.__init__(self, self._index)
         self.add_setting('use_callback', 'bool',
                          lambda: self._using_callback,
                          self._enable_callback,

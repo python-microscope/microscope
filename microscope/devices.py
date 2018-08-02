@@ -292,14 +292,14 @@ class Device(object):
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if self.settings[key]['readonly']:
+            if _call_if_callable(self.settings[key]['readonly']):
                 continue
             self.settings[key]['set'](incoming[key])
+
         # Read back values in second loop.
         for key in update_keys:
             results[key] = self.settings[key]['get']()
         return results
-
 
 def keep_acquiring(func):
     """Wrapper to preserve acquiring state of data capture devices."""
