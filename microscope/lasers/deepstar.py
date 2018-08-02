@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import serial
+import time
 
 import Pyro4
 
@@ -45,6 +46,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # towards the byte limit, hence 14 (16-2)
         command = command.ljust(14) + b'\r\n'
         response = self.connection.write(command)
+        time.sleep(.2)
         return response
 
 
@@ -119,11 +121,11 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         if (level > 1.0) :
             return
         self._logger.info("level=%d", level)
-        power=int (level*0xFFF)
+        power = int(level*0xFFF)
         self._logger.info("power=%d", power)
         strPower = "PP%03X" % power
         self._logger.info("power level=%s", strPower)
-        self._write(six.b(strPower))
+        self._write(strPower.encode())
         response = self._readline()
         self._logger.info("Power response [%s]", response.decode())
         return response
