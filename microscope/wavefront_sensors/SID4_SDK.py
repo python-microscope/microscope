@@ -497,12 +497,13 @@ class SID4Device(WavefrontSensorDevice):
         - PtoV: peak to valley measurement
         - zernike_polynomials: a list with the relevant Zernike polynomials
         """
+        trimmed_phase_map = self._trim_zeros(data['phase_map'])
         processed_data = {'intensity_map': self._apply_transform(data['intensity_map']),
                           'phase_map': self._apply_transform(data['phase_map']),
                           'tilts': data['tilts'],
                           'zernike_polynomials': data['zernike_polynomials'],
-                          'RMS': data['phase_map'].std(),
-                          'PtoV': data['phase_map'].ptp()}
+                          'RMS': trimmed_phase_map.std(),
+                          'PtoV': trimmed_phase_map.ptp()}
 
         return processed_data
 
@@ -517,6 +518,13 @@ class SID4Device(WavefrontSensorDevice):
                 (1, 0): np.fliplr(np.rot90(array, rot)),
                 (1, 1): np.fliplr(np.flipud(np.rot90(array, rot)))
                 }[flips]
+
+    def _trim_zeros(self, data):
+        """Returns a linear numpy array where the zeros outside the pupil have been trimmed"""
+        trimmed_data = np.array([])
+        for row in data:
+            trimmed_data = np.append(trimmed_data, np.trim_zeros(row))
+        return trimmed_data
 
     def abort(self):
         """Abort acquisition."""
@@ -902,6 +910,39 @@ if __name__ == '__main__':
     wfs = SID4Device()
     wfs.initialize()
     wfs.enable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.disable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.enable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.disable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.shutdown()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.initialize()
+    wfs.enable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.disable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.shutdown()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+    wfs.enable()
+    print('Enabled: ' + str(wfs.get_is_enabled()))
+    print('Acquiring: ' + str(wfs._acquiring))
+
+    for i in range(3):
+        wfs.soft_trigger()
+
+
+
     print('Current exposure_time: ', wfs.get_setting('exposure_time'))
     print('Changing exposure_time')
     wfs.set_setting('exposure_time', 2)
