@@ -32,4 +32,5 @@ Lasers
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
 - Coherent Sapphire (:class:`microscope.lasers.saphhire`)
+- Coherent OBIS (:class:`microscope.lasers.obis`)
 - Omicron Deepstar (:class:`microscope.lasers.deepstar`)
