@@ -123,7 +123,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._logger.info("power=%d", power)
         strPower = "PP%03X" % power
         self._logger.info("power level=%s", strPower)
-        self._write(six.b(strPower))
+        self._write(b"%s" % strPower)
         response = self._readline()
         self._logger.info("Power response [%s]", response.decode())
         return response
