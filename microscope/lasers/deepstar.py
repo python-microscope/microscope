@@ -26,7 +26,7 @@ from microscope import devices
 
 @Pyro4.expose
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
-    def __init__(self, com, baud, timeout, *args, **kwargs):
+    def __init__(self, com, baud=9600, timeout=2.0, *args, **kwargs):
         super(DeepstarLaser, self).__init__(*args, **kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
