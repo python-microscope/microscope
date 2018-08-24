@@ -49,11 +49,6 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self.send(b'cf')
         return self.get_status()
 
-    def flush_buffer(self):
-        line = b' '
-        while len(line) > 0:
-            line = self._readline()
-
     @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
         response = self.send(b'l?')
@@ -76,13 +71,13 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Disable laser.
         self.disable()
         self.send(b'@cob0')
-        self.flush_buffer()
+        self.flushInput()
 
 
     ##  Initialization to do when cockpit connects.
     @devices.SerialDeviceMixIn.lock_comms
     def initialize(self):
-        self.flush_buffer()
+        self.flushInput()
         #We don't want 'direct control' mode.
         self.send(b'@cobasdr 0')
         # Force laser into autostart mode.
