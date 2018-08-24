@@ -136,7 +136,9 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = min(mW, self.get_max_power_mw())
+        ## There is no minimum power in cobolt lasers.  Any
+        ## non-negative number is accepted.
+        mW = max(0, min(mW, self.get_max_power_mw()))
         W_str = '%.4f' % (mW / 1000.0)
         self._logger.info("Setting laser power to %s W.", W_str)
         return self.send(b'@cobasp ' + W_str.encode())
