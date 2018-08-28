@@ -128,6 +128,8 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._logger.info("Power response [%s]", response.decode())
         return response
 
+    def get_min_power_mw(self):
+        return 0.0
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):

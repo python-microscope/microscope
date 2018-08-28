@@ -919,6 +919,11 @@ class LaserDevice(Device):
         pass
 
     @abc.abstractmethod
+    def get_min_power_mw(self):
+        """Return the min power in mW."""
+        pass
+
+    @abc.abstractmethod
     def get_max_power_mw(self):
         """Return the max. power in mW."""
         pass
@@ -951,6 +956,7 @@ class LaserDevice(Device):
         Returns:
             void
         """
+        mw = max(min(mw, self.get_max_power_mw()), self.get_min_power_mw())
         self._set_point = mw
         self._set_power_mw(mw)
 

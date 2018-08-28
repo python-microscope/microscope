@@ -168,7 +168,6 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
         mW_str = '%.3f' % mW
         self._logger.info("Setting laser power to %s mW." % mW_str)
         # using send instead of _write, because
