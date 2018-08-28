@@ -176,4 +176,4 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
-        return float(self.send('b?sp'))
+        return float(self.send(b'?sp'))
