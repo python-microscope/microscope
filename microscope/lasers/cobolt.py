@@ -126,7 +126,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
         if not self.get_is_on():
-            return 0
+            return 0.0
         response = self.send(b'pa?')
         return 1000 * float(response)
 
