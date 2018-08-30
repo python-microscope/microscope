@@ -47,7 +47,7 @@ class SerialMock(serial.serialutil.SerialBase):
 
     """
     def __init__(self, *args, **kwargs):
-        super(SerialMock, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.in_buffer = io.BytesIO()
         self.out_buffer = io.BytesIO()
 
@@ -133,7 +133,7 @@ class CoherentSapphireLaserMock(SerialMock):
     max_power = 220.0
 
     def __init__(self, *args, **kwargs):
-        super(CoherentSapphireLaserMock, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.key = 'on'
         self.status = 'laser ready' # Laser ready, status code 5
@@ -152,7 +152,7 @@ class CoherentSapphireLaserMock(SerialMock):
         else:
             ## If echo is off, we still echo EOLs
             self.in_buffer.write(self.eol * data.count(self.eol))
-        return super(CoherentSapphireLaserMock, self).write(data)
+        return super().write(data)
 
     def handle(self, command):
         ## Operator's manual mentions all commands in uppercase.
@@ -329,7 +329,7 @@ class CoboltLaserMock(SerialMock):
     max_power = 600.0
 
     def __init__(self, *args, **kwargs):
-        super(CoboltLaserMock, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.power = CoboltLaserMock.default_power
         self.light = False
