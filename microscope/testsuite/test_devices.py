@@ -159,6 +159,13 @@ class LaserTests:
   def test_being(self):
      self.assertTrue(self.laser.is_alive())
 
+  def test_get_is_on(self):
+    self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
+    self.laser.enable()
+    self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
+    self.laser.disable()
+    self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
+
   def test_off_after_constructor(self):
     ## Some lasers, such as our Coherent Sapphire emit laser radiation
     ## as soon as the key is switched on.  We should ensure that the
@@ -201,7 +208,7 @@ class LaserTests:
                  + ((self.device.max_power - self.device.min_power) /2.0))
     self.laser.set_power_mw(new_power)
     self.assertEqual(round(self.laser.get_power_mw()), round(new_power))
-    self.assertEqual(new_power, self.laser.get_set_power_mw())
+    self.assertEqual(round(new_power), round(self.laser.get_set_power_mw()))
 
   def test_setting_power_outside_limit(self):
     self.laser.enable()
