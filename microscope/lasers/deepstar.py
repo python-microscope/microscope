@@ -136,24 +136,34 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Max power in mW is third token of STAT0.
         self._write(b'STAT0')
         response = self._readline()
-        return int(response.split()[2])
+        return float(response.split()[2])
 
+    def _level_hex_to_mw(self, level_hex):
+        """Convert from the 3 byte level in hexadecimal.
+
+        Args:
+            level_hex (bytes): level of max peak power in 3 byte
+                hexadecimal number.  For example, b'FFF' for 100%,
+                b'7FF' for ~50%, and b'000' for 0%
+
+        Returns:
+            Float number for power in mw.
+        """
+        level = float(int(level_hex, 16))
+        return self.get_max_power_mw() * level / float(0xFFF)
 
     @devices.SerialDeviceMixIn.lock_comms
-    def _get_power(self):
-        if not self.get_is_on():
-            # Laser is not on.
-            return 0
+    def get_set_power_mw(self):
         self._write(b'PP?')
         response = self._readline()
-        return int(b'0x' + response.strip(b'P'), 16)
-
+        if not response.startswith(b'PP'):
+            raise RuntimeError('failed to get peak power')
+        return self._level_hex_to_mw(response[2:])
 
     def get_power_mw(self):
-        maxPower = self.get_max_power_mw()
-        power = self._get_power()
-        return maxPower * float(power) / float(0xFFF)
-
+        if not self.get_is_on():
+            return 0.0
+        return self.get_set_power_mw()
 
     def _set_power_mw(self, mW):
         maxPower = self.get_max_power_mw()
