@@ -249,6 +249,35 @@ class TestCoboltLaser(unittest.TestCase, LaserTests):
 
     self.device = CoboltLaserMock
 
+class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests):
+  def setUp(self):
+    from microscope.lasers.deepstar import DeepstarLaser
+    from microscope.testsuite.mock_devices import OmicronDeepstarLaserMock
+    with unittest.mock.patch('microscope.lasers.deepstar.serial.Serial',
+                             new=OmicronDeepstarLaserMock):
+      self.laser = DeepstarLaser('/dev/null')
+    self.laser.initialize()
+
+    self.device = OmicronDeepstarLaserMock
+
+  def test_weird_initial_state(self):
+    ## The initial state of the laser may not be ideal to actual turn
+    ## it on, so test that weird settings are reset to something
+    ## adequate.
+
+    self.laser.connection.internal_peak_power = False
+    self.laser.connection.bias_modulation = True
+    self.laser.connection.digital_modulation = True
+    self.laser.connection.analog2digital = True
+
+    self.laser.enable()
+    self.assertTrue(self.laser.get_is_on())
+
+    self.assertTrue(self.laser.connection.internal_peak_power)
+    self.assertFalse(self.laser.connection.bias_modulation)
+    self.assertFalse(self.laser.connection.digital_modulation)
+    self.assertFalse(self.laser.connection.analog2digital)
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -30,8 +30,10 @@ device classes instead.  There's a concrete class for each device
 interface.
 """
 
+import enum
 import functools
 import io
+
 
 import serial.serialutil
 
@@ -467,3 +469,237 @@ class CoboltLaserMock(SerialMock):
         ## Sending a command is done with '\r' only.  However,
         ## responses from the hardware end with '\r\n'.
         self.in_buffer.write(answer + b'\r\n')
+
+
+class OmicronDeepstarLaserMock(SerialMock):
+    """Modelled after a TA Deepstar 488nm.
+    """
+    eol = b'\r\n'
+
+    baudrate = 9600
+    parity = serial.PARITY_NONE
+    bytesize = serial.EIGHTBITS
+    stopbits = serial.STOPBITS_ONE
+    rtscts = False
+    dsrdtr = False
+
+    ## Values in mW
+    default_power = 50.0
+    min_power = 0.0
+    max_power = 200.0
+
+    class State(enum.Enum):
+        S0 = 0 # Global error state or interlocked state
+        S1 = 1 # Standby state or Laser OFF state
+        S2 = 2 # Laser ON state
+
+    class Mode(enum.Enum):
+        blackout = 1
+        bias = 2
+        modulated = 3
+        deepstar = 4
+
+    command2mode = {
+        b'L0' : Mode.blackout,
+        b'BLK' : Mode.blackout,
+        b'LB' : Mode.bias,
+        b'L1' : Mode.modulated,
+        b'L2' : Mode.deepstar,
+    }
+    mode2answer = {
+        Mode.blackout : b'L0', # always L0, even if BLK was used
+        Mode.bias : b'LB',
+        Mode.modulated : b'L1',
+        Mode.deepstar : b'L2',
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.power = self.default_power
+
+        self.state = self.State.S1 # default dependent on 'ASx' command
+        self.mode = self.Mode.blackout
+
+        self.internal_peak_power = False
+        self.analog2digital = False
+        self.bias_modulation = False
+        self.digital_modulation = False
+
+    @property
+    def light(self):
+        if (self.state != self.State.S2
+            or self.mode == self.mode.blackout
+            or not self.internal_peak_power
+            or (self.analog2digital and not self.digital_modulation)):
+            return False
+        return True
+
+    def write(self, data):
+        ## This connection does not wait for an eol to parse the
+        ## command.  It only looks at 16 or 7 bit (depending on
+        ## state).  Sending a message one character at a time will not
+        ## work so just send the whole data to be handled.
+        self.handle(data)
+        return len(data)
+
+    def handle(self, command):
+        if (len(command) != 16
+            and (len(command) != 7 and self.state != self.State.S2)):
+            ## Such a thing will make the laser go into S0 state which
+            ## will also turns it off..  We don't model this because
+            ## we don't know well how the reset (RST command) works.
+            raise RuntimeError('invalid Omicron Deepstar command')
+        elif command[-2:] != b'\r\n':
+            ## Even if a command is correct, the last two characters
+            ## need to be \r\n.
+            raise RuntimeError("command does not end in '\\r\\n'")
+
+        command = command[:-2].rstrip(b' ')
+        answer = None
+
+        if command == b'S?':
+            answer = self.state.name.encode()
+        elif command == b'STAT0':
+            ## Model-code of the connected lasersystem:
+            answer = (b'MC '
+                      + b' %-4d' % (488) # wavelength
+                      + b' %3d' % (self.max_power) # in mw
+                      + b' TA   ') # operating mode, according product catalog
+        elif command == b'STAT1':
+            answer = (b'SL'
+                      + b' 6AB' # actual bias (hexadecimal)
+                      + b' 600' # modulated bias-level (hexadecimal)
+                      + b' 868' # mod-level internal set for drive max. current
+                      + b' T249' # diode temperature (in celcius * 10)
+                      + b' V117') # control voltage (in volts * 10)
+        elif command == b'STAT2':
+            answer = (b'R111' # firmware release
+                      + b' N02' # No used laserpen
+                      + b' SNP131056' # S/No of laserhead
+                      + b' SNC131056' # S/No of controller
+                      + b' WH 04667' # working hours
+                      + b' SLS B9C 500') # start values for the diode parameters
+        elif command == b'STAT3':
+            ## Stored option code flags.
+            answer = (b'OC '
+                      + b'AS1'
+                      + b'TH0'
+                      + b'AP0'
+                      + b'FK0'
+                      + b'AC0'
+                      + b'AM0'
+                      + b'SU0'
+                      + b'CO0' # collimator objective?
+                      + b'FO0' # costumized focusing objective?
+                      + b'MO0'
+                      + b'US0'
+                      + b'LA1'
+                      + b'FA0') # fiber coupling unit?
+
+        ## Changing mode
+        elif command in self.command2mode.keys():
+            if self.state == self.State.S2:
+                self.mode = self.command2mode[command]
+                answer = b'>'
+            else:
+                answer = b'UK'
+
+        ## Current mode (undocumented)
+        elif command == b'L?':
+            if self.state == self.State.S2:
+                answer = self.mode2answer[self.mode]
+            else:
+                answer = b'UK'
+
+        ## Laser on
+        elif command == b'LON':
+            if self.state == self.State.S1:
+                self.state = self.State.S2
+                answer = b'LONOK'
+            elif self.mode == self.Mode.S2:
+                answer = b'UK'
+            else: # in S0 state
+                ## This is undocumented and it's probably a bug on
+                ## their firmware.  Should probably be returning UK.
+                answer = b'INT'
+
+        ## Laser off
+        elif command == b'LF':
+            if self.state == self.State.S2:
+                self.state = self.State.S1
+                answer = b'LOFFOK'
+            else:
+                answer = b'UK'
+
+        ## Peak Power
+        elif command.startswith(b'PP'):
+            ## peak power values are a 3 byte char hexadecimal number,
+            ## scale to the range of possible power:
+            ##     000[hex] =    0[dec] =   0% =   0 mW
+            ##     FFF[hex] = 4095[dec] = 100% = 200 mW
+            if command == b'PP?':
+                level_hex = hex(round(4095 * (self.power / self.max_power)))
+                answer = b'PP' + level_hex[2:].encode().upper()
+            elif len(command) == 5:
+                level_hex = '0x' + command[2:].decode().lower()
+                self.power = int(level_hex, 16) * (self.max_power / 4095)
+                answer = command
+            else:
+                raise RuntimeError("invalid command '%'" % command)
+
+        ## Power level
+        elif command == b'P?':
+            ## TODO: get a laser that supports this command to test.
+            ## Not all lasers support this command, this needs to be
+            ## specified with the order of the laser.  There must be a
+            ## way to check if this commands is available, maybe in
+            ## the output of STAT3.  If the command is not available,
+            ## it still replies normally, but the power value returned
+            ## is just incorrect.
+            raise RuntimeError("getting current power not implemented")
+
+        ## Internal peak power
+        elif command == b'IPO':
+            self.internal_peak_power = True
+            answer = command
+        elif command == b'IPF':
+            self.internal_peak_power = False
+            answer = command
+        elif command == b'IP?':
+            answer = b'IPO' if self.internal_peak_power else b'IPF'
+
+        ## Analogue modulation path or signal linked to the digital
+        ## modulation path.
+        elif command == b'A2DO':
+            self.analog2digital = True
+            answer = b'A2D ON'
+        elif command == b'A2DF':
+            self.analog2digital = False
+            answer = b'A2D OFF'
+        elif command == b'A2D?':
+            answer = b'A2D ON' if self.analog2digital else b'A2D OFF'
+
+        ## Bias and Digital modulation
+        elif command == b'MF':
+            self.bias_modulation = False
+            self.digital_modulation = False
+            answer = command
+        elif command == b'MO1':
+            self.bias_modulation = True
+            self.digital_modulation = False
+            answer = command
+        elif command == b'MO2':
+            self.bias_modulation = False
+            self.digital_modulation = True
+            answer = command
+        elif command == b'MO3':
+            self.bias_modulation = True
+            self.digital_modulation = True
+            answer = command
+
+        else:
+            raise NotImplementedError("no handling for command '%s'"
+                                      % command.decode('utf-8'))
+
+        self.in_buffer.write(answer + self.eol)
