@@ -98,7 +98,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     @devices.SerialDeviceMixIn.lock_comms
-    def isAlive(self):
+    def is_alive(self):
         self._write(b'S?')
         response = self._readline()
         return response.startswith(b'S')

@@ -757,6 +757,8 @@ class SerialDeviceMixIn(object):
     TODO: add more logic to handle the code duplication of serial
     devices.
     """
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, *args, **kwargs):
         super(SerialDeviceMixIn, self).__init__(*args, **kwargs)
         ## TODO: We should probably construct the connection here but
@@ -779,6 +781,11 @@ class SerialDeviceMixIn(object):
         if a device requires a specific format.
         """
         return self.connection.write(command + b'\r\n')
+
+    @abc.abstractmethod
+    def is_alive(self):
+        """Query if device is alive and we can send messages."""
+        pass
 
     @staticmethod
     def lock_comms(func):
