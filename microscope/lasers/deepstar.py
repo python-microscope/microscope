@@ -66,10 +66,12 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Turn on deepstar mode with internal voltage ref
         # Enable internal peak power
         # Set MF turns off internal digital and bias modulation
+        # Disable analog modulation to digital modulation
         for cmd, msg in [(b'LON', 'Enable response: [%s]'),
                          (b'L2', 'L2 response: [%s]'),
                          (b'IPO', 'Enable-internal peak power response: [%s]'),
-                         (b'MF', 'MF response [%s]')]:
+                         (b'MF', 'MF response [%s]'),
+                         (b'A2DF', 'A2DF response [%s]')]:
             self._write(cmd)
             response = self._readline()
             self._logger.info(msg, response.decode())
