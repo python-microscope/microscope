@@ -563,9 +563,10 @@ class OmicronDeepstarLaserMock(SerialMock):
         elif command == b'STAT0':
             ## Model-code of the connected lasersystem:
             answer = (b'MC '
-                      + b' %-4d' % (488) # wavelength
+                      + b' 488' # wavelength
+                      + b' ' # empty for single diode system (D for double)
                       + b' %3d' % (self.max_power) # in mw
-                      + b' TA   ') # operating mode, according product catalog
+                      + b' TA   ') # controller version / operating mode
         elif command == b'STAT1':
             answer = (b'SL'
                       + b' 6AB' # actual bias (hexadecimal)
@@ -583,19 +584,19 @@ class OmicronDeepstarLaserMock(SerialMock):
         elif command == b'STAT3':
             ## Stored option code flags.
             answer = (b'OC '
-                      + b'AS1'
-                      + b'TH0'
-                      + b'AP0'
-                      + b'FK0'
-                      + b'AC0'
-                      + b'AM0'
-                      + b'SU0'
-                      + b'CO0' # collimator objective?
-                      + b'FO0' # costumized focusing objective?
-                      + b'MO0'
-                      + b'US0'
-                      + b'LA1'
-                      + b'FA0') # fiber coupling unit?
+                      + b'AS1' # autostart option
+                      + b'TH0' # TTL-logic-high
+                      + b'AP0' # auto power correction
+                      + b'FK0' # fiber coupling single mode
+                      + b'AC0' # analog modulation for CW-lasers
+                      + b'AM0' # analog modulation for modulated lasers
+                      + b'SU0' # subtractive analog modulation for modulated lasers
+                      + b'CO0' # collimator optic
+                      + b'FO0' # focusing optic
+                      + b'MO0' # highspeed monitoring
+                      + b'US0' # USB interface
+                      + b'LA1' # RS232 interface
+                      + b'FA0') # fiber coupling single mode
 
         ## Changing mode
         elif command in self.command2mode.keys():
