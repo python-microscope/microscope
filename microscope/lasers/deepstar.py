@@ -23,7 +23,6 @@ import Pyro4
 
 from microscope import devices
 
-
 @Pyro4.expose
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com, baud=9600, timeout=2.0, *args, **kwargs):
@@ -37,6 +36,25 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._write(b'S?')
         response = self._readline()
         self._logger.info("Current laser state: [%s]", response.decode())
+
+        self._write(b'STAT0')
+        model_code = self._readline()
+        if not model_code.startswith(b'MC '):
+            raise RuntimeError("Failed to get model code '%s'"
+                               % model_code.decode())
+        self._max_power = float(model_code[8:11])
+
+        self._write(b'STAT3')
+        option_codes = self._readline()
+        if not option_codes.startswith(b'OC '):
+            raise RuntimeError("Failed to get option codes '%s'"
+                               % option_codes.decode())
+        if option_codes[9:12] == b'AP1':
+            self._has_apc = True
+        else:
+            self._logger.info('Laser is missing APC option.  Will return set'
+                              ' power instead of actual power')
+            self._has_apc = False
 
     def _write(self, command):
         """Send a command."""
@@ -133,41 +151,46 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def get_min_power_mw(self):
         return 0.0
 
-    @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
-        # Max power in mW is third token of STAT0.
-        self._write(b'STAT0')
-        response = self._readline()
-        return float(response.split()[2])
-
-    def _level_hex_to_mw(self, level_hex):
-        """Convert from the 3 byte level in hexadecimal.
-
-        Args:
-            level_hex (bytes): level of max peak power in 3 byte
-                hexadecimal number.  For example, b'FFF' for 100%,
-                b'7FF' for ~50%, and b'000' for 0%
-
-        Returns:
-            Float number for power in mw.
-        """
-        level = float(int(level_hex, 16))
-        return self.get_max_power_mw() * level / float(0xFFF)
+        return self._max_power
 
     @devices.SerialDeviceMixIn.lock_comms
+    def _get_power_mw(self, get_actual=True):
+        ## The code to get the current laser or the peak laser power
+        ## is very similar so this function handles both cases.
+        ##
+        ## Args:
+        ##     get_actual (bool): whether it should return the set
+        ##         power (peak power), or the current laser power.
+        if get_actual:
+            query = b'P'
+            scale = 0xCCC
+        else:
+            query = b'PP'
+            scale = 0xFFF
+
+        self._write(query + b'?')
+        answer = self._readline()
+        if not answer.startswith(query):
+            raise RuntimeError('failed to read power ""' % answer.decode())
+
+        level = int(answer[len(query):], 16)
+        return (float(level) / float(scale)) * self._max_power
+
     def get_set_power_mw(self):
-        self._write(b'PP?')
-        response = self._readline()
-        if not response.startswith(b'PP'):
-            raise RuntimeError('failed to get peak power')
-        return self._level_hex_to_mw(response[2:])
+        return self._get_power_mw(get_actual=False)
 
     def get_power_mw(self):
+        """Current laser power.
+
+        Omicron LDM lasers can be bought with and without the LDM.APC
+        power monitoring option (light pick-off).  If this option is
+        not available, it returns the set power instead.
+        """
         if not self.get_is_on():
             return 0.0
-        return self.get_set_power_mw()
+        return self._get_power_mw(get_actual=self._has_apc)
 
     def _set_power_mw(self, mW):
-        maxPower = self.get_max_power_mw()
-        level = float(mW) / maxPower
+        level = float(mW) / self._max_power
         self._set_power(level)

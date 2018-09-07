@@ -640,11 +640,11 @@ class OmicronDeepstarLaserMock(SerialMock):
             ##     000[hex] =    0[dec] =   0% =   0 mW
             ##     FFF[hex] = 4095[dec] = 100% = 200 mW
             if command == b'PP?':
-                level_hex = hex(round(4095 * (self.power / self.max_power)))
-                answer = b'PP' + level_hex[2:].encode().upper()
+                level = self.power / self.max_power
+                answer = b'PP%03X' % round(float(0xFFF) * level)
             elif len(command) == 5:
-                level_hex = '0x' + command[2:].decode().lower()
-                self.power = int(level_hex, 16) * (self.max_power / 4095)
+                level = int(command[2:], 16) / float(0xFFF)
+                self.power =  level * self.max_power
                 answer = command
             else:
                 raise RuntimeError("invalid command '%'" % command)
@@ -652,13 +652,15 @@ class OmicronDeepstarLaserMock(SerialMock):
         ## Power level
         elif command == b'P?':
             ## TODO: get a laser that supports this command to test.
-            ## Not all lasers support this command, this needs to be
-            ## specified with the order of the laser.  There must be a
-            ## way to check if this commands is available, maybe in
-            ## the output of STAT3.  If the command is not available,
-            ## it still replies normally, but the power value returned
-            ## is just incorrect.
-            raise RuntimeError("getting current power not implemented")
+            ## This is only based on the documentation.
+            ##
+            ## Actual laser power is a 4 byte char heaxadecimal
+            ## number.  Range for actual laser power is:
+            ##     0x0000 =    0 [dec] =   0% =   0 mW
+            ##     0x0CCC = 3276 [dec] = 100% = 200 mW
+            ##     0x0FFF = 4095 [dec] = 120% = 240 mW
+            level = self.power / self.max_power
+            answer = b'P%04X' % round(float(0xCCC) * level)
 
         ## Internal peak power
         elif command == b'IPO':
