@@ -562,7 +562,7 @@ class OmicronDeepstarLaserMock(SerialMock):
             answer = self.state.name.encode()
         elif command == b'STAT0':
             ## Model-code of the connected lasersystem:
-            answer = (b'MC '
+            answer = (b'MC'
                       + b' 488' # wavelength
                       + b' ' # empty for single diode system (D for double)
                       + b' %3d' % (self.max_power) # in mw
