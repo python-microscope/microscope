@@ -322,8 +322,8 @@ def __main__():
     """
 
     if len(sys.argv) == 1:
-        print("\nToo few arguments.\n")
-        print(__main__.__doc__)
+        print("\nToo few arguments.\n", file=sys.stderr)
+        print(__main__.__doc__, file=sys.stderr)
         sys.exit(1)
 
     if sys.argv[1].lower() in ['install', 'update',
