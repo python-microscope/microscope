@@ -358,13 +358,13 @@ def __console__():
 
     if len(sys.argv) < 2:
         logger.critical("No config file specified. Exiting.")
-        devices = None
+        devices = []
     else:
         try:
             devices = validate_devices(sys.argv[1])
         except Exception as e:
             logger.critical(e)
-            devices = None
+            devices = []
 
     if not devices:
         sys.exit(1)
