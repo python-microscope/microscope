@@ -295,7 +295,6 @@ def serve_devices(devices, exit_event=None):
         except (KeyboardInterrupt, IOError):
             logger.debug("KeyboardInterrupt or IOError")
             exit_event.set()
-            pass
 
     logger.debug("Shutting down servers ...")
     while len(servers) > 0:
