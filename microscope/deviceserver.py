@@ -181,10 +181,6 @@ def serve_devices(devices, exit_event=None):
     log_handler.setFormatter(LOG_FORMATTER)
     logger.addHandler(log_handler)
     logger.setLevel(logging.DEBUG)
-    logger.info("Test info message.")
-    logger.debug("Test debug message.")
-
-
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
