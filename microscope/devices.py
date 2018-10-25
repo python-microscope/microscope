@@ -344,8 +344,10 @@ class DataDevice(Device):
         self._fetch_thread_run = False
         # A flag to indicate that this class uses a fetch callback.
         self._using_callback = False
-        # A client to which we send data.
-        self._client = None
+        # Clients to which we send data.
+        self._clientStack = []
+        # A set of live clients to avoid repeated dispatch to disconnected client.
+        self._liveClients = set()
         # A thread to dispatch data.
         self._dispatch_thread = None
         # A buffer for data dispatch.
@@ -428,24 +430,27 @@ class DataDevice(Device):
         """Do any data processing and return data."""
         return data
 
-    def _send_data(self, data, timestamp):
+    def _send_data(self, client, data, timestamp):
         """Dispatch data to the client."""
-        if self._client:
-            try:
-                # Currently uses legacy receiveData. Would like to pass
-                # this function name as an argument to set_client, but
-                # not sure how to subsequently resolve this over Pyro.
-                self._client.receiveData(data, timestamp)
-            except Pyro4.errors.ConnectionClosedError:
-                # Nothing is listening
-                self._client = None
-            except:
-                raise
+        try:
+            # Currently uses legacy receiveData. Would like to pass
+            # this function name as an argument to set_client, but
+            # not sure how to subsequently resolve this over Pyro.
+            client.receiveData(data, timestamp)
+        except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
+            # Client not listening
+            self._logger.info("Removing %s from client stack: disconnected." % client._pyroUri)
+            self._clientStack = list(filter(client.__ne__, self._clientStack))
+            self._liveClients = self._liveClients.difference([client])
+        except:
+            raise
 
     def _dispatch_loop(self):
         """Process data and send results to any client."""
         while True:
-            data, timestamp = self._dispatch_buffer.get(block=True)
+            client, data, timestamp = self._dispatch_buffer.get(block=True)
+            if client not in self._liveClients:
+                continue
             err = None
             if isinstance(data, Exception):
                 standard_exception = Exception(str(data).encode('ascii'))
@@ -455,10 +460,9 @@ class DataDevice(Device):
                     err = e
             else:
                 try:
-                    self._send_data(self._process_data(data), timestamp)
+                    self._send_data(client, self._process_data(data), timestamp)
                 except Exception as e:
                     err = e
-
             if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
@@ -477,23 +481,59 @@ class DataDevice(Device):
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
-                self._dispatch_buffer.put((e, timestamp))
+                self._put(e, timestamp)
                 data = None
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
-                self._dispatch_buffer.put((data, timestamp))
+                self._put(data, timestamp)
             else:
                 time.sleep(0.001)
 
+    @property
+    def _client(self):
+        """A getter for the current client."""
+        return (self._clientStack or [None])[-1]
+
+    @_client.setter
+    def _client(self, val):
+        """Push or pop a client from the _clientStack."""
+        if val is None:
+            self._clientStack.pop()
+        else:
+            self._clientStack.append(val)
+        self._liveClients = set(self._clientStack)
+
+    def _put(self, data, timestamp):
+        """Put data and timestamp into dispatch buffer with target dispatch client."""
+        self._dispatch_buffer.put((self._client, data, timestamp))
+
     @Pyro4.expose
-    def set_client(self, client_uri):
-        """Set up a connection to our client."""
-        self._logger.info("Setting client to %s." % client_uri)
-        if client_uri is not None:
-            self._client = Pyro4.Proxy(client_uri)
+    def set_client(self, new_client):
+        """Set up a connection to our client.
+
+        Clients now sit in a stack so that a single device may send different data
+        to multiple clients in a single experiment. The usage is currently:
+          set_client(client) # Add client to top of stack
+          # do stuff, send triggers, receive data
+          set_client(None)   # Pop top client off stack.
+        There is a risk that some other client calls None before the current client
+        is finished. Avoiding this will require rework here to identify the caller
+        and remove only that caller from the client stack.
+        """
+        if new_client is not None:
+            if isinstance(new_client, string_types):
+                self._client = Pyro4.Proxy(new_client)
+            else:
+                self._client = new_client
         else:
             self._client = None
+        # _client uses a setter. Log the result of assignment.
+        if self._client is None:
+            self._logger.into("Current client is None.")
+        else:
+            self._logger.info("Current client is %s." % str(self._client))
+
 
     @Pyro4.expose
     @keep_acquiring
