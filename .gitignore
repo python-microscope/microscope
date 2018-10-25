@@ -17,4 +17,4 @@
 /doc/api/
 
 #Ignore microscope-aotools add-on
-/microscope-aotools
+microscope/microscope-aotools
