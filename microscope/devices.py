@@ -354,6 +354,8 @@ class DataDevice(Device):
         self._dispatch_buffer = queue.Queue(maxsize=buffer_length)
         # A flag to indicate if device is ready to acquire.
         self._acquiring = False
+        # A condition to signal arrival of a new data and unblock grab_next_data
+        self._new_data_condition = threading.Condition()
 
     def __del__(self):
         self.disable()
@@ -546,6 +548,33 @@ class DataDevice(Device):
     def receiveClient(self, client_uri):
         """A passthrough for compatibility."""
         self.set_client(client_uri)
+
+    @Pyro4.expose
+    def grab_next_data(self, soft_trigger=True):
+            """Returns results from next trigger via a direct call.
+
+            :param soft_trigger: calls soft_trigger if True,
+                                 waits for hardware trigger if False.
+            """
+            self._new_data_condition.acquire()
+            # Push self onto client stack.
+            self.set_client(self)
+            # Wait for data from next trigger.
+            if soft_trigger:
+                self.soft_trigger()
+            self._new_data_condition.wait()
+            # Pop self from client stack
+            self.set_client(None)
+            # Return the data.
+            return self._new_data
+
+    # noinspection PyPep8Naming
+    @Pyro4.expose
+    def receiveData(self, data, timestamp):
+        """Unblocks grab_next_frame so it can return."""
+        with self._new_data_condition:
+            self._new_data = (data, timestamp)
+            self._new_data_condition.notify()
 
 
 class CameraDevice(DataDevice):
