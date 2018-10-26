@@ -532,7 +532,7 @@ class DataDevice(Device):
             self._client = None
         # _client uses a setter. Log the result of assignment.
         if self._client is None:
-            self._logger.into("Current client is None.")
+            self._logger.info("Current client is None.")
         else:
             self._logger.info("Current client is %s." % str(self._client))
 
