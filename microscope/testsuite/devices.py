@@ -215,6 +215,9 @@ class TestLaser(devices.LaserDevice):
     def get_max_power_mw(self):
         return 100
 
+    def get_min_power_mw(self):
+        return 0
+
     def get_power_mw(self):
         return [0, self._power][self._emission]
 
