@@ -47,6 +47,11 @@ class TestCamera(devices.CameraDevice):
                          lambda: self._error_percent,
                          self._set_error_percent,
                          lambda: (0, 100))
+        self._gain = 0
+        self.add_setting('gain', 'int',
+                         lambda: self._gain,
+                         self._set_gain,
+                         lambda: (0, 8192))
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = 0
@@ -58,6 +63,9 @@ class TestCamera(devices.CameraDevice):
     def _set_error_percent(self, value):
         self._error_percent = value
         self._a_setting = value / 10
+
+    def _set_gain(self, value):
+        self._gain = value
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
