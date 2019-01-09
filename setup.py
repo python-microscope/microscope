@@ -72,7 +72,8 @@ if has_sphinx and has_mock:
         "--separate", # each module on its own page
         "--module-first",
         "--output-dir", "doc/api",
-        "microscope"])
+        "microscope",
+        "microscope/win32.py"]) # skip win32 so docs will build on other platforms.
       sphinx.setup_command.BuildDoc.run(self)
 
 else:

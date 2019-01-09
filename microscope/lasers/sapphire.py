@@ -47,6 +47,11 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # Turning off command prompt
         self.send(b'>=0')
+
+        ## The sapphire laser turns on as soon as the key is switched
+        ## on.  So turn radiation off before we start.
+        self.send(b'L=0')
+
         # Head ID value is a float point value,
         # but only the integer part is significant
         headID = int(float(self.send(b'?hid')))
@@ -168,7 +173,6 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
         mW_str = '%.3f' % mW
         self._logger.info("Setting laser power to %s mW." % mW_str)
         # using send instead of _write, because
@@ -177,4 +181,4 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
-        return float(self.send('b?sp'))
+        return float(self.send(b'?sp'))

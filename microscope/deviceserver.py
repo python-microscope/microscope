@@ -20,8 +20,7 @@
 
 This module provides a server to make microscope control objects available
 over Pyro. When called from the command line, this module will serve devices
-defined in a specified config file, any 'config.py' found at the current
-working directory, or default test objects found in microscope.config.
+defined in a specified config file.
 """
 
 import collections
@@ -175,19 +174,27 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.join()
         self._device.shutdown()
 
-def serve_devices(devices):
+
+def serve_devices(devices, exit_event=None):
     logger = logging.getLogger(__name__)
+    log_handler = RotatingFileHandler("__MAIN__.log")
+    log_handler.setFormatter(LOG_FORMATTER)
+    logger.addHandler(log_handler)
+    logger.setLevel(logging.DEBUG)
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
-    exit_event = multiprocessing.Event()
+    if exit_event is None:
+        exit_event = multiprocessing.Event()
 
     servers = [] # DeviceServers instances that we need to wait for when exiting
 
     ## Child processes inherit signal handling from the parent so we
-    ## need to make sure that only the parent process sets the exist
+    ## need to make sure that only the parent process sets the exit
     ## event and waits for the DeviceServers to exit.  See issue #9.
+    ## This won't work behind a Windows service wrapper, so we deal with
+    ## clean shutdown on win32 elsewhere.
     parent = multiprocessing.current_process ()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
@@ -201,8 +208,9 @@ def serve_devices(devices):
                 this_server.join()
             sys.exit()
 
-    signal.signal(signal.SIGTERM, term_func)
-    signal.signal(signal.SIGINT, term_func)
+    if sys.platform != 'win32':
+        signal.signal(signal.SIGTERM, term_func)
+        signal.signal(signal.SIGINT, term_func)
 
     # Group devices by class.
     by_class = {}
@@ -283,11 +291,61 @@ def serve_devices(devices):
 
     while not exit_event.is_set():
         try:
-            time.sleep(100)
+            time.sleep(5)
         except (KeyboardInterrupt, IOError):
-            pass
+            logger.debug("KeyboardInterrupt or IOError")
+            exit_event.set()
+
+    logger.debug("Shutting down servers ...")
+    while len(servers) > 0:
+        for s in servers:
+            if not s.is_alive():
+                servers.remove(s)
+                del(s)
+        time.sleep(1)
+    logger.info(" ... No more servers running.")
+    logger.debug("Joining threads ...")
+    keep_alive_thread.join()
+    logger.debug("... Threads joined. Exiting.")
+    return
+
 
 def __main__():
+    """Serve devices via Pyro.
+
+    Usage:
+      To run in the terminal, use
+        deviceserver CONFIG
+      To configure and run as a Windows service use:
+        deviceserver [install,remove,update,start,stop,restart,status] CONFIG
+    CONFIG is a .py file that exports DEVICES = [device(...), ...]
+    """
+
+    if len(sys.argv) == 1:
+        print("\nToo few arguments.\n", file=sys.stderr)
+        print(__main__.__doc__, file=sys.stderr)
+        sys.exit(1)
+
+    if sys.argv[1].lower() in ['install', 'update',
+                               'start', 'stop', 'restart',
+                               'remove', 'status']:
+        __winservice__()
+    else:
+        __console__()
+
+
+def validate_devices(configfile):
+    config = imp.load_source('microscope.config', configfile)
+    devices = getattr(config, 'DEVICES', None)
+    if not devices:
+        raise Exception("No 'DEVICES=...' in config file.")
+    elif not isinstance(devices, collections.Iterable):
+        raise Exception("Error in config: DEVICES should be an iterable.")
+    return devices
+
+
+def __console__():
+    """Serve devices from a console process."""
     logger = logging.getLogger(__name__)
     if __debug__:
         logger.setLevel(logging.DEBUG)
@@ -298,27 +356,27 @@ def __main__():
     logger.addHandler(stderr_handler)
     logger.addFilter(Filter())
 
-    devices = None
-    if len(sys.argv) == 2:
-        config = imp.load_source ('microscope.config', sys.argv[1])
-        devices = getattr(config, 'DEVICES', None)
-        if not devices:
-            logger.critical("No 'DEVICES=...' in config file. Exiting.")
-        elif not isinstance(devices, collections.Iterable):
-            logger.critical("Error in config: DEVICES should be an iterable."
-                            " Exiting.")
-            devices = None
-    else:
+    if len(sys.argv) < 2:
         logger.critical("No config file specified. Exiting.")
+        devices = []
+    else:
+        try:
+            devices = validate_devices(sys.argv[1])
+        except Exception as e:
+            logger.critical(e)
+            devices = []
 
     if not devices:
-        sys.exit()
+        sys.exit(1)
 
     serve_devices(devices)
 
-if __name__ == '__main__':
-    """Serve devices via Pyro.
 
-    Usage:  deviceserver CONFIG
-    """
+def __winservice__():
+    """Configure and control a Windows service to serve devices."""
+    from microscope.win32 import handle_command_line
+    handle_command_line()
+
+
+if __name__ == '__main__':
     __main__()
