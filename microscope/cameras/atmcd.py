@@ -510,7 +510,7 @@ class AtmcdException(Exception):
     def __init__(self, status):
         self.message = "%s  %s" % (status, lookup_status(status))
         super().__init__(self.message)
-
+        self.status = status
 
 
 class dllFunction(object):
@@ -566,6 +566,10 @@ class dllFunction(object):
 
         # Make the library call.
         status = self.f(*c_args)
+        if len(ret) == 1:
+            ret = ret[0]
+        elif len(ret) == 0:
+            ret = None
         # A few functions indicate state using the returned status code instead
         # of filling a variable passed by reference pointer.
         if self.rstatus:
@@ -574,17 +578,16 @@ class dllFunction(object):
             elif status in [DRV_INVALID_AMPLIFIER, DRV_INVALID_MODE,
                             DRV_INVALID_COUNTCONVERT_MODE, DRV_INVALID_FILTER]:
                 return False
+            elif status in [DRV_TEMP_OFF, DRV_TEMP_STABILIZED, DRV_TEMP_NOT_REACHED,
+                            DRV_TEMP_DRIFT, DRV_TEMP_NOT_STABILIZED]:
+                return (status, ret)
             else:
                 raise AtmcdException(status)
         # Most functions return values via pointers, or have no return.
         if not status == DRV_SUCCESS:
             raise AtmcdException(status)
-        if len(ret) == 0:
-            return None
-        if len(ret) == 1:
-            return ret[0]
-        else:
-            return ret
+        return ret
+
 
 def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
     try:
@@ -758,11 +761,13 @@ dllFunc('GetSoftwareVersion', [OUTPUT(c_uint) for i in range(6)],
 # # GetStartUpTime(float * time)
 dllFunc('GetStatus', [OUTPUT(c_int)], ['status'])
 dllFunc('GetTECStatus', [OUTPUT(c_int)], ['piFlag'])
-dllFunc('GetTemperature', [OUTPUT(c_int)], ['temperature'])
-dllFunc('GetTemperatureF', [OUTPUT(c_float)], ['temperature'])
+dllFunc('GetTemperature', [OUTPUT(c_int)], ['temperature'], True)
+dllFunc('GetTemperatureF', [OUTPUT(c_float)], ['temperature'], True)
 dllFunc('GetTemperatureRange', [OUTPUT(c_int), OUTPUT(c_int)],
                                ['mintemp', 'maxtemp'])
-# # GetTemperatureStatus(float * SensorTemp, float * TargetTemp, float * AmbientTemp, float * CoolerVolts)
+## Reserved function seems to be incomplete - only populates first parameter with Ixon Ultra.
+#dllFunc('GetTemperatureStatus', [OUTPUT(c_float) for i in range(4)],
+#                                ['SensorTemp', 'TargetTemp', 'AmbientTemp', 'CoolerVolts'], True)
 dllFunc('GetTotalNumberImagesAcquired', [OUTPUT(c_long)], ['index'])
 dllFunc('GetIODirection', [c_int, OUTPUT(c_int)], ['index', 'iDirection'])
 dllFunc('GetIOLevel', [c_int, OUTPUT(c_int)], ['index', 'iLevel'])
@@ -995,3 +1000,138 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 # PostProcessCountConvert(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iBaseline, int iMode, int iEmGain, float fQE, float fSensitivity, int iHeight, int iWidth)
 # PostProcessPhotonCounting(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iNumframes, int iNumberOfThresholds, float * pfThreshold, int iHeight, int iWidth)
 # #'PostProcessDataAveraging(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iAveragingFilterMode, int iHeight, int iWidth, int iFrameCount, int iAveragingFactor)
+
+
+from threading import Lock
+import functools
+from microscope import devices
+from microscope.devices import keep_acquiring
+
+_dll_lock = Lock()
+
+def with_camera(func):
+    """A decorator for camera functions.
+
+    If there are multiple cameras per process, we need to call
+    SetCurrentCamera to access the correct device.
+    This call takes 5.4us to 5.7us. Some operations could result in
+    many calls, so we acquire a lock on the DLL and call it once.
+    """
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.__class__._count == 1:
+            # Singleton - no need to acquire lock.
+            return func(self, *args, **kwargs)
+        had_lock_on_entry = self._has_lock
+        if not had_lock_on_entry:
+            _dll_lock.acquire()
+            self._has_lock = True
+        try:
+            SetCurrentCamera(self._handle)
+            result = func(self, *args, **kwargs)
+        except:
+            raise
+        finally:
+            if not had_lock_on_entry:
+                _dll_lock.release()
+                self._has_lock = False
+        return result
+    return wrapper
+
+
+
+class AndorAtmcd(devices.FloatingDeviceMixin,
+                 devices.CameraDevice):
+    _count = 0
+    """ Implements CameraDevice interface for Andor ATMCD library.
+
+    Sequence of calls from flowchart in Andor documentation:
+        Initialize              initializes hardware
+        GetDetector             fetch sensor size
+        GetHardwareVersion      perhaps not necessary?
+        GetNumberVSSpeeds
+        GetVSSpeed
+        GetSoftwareVersion
+        GetHSSpeed
+        GetNumberHSSpeed
+        GetTemperatureRange
+        SetTemperature
+        CoolerON
+        GetTemperature          wait for temperature to stabilize
+        SetAcquisitionMode
+        SetReadoutMode
+        SetShutter
+        SetExposureTime
+        SetTriggerMode
+        SetAccumulationCycleTime
+        SetNumberAccumulations
+        SetNumberKinetics
+        SetKineticCycleTime
+        GetAcquisitionStrings
+        SetHSSpeed
+        SetVSSpeed
+        StartAcquisition
+        GetStatus               wait until acquisition complete
+        GetAcquiredData
+        CoolerOFF
+        GetTemperature          wait until temperature has risen above -20C
+        Shutdown
+    Some of this seems out of sequence.
+    """
+    def __init__(self, index=0, *args, **kwargs):
+        super().__init__(**kwargs)
+        self.__class__._count += 1
+        self._has_lock = False
+        self._index = index
+        self._handle = None
+
+    def __dell__(self):
+        self.__class__._count -= 1
+
+    @property
+    def _acquiring(self):
+        return 0
+
+    @_acquiring.setter
+    def _acquiring(self, value):
+        # Here to prevent an error when super.__init__ intializes
+        # self._acquiring. Doesn't do anything, because the DLL keeps
+        # track of acquisition state.
+        pass
+
+    @with_camera
+    def abort(self):
+        """Abort acquisition."""
+        self._logger.debug('Disabling acquisition.')
+        try:
+            AbortAcquisition()
+        except AtmcdException as e:
+            if e.status != DRV_IDLE:
+                raise
+
+
+    def initialize(self):
+        self._logger.info('Initializing ...')
+        num_cams = GetAvailableCameras().value
+        if self._index >= num_cams:
+            msg = "Requested camera %d, but only found % cameras" % (self._index, num_cams)
+            raise Exception(msg)
+        self._handle = GetCameraHandle(self._index)
+        with_camera(Initialize(b''))
+        # Check info bits to see if initialization successful.
+        info = GetCameraInformation(self._index).value
+        if not info & 1<<2:
+            raise Exception("... initialization failed.")
+        model = self.get_model()
+        serial = self.get_id()
+        self._logger.info("... initilized %s s/n %s" % (model, serial))
+
+
+    @with_camera
+    def get_model(self):
+        return GetHeadModel().value.decode()
+
+
+    @with_camera
+    def get_id(self):
+        return GetCameraSerialNumber().value
