@@ -125,7 +125,7 @@ class ANDORCAPS(Structure):
     def __init__(self):
         # The function that uses this strcut requires that ulSize contains
         # the size of the structure.
-        self.ulSize = sys.getsizeof(self)
+        self.ulSize = ctypes.sizeof(self)
 
 AndorCapabilities = ANDORCAPS
 
@@ -1129,20 +1129,21 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             msg = "Requested camera %d, but only found % cameras" % (self._index, num_cams)
             raise Exception(msg)
         self._handle = GetCameraHandle(self._index)
-        with_camera(Initialize(b''))
-        # Check info bits to see if initialization successful.
-        info = GetCameraInformation(self._index)
-        if not info & 1<<2:
-            raise Exception("... initialization failed.")
-        model = self.get_model()
-        serial = self.get_id()
-        self._logger.info("... initilized %s s/n %s" % (model, serial))
 
-
-    @with_camera
-    def get_model(self):
-        return GetHeadModel()
-
+        _dll_lock.acquire()
+        try:
+            SetCurrentCamera(self._handle)
+            Initialize(b'')
+            # Check info bits to see if initialization successful.
+            info = GetCameraInformation(self._index)
+            if not info & 1<<2:
+                raise Exception("... initialization failed.")
+            self._caps = GetCapabilities()
+            model = GetHeadModel()
+            serial = self.get_id()
+            self._logger.info("... initilized %s s/n %s" % (model, serial))
+        finally:
+            _dll_lock.release()
 
     @with_camera
     def get_id(self):
