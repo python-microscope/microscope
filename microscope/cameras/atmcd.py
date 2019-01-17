@@ -506,9 +506,15 @@ def stripMeta(val):
     else:
         return val
 
+class AtmcdException(Exception):
+    def __init__(self, status):
+        self.message = "%s  %s" % (status, lookup_status(status))
+        super().__init__(self.message)
+
+
 
 class dllFunction(object):
-    def __init__(self, name, args=[], argnames=[], lib=_dll):
+    def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
         self.f = getattr(lib, name)
         self.f.restype = c_uint
         self.f.argtypes = [stripMeta(a) for a in args]
@@ -517,6 +523,7 @@ class dllFunction(object):
         self.name = name
         self.in_args = [a for a in args if not isinstance(a, OUTPUT)]
         self.out_args = [a for a in args if isinstance(a, OUTPUT)]
+        self.rstatus = rstatus # Some functions indicate state with status codes.
 
         self.buf_size_arg_pos = -1
         for i in range(len(self.in_args)):
@@ -559,8 +566,19 @@ class dllFunction(object):
 
         # Make the library call.
         status = self.f(*c_args)
+        # A few functions indicate state using the returned status code instead
+        # of filling a variable passed by reference pointer.
+        if self.rstatus:
+            if status == DRV_SUCCESS:
+                return True
+            elif status in [DRV_INVALID_AMPLIFIER, DRV_INVALID_MODE,
+                            DRV_INVALID_COUNTCONVERT_MODE, DRV_INVALID_FILTER]:
+                return False
+            else:
+                raise AtmcdException(status)
+        # Most functions return values via pointers, or have no return.
         if not status == DRV_SUCCESS:
-            raise Exception("%s: %s" % (self.name, status_codes[status]))
+            raise AtmcdException(status)
         if len(ret) == 0:
             return None
         if len(ret) == 1:
@@ -568,9 +586,9 @@ class dllFunction(object):
         else:
             return ret
 
-def dllFunc(name, args=[], argnames=[], lib=_dll):
+def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
     try:
-        f = dllFunction(name, args, argnames, lib)
+        f = dllFunction(name, args, argnames, rstatus, lib)
     except Exception as e:
         raise Exception("Error wrapping dll function '%s':\n\t%s" % (name, e))
     globals()[name] = f
@@ -767,13 +785,13 @@ dllFunc('GetVSSpeed', [c_int, OUTPUT(c_float)], ['index', 'speed'])
 # InAuxPort(int port, int * state)
 dllFunc('Initialize', [STRING], ['dir'])
 # #'InitializeDevice(char * dir)
-dllFunc('IsAmplifierAvailable', [c_int], ['iamp'])
+dllFunc('IsAmplifierAvailable', [c_int], ['iamp'], True)
 dllFunc('IsCoolerOn', [OUTPUT(c_int)], ['iCoolerStatus'])
-dllFunc('IsCountConvertModeAvailable', [c_int], ['mode'])
+dllFunc('IsCountConvertModeAvailable', [c_int], ['mode'], True)
 dllFunc('IsInternalMechanicalShutter', [OUTPUT(c_int)], ['InternalShutter'])
 dllFunc('IsPreAmpGainAvailable', [c_int, c_int, c_int, c_int, OUTPUT(c_int)],
                                  ['channel', 'amplifier', 'index', 'pa', 'status'])
-dllFunc('IsTriggerModeAvailable', [c_int], ['iTriggerMode'])
+dllFunc('IsTriggerModeAvailable', [c_int], ['iTriggerMode'], True)
 # #'Merge(const at_32 * arr, long nOrder, long nPoint, long nPixel, float * coeff, long fit, long hbin, at_32 * output, float * start, float * step_Renamed)
 # OutAuxPort(int port, int state)
 dllFunc('PrepareAcquisition', [], [])
