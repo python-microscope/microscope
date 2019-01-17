@@ -506,6 +506,17 @@ def stripMeta(val):
     else:
         return val
 
+
+def extract_value(val):
+    if type(val) in [c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong,
+                     c_ubyte, c_short, c_float, c_double, c_char, c_char_p]:
+        return val.value
+    elif isinstance(val, ctypes.Array) and val._type_ is c_char:
+        return val.value.decode()
+    else:
+        return val
+
+
 class AtmcdException(Exception):
     def __init__(self, status):
         self.message = "%s  %s" % (status, lookup_status(status))
@@ -566,6 +577,7 @@ class dllFunction(object):
 
         # Make the library call.
         status = self.f(*c_args)
+        ret = [extract_value(r) for r in ret]
         if len(ret) == 1:
             ret = ret[0]
         elif len(ret) == 0:
@@ -1112,14 +1124,14 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def initialize(self):
         self._logger.info('Initializing ...')
-        num_cams = GetAvailableCameras().value
+        num_cams = GetAvailableCameras()
         if self._index >= num_cams:
             msg = "Requested camera %d, but only found % cameras" % (self._index, num_cams)
             raise Exception(msg)
         self._handle = GetCameraHandle(self._index)
         with_camera(Initialize(b''))
         # Check info bits to see if initialization successful.
-        info = GetCameraInformation(self._index).value
+        info = GetCameraInformation(self._index)
         if not info & 1<<2:
             raise Exception("... initialization failed.")
         model = self.get_model()
@@ -1129,9 +1141,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     @with_camera
     def get_model(self):
-        return GetHeadModel().value.decode()
+        return GetHeadModel()
 
 
     @with_camera
     def get_id(self):
-        return GetCameraSerialNumber().value
+        return GetCameraSerialNumber()
