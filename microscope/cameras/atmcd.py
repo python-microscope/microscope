@@ -1017,7 +1017,7 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 from threading import Lock
 import functools
 from microscope import devices
-from microscope.devices import keep_acquiring
+from microscope.devices import keep_acquiring, Setting
 import time
 
 _dll_lock = Lock()
@@ -1081,6 +1081,23 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         self._index = index
         self._handle = None
         self._rdepth = 0
+        self.get_setting = with_camera(super().get_setting)
+        self.set_setting = with_camera(super().set_setting)
+        self.settings['temperature'] = Setting('temperature',
+                                               'int',
+                                               lambda this=self: this.bind(GetTemperature)()[1],
+                                               self.bind(SetTemperature),
+                                               self.bind(GetTemperatureRange),
+                                               False)
+
+    def bind(self, fn):
+        """Binds unbound SDK functions to this camera."""
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            with self:
+                return fn(*args, **kwargs)
+        return wrapper
+
 
     def __enter__(self):
         """Self acts as a context manger to ensure dll acts on correct hardware.
