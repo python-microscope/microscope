@@ -69,6 +69,57 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
+class Setting():
+    def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
+        """Create a setting.
+
+        :param name: the setting's name
+        :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
+        :param get_func: a function to get the current value
+        :param set_func: a function to set the value
+        :param values: a description of allowed values dependent on dtype,
+                       or function that returns a description
+        :param readonly: an optional flag to indicate a read-only setting.
+
+        A client needs some way of knowing a setting name and data type,
+        retrieving the current value and, if settable, a way to retrieve
+        allowable values, and set the value.
+        """
+        self.name = name
+        if dtype not in DTYPES:
+            raise Exception('Unsupported dtype.')
+        elif not (isinstance(values, DTYPES[dtype][1]) or callable(values)):
+            raise Exception('Invalid values type for %s: expected function or %s' %
+                            (dtype, DTYPES[dtype][1]))
+        self.dtype = DTYPES[dtype][0]
+        self._get = get_func
+        self._set = set_func
+        self._values = values
+        self._readonly = readonly
+
+    def describe(self):
+        return {  # wrap type in str since can't serialize types
+            'type': str(self.dtype),
+            'values': self.values(),
+            'readonly': self.readonly()}
+
+    def get(self):
+        return self._get()
+
+    def readonly(self):
+        return _call_if_callable(self._readonly)
+
+    def set(self, value):
+        """Set a setting."""
+        if self._set is None:
+            raise NotImplementedError
+        # TODO further validation.
+        self._set(value)
+
+    def values(self):
+        return _call_if_callable(self._values)
+
+
 def device(cls, host, port, uid=None, **kwargs):
     """Define a device and where to serve it.
 
@@ -184,6 +235,8 @@ class Device(object):
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
+        Can also use self.settings[name] = Setting(name, dtype,...)
+
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
         :param get_func: a function to get the current value
@@ -207,17 +260,13 @@ class Device(object):
             raise Exception('Invalid values type for %s: expected function or %s' %
                             (dtype, DTYPES[dtype][1]))
         else:
-            self.settings.update({name: {'type': DTYPES[dtype][0],
-                                         'get': get_func,
-                                         'set': set_func,
-                                         'values': values,
-                                         'readonly': readonly}})
+            self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
     @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
-            return self.settings[name]['get']()
+            return self.settings[name].get()
         except Exception as err:
             self._logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
@@ -226,8 +275,7 @@ class Device(object):
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v['get']() if v['get'] else None
-                    for k, v in iteritems(self.settings)}
+            return {k: v.get() for k, v in iteritems(self.settings)}
         except Exception as err:
             self._logger.error("in get_all_settings:", exc_info=err)
             raise
@@ -235,35 +283,20 @@ class Device(object):
     @Pyro4.expose
     def set_setting(self, name, value):
         """Set a setting."""
-        if self.settings[name]['set'] is None:
-            raise NotImplementedError
-        # TODO further validation.
         try:
-            self.settings[name]['set'](value)
+            self.settings[name].set(value)
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
-
 
     @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
-        v = self.settings.get(name, None)
-        if v is None:
-            return v
-        else:
-            return {  # wrap type in str since can't serialize types
-                'type': str(v['type']),
-                'values': _call_if_callable(v['values']),
-                'readonly': _call_if_callable(v['readonly']), }
+        v = self.settings[name].describe()
 
     @Pyro4.expose
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, {  # wrap type in str since can't serialize types
-            'type': str(v['type']),
-            'values': _call_if_callable(v['values']),
-            'readonly': _call_if_callable(v['readonly']), })
-                for (k, v) in iteritems(self.settings)]
+        return [(k, v.describe()) for (k, v) in iteritems(self.settings)]
 
     @Pyro4.expose
     def update_settings(self, incoming, init=False):
@@ -970,6 +1003,7 @@ class DeformableMirror(Device):
 
     def initialize(self):
         pass
+
     def _on_shutdown(self):
         pass
 
