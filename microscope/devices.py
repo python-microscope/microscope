@@ -282,7 +282,7 @@ class Device(object):
     @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
-        v = self.settings[name].describe()
+        return self.settings[name].describe()
 
     @Pyro4.expose
     def describe_settings(self):
