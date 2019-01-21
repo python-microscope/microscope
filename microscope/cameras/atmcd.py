@@ -1018,6 +1018,7 @@ from threading import Lock
 import functools
 from microscope import devices
 from microscope.devices import keep_acquiring
+import time
 
 _dll_lock = Lock()
 
@@ -1031,30 +1032,15 @@ def with_camera(func):
     """
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if self.__class__._count == 1:
-            # Singleton - no need to acquire lock.
+        with self:
             return func(self, *args, **kwargs)
-        had_lock_on_entry = self._has_lock
-        if not had_lock_on_entry:
-            _dll_lock.acquire()
-            self._has_lock = True
-        try:
-            SetCurrentCamera(self._handle)
-            result = func(self, *args, **kwargs)
-        except:
-            raise
-        finally:
-            if not had_lock_on_entry:
-                _dll_lock.release()
-                self._has_lock = False
-        return result
+
     return wrapper
 
 
 
 class AndorAtmcd(devices.FloatingDeviceMixin,
                  devices.CameraDevice):
-    _count = 0
     """ Implements CameraDevice interface for Andor ATMCD library.
 
     Sequence of calls from flowchart in Andor documentation:
@@ -1092,13 +1078,25 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     """
     def __init__(self, index=0, *args, **kwargs):
         super().__init__(**kwargs)
-        self.__class__._count += 1
-        self._has_lock = False
         self._index = index
         self._handle = None
+        self._rdepth = 0
 
-    def __dell__(self):
-        self.__class__._count -= 1
+    def __enter__(self):
+        """Self acts as a context manger to ensure dll acts on correct hardware.
+
+        We could use RLock to give re-entrant behaviour, but we track recursion
+        ourselves so that we know when we must call SetCurrentCamera.
+        """
+        if self._rdepth == 0:
+            _dll_lock.acquire()
+            SetCurrentCamera(self._handle)
+        self._rdepth += 1
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self ._rdepth -= 1
+        if self._rdepth == 0:
+            _dll_lock.release()
 
     @property
     def _acquiring(self):
@@ -1121,7 +1119,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             if e.status != DRV_IDLE:
                 raise
 
-
     def initialize(self):
         self._logger.info('Initializing ...')
         num_cams = GetAvailableCameras()
@@ -1130,8 +1127,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             raise Exception(msg)
         self._handle = GetCameraHandle(self._index)
 
-        _dll_lock.acquire()
-        try:
+        with self:
             SetCurrentCamera(self._handle)
             Initialize(b'')
             # Check info bits to see if initialization successful.
@@ -1142,9 +1138,31 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             model = GetHeadModel()
             serial = self.get_id()
             self._logger.info("... initilized %s s/n %s" % (model, serial))
-        finally:
-            _dll_lock.release()
 
     @with_camera
     def get_id(self):
         return GetCameraSerialNumber()
+
+    def _on_shutdown(self):
+        """Warm up the sensor then shut down the camera.
+
+        This may take some time, so we should ensure that the _dll_lock is
+        released when we don't need it."""
+        # Switch off cooler then release lock.
+        with self:
+            CoolerOFF()
+
+        self._logger.info("Waiting for temperature to rise above -20C before shutdown ...")
+
+        while True:
+            # Check temperature then release lock.
+            with self:
+                t = GetTemperature()[1]
+            if t > -20:
+                break
+            time.sleep(5)
+
+        self._logger.info("Temperature is %dC: shutting down camera." % t)
+
+        with self:
+            ShutDown()
