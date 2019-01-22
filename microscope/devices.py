@@ -93,18 +93,30 @@ class Setting():
                             (dtype, DTYPES[dtype][1]))
         self.dtype = DTYPES[dtype][0]
         self._get = get_func
-        self._set = set_func
         self._values = values
         self._readonly = readonly
+        self._last_written = None
+        if self._get is not None:
+            self._set = set_func
+        else:
+            # Cache last written value for write-only settings.
+            def w(value):
+                self._last_written = value
+                set_func(value)
+            self._set = w
 
     def describe(self):
         return {  # wrap type in str since can't serialize types
             'type': str(self.dtype),
             'values': self.values(),
-            'readonly': self.readonly()}
+            'readonly': self.readonly(),
+            'cached': self._last_written is not None}
 
     def get(self):
-        return self._get()
+        if self._get is not None:
+            return self._get()
+        else:
+            return self._last_written
 
     def readonly(self):
         return _call_if_callable(self._readonly)
