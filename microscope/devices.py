@@ -114,9 +114,13 @@ class Setting():
 
     def get(self):
         if self._get is not None:
-            return self._get()
+            value = self._get()
         else:
-            return self._last_written
+            value = self._last_written
+        if isinstance(self._values, EnumMeta):
+            return self._values(value)
+        else:
+            return value
 
     def readonly(self):
         return _call_if_callable(self._readonly)
@@ -126,6 +130,8 @@ class Setting():
         if self._set is None:
             raise NotImplementedError
         # TODO further validation.
+        if isinstance(value, Enum):
+            value = value.value
         self._set(value)
 
     def values(self):
