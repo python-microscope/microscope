@@ -1239,13 +1239,13 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           getter, setter, vrange,
                                           setter is None)
-        # AcquisitionMode
-        name = 'AcquisitionMode'
-        self.settings[name] = Setting(name, 'enum',
-                                      None,
-                                      self._bind(SetAcquisitionMode),
-                                      AcquisitionMode)
-        self.settings[name].set(AcquisitionMode.SINGLE)
+        # # AcquisitionMode - not supported at this time.
+        # name = 'AcquisitionMode'
+        # self.settings[name] = Setting(name, 'enum',
+        #                               None,
+        #                               self._bind(SetAcquisitionMode),
+        #                               AcquisitionMode)
+        # self.settings[name].set(AcquisitionMode.SINGLE)
         # Temperature
         name = 'temperature'
         getter, setter, vrange = None, None, None
@@ -1293,7 +1293,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                           None,
                                           self._bind(SetHighCapacity))
 
-
     def get_id(self):
         with self:
             return GetCameraSerialNumber()
@@ -1321,3 +1320,64 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
         with self:
             ShutDown()
+
+    def make_safe(self):
+        if self._acquiring:
+            self.abort()
+
+    def _on_disable(self):
+        self.abort()
+
+    def _on_enable(self):
+        self._logger.info("Preparing for acquisition.")
+        if self._acquiring:
+            self.abort()
+        ## TODO - incomplete
+        self._sent = 0
+        self._logger.info("Acquisition enabled.")
+        return True
+
+    def set_exposure_time(self, value):
+        with self:
+            SetExposureTime(value)
+
+    def get_exposure_time(self):
+        with self:
+            exposure, accumulate, kinetic = GetAcquisitionTimings()
+        return exposure
+
+    def get_cycle_time(self):
+        with self:
+            exposure, accumulate, kinetic = GetAcquisitionTimings()
+            readout = GetReadoutTime()
+        return exposure + readout
+
+
+    def _get_sensor_shape(self):
+        return (512,512)
+
+    def get_trigger_type(self):
+        return devices.TRIGGER_SOFT
+
+    def soft_trigger(self):
+        self._logger.info('Trigger received; self._acquiring is %s.'
+                          % self._acquiring)
+        if self._acquiring:
+            self._triggered += 1
+
+    def _get_binning(self):
+         return (1,1)
+
+    @keep_acquiring
+    def _set_binning(self, h, v):
+        return False
+
+    def _get_roi(self):
+        return (0, 0, 512, 512)
+
+    @keep_acquiring
+    def _set_roi(self, x, y, width, height):
+        return False
+
+    def _on_shutdown(self):
+        pass
