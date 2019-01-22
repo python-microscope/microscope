@@ -1205,6 +1205,23 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                       None,
                                       self._bind(SetTriggerMode),
                                       TriggerMode)
+        # gain - device will use either EMGain or MCPGain
+        name = 'gain'
+        getter, setter, vrange = None, None, None
+        if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
+            getter = self._bind(GetEMCCDGain)
+        elif self._caps.ulGetFunctions & AC_GETFUNCTION_MCPGAIN:
+            getter = self._bind(GetMCPGain)
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_EMCCDGAIN:
+            setter = self._bind(GetEMCCDGain)
+            vrange = self._bind(GetEMGainRange)
+        elif self._caps.ulSetFunctions & AC_SETFUNCTION_MCPGAIN:
+            setter = self._bind(SetMCPGain)
+            vrange = self._bind(GetMCPGainRange)
+        if getter or setter:
+            self.settings[name] = Setting(name, 'int',
+                                          getter, setter, vrange,
+                                          setter is None)
         # Temperature
         name = 'temperature'
         getter, setter, vrange = None, None, None
@@ -1237,18 +1254,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetEMAdvanced))
-        # EMCCDGain
-        name = 'EMGain'
-        getter, setter, vrange = None, None, None
-        if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
-            getter = self._bind(GetEMCCDGain)
-        if self._caps.ulSetFunctions & AC_SETFUNCTION_EMCCDGAIN:
-            setter = self._bind(GetEMCCDGain)
-            vrange = self._bind(GetEMGainRange)
-        if getter or setter:
-            self.settings[name] = Setting(name, 'int',
-                                          getter, setter, vrange,
-                                          setter is None)
         # GateMode
         name = 'GateMode'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
@@ -1263,18 +1268,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetHighCapacity))
-        # MCPGain
-        name = 'MCPGain'
-        getter, setter, vrange = None, None, None
-        if self._caps.ulGetFunctions & AC_GETFUNCTION_MCPGAIN:
-            getter = self._bind(GetMCPGain)
-        if self._caps.ulSetFunctions & AC_SETFUNCTION_MCPGAIN:
-            setter = self._bind(SetMCPGain)
-            vrange = self._bind(GetMCPGainRange)
-        if getter or setter:
-            self.settings[name] = Setting(name, 'int',
-                                          setter, getter, vrange,
-                                          setter is None)
+
 
 
     def get_id(self):
