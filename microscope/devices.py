@@ -38,7 +38,7 @@ import Pyro4
 import numpy
 
 from six.moves import queue
-from enum import Enum
+from enum import Enum, EnumMeta
 
 from six import iteritems
 
@@ -57,7 +57,7 @@ import numpy
 DTYPES = {'int': ('int', tuple),
           'float': ('float', tuple),
           'bool': ('bool', type(None)),
-          'enum': ('enum', list),
+          'enum': ('enum', list, EnumMeta),
           'str': ('str', int),
           int: ('int', tuple),
           float: ('float', tuple),
@@ -129,7 +129,10 @@ class Setting():
         self._set(value)
 
     def values(self):
-        return _call_if_callable(self._values)
+        if isinstance(self._values, EnumMeta):
+            return [v for v in self._values]
+        elif self._values is not None:
+            return _call_if_callable(self._values)
 
 
 def device(cls, host, port, uid=None, **kwargs):
