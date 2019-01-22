@@ -608,6 +608,11 @@ def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
         raise Exception("Error wrapping dll function '%s':\n\t%s" % (name, e))
     globals()[name] = f
 
+## We now add selected DLL functions to this library's namespace.
+# These may be used directly: while this may work well when there is a
+# single camera, care must be taken when there are multiple cameras
+# on a system to ensure calls act on the expected camera. The AntorAtmcd
+# class defined below does much of this work.
 dllFunc('AbortAcquisition', [], [])
 dllFunc('CancelWait', [], [])
 dllFunc('CoolerOFF', [], [])
@@ -1020,6 +1025,7 @@ from microscope import devices
 from microscope.devices import keep_acquiring, Setting
 import time
 
+# A lock on the DLL used to ensure DLL calls act on the correct device.
 _dll_lock = Lock()
 
 def with_camera(func):
@@ -1091,7 +1097,10 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return wrapper
 
     def __enter__(self):
-        """Self acts as a context manger to ensure dll acts on correct hardware.
+        """Context manager entry code.
+
+        The camera class is also a context manager that ensures DLL calls act
+        on this camera by obtaining the _dll_lock.
 
         We could use RLock to give re-entrant behaviour, but we track recursion
         ourselves so that we know when we must call SetCurrentCamera.
@@ -1102,6 +1111,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         self._rdepth += 1
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit code."""
         self ._rdepth -= 1
         if self._rdepth == 0:
             _dll_lock.release()
@@ -1192,10 +1202,36 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           getter, setter, vrange,
                                           setter is None)
+        # GateMode
+        name = 'GateMode'
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
+            vrange = range(0, [5,6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR])
+            self.setings[name] = Setting(name, 'int',
+                                         None,
+                                         self._bind(SetGateMode),
+                                         vrange)
+        # HighCapacity
+        name = 'HighCapacity'
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
+            self.settings[name] = Setting(name, 'bool',
+                                          None,
+                                          self._bind(SetHighCapacity))
+        # MCPGain
+        name = 'MCPGain'
+        getter, setter, vrange = None, None, None
+        if self._caps.ulGetFunctions & AC_GETFUNCTION_MCPGAIN:
+            getter = self._bind(GetMCPGain)
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_MCPGAIN:
+            setter = self._bind(SetMCPGain)
+            vrange = self._bind(GetMCPGainRange)
+        if getter or setter:
+            self.settings[name] = Setting(name, 'int',
+                                          setter, getter, vrange,
+                                          setter is None)
 
-    @with_camera
     def get_id(self):
-        return GetCameraSerialNumber()
+        with self:
+            return GetCameraSerialNumber()
 
     def _on_shutdown(self):
         """Warm up the sensor then shut down the camera.
