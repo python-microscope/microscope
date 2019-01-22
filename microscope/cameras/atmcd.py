@@ -1081,23 +1081,14 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         self._index = index
         self._handle = None
         self._rdepth = 0
-        self.get_setting = with_camera(super().get_setting)
-        self.set_setting = with_camera(super().set_setting)
-        self.settings['temperature'] = Setting('temperature',
-                                               'int',
-                                               lambda this=self: this.bind(GetTemperature)()[1],
-                                               self.bind(SetTemperature),
-                                               self.bind(GetTemperatureRange),
-                                               False)
 
-    def bind(self, fn):
+    def _bind(self, fn):
         """Binds unbound SDK functions to this camera."""
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             with self:
                 return fn(*args, **kwargs)
         return wrapper
-
 
     def __enter__(self):
         """Self acts as a context manger to ensure dll acts on correct hardware.
@@ -1155,6 +1146,52 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             model = GetHeadModel()
             serial = self.get_id()
             self._logger.info("... initilized %s s/n %s" % (model, serial))
+
+        ## Add settings.
+        # Temperature
+        name = 'temperature'
+        getter, setter, vrange = None, None, None
+        if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE:
+            getter = lambda this=self: this._bind(GetTemperature)()[1]
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE:
+            setter = self._bind(SetTemperature)
+        if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
+            vrange = self._bind(GetTemperatureRange)
+        if getter or setter:
+            self.settings[name] = Setting(name, 'int',
+                                          getter, setter, vrange,
+                                          setter is None)
+        # BaselineClamp
+        name = 'BaselineClamp'
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
+            self.settings[name] = Setting(name, 'bool',
+                                          None,
+                                          self._bind(SetBaselineClamp))
+        # BaselineOffset
+        nam = 'BaselineOffset'
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
+            self.settings[name] = Setting(name, 'int',
+                                          None,
+                                          self._bind(SetBaselineOffset),
+                                          (-1000, 1000))
+        # EMAdvanced
+        name = 'EMAdvanced'
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
+            self.settings[name] = Setting(name, 'bool',
+                                          None,
+                                          self._bind(SetEMAdvanced))
+        # EMCCDGain
+        name = 'EMGain'
+        getter, setter, vrange = None, None, None
+        if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
+            getter = self._bind(GetEMCCDGain)
+        if self._caps.ulSetFunctions & AC_SETFUNCTION_EMCCDGAIN:
+            setter = self._bind(GetEMCCDGain)
+            vrange = self._bind(GetEMGainRange)
+        if getter or setter:
+            self.settings[name] = Setting(name, 'int',
+                                          getter, setter, vrange,
+                                          setter is None)
 
     @with_camera
     def get_id(self):
