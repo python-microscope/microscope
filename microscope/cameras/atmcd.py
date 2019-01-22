@@ -1018,6 +1018,32 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 # PostProcessPhotonCounting(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iNumframes, int iNumberOfThresholds, float * pfThreshold, int iHeight, int iWidth)
 # #'PostProcessDataAveraging(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iAveragingFilterMode, int iHeight, int iWidth, int iFrameCount, int iAveragingFactor)
 
+# Enums from documentation
+from enum import Enum
+
+class TriggerMode(Enum):
+    INTERNAL = 0
+    EXTERNAL = 1
+    EXT_START = 6
+    BULB = 7
+    EXT_FVB = 9
+    SOFTWARE = 10
+
+
+class ReadoutMode():
+    def __init__(self, channel, amplifier, hs_index, speed):
+        self.channel = channel # Channel index
+        self.amp = amplifier # Amplifier enum
+        self.index = hs_index # HS speed index
+        self.speed = speed  # Shift frequency in MHz
+
+    def __str__(self):
+        if self.speed < 1:
+            speedstr = "{:.0f} kHz".format(self.speed * 1000)
+        else:
+            speedstr = "{:.0f} MHz".format(self.speed)
+        return "{} {} CH{:.0f}".format(self.amp.name, speedstr, self.channel)
+
 
 from threading import Lock
 import functools
@@ -1155,9 +1181,30 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self._caps = GetCapabilities()
             model = GetHeadModel()
             serial = self.get_id()
+            # Populate amplifiers
+            if GetNumberAmp() > 1:
+                if self._caps.ulCameraType == AC_CAMERATYPE_CLARA:
+                    self.amplifiers = Enum('Amplifiers', ( ('CONVENTIONAL', 0),
+                                                           ('EXTENDED_NIR', 1) ))
+                else:
+                    self.amplifiers = Enum('Amplifiers', ( ('EMCCD', 0),
+                                                           ('CONVENTIONAL', 1) ))
+            # Populate readout modes
+            self.modes = []
+            for ch in range(GetNumberADChannels()):
+                for amp in self.amplifiers:
+                    for s in range(GetNumberHSSpeeds(ch, amp.value)):
+                        speed = GetHSSpeed(ch, amp.value, s)
+                        self.modes.append(ReadoutMode(ch, amp, s, speed))
             self._logger.info("... initilized %s s/n %s" % (model, serial))
 
         ## Add settings.
+        # TriggerMode
+        name = 'TriggerMode'
+        self.settings[name] = Setting(name, 'enum',
+                                      None,
+                                      self._bind(SetTriggerMode),
+                                      TriggerMode)
         # Temperature
         name = 'temperature'
         getter, setter, vrange = None, None, None
@@ -1228,6 +1275,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           setter, getter, vrange,
                                           setter is None)
+
 
     def get_id(self):
         with self:
