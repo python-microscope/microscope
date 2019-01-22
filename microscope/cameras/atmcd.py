@@ -1030,6 +1030,14 @@ class TriggerMode(Enum):
     SOFTWARE = 10
 
 
+class AcquisitionMode(Enum):
+    SINGLE = 1
+    ACCUMULATE = 2
+    KINETICS = 3
+    FASTKINETICS = 4
+    RUNUNTILABORT = 5
+
+
 class ReadoutMode():
     def __init__(self, channel, amplifier, hs_index, speed):
         self.channel = channel # Channel index
@@ -1144,7 +1152,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     @property
     def _acquiring(self):
-        return 0
+        with self:
+            return GetStatus() == DRV_ACQUIRING
 
     @_acquiring.setter
     def _acquiring(self, value):
@@ -1198,15 +1207,23 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                         self.modes.append(ReadoutMode(ch, amp, s, speed))
             self._logger.info("... initilized %s s/n %s" % (model, serial))
 
-        ## Add settings.
+        ## Add settings. Some are write-only, we set defaults here, too.
         # TriggerMode
         name = 'TriggerMode'
         self.settings[name] = Setting(name, 'enum',
                                       None,
                                       self._bind(SetTriggerMode),
                                       TriggerMode)
-        # gain - device will use either EMGain or MCPGain
-        name = 'gain'
+        self.settings[name].set(TriggerMode.INTERNAL)
+        # Mode - the amplifier mode
+        name = 'Mode'
+        # TODO ...
+        # self.settings[name] = Setting(name, 'enum',
+        #                               self.get_mode,
+        #                               self.set_mode,
+        #                               self.modes)
+        # Gain - device will use either EMGain or MCPGain
+        name = 'Gain'
         getter, setter, vrange = None, None, None
         if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
             getter = self._bind(GetEMCCDGain)
@@ -1222,6 +1239,13 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           getter, setter, vrange,
                                           setter is None)
+        # AcquisitionMode
+        name = 'AcquisitionMode'
+        self.settings[name] = Setting(name, 'enum',
+                                      None,
+                                      self._bind(SetAcquisitionMode),
+                                      AcquisitionMode)
+        self.settings[name].set(AcquisitionMode.SINGLE)
         # Temperature
         name = 'temperature'
         getter, setter, vrange = None, None, None
@@ -1268,7 +1292,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetHighCapacity))
-
 
 
     def get_id(self):
