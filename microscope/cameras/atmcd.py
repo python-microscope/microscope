@@ -304,6 +304,7 @@ DRV_OA_MODE_DOES_NOT_EXIST = 20193
 DRV_OA_CAMERA_NOT_SUPPORTED = 20194
 DRV_OA_FAILED_TO_GET_MODE = 20195
 DRV_PROCESSING_FAILED = 20211
+## Andor capabilities AC_...
 # Acquisition modes
 AC_ACQMODE_SINGLE = 1
 AC_ACQMODE_VIDEO = 2
@@ -466,12 +467,6 @@ class _meta(object):
 
 STRING = c_char_p
 
-class ARRAY(_meta):
-    def __init__(self, val):
-        self.type = val
-        self.val = ndpointer(val, flags="C_CONTIGUOUS")
-
-
 class OUTPUT(_meta):
     def __init__(self, val):
         self.type = val
@@ -498,6 +493,26 @@ class _OUTSTRLEN(_meta):
         self.val = c_int
 
 OUTSTRLEN = _OUTSTRLEN()
+
+
+import numpy as np
+class OUTARR(OUTPUT):
+    def __init__(self, val):
+        self.type = val
+        #self.val = POINTER(val)
+        self.val = ndpointer(val, flags="C_CONTIGUOUS")
+
+    def getVar(self, size):
+        #self.val = (size * self.type)()
+        self.val = np.zeros(size, dtype=self.type)
+        return self.val, self.val
+
+
+class _OUTARRSIZE(_meta):
+    def __init__(self):
+        self.val = c_ulong
+
+OUTARRSIZE = _OUTARRSIZE()
 
 
 def stripMeta(val):
@@ -537,9 +552,14 @@ class dllFunction(object):
         self.rstatus = rstatus # Some functions indicate state with status codes.
 
         self.buf_size_arg_pos = -1
+        self.arr_size_arg_pos = -1
         for i in range(len(self.in_args)):
             if isinstance(self.in_args[i], _OUTSTRLEN):
                 self.buf_size_arg_pos = i
+            if isinstance(self.in_args[i], _OUTARRSIZE):
+                self.arr_size_pos = i
+
+
 
         ds = name + '\n\nArguments:\n===========\n'
         for i in range(len(args)):
@@ -566,11 +586,18 @@ class dllFunction(object):
         i = 0
         for farg in self.fargs:
             if isinstance(farg, OUTPUT):
-                r, c_arg = farg.getVar(bs)
+                if isinstance(farg, OUTARR):
+                    size = args[self.arr_size_arg_pos]
+                else:
+                    size = bs
+                r, c_arg = farg.getVar(size)
                 c_args.append(c_arg)
                 ret.append(r)
             elif isinstance(farg, _OUTSTRLEN):
                 c_args.append(bs)
+            elif isinstance(args[i], Enum):
+                c_args.append(args[i].value)
+                i += 1
             else:
                 c_args.append(args[i])
                 i += 1
@@ -622,8 +649,12 @@ dllFunc('DemosaicImage', [POINTER(WORD), POINTER(WORD), POINTER(WORD),
                          ['grey', 'red', 'green', 'blue', 'info'])
 dllFunc('EnableKeepCleans', [c_int], ['iMode'])
 dllFunc('FreeInternalMemory', [], [])
-dllFunc('GetAcquiredData', [ARRAY(at_32), c_ulong], ['arr', 'size'])
-dllFunc('GetAcquiredData16', [ARRAY(WORD), c_ulong], ['arr', 'size'])
+# Note - documentation states that the next two functions return the data
+# "from the last acquisition". That appears to mean the data resulting from
+# the last trigger, rather than all the available data between the last
+# StartAcquisition and Abort calls.
+dllFunc('GetAcquiredData', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
+dllFunc('GetAcquiredData16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
 # GetAcquiredFloatData(float * arr, unsigned long size)
 dllFunc('GetAcquisitionProgress', [OUTPUT(c_long), OUTPUT(c_long)],
                                   ['acc', 'series'])
@@ -703,9 +734,9 @@ dllFunc('GetHVflag', [OUTPUT(c_int)], ['bFlag'])
 dllFunc('GetImageFlip', [OUTPUT(c_int), OUTPUT(c_int)],
                         ['iHFlip', 'iVFlip'])
 dllFunc('GetImageRotate', [OUTPUT(c_int)], ['Rotate'])
-dllFunc('GetImages', [c_long, c_long, ARRAY(at_32), c_ulong, OUTPUT(c_long), OUTPUT(c_long)],
+dllFunc('GetImages', [c_long, c_long, OUTARR(at_32), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
                      ['first','last', 'arr', 'size', 'validfirst', 'validlast'])
-dllFunc('GetImages16', [c_long, c_long, ARRAY(WORD), c_ulong, OUTPUT(c_long), OUTPUT(c_long)],
+dllFunc('GetImages16', [c_long, c_long, OUTARR(WORD), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
                        ['first','last', 'arr', 'size', 'validfirst', 'validlast'])
 dllFunc('GetImagesPerDMA', [OUTPUT(c_ulong)], ['images'])
 # # GetIRQ(int * IRQ)
@@ -719,10 +750,10 @@ dllFunc('GetMCPGainRange', [OUTPUT(c_int), OUTPUT(c_int)], ['iLow', 'iHigh'])
 dllFunc('GetMCPVoltage', [OUTPUT(c_int)], ['iVoltage'])
 dllFunc('GetMinimumImageLength', [OUTPUT(c_int)], ['MinImageLength'])
 # # GetMinimumNumberInSeries(int * number)
-dllFunc('GetMostRecentColorImage16', [c_ulong, c_int, ARRAY(WORD), ARRAY(WORD), ARRAY(WORD)],
+dllFunc('GetMostRecentColorImage16', [OUTARRSIZE, c_int, OUTARR(WORD), OUTARR(WORD), OUTARR(WORD)],
                                      ['size', 'algorithm', 'red', 'green', 'blue'])
-dllFunc('GetMostRecentImage', [ARRAY(at_32), c_ulong], ['arr', 'size'])
-dllFunc('GetMostRecentImage16', [ARRAY(WORD), c_ulong], ['arr', 'size'])
+dllFunc('GetMostRecentImage', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
+dllFunc('GetMostRecentImage16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
 # # GetMSTimingsData(SYSTEMTIME * TimeOfStart, float * pfDifferences, int inoOfImages)
 dllFunc('GetMetaDataInfo', [OUTPUT(SYSTEMTIME), OUTPUT(c_float), c_uint],
                            ['TimeOfStart', 'TimeFromStart', 'index'])
@@ -747,10 +778,10 @@ dllFunc('GetNumberPreAmpGains', [OUTPUT(c_int)], ['noGains'])
 dllFunc('GetNumberRingExposureTimes', [OUTPUT(c_int)], ['ipnumTimes'])
 dllFunc('GetNumberIO', [OUTPUT(c_int)], ['iNumber'])
 # # GetNumberVerticalSpeeds(int * number)
-dllFunc('GetNumberVSAmplitudes', [c_int], ['number'])
-dllFunc('GetNumberVSSpeeds', [c_int], ['speeds'])
-dllFunc('GetOldestImage', [ARRAY(at_32), c_ulong], ['arr', 'size'])
-dllFunc('GetOldestImage16', [ARRAY(WORD), c_ulong], ['arr', 'size'])
+dllFunc('GetNumberVSAmplitudes', [OUTPUT(c_int)], ['number'])
+dllFunc('GetNumberVSSpeeds', [OUTPUT(c_int)], ['speeds'])
+dllFunc('GetOldestImage', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
+dllFunc('GetOldestImage16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
 dllFunc('GetPhosphorStatus', [OUTPUT(c_int)], ['piFlag'])
 # # GetPhysicalDMAAddress(unsigned long * Address1, unsigned long * Address2)
 dllFunc('GetPixelSize', [OUTPUT(c_float), OUTPUT(c_float)], ['xSize', 'ySize'])
@@ -1029,13 +1060,21 @@ class TriggerMode(Enum):
     EXT_FVB = 9
     SOFTWARE = 10
 
-
 class AcquisitionMode(Enum):
     SINGLE = 1
     ACCUMULATE = 2
     KINETICS = 3
     FASTKINETICS = 4
-    RUNUNTILABORT = 5
+    RUNTILLABORT = 5
+
+
+class ReadMode(Enum):
+    FULLVERTICALBINNING = 0
+    MULTITRACK = 1
+    RANDOMTRACK = 2
+    SINGLETRACK = 3
+    IMAGE = 4
+
 
 
 class ReadoutMode():
@@ -1077,6 +1116,9 @@ def with_camera(func):
 
     return wrapper
 
+from collections import namedtuple
+Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+Binning = namedtuple('Binning', ['h', 'v'])
 
 
 class AndorAtmcd(devices.FloatingDeviceMixin,
@@ -1121,6 +1163,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         self._index = index
         self._handle = None
         self._rdepth = 0
+        self._roi = None # Will be populated after hardware init.
+        self._binning = Binning(1,1)
 
     def _bind(self, fn):
         """Binds unbound SDK functions to this camera."""
@@ -1183,6 +1227,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             SetCurrentCamera(self._handle)
             Initialize(b'')
+            # Initialise ROI to full sensor area:
+            self._set_roi()
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1<<2:
@@ -1206,7 +1252,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                         speed = GetHSSpeed(ch, amp.value, s)
                         self.modes.append(ReadoutMode(ch, amp, s, speed))
             self._logger.info("... initilized %s s/n %s" % (model, serial))
-
         ## Add settings. Some are write-only, we set defaults here, too.
         # TriggerMode
         name = 'TriggerMode'
@@ -1329,13 +1374,44 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         self.abort()
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
-        ## TODO - incomplete
-        self._sent = 0
-        self._logger.info("Acquisition enabled.")
+        with self:
+            SetAcquisitionMode(AcquisitionMode.RUNTILLABORT)
+            SetShutter(1, 1, 1, 1)
+            SetReadMode(ReadMode.IMAGE)
+            x, y = GetDetector()
+            roi = self._roi # ROI validated in _set_roi
+            binning = self._binning # Binning is mode-dependent, so not validated yet.
+            self._set_image()
+            if not IsTriggerModeAvailable(self.settings['TriggerMode'].get()):
+                raise AtmcdException("Trigger mode is not valid.")
+            StartAcquisition()
         return True
+
+    def _set_image(self):
+        binning = self._binning  # Binning is mode-dependent, so not validated yet.
+        roi = self._roi # ROI validated in _set_roi, so should be OK
+        with self:
+            try:
+                SetImage(binning.h, binning.v,
+                         roi.left, roi.left + roi.width-1,
+                         roi.top, roi.top + roi.height-1)
+            except AtmcdException as e:
+                if e.status == DRV_P1INVALID:
+                    raise Exception("Horizontal binning invalid.")
+                elif e.status == DRV_P2INVALID:
+                    raise Exception("Vertical binning invalid.")
+                elif e.status == DRV_P3INVALID:
+                    raise Exception("roi.left invalid.")
+                elif e.status == DRV_P4INVALID:
+                    raise Exception("roi.width invalid.")
+                elif e.status == DRV_P5INVALID:
+                    raise Exception("roi.top invalid.")
+                elif e.status == DRV_P6INVALID:
+                    raise Exception("roi.height invalid.")
+                else:
+                    raise
 
     def set_exposure_time(self, value):
         with self:
@@ -1349,35 +1425,124 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     def get_cycle_time(self):
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
-            readout = GetReadoutTime()
+            readout = GetReadOutTime()
         return exposure + readout
 
-
     def _get_sensor_shape(self):
-        return (512,512)
+        with self:
+            return GetDetector()
+
+    def get_sensor_temperature(self):
+        with self:
+            return GetTemperature()[1]
 
     def get_trigger_type(self):
-        return devices.TRIGGER_SOFT
+        trig = self.settings['TriggerMode'].get()
+        if trig == TriggerMode.BULB:
+            return devices.TRIGGER_DURATION
+        elif trig == TriggerMode.SOFTWARE:
+            return devices.TRIGGER_SOFT
+        else:
+            return devices.TRIGGER_BEFORE
 
     def soft_trigger(self):
-        self._logger.info('Trigger received; self._acquiring is %s.'
-                          % self._acquiring)
-        if self._acquiring:
-            self._triggered += 1
+        with self:
+            SendSoftwareTrigger()
 
     def _get_binning(self):
-         return (1,1)
+         # Binning not yet supported.
+         return self._binning
 
     @keep_acquiring
     def _set_binning(self, h, v):
-        return False
+        self._binning = Binning(h, v)
+        return True
 
     def _get_roi(self):
-        return (0, 0, 512, 512)
+        return self._roi
 
     @keep_acquiring
-    def _set_roi(self, x, y, width, height):
-        return False
+    def _set_roi(self, left=None, top=None, width=None, height=None):
+        """Set the ROI, defaulting to full sensor area."""
+        with self:
+            x, y = GetDetector()
+        print(x,y)
+        if left is None:
+            left = 1
+        if top is None:
+            top = 1
+        if width is None:
+            width = x
+        if height is None:
+            height = y
+        if any([left < 1, top < 1, left+width-1 > x, top+height-1 > y]):
+            return False
+        self._roi = Roi(left, top, width, height)
+        return True
 
-    def _on_shutdown(self):
-        pass
+    def test(self):
+        import time
+        with self:
+            #nvss = GetNumberVSSpeeds()
+            # GetVSSpeed
+            # GetSoftwareVersion
+            # GetHSSpeed
+            # GetNumberHSSpeed
+            # GetTemperatureRange
+            # SetTemperature
+            # CoolerON
+            # GetTemperature
+            # wait
+            # for temperature to stabilize
+            SetAcquisitionMode(AcquisitionMode.RUNTILLABORT)
+            SetReadMode(4)
+            SetShutter(1, 1, 1, 1)
+            SetExposureTime(0.01)
+            SetTriggerMode(TriggerMode.SOFTWARE)
+            x, y = GetDetector()
+            SetImage(1,1,1,x,1,y)
+            # SetAccumulationCycleTime
+            # SetNumberAccumulations
+            # SetNumberKinetics
+            # SetKineticCycleTime
+            # GetAcquisitionStrings
+            SetHSSpeed(1, 0)
+            SetHSSpeed(0, 0)
+            index, speed = GetFastestRecommendedVSSpeed()
+            SetVSSpeed(index)
+            StartAcquisition()
+            data = []
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            data.append(GetMostRecentImage(x*y))
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            data.append(GetMostRecentImage16(x*y))
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            data.append(GetOldestImage(x*y))
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            data.append(GetOldestImage16(x*y))
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            first, last = GetNumberAvailableImages()
+            print(first, last)
+            data.append(GetImages(first, last, (1+last-first)*x*y)[0])
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            first, last = GetNumberAvailableImages()
+            data.append(GetImages(first, last, (1+last-first)*x*y)[0])
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            SendSoftwareTrigger()
+            time.sleep(0.1)
+            AbortAcquisition()
+            first, last = GetNumberAvailableImages()
+            data.append(GetAcquiredData( x*y ) )
+            data.append(GetAcquiredData16( x*y) )
+            return data
