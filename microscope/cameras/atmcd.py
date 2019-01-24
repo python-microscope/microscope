@@ -459,7 +459,7 @@ def lookup_status(code):
         return "Unknown status code %s." % key
 
 
-## The following classes and functions are lifted from David Baddeley's
+## The following DLL-wrapping classes are largely lifted from David Baddeley's
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
@@ -521,7 +521,6 @@ def stripMeta(val):
         return val.val
     else:
         return val
-
 
 def extract_value(val):
     if type(val) in [c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong,
@@ -1061,6 +1060,7 @@ class TriggerMode(Enum):
     EXT_FVB = 9
     SOFTWARE = 10
 
+
 class AcquisitionMode(Enum):
     SINGLE = 1
     ACCUMULATE = 2
@@ -1139,7 +1139,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         CoolerON
         GetTemperature          wait for temperature to stabilize
         SetAcquisitionMode
-        SetReadoutMode
+        SetReadoutMode          does not exist
         SetShutter
         SetExposureTime
         SetTriggerMode
@@ -1156,7 +1156,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         CoolerOFF
         GetTemperature          wait until temperature has risen above -20C
         Shutdown
-    Some of this seems out of sequence.
     """
     def __init__(self, index=0, *args, **kwargs):
         super().__init__(**kwargs)
@@ -1266,7 +1265,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._readout_modes:
             self.settings[name] = Setting(name, 'enum',
                                           None,
-                                          self.set_readout_mode,
+                                          self._set_readout_mode,
                                           lambda: [str(mode) for mode in self._readout_modes])
             self.settings[name].set(0)
         # TriggerMode
@@ -1284,7 +1283,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         #                               self.set_mode,
         #                               self.modes)
         # Gain - device will use either EMGain or MCPGain
-        name = 'Gain'
+        name = 'gain'
         getter, setter, vrange = None, None, None
         if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
             getter = self._bind(GetEMCCDGain)
@@ -1383,10 +1382,11 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """
         binning = self._binning
         roi = self._roi
-        n_pixels = (roi.width // binning.h) * (roi.height // binning.v)
+        width = roi.width // binning.h
+        height = roi.height // binning.v
         try:
             with self:
-                data = GetOldestImage16(n_pixels)
+                data = GetOldestImage16(width * height).reshape(width, height)
         except AtmcdException as e:
             if e.status == DRV_NO_NEW_DATA:
                 return None
@@ -1473,6 +1473,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 raise out_e from None
 
     @Pyro4.expose
+    @keep_acquiring
     def set_exposure_time(self, value):
         with self:
             SetExposureTime(value)
@@ -1490,15 +1491,15 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             readout = GetReadOutTime()
         return exposure + readout
 
-    @Pyro4.expose
-    def set_readout_mode(self, mode_index):
+    def _set_readout_mode(self, mode_index):
         mode = self._readout_modes[mode_index]
+        self._logger.info("Setting readout mode to %s" % mode)
         with self:
             SetADChannel(mode.channel)
             SetOutputAmplifier(mode.amp)
             # On (at least) the Ixon Ultra, the two amplifiers read from
             # opposite edges from the chip. We set the horizontal flip
-            # so that the returned image orientation is indepenedent of
+            # so that the returned image orientation is independent of
             # amplifier selection
             SetImageFlip(mode.amp, 0)
             SetHSSpeed(mode.amp, mode.hsindex)
@@ -1556,70 +1557,3 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             return False
         self._roi = Roi(left, top, width, height)
         return True
-
-    def test(self):
-        import time
-        with self:
-            #nvss = GetNumberVSSpeeds()
-            # GetVSSpeed
-            # GetSoftwareVersion
-            # GetHSSpeed
-            # GetNumberHSSpeed
-            # GetTemperatureRange
-            # SetTemperature
-            # CoolerON
-            # GetTemperature
-            # wait
-            # for temperature to stabilize
-            SetAcquisitionMode(AcquisitionMode.RUNTILLABORT)
-            SetReadMode(4)
-            SetShutter(1, 1, 1, 1)
-            SetExposureTime(0.01)
-            SetTriggerMode(TriggerMode.SOFTWARE)
-            x, y = GetDetector()
-            SetImage(1,1,1,x,1,y)
-            # SetAccumulationCycleTime
-            # SetNumberAccumulations
-            # SetNumberKinetics
-            # SetKineticCycleTime
-            # GetAcquisitionStrings
-            SetHSSpeed(1, 0)
-            SetHSSpeed(0, 0)
-            index, speed = GetFastestRecommendedVSSpeed()
-            SetVSSpeed(index)
-            StartAcquisition()
-            data = []
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            data.append(GetMostRecentImage(x*y))
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            data.append(GetMostRecentImage16(x*y))
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            data.append(GetOldestImage(x*y))
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            data.append(GetOldestImage16(x*y))
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            first, last = GetNumberAvailableImages()
-            print(first, last)
-            data.append(GetImages(first, last, (1+last-first)*x*y)[0])
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            first, last = GetNumberAvailableImages()
-            data.append(GetImages(first, last, (1+last-first)*x*y)[0])
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            SendSoftwareTrigger()
-            time.sleep(0.1)
-            AbortAcquisition()
-            first, last = GetNumberAvailableImages()
-            data.append(GetAcquiredData( x*y ) )
-            data.append(GetAcquiredData16( x*y) )
-            return data
