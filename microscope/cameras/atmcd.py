@@ -1076,12 +1076,11 @@ class ReadMode(Enum):
     IMAGE = 4
 
 
-
 class ReadoutMode():
     def __init__(self, channel, amplifier, hs_index, speed):
         self.channel = channel # Channel index
         self.amp = amplifier # Amplifier enum
-        self.index = hs_index # HS speed index
+        self.hsindex = hs_index # HS speed index
         self.speed = speed  # Shift frequency in MHz
 
     def __str__(self):
@@ -1245,14 +1244,22 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     self.amplifiers = Enum('Amplifiers', ( ('EMCCD', 0),
                                                            ('CONVENTIONAL', 1) ))
             # Populate readout modes
-            self.modes = []
+            self._readout_modes = []
             for ch in range(GetNumberADChannels()):
                 for amp in self.amplifiers:
                     for s in range(GetNumberHSSpeeds(ch, amp.value)):
                         speed = GetHSSpeed(ch, amp.value, s)
-                        self.modes.append(ReadoutMode(ch, amp, s, speed))
+                        self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
             self._logger.info("... initilized %s s/n %s" % (model, serial))
         ## Add settings. Some are write-only, we set defaults here, too.
+        # Mode
+        name = 'readout mode'
+        if self._readout_modes:
+            self.settings[name] = Setting(name, 'enum',
+                                          None,
+                                          self.set_readout_mode,
+                                          lambda: self._readout_modes)
+            self.settings[name].set(0)
         # TriggerMode
         name = 'TriggerMode'
         self.settings[name] = Setting(name, 'enum',
@@ -1292,18 +1299,29 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         #                               AcquisitionMode)
         # self.settings[name].set(AcquisitionMode.SINGLE)
         # Temperature
-        name = 'temperature'
+        name = 'TemperatureSetPoint'
         getter, setter, vrange = None, None, None
-        if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE:
-            getter = lambda this=self: this._bind(GetTemperature)()[1]
         if self._caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE:
             setter = self._bind(SetTemperature)
         if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
             vrange = self._bind(GetTemperatureRange)
-        if getter or setter:
+        if setter:
             self.settings[name] = Setting(name, 'int',
-                                          getter, setter, vrange,
+                                          None, setter, vrange,
                                           setter is None)
+        self.settings[name] = -20 # A conservative default temperature set-point.
+        # Binning
+        name = 'Binning'
+        self.settings[name] = Setting(name, 'tuple',
+                                      self.get_binning,
+                                      lambda hv: self.set_binning(*hv),
+                                      None)
+        # Roi
+        name = 'Roi'
+        self.settings[name] = Setting(name, 'tuple',
+                                      self.get_roi,
+                                      lambda roi: self.set_roi(*roi),
+                                      None)
         # BaselineClamp
         name = 'BaselineClamp'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
@@ -1337,6 +1355,29 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetHighCapacity))
+
+    def _fetch_data(self):
+        """Poll for data and return it, with minimal processing.
+
+        If the device uses buffering in software, this function should copy
+        the data from the buffer, release or recycle the buffer, then return
+        a reference to the copy. Otherwise, if the SDK returns a data object
+        that will not be written to again, this function can just return a
+        reference to the object.
+        If no data is available, return None.
+        """
+        binning = self._binning
+        roi = self._roi
+        n_pixels = (roi.width / binning.h) * (roi.height / binning.v)
+        try:
+            with self:
+                data = GetOldestImage16(n_pixels)
+        except AtmcdException as e:
+            if e.status == DRV_NO_NEW_DATA:
+                return None
+            else:
+                raise e
+        return data
 
     def get_id(self):
         with self:
@@ -1399,19 +1440,20 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                          roi.top, roi.top + roi.height-1)
             except AtmcdException as e:
                 if e.status == DRV_P1INVALID:
-                    raise Exception("Horizontal binning invalid.")
+                    out_e = Exception("Horizontal binning invalid.")
                 elif e.status == DRV_P2INVALID:
-                    raise Exception("Vertical binning invalid.")
+                    e = Exception("Vertical binning invalid.")
                 elif e.status == DRV_P3INVALID:
-                    raise Exception("roi.left invalid.")
+                    out_e = Exception("roi.left invalid.")
                 elif e.status == DRV_P4INVALID:
-                    raise Exception("roi.width invalid.")
+                    out_e = Exception("roi.width invalid.")
                 elif e.status == DRV_P5INVALID:
-                    raise Exception("roi.top invalid.")
+                    out_e = Exception("roi.top invalid.")
                 elif e.status == DRV_P6INVALID:
-                    raise Exception("roi.height invalid.")
+                    out_e = Exception("roi.height invalid.")
                 else:
-                    raise
+                    out_e = incoming
+                raise out_e from None
 
     def set_exposure_time(self, value):
         with self:
@@ -1427,6 +1469,19 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             exposure, accumulate, kinetic = GetAcquisitionTimings()
             readout = GetReadOutTime()
         return exposure + readout
+
+    def set_readout_mode(self, mode_index):
+        print (mode_index)
+        mode = self._readout_modes[mode_index]
+        with self:
+            SetADChannel(mode.channel)
+            SetOutputAmplifier(mode.amp)
+            # On (at least) the Ixon Ultra, the two amplifiers read from
+            # opposite edges from the chip. We set the horizontal flip
+            # so that the returned image orientation is indepenedent of
+            # amplifier selection
+            SetImageFlip(mode.amp, 0)
+            SetHSSpeed(mode.amp, mode.hsindex)
 
     def _get_sensor_shape(self):
         with self:
