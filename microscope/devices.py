@@ -59,10 +59,12 @@ DTYPES = {'int': ('int', tuple),
           'bool': ('bool', type(None)),
           'enum': ('enum', list, EnumMeta),
           'str': ('str', int),
+          'tuple': ('tuple', type(None)),
           int: ('int', tuple),
           float: ('float', tuple),
           bool: ('bool', type(None)),
-          str: ('str', int)}
+          str: ('str', int),
+          tuple: ('tuple', type(None))}
 
 # A utility function to call callables or return value of non-callables.
 # noinspection PyPep8
