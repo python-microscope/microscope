@@ -135,9 +135,13 @@ class Setting():
 
     def values(self):
         if isinstance(self._values, EnumMeta):
-            return [v for v in self._values]
-        elif self._values is not None:
-            return _call_if_callable(self._values)
+            return [(v.value, v.name) for v in self._values]
+        values = _call_if_callable(self._values)
+        if values is not None:
+            if self.dtype is 'enum': # but self._values is a list or tuple
+                return list(enumerate(values))
+            elif self._values is not None:
+                return values
 
 
 def device(cls, host, port, uid=None, **kwargs):
@@ -645,13 +649,13 @@ class CameraDevice(DataDevice):
         self._transform = (0, 0, 0)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
-                         self.get_transform,
-                         self.set_transform,
-                         lambda: CameraDevice.ALLOWED_TRANSFORMS)
-        self.add_setting('readout mode', 'enum',
-                         lambda: self._readout_mode,
-                         self.set_readout_mode,
-                         lambda: self._readout_modes)
+                         None,
+                         lambda index: self.set_transform(CameraDevice.ALLOWED_TRANSFORMS[index]),
+                         CameraDevice.ALLOWED_TRANSFORMS)
+        # self.add_setting('readout mode', 'enum',
+        #                  lambda: self._readout_mode,
+        #                  self.set_readout_mode,
+        #                  lambda: self._readout_modes)
 
 
     def _process_data(self, data):
@@ -669,9 +673,7 @@ class CameraDevice(DataDevice):
 
     @Pyro4.expose
     def set_readout_mode(self, description):
-        """Set the readout mode and _readout_transform.
-
-        Takes a description string from _readout_modes."""
+        """Set the readout mode and _readout_transform."""
         pass
 
 
