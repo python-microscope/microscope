@@ -334,17 +334,17 @@ class Device(object):
         results = {}
         # Update values.
         for key in update_keys:
-            if key not in my_keys or not self.settings[key]['set']:
+            if key not in my_keys or not self.settings[key].set:
                 # Setting not recognised or no set function implemented
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if _call_if_callable(self.settings[key]['readonly']):
+            if _call_if_callable(self.settings[key].readonly):
                 continue
-            self.settings[key]['set'](incoming[key])
+            self.settings[key].set(incoming[key])
         # Read back values in second loop.
         for key in update_keys:
-            results[key] = self.settings[key]['get']()
+            results[key] = self.settings[key].get()
         return results
 
 
