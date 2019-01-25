@@ -20,6 +20,14 @@
 """atmcd
 
    This module wraps Andor's SDK for (EM)CCD cameras.
+
+   Example deviceserver entry:
+    from microscope.cameras import atmcd
+    DEVICES = [ ...
+               device(atmcd.AndorAtmcd, '127.0.0.1', 8000, uid='VSC-01234')
+              ]
+
+   Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
 """
 import re, sys, functools, os, platform
 import ctypes
@@ -469,6 +477,7 @@ class _meta(object):
 STRING = c_char_p
 
 class OUTPUT(_meta):
+    """Used to indicated output from a DLL call"""
     def __init__(self, val):
         self.type = val
         self.val = POINTER(val)
@@ -479,6 +488,7 @@ class OUTPUT(_meta):
 
 
 class _OUTSTRING(OUTPUT):
+    """A special type of OUTPUT that creates an output buffer."""
     def __init__(self):
         self.val = STRING
 
@@ -490,6 +500,7 @@ OUTSTRING = _OUTSTRING()
 
 
 class _OUTSTRLEN(_meta):
+    """Used to mark call parameters that define a string buffer size."""
     def __init__(self):
         self.val = c_int
 
@@ -498,6 +509,7 @@ OUTSTRLEN = _OUTSTRLEN()
 
 import numpy as np
 class OUTARR(OUTPUT):
+    """Used for DLL call parameters that return an array."""
     def __init__(self, val):
         self.type = val
         #self.val = POINTER(val)
@@ -510,6 +522,7 @@ class OUTARR(OUTPUT):
 
 
 class _OUTARRSIZE(_meta):
+    """Used to mark DLL call parameters that define array sizes."""
     def __init__(self):
         self.val = c_ulong
 
@@ -517,12 +530,14 @@ OUTARRSIZE = _OUTARRSIZE()
 
 
 def stripMeta(val):
+    """Strips the outer metaclass to give the underlying data object."""
     if isinstance(val, _meta):
         return val.val
     else:
         return val
 
 def extract_value(val):
+    """Calls .value on simple ctypes."""
     if type(val) in [c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong,
                      c_ubyte, c_short, c_float, c_double, c_char, c_char_p]:
         return val.value
@@ -533,6 +548,7 @@ def extract_value(val):
 
 
 class AtmcdException(Exception):
+    """An exception arising from a DLL call."""
     def __init__(self, status):
         self.message = "%s  %s" % (status, lookup_status(status))
         super().__init__(self.message)
@@ -540,17 +556,27 @@ class AtmcdException(Exception):
 
 
 class dllFunction(object):
+    """A wrapper class for DLL functions to make them available in python."""
     def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
+        # the library function
         self.f = getattr(lib, name)
+        # dll call return type
         self.f.restype = c_uint
+        # dll call parameter types
         self.f.argtypes = [stripMeta(a) for a in args]
+        # dll call parameters, with their meta wrappers
         self.fargs = args
+        # dll call parameter names, used to generate helpstrings
         self.fargnames = argnames
+        # the function name
         self.name = name
+        # input arguments
         self.in_args = [a for a in args if not isinstance(a, OUTPUT)]
+        # output arguments
         self.out_args = [a for a in args if isinstance(a, OUTPUT)]
-        self.rstatus = rstatus # Some functions indicate state with status codes.
-
+        # Indicates that this function should return the status code it generates.
+        self.rstatus = rstatus
+        # Find any arguments that set string buffer or array sizes.
         self.buf_size_arg_pos = -1
         self.arr_size_arg_pos = -1
         for i in range(len(self.in_args)):
@@ -558,19 +584,18 @@ class dllFunction(object):
                 self.buf_size_arg_pos = i
             if isinstance(self.in_args[i], _OUTARRSIZE):
                 self.arr_size_pos = i
-
-
-
+        # Generate a docstring.
         ds = name + '\n\nArguments:\n===========\n'
         for i in range(len(args)):
             an = ''
             if i < len(argnames):
                 an = argnames[i]
             ds += '\t%s\t%s\n' % (args[i], an)
-
         self.f.__doc__ = ds
 
     def __call__(self, *args):
+        """Parse arguments, allocate any required storage, and execute the call."""
+        # The C function arguments
         c_args = []
         i = 0
         ret = []
@@ -582,7 +607,7 @@ class dllFunction(object):
                 bs = 255
         else:
             bs = 255
-
+        # Sort input and output arguments, allocating output storage as required.
         i = 0
         for farg in self.fargs:
             if isinstance(farg, OUTPUT):
@@ -602,7 +627,7 @@ class dllFunction(object):
                 c_args.append(args[i])
                 i += 1
 
-        # Make the library call.
+        # Make the library call, tolerating a few DRV_ERROR_ACKs
         status = DRV_ERROR_ACK
         ack_err_count = -1
         while status == DRV_ERROR_ACK and ack_err_count < 3:
@@ -633,6 +658,7 @@ class dllFunction(object):
 
 
 def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
+    """Wrap library calls and add them to this module's namespace."""
     try:
         f = dllFunction(name, args, argnames, rstatus, lib)
     except Exception as e:
@@ -1057,6 +1083,7 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 from enum import Enum, IntEnum
 
 class TriggerMode(IntEnum):
+    """Camera trigger modes"""
     INTERNAL = 0
     EXTERNAL = 1
     EXT_START = 6
@@ -1066,6 +1093,7 @@ class TriggerMode(IntEnum):
 
 
 class AcquisitionMode(IntEnum):
+    """Acquisition modes."""
     SINGLE = 1
     ACCUMULATE = 2
     KINETICS = 3
@@ -1074,6 +1102,7 @@ class AcquisitionMode(IntEnum):
 
 
 class ReadMode(IntEnum):
+    """Chip readout modes. Currently, only IMAGE is supported."""
     FULLVERTICALBINNING = 0
     MULTITRACK = 1
     RANDOMTRACK = 2
@@ -1082,6 +1111,7 @@ class ReadMode(IntEnum):
 
 
 class ReadoutMode():
+    """A combination of channel, amplifier and speed settings."""
     def __init__(self, channel, amplifier, hs_index, speed):
         self.channel = channel # Channel index
         self.amp = amplifier # Amplifier enum
@@ -1105,69 +1135,27 @@ import time
 # A lock on the DLL used to ensure DLL calls act on the correct device.
 _dll_lock = Lock()
 
-def with_camera(func):
-    """A decorator for camera functions.
-
-    If there are multiple cameras per process, we need to call
-    SetCurrentCamera to access the correct device.
-    This call takes 5.4us to 5.7us. Some operations could result in
-    many calls, so we acquire a lock on the DLL and call it once.
-    """
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        with self:
-            return func(self, *args, **kwargs)
-
-    return wrapper
-
 from collections import namedtuple
+# A tuple that defines a region of interest.
 Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+# A tuple containing parameters for horizontal and vertical binning.
 Binning = namedtuple('Binning', ['h', 'v'])
 
 
 class AndorAtmcd(devices.FloatingDeviceMixin,
                  devices.CameraDevice):
-    """ Implements CameraDevice interface for Andor ATMCD library.
-
-    Sequence of calls from flowchart in Andor documentation:
-        Initialize              initializes hardware
-        GetDetector             fetch sensor size
-        GetHardwareVersion      perhaps not necessary?
-        GetNumberVSSpeeds
-        GetVSSpeed
-        GetSoftwareVersion
-        GetHSSpeed
-        GetNumberHSSpeed
-        GetTemperatureRange
-        SetTemperature
-        CoolerON
-        GetTemperature          wait for temperature to stabilize
-        SetAcquisitionMode
-        SetReadoutMode          does not exist
-        SetShutter
-        SetExposureTime
-        SetTriggerMode
-        SetAccumulationCycleTime
-        SetNumberAccumulations
-        SetNumberKinetics
-        SetKineticCycleTime
-        GetAcquisitionStrings
-        SetHSSpeed
-        SetVSSpeed
-        StartAcquisition
-        GetStatus               wait until acquisition complete
-        GetAcquiredData
-        CoolerOFF
-        GetTemperature          wait until temperature has risen above -20C
-        Shutdown
-    """
+    """ Implements CameraDevice interface for Andor ATMCD library."""
     def __init__(self, index=0, *args, **kwargs):
         super().__init__(**kwargs)
-        self._index = index
-        self._handle = None
+        # Recursion depth for context manager behaviour.
         self._rdepth = 0
-        self._roi = None # Will be populated after hardware init.
-        self._binning = Binning(1,1)
+        # The camera index in the list maintained by the DLL.
+        self._index = index
+        # The handle used by the DLL to identify this camera.
+        self._handle = None
+        # The following parameters will be populated after hardware init.
+        self._roi = None
+        self._binning = None
 
     def _bind(self, fn):
         """Binds unbound SDK functions to this camera."""
@@ -1199,6 +1187,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     @property
     def _acquiring(self):
+        """Indicate whether or not camera is acquiring data."""
         with self:
             return GetStatus() == DRV_ACQUIRING
 
@@ -1221,6 +1210,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 raise
 
     def _set_cooler_state(self, state):
+        """Turn the sensor cooler on (True) or off (False)"""
         with self:
             if state:
                 CoolerON()
@@ -1228,18 +1218,20 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 CoolerOFF()
 
     def initialize(self):
+        """Initialize the library and hardware and create Setting objects."""
         self._logger.info('Initializing ...')
         num_cams = GetAvailableCameras()
         if self._index >= num_cams:
-            msg = "Requested camera %d, but only found % cameras" % (self._index, num_cams)
+            msg = "Requested camera %d, but only found %d cameras" % (self._index, num_cams)
             raise Exception(msg)
         self._handle = GetCameraHandle(self._index)
 
         with self:
-            SetCurrentCamera(self._handle)
+            # Initialize the library and connect to camera.
             Initialize(b'')
-            # Initialise ROI to full sensor area:
+            # Initialise ROI to full sensor area and binning to single-pixel.
             self._set_roi()
+            self._set_binning()
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1<<2:
@@ -1263,7 +1255,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                         speed = GetHSSpeed(ch, amp.value, s)
                         self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
             self._logger.info("... initilized %s s/n %s" % (model, serial))
-        ## Add settings. Some are write-only, we set defaults here, too.
+        ## Add settings. Some are write-only, so we set defaults here.
         # Mode
         name = 'readout mode'
         if self._readout_modes:
@@ -1299,13 +1291,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           getter, setter, vrange,
                                           setter is None)
-        # # AcquisitionMode - not supported at this time.
-        # name = 'AcquisitionMode'
-        # self.settings[name] = Setting(name, 'enum',
-        #                               None,
-        #                               self._bind(SetAcquisitionMode),
-        #                               AcquisitionMode)
-        # self.settings[name].set(AcquisitionMode.SINGLE)
         # Temperature
         name = 'TemperatureSetPoint'
         getter, setter, vrange = None, None, None
@@ -1317,14 +1302,15 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           None, setter, vrange,
                                           setter is None)
-        self.settings[name].set(-20) # A conservative default temperature set-point.
+        # Set a conservative default temperature set-point.
+        self.settings[name].set(-20)
         # Cooler control
         name = 'Cooler Enabled'
         self.settings[name] = Setting(name, 'bool',
                                       None,
                                       self._set_cooler_state,
                                       None)
-        self.settings[name].set(False)
+        self.settings[name].set(True)
         # Binning
         name = 'Binning'
         self.settings[name] = Setting(name, 'tuple',
@@ -1377,12 +1363,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.
 
-        If the device uses buffering in software, this function should copy
-        the data from the buffer, release or recycle the buffer, then return
-        a reference to the copy. Otherwise, if the SDK returns a data object
-        that will not be written to again, this function can just return a
-        reference to the object.
-        If no data is available, return None.
+        Returns the data, or None if no data is available.
         """
         binning = self._binning
         roi = self._roi
@@ -1400,6 +1381,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     @Pyro4.expose
     def get_id(self):
+        """Return the device's unique identifier."""
         with self:
             return GetCameraSerialNumber()
 
@@ -1428,15 +1410,12 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             ShutDown()
 
-    @Pyro4.expose
-    def make_safe(self):
-        if self._acquiring:
-            self.abort()
-
     def _on_disable(self):
+        """Call abort to stop acquisition."""
         self.abort()
 
     def _on_enable(self):
+        """Enter data acquisition state."""
         if self._acquiring:
             self.abort()
         with self:
@@ -1444,8 +1423,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             SetShutter(1, 1, 1, 1)
             SetReadMode(ReadMode.IMAGE)
             x, y = GetDetector()
-            roi = self._roi # ROI validated in _set_roi
-            binning = self._binning # Binning is mode-dependent, so not validated yet.
             self._set_image()
             if not IsTriggerModeAvailable(self.settings['TriggerMode'].get()):
                 raise AtmcdException("Trigger mode is not valid.")
@@ -1453,6 +1430,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return True
 
     def _set_image(self):
+        """Set ROI and binning prior to acquisition."""
         binning = self._binning  # Binning is mode-dependent, so not validated yet.
         roi = self._roi # ROI validated in _set_roi, so should be OK
         with self:
@@ -1475,28 +1453,33 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     out_e = Exception("roi.height invalid.")
                 else:
                     out_e = incoming
+                # Just raise the descriptive exception, not the chain.
                 raise out_e from None
 
     @Pyro4.expose
     @keep_acquiring
     def set_exposure_time(self, value):
+        """Set exposure time."""
         with self:
             SetExposureTime(value)
 
     @Pyro4.expose
     def get_exposure_time(self):
+        """Query the actual exposure time."""
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
         return exposure
 
     @Pyro4.expose
     def get_cycle_time(self):
+        """Determine the minimum time between exposures."""
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
             readout = GetReadOutTime()
         return exposure + readout
 
     def _set_readout_mode(self, mode_index):
+        """Configure channel, amplifier and VS-speed."""
         mode = self._readout_modes[mode_index]
         self._logger.info("Setting readout mode to %s" % mode)
         with self:
@@ -1510,16 +1493,19 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             SetHSSpeed(mode.amp, mode.hsindex)
 
     def _get_sensor_shape(self):
+        """Return the sensor geometry."""
         with self:
             return GetDetector()
 
     @Pyro4.expose
     def get_sensor_temperature(self):
+        """Return the sensor temperature."""
         with self:
             return GetTemperature()[1]
 
     @Pyro4.expose
     def get_trigger_type(self):
+        """Return the microscope.devices trigger type."""
         trig = self.settings['TriggerMode'].get()
         if trig == TriggerMode.BULB:
             return devices.TRIGGER_DURATION
@@ -1530,18 +1516,22 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     @Pyro4.expose
     def soft_trigger(self):
+        """Send a software trigger signal."""
         with self:
             SendSoftwareTrigger()
 
     def _get_binning(self):
-         return self._binning
+        """Return the binning setting."""
+        return self._binning
 
     @keep_acquiring
-    def _set_binning(self, h, v):
+    def _set_binning(self, h=1, v=1):
+        """Set horizontal and vertical binning. Default to single pixel."""
         self._binning = Binning(h, v)
         return True
 
     def _get_roi(self):
+        """Return the current ROI setting."""
         return self._roi
 
     @keep_acquiring
