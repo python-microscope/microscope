@@ -603,7 +603,11 @@ class dllFunction(object):
                 i += 1
 
         # Make the library call.
-        status = self.f(*c_args)
+        status = DRV_ERROR_ACK
+        ack_err_count = -1
+        while status == DRV_ERROR_ACK and ack_err_count < 3:
+            ack_err_count += 1
+            status = self.f(*c_args)
         ret = [extract_value(r) for r in ret]
         if len(ret) == 1:
             ret = ret[0]
@@ -1050,9 +1054,9 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 # #'PostProcessDataAveraging(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iAveragingFilterMode, int iHeight, int iWidth, int iFrameCount, int iAveragingFactor)
 
 # Enums from documentation
-from enum import Enum
+from enum import Enum, IntEnum
 
-class TriggerMode(Enum):
+class TriggerMode(IntEnum):
     INTERNAL = 0
     EXTERNAL = 1
     EXT_START = 6
@@ -1061,7 +1065,7 @@ class TriggerMode(Enum):
     SOFTWARE = 10
 
 
-class AcquisitionMode(Enum):
+class AcquisitionMode(IntEnum):
     SINGLE = 1
     ACCUMULATE = 2
     KINETICS = 3
@@ -1069,7 +1073,7 @@ class AcquisitionMode(Enum):
     RUNTILLABORT = 5
 
 
-class ReadMode(Enum):
+class ReadMode(IntEnum):
     FULLVERTICALBINNING = 0
     MULTITRACK = 1
     RANDOMTRACK = 2
@@ -1246,10 +1250,10 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Populate amplifiers
             if GetNumberAmp() > 1:
                 if self._caps.ulCameraType == AC_CAMERATYPE_CLARA:
-                    self.amplifiers = Enum('Amplifiers', ( ('CONVENTIONAL', 0),
+                    self.amplifiers = IntEnum('Amplifiers', ( ('CONVENTIONAL', 0),
                                                            ('EXTENDED_NIR', 1) ))
                 else:
-                    self.amplifiers = Enum('Amplifiers', ( ('EMCCD', 0),
+                    self.amplifiers = IntEnum('Amplifiers', ( ('EMCCD', 0),
                                                            ('CONVENTIONAL', 1) ))
             # Populate readout modes
             self._readout_modes = []
@@ -1274,14 +1278,10 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                       None,
                                       self._bind(SetTriggerMode),
                                       TriggerMode)
-        self.settings[name].set(TriggerMode.INTERNAL)
-        # Mode - the amplifier mode
-        name = 'Mode'
-        # TODO ...
-        # self.settings[name] = Setting(name, 'enum',
-        #                               self.get_mode,
-        #                               self.set_mode,
-        #                               self.modes)
+        if self._caps.ulTriggerModes & AC_TRIGGERMODE_EXTERNAL:
+            self.settings[name].set(TriggerMode.EXTERNAL)
+        elif self._caps.ulTriggerModes & AC_TRIGGERMODE_CONTINUOUS:
+            self.settings[name].set(TriggerMode.SOFTWARE)
         # Gain - device will use either EMGain or MCPGain
         name = 'gain'
         getter, setter, vrange = None, None, None
@@ -1290,7 +1290,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         elif self._caps.ulGetFunctions & AC_GETFUNCTION_MCPGAIN:
             getter = self._bind(GetMCPGain)
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMCCDGAIN:
-            setter = self._bind(GetEMCCDGain)
+            setter = self._bind(SetEMCCDGain)
             vrange = self._bind(GetEMGainRange)
         elif self._caps.ulSetFunctions & AC_SETFUNCTION_MCPGAIN:
             setter = self._bind(SetMCPGain)
@@ -1324,6 +1324,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                       None,
                                       self._set_cooler_state,
                                       None)
+        self.settings[name].set(False)
         # Binning
         name = 'Binning'
         self.settings[name] = Setting(name, 'tuple',
@@ -1342,6 +1343,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetBaselineClamp))
+            self.settings[name].set(False)
         # BaselineOffset
         nam = 'BaselineOffset'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
@@ -1349,12 +1351,14 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                           None,
                                           self._bind(SetBaselineOffset),
                                           (-1000, 1000))
+            self.settings[name].set(0)
         # EMAdvanced
         name = 'EMAdvanced'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
             self.settings[name] = Setting(name, 'bool',
                                           None,
                                           self._bind(SetEMAdvanced))
+            self.settings[name].set(False)
         # GateMode
         name = 'GateMode'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
@@ -1414,9 +1418,10 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Check temperature then release lock.
             with self:
                 t = GetTemperature()[1]
+                self._logger.info("... T = %dC" % t)
             if t > -20:
                 break
-            time.sleep(5)
+            time.sleep(10)
 
         self._logger.info("Temperature is %dC: shutting down camera." % t)
 
@@ -1529,7 +1534,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             SendSoftwareTrigger()
 
     def _get_binning(self):
-         # Binning not yet supported.
          return self._binning
 
     @keep_acquiring
