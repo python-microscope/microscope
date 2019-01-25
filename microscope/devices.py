@@ -240,7 +240,7 @@ class Device(object):
     @Pyro4.expose
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
-        self.enabled = False
+        self.disable()
         self._logger.info("Shutting down ... ... ...")
         self._on_shutdown()
         self._logger.info("... ... ... ... shut down completed.")
