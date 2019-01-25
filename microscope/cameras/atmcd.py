@@ -28,6 +28,7 @@ from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
 from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
 from ctypes import c_void_p
 from numpy.ctypeslib import ndpointer
+import Pyro4
 
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.
@@ -504,7 +505,7 @@ class OUTARR(OUTPUT):
 
     def getVar(self, size):
         #self.val = (size * self.type)()
-        self.val = np.zeros(size, dtype=self.type)
+        self.val = np.zeros(int(size), dtype=self.type)
         return self.val, self.val
 
 
@@ -1205,15 +1206,23 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         # track of acquisition state.
         pass
 
-    @with_camera
+    @Pyro4.expose
     def abort(self):
         """Abort acquisition."""
         self._logger.debug('Disabling acquisition.')
         try:
-            AbortAcquisition()
+            with self:
+                AbortAcquisition()
         except AtmcdException as e:
             if e.status != DRV_IDLE:
                 raise
+
+    def _set_cooler_state(self, state):
+        with self:
+            if state:
+                CoolerON()
+            else:
+                CoolerOFF()
 
     def initialize(self):
         self._logger.info('Initializing ...')
@@ -1258,7 +1267,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'enum',
                                           None,
                                           self.set_readout_mode,
-                                          lambda: self._readout_modes)
+                                          lambda: [str(mode) for mode in self._readout_modes])
             self.settings[name].set(0)
         # TriggerMode
         name = 'TriggerMode'
@@ -1309,7 +1318,13 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             self.settings[name] = Setting(name, 'int',
                                           None, setter, vrange,
                                           setter is None)
-        self.settings[name] = -20 # A conservative default temperature set-point.
+        self.settings[name].set(-20) # A conservative default temperature set-point.
+        # Cooler control
+        name = 'Cooler Enabled'
+        self.settings[name] = Setting(name, 'bool',
+                                      None,
+                                      self._set_cooler_state,
+                                      None)
         # Binning
         name = 'Binning'
         self.settings[name] = Setting(name, 'tuple',
@@ -1368,7 +1383,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """
         binning = self._binning
         roi = self._roi
-        n_pixels = (roi.width / binning.h) * (roi.height / binning.v)
+        n_pixels = (roi.width // binning.h) * (roi.height // binning.v)
         try:
             with self:
                 data = GetOldestImage16(n_pixels)
@@ -1379,6 +1394,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 raise e
         return data
 
+    @Pyro4.expose
     def get_id(self):
         with self:
             return GetCameraSerialNumber()
@@ -1407,6 +1423,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             ShutDown()
 
+    @Pyro4.expose
     def make_safe(self):
         if self._acquiring:
             self.abort()
@@ -1455,23 +1472,26 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     out_e = incoming
                 raise out_e from None
 
+    @Pyro4.expose
     def set_exposure_time(self, value):
         with self:
             SetExposureTime(value)
 
+    @Pyro4.expose
     def get_exposure_time(self):
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
         return exposure
 
+    @Pyro4.expose
     def get_cycle_time(self):
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
             readout = GetReadOutTime()
         return exposure + readout
 
+    @Pyro4.expose
     def set_readout_mode(self, mode_index):
-        print (mode_index)
         mode = self._readout_modes[mode_index]
         with self:
             SetADChannel(mode.channel)
@@ -1487,10 +1507,12 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             return GetDetector()
 
+    @Pyro4.expose
     def get_sensor_temperature(self):
         with self:
             return GetTemperature()[1]
 
+    @Pyro4.expose
     def get_trigger_type(self):
         trig = self.settings['TriggerMode'].get()
         if trig == TriggerMode.BULB:
@@ -1500,6 +1522,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         else:
             return devices.TRIGGER_BEFORE
 
+    @Pyro4.expose
     def soft_trigger(self):
         with self:
             SendSoftwareTrigger()
@@ -1521,7 +1544,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Set the ROI, defaulting to full sensor area."""
         with self:
             x, y = GetDetector()
-        print(x,y)
         if left is None:
             left = 1
         if top is None:
