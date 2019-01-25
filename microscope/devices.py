@@ -658,7 +658,7 @@ class CameraDevice(DataDevice):
         self._transform = (0, 0, 0)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
-                         None,
+                         lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
                          lambda index: self.set_transform(CameraDevice.ALLOWED_TRANSFORMS[index]),
                          CameraDevice.ALLOWED_TRANSFORMS)
         # self.add_setting('readout mode', 'enum',
