@@ -36,6 +36,17 @@ from microscope.devices import FilterWheelBase
 class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
+        # Binning and ROI
+        self._roi = (0,0,511,511)
+        self._binning = (1,1)
+        self.add_setting('binning', 'tuple',
+                         lambda: self._binning,
+                         lambda val: setattr(self, '_binning', val),
+                         None)
+        self.add_setting('roi', 'tuple',
+                         lambda: self._roi,
+                         lambda val: setattr(self, '_roi', val),
+                         None)
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
         self.add_setting('a_setting', 'int',
@@ -75,7 +86,6 @@ class TestCamera(devices.CameraDevice):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
         self._logger.info("Creating buffers.")
-        #time.sleep(0.5)
 
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
@@ -86,7 +96,9 @@ class TestCamera(devices.CameraDevice):
             time.sleep(self._exposure_time)
             self._triggered -= 1
             # Create an image
-            size = (512,512)
+            width = (self._roi[2] - self._roi[0]) // self._binning[0]
+            height = (self._roi[3] - self._roi[1]) // self._binning[1]
+            size = (width, height)
             image = Image.fromarray(
                 np.random.random_integers(255, size=size).astype(np.uint8), 'L')
             # Render text
