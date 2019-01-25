@@ -463,6 +463,7 @@ class DataDevice(Device):
         self._logger.debug("... enabled.")
         return self.enabled
 
+
     @Pyro4.expose
     def disable(self):
         """Disable the data capture device.
@@ -649,8 +650,8 @@ class CameraDevice(DataDevice):
         super(CameraDevice, self).__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ['default']
-        # The current readout mode.
-        self._readout_mode = 'default'
+        # The index of the current readout mode.
+        self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
         # Transform to correct for readout order.
         self._readout_transform = (0, 0, 0)
@@ -661,10 +662,10 @@ class CameraDevice(DataDevice):
                          lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
                          lambda index: self.set_transform(CameraDevice.ALLOWED_TRANSFORMS[index]),
                          CameraDevice.ALLOWED_TRANSFORMS)
-        # self.add_setting('readout mode', 'enum',
-        #                  lambda: self._readout_mode,
-        #                  self.set_readout_mode,
-        #                  lambda: self._readout_modes)
+        self.add_setting('readout mode', 'enum',
+                         lambda: self._readout_mode,
+                         self.set_readout_mode,
+                         lambda: self._readout_modes)
 
 
     def _process_data(self, data):
