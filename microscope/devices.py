@@ -524,7 +524,7 @@ class DataDevice(Device):
         and remove only that caller from the client stack.
         """
         if new_client is not None:
-            if isinstance(new_client, string_types):
+            if isinstance(new_client, (string_types, Pyro4.core.URI)):
                 self._client = Pyro4.Proxy(new_client)
             else:
                 self._client = new_client
