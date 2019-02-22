@@ -96,11 +96,13 @@ class TestCamera(devices.CameraDevice):
             time.sleep(self._exposure_time)
             self._triggered -= 1
             # Create an image
+            dark = 32 * np.random.rand()
+            light = 255 - 128 * np.random.rand()
             width = (self._roi[2] - self._roi[0]) // self._binning[0]
             height = (self._roi[3] - self._roi[1]) // self._binning[1]
             size = (width, height)
             image = Image.fromarray(
-                np.random.random_integers(255, size=size).astype(np.uint8), 'L')
+                np.random.randint(dark, light, size=size).astype(np.uint8), 'L')
             # Render text
             text = "%d" % self._sent
             tsize = self._font.getsize(text)
