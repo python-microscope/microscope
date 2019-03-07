@@ -96,8 +96,8 @@ class TestCamera(devices.CameraDevice):
             time.sleep(self._exposure_time)
             self._triggered -= 1
             # Create an image
-            dark = 32 * np.random.rand()
-            light = 255 - 128 * np.random.rand()
+            dark = int(32 * np.random.rand())
+            light = int(255 - 128 * np.random.rand())
             width = (self._roi[2] - self._roi[0]) // self._binning[0]
             height = (self._roi[3] - self._roi[1]) // self._binning[1]
             size = (width, height)
@@ -107,8 +107,8 @@ class TestCamera(devices.CameraDevice):
             text = "%d" % self._sent
             tsize = self._font.getsize(text)
             ctx = ImageDraw.Draw(image)
-            ctx.rectangle([size[0]-tsize[0]-8, 0, size[0], tsize[1]+8], fill=0)
-            ctx.text((size[0]-tsize[0]-4, 4), text, fill=255)
+            ctx.rectangle([size[0]-tsize[0]-8, 0, size[0], tsize[1]+8], fill=dark)
+            ctx.text((size[0]-tsize[0]-4, 4), text, fill=light)
 
             self._sent += 1
             return np.asarray(image).T
