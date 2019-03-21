@@ -47,9 +47,6 @@ import numpy
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
-# Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
-
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
 # This avoids problems with, say a python 2 client recognising a python 3
@@ -111,15 +108,9 @@ class Device(object):
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger(self.__class__.__name__)
         self._index = kwargs['index'] if 'index' in kwargs else None
-        self._utype = UGENERIC
 
     def __del__(self):
         self.shutdown()
-
-
-    @Pyro4.expose
-    def get_device_type(self):
-        return self._utype
 
 
     @Pyro4.expose
@@ -1042,7 +1033,6 @@ class FilterWheelBase(Device):
 
     def __init__(self, filters, *args, **kwargs):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._utype = UFILTER
         self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
         self._inv_filters = {val: key for key, val in self._filters.items()}
         # The position as an integer.
