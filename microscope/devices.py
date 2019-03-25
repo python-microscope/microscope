@@ -44,6 +44,13 @@ from six import iteritems
 
 import numpy
 
+from collections import namedtuple
+# A tuple that defines a region of interest.
+Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+# A tuple containing parameters for horizontal and vertical binning.
+Binning = namedtuple('Binning', ['h', 'v'])
+
+
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 

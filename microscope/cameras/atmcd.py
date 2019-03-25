@@ -1129,17 +1129,11 @@ class ReadoutMode():
 from threading import Lock
 import functools
 from microscope import devices
-from microscope.devices import keep_acquiring, Setting
+from microscope.devices import keep_acquiring, Setting, Binning, Roi
 import time
 
 # A lock on the DLL used to ensure DLL calls act on the correct device.
 _dll_lock = Lock()
-
-from collections import namedtuple
-# A tuple that defines a region of interest.
-Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
-# A tuple containing parameters for horizontal and vertical binning.
-Binning = namedtuple('Binning', ['h', 'v'])
 
 
 class AndorAtmcd(devices.FloatingDeviceMixin,
