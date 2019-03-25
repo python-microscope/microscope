@@ -117,7 +117,7 @@ class Setting():
         else:
             value = self._last_written
         if isinstance(self._values, EnumMeta):
-            return self._values(value)
+            return self._values(value).value
         else:
             return value
 
