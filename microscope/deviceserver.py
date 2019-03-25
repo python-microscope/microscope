@@ -23,7 +23,7 @@ over Pyro. When called from the command line, this module will serve devices
 defined in a specified config file.
 """
 
-import collections
+from collections.abc import Iterable
 import imp # this has been deprecated, we should be using importlib
 import logging
 import multiprocessing
@@ -339,7 +339,7 @@ def validate_devices(configfile):
     devices = getattr(config, 'DEVICES', None)
     if not devices:
         raise Exception("No 'DEVICES=...' in config file.")
-    elif not isinstance(devices, collections.Iterable):
+    elif not isinstance(devices, Iterable):
         raise Exception("Error in config: DEVICES should be an iterable.")
     return devices
 
