@@ -138,7 +138,7 @@ class DeviceServer(multiprocessing.Process):
                 break
         if (isinstance(self._device, FloatingDeviceMixin)
             and len(self._id_to_host) > 1):
-            uid = self._device.get_id()
+            uid = str(self._device.get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
             host = self._id_to_host[uid]
@@ -161,6 +161,8 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.daemon = True
         pyro_thread.start()
         logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        if isinstance(self._device, FloatingDeviceMixin):
+            logger.info('Device UID on port %s is %s' % (port, self._device.get_id()))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .

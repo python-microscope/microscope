@@ -160,7 +160,7 @@ def device(cls, host, port, uid=None, **kwargs):
     UID is used to identify 'floating' devices (see below).
     kwargs can be used to pass any other parameters to cls.__init__.
     """
-    return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
+    return dict(cls=cls, host=host, port=int(port), uid=uid, **kwargs)
 
 
 class FloatingDeviceMixin(object):
