@@ -41,8 +41,16 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     def send(self, command):
         """Send command and retrieve response."""
-        self._write(command)
-        return self._readline()
+        success = False
+        while not success:
+            self._write(command)
+            response = self._readline()
+            # Catch zero-length responses to queries and retry.
+            if not command.endswith(b'?'):
+                success = True
+            elif len(response) > 0:
+                success = True
+        return response
 
     @devices.SerialDeviceMixIn.lock_comms
     def clearFault(self):
@@ -120,14 +128,22 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def get_max_power_mw(self):
         # 'gmlp?' gets the maximum laser power in mW.
         response = self.send(b'gmlp?')
-        return float(response)
+        try:
+            return float(response)
+        except:
+            self._logger.info("Bad response to gmlp?\n    %s" % response.decode())
 
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
         if not self.get_is_on():
             return 0.0
-        response = self.send(b'pa?')
+        success = False
+        # Sometimes the controller returns b'1' rather than the power.
+        while not success:
+            response = self.send(b'pa?')
+            if response != b'1':
+                success = True
         return 1000 * float(response)
 
 
