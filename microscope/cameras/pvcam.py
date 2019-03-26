@@ -1356,7 +1356,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self._params[PARAM_HEAD_SER_NUM_ALPHA].current
 
 
-    @Pyro4.expose
     def abort(self):
         """Abort acquisition.
 
@@ -1370,7 +1369,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         self._acquiring = False
 
 
-    @Pyro4.expose
     def initialize(self):
         """Initialise the camera."""
         # Init the DLL if necessary.
@@ -1477,7 +1475,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
-    @Pyro4.expose
     @keep_acquiring
     def set_readout_mode(self, description):
         """Set the readout mode and transform."""
@@ -1495,7 +1492,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             self._set_readout_transform(new_readout_transform)
 
 
-    @Pyro4.expose
     def make_safe(self):
         """Put the camera into a safe state.
 
@@ -1505,14 +1501,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             self.abort()
 
 
-    @Pyro4.expose
     @keep_acquiring
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
         self.exposure_time = value
 
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time.
 
@@ -1521,7 +1515,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.exposure_time
 
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time.
 
@@ -1530,13 +1523,11 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.cycle_time
 
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
         return TRIGGER_MODES[self._trigger].microscope_mode
 
 
-    @Pyro4.expose
     @Pyro4.oneway
     def soft_trigger(self):
         """Expose software triggering to a client.

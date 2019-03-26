@@ -175,7 +175,6 @@ class FloatingDeviceMixin(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    @Pyro4.expose
     def get_id(self):
         """Return a unique hardware identifier, such as a serial number."""
         pass
@@ -198,7 +197,6 @@ class Device(object):
         self.shutdown()
 
 
-    @Pyro4.expose
     def get_is_enabled(self):
         return self.enabled
 
@@ -211,7 +209,6 @@ class Device(object):
         """
         return True
 
-    @Pyro4.expose
     def disable(self):
         """Disable the device for a short period for inactivity."""
         self._on_disable()
@@ -225,7 +222,6 @@ class Device(object):
         """
         return True
 
-    @Pyro4.expose
     def enable(self):
         """Enable the device."""
         try:
@@ -239,12 +235,10 @@ class Device(object):
         pass
 
     @abc.abstractmethod
-    @Pyro4.expose
     def initialize(self, *args, **kwargs):
         """Initialize the device."""
         pass
 
-    @Pyro4.expose
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.disable()
@@ -252,7 +246,6 @@ class Device(object):
         self._on_shutdown()
         self._logger.info("... ... ... ... shut down completed.")
 
-    @Pyro4.expose
     def make_safe(self):
         """Put the device into a safe state."""
         pass
@@ -287,7 +280,6 @@ class Device(object):
         else:
             self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
-    @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
@@ -296,7 +288,6 @@ class Device(object):
             self._logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
 
-    @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
@@ -305,7 +296,6 @@ class Device(object):
             self._logger.error("in get_all_settings:", exc_info=err)
             raise
 
-    @Pyro4.expose
     def set_setting(self, name, value):
         """Set a setting."""
         try:
@@ -313,17 +303,14 @@ class Device(object):
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
-    @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
         return self.settings[name].describe()
 
-    @Pyro4.expose
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
         return [(k, v.describe()) for (k, v) in iteritems(self.settings)]
 
-    @Pyro4.expose
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
@@ -419,15 +406,13 @@ class DataDevice(Device):
         self.disable()
 
     # Wrap set_setting to pause and resume acquisition.
-    set_setting = Pyro4.expose(keep_acquiring(Device.set_setting))
+    set_setting = keep_acquiring(Device.set_setting)
 
     @abc.abstractmethod
-    @Pyro4.expose
     def abort(self):
         """Stop acquisition as soon as possible."""
         self._acquiring = False
 
-    @Pyro4.expose
     def enable(self):
         """Enable the data capture device.
 
@@ -462,7 +447,6 @@ class DataDevice(Device):
         return self.enabled
 
 
-    @Pyro4.expose
     def disable(self):
         """Disable the data capture device.
 
@@ -569,7 +553,6 @@ class DataDevice(Device):
         """Put data and timestamp into dispatch buffer with target dispatch client."""
         self._dispatch_buffer.put((self._client, data, timestamp))
 
-    @Pyro4.expose
     def set_client(self, new_client):
         """Set up a connection to our client.
 
@@ -596,19 +579,16 @@ class DataDevice(Device):
             self._logger.info("Current client is %s." % str(self._client))
 
 
-    @Pyro4.expose
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
         super(DataDevice, self).update_settings(settings, init)
 
     # noinspection PyPep8Naming
-    @Pyro4.expose
     def receiveClient(self, client_uri):
         """A passthrough for compatibility."""
         self.set_client(client_uri)
 
-    @Pyro4.expose
     def grab_next_data(self, soft_trigger=True):
             """Returns results from next trigger via a direct call.
 
@@ -628,7 +608,6 @@ class DataDevice(Device):
             return self._new_data
 
     # noinspection PyPep8Naming
-    @Pyro4.expose
     def receiveData(self, data, timestamp):
         """Unblocks grab_next_frame so it can return."""
         with self._new_data_condition:
@@ -679,19 +658,16 @@ class CameraDevice(DataDevice):
                 }[flips]
 
 
-    @Pyro4.expose
     def set_readout_mode(self, description):
         """Set the readout mode and _readout_transform."""
         pass
 
 
-    @Pyro4.expose
     def get_transform(self):
         """Return the current transform without readout transform."""
         return tuple(self._readout_transform[i] ^ self._transform[i]
                      for i in range(3))
 
-    @Pyro4.expose
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
         if isinstance(transform, (str, string_types)):
@@ -708,7 +684,6 @@ class CameraDevice(DataDevice):
 
 
     @abc.abstractmethod
-    @Pyro4.expose
     def set_exposure_time(self, value):
         """Set the exposure time on the device.
 
@@ -716,17 +691,14 @@ class CameraDevice(DataDevice):
         """
         pass
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time, in seconds."""
         pass
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time, in seconds."""
         pass
 
-    @Pyro4.expose
     def get_sensor_temperature(self):
         """Return the sensor temperature."""
         pass
@@ -736,7 +708,6 @@ class CameraDevice(DataDevice):
         """Return a tuple of (width, height) indicating shape in pixels."""
         pass
 
-    @Pyro4.expose
     def get_sensor_shape(self):
         """Return a tuple of (width, height), corrected for transform."""
         shape = self._get_sensor_shape()
@@ -750,7 +721,6 @@ class CameraDevice(DataDevice):
         """Return a tuple of (horizontal, vertical)"""
         pass
 
-    @Pyro4.expose
     def get_binning(self):
         """Return a tuple of (horizontal, vertical), corrected for transform."""
         binning = self._get_binning()
@@ -764,7 +734,6 @@ class CameraDevice(DataDevice):
         """Set binning along both axes. Return True if successful."""
         pass
 
-    @Pyro4.expose
     def set_binning(self, h_bin, v_bin):
         """Set binning along both axes. Return True if successful."""
         if self._transform[2]:
@@ -779,7 +748,6 @@ class CameraDevice(DataDevice):
         """Return the ROI as it is on hardware."""
         return left, top, width, height
 
-    @Pyro4.expose
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).
 
@@ -796,7 +764,6 @@ class CameraDevice(DataDevice):
         """Set the ROI on the hardware, return True if successful."""
         return False
 
-    @Pyro4.expose
     def set_roi(self, left, top, width, height):
         """Set the ROI according to the provided rectangle.
 
@@ -807,7 +774,6 @@ class CameraDevice(DataDevice):
             roi = (left, top, width, height)
         return self._set_roi(*roi)
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger mode.
 
@@ -818,12 +784,10 @@ class CameraDevice(DataDevice):
         """
         pass
 
-    @Pyro4.expose
     def get_meta_data(self):
         """Return metadata."""
         pass
 
-    @Pyro4.expose
     def soft_trigger(self):
         """Optional software trigger - implement if available."""
         pass
@@ -842,7 +806,6 @@ class TriggerMode(Enum):
     START = 4
 
 
-@Pyro4.expose
 class TriggerTargetMixIn(object):
     """MixIn for Device that may be the target of a hardware trigger.
 
@@ -872,7 +835,6 @@ class TriggerTargetMixIn(object):
         pass
 
 
-@Pyro4.expose
 class SerialDeviceMixIn(object):
     """MixIn for devices that are controlled via serial.
 
@@ -932,7 +894,6 @@ class SerialDeviceMixIn(object):
         return wrapper
 
 
-@Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
 
@@ -1067,7 +1028,6 @@ class LaserDevice(Device):
         """"" Return the current power in mW."""
         pass
 
-    @Pyro4.expose
     def get_set_power_mw(self):
         """Return the power set point."""
         return self._set_point
@@ -1077,7 +1037,6 @@ class LaserDevice(Device):
         """Set the power on the device in mW."""
         pass
 
-    @Pyro4.expose
     def set_power_mw(self, mw):
         """Set the power from an argument in mW and save the set point.
 
@@ -1123,6 +1082,5 @@ class FilterWheelBase(Device):
     def _set_position(self, position):
         self._position = position
 
-    @Pyro4.expose
     def get_filters(self):
         return self._filters.items()

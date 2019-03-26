@@ -23,7 +23,6 @@ import Pyro4
 from microscope import devices
 
 
-@Pyro4.expose
 class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com=None, baud=115200, timeout=0.01, *args, **kwargs):
         super(CoboltLaser, self).__init__(*args, **kwargs)

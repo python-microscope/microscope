@@ -1192,7 +1192,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         # track of acquisition state.
         pass
 
-    @Pyro4.expose
     def abort(self):
         """Abort acquisition."""
         self._logger.debug('Disabling acquisition.')
@@ -1373,7 +1372,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 raise e
         return data
 
-    @Pyro4.expose
     def get_id(self):
         """Return the device's unique identifier."""
         with self:
@@ -1450,21 +1448,18 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 # Just raise the descriptive exception, not the chain.
                 raise out_e from None
 
-    @Pyro4.expose
     @keep_acquiring
     def set_exposure_time(self, value):
         """Set exposure time."""
         with self:
             SetExposureTime(value)
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Query the actual exposure time."""
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
         return exposure
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Determine the minimum time between exposures."""
         with self:
@@ -1491,13 +1486,11 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             return GetDetector()
 
-    @Pyro4.expose
     def get_sensor_temperature(self):
         """Return the sensor temperature."""
         with self:
             return GetTemperature()[1]
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the microscope.devices trigger type."""
         trig = self.settings['TriggerMode'].get()
@@ -1508,7 +1501,6 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         else:
             return devices.TRIGGER_BEFORE
 
-    @Pyro4.expose
     def soft_trigger(self):
         """Send a software trigger signal."""
         with self:

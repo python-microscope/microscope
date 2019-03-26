@@ -31,7 +31,6 @@ from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import FilterWheelBase
 
-@Pyro4.expose
 @Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
@@ -182,7 +181,6 @@ class TestCamera(devices.CameraDevice):
         pass
 
 
-@Pyro4.expose
 class TestFilterWheel(FilterWheelBase):
     def __init__(self, filters=[], *args, **kwargs):
         super(TestFilterWheel, self).__init__(filters, *args, **kwargs)
@@ -202,7 +200,6 @@ class TestFilterWheel(FilterWheelBase):
         pass
 
 
-@Pyro4.expose
 class TestLaser(devices.LaserDevice):
     def __init__(self, *args, **kwargs):
         super(TestLaser, self).__init__()
@@ -244,7 +241,6 @@ class TestLaser(devices.LaserDevice):
         return [0, self._power][self._emission]
 
 
-@Pyro4.expose
 class TestDeformableMirror(devices.DeformableMirror):
     def __init__(self, n_actuators, *args, **kwargs):
         super(TestDeformableMirror, self).__init__(*args, **kwargs)
@@ -255,7 +251,6 @@ class TestDeformableMirror(devices.DeformableMirror):
         self._current_pattern = pattern
 
 
-@Pyro4.expose
 @Pyro4.behavior('single')
 class DummySLM(devices.Device):
     def __init__(self, *args, **kwargs):
@@ -299,7 +294,6 @@ class DummySLM(devices.Device):
         return self.sequence_index
 
 
-@Pyro4.expose
 @Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, *args, **kwargs):

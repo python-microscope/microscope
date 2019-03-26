@@ -31,7 +31,6 @@ from microscope.devices import TriggerType
 import microscope._wrappers.asdk as asdk
 
 
-@Pyro4.expose
 class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
   """Class for Alpao deformable mirror.
 

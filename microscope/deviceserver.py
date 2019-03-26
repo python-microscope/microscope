@@ -44,6 +44,14 @@ Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
+## We effectively expose all attributes of the classes since our
+## devices don't hold any private data.  The private methods are to
+## signal an interface not meant for public usage, not because there's
+## anything secret or unsafe.  So disable REQUIRE_EXPOSE which avoids
+## requiring Pyro4.expose all over the code (see issue #49)
+Pyro4.config.REQUIRE_EXPOSE = False
+
+
 # Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:'
                                   'PID %(process)s: %(message)s')
