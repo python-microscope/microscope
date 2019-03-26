@@ -136,8 +136,8 @@ class Setting():
         if self._set is None:
             raise NotImplementedError
         # TODO further validation.
-        if isinstance(value, Enum):
-            value = value.value
+        if isinstance(self._values, EnumMeta):
+            value = self._values(value)
         self._set(value)
 
     def values(self):

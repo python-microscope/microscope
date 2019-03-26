@@ -33,36 +33,44 @@ class EnumSetting(enum.Enum):
     C = 2
 
 
-class ThingWithEnum:
-    def __init__(self, enum_val):
-        self._enum = enum_val
+class ThingWithSomething:
+    """Very simple container with setter and getter methods"""
+    def __init__(self, val):
+        self.val = val
 
-    def set_enum(self, val):
-        self._enum = EnumSetting(val)
+    def set_val(self, val):
+        self.val = val
 
-    def get_enum(self):
-        return self._enum
+    def get_val(self):
+        return self.val
 
 
 class TestEnumSetting(unittest.TestCase):
     def setUp(self):
-        self.thing = ThingWithEnum(EnumSetting(1))
+        self.thing = ThingWithSomething(EnumSetting(1))
 
-    def test_get_returns_value(self):
+    def test_get_returns_enum_value(self):
         """For enums, get() returns the enum value not the enum instance"""
-        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_enum,
-                                         self.thing.set_enum, EnumSetting)
+        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_val,
+                                         self.thing.set_val, EnumSetting)
         self.assertIsInstance(foo.get(), int)
 
-
-    def test_get_last_written(self):
-        """For enums, """
-        foo = microscope.devices.Setting('foo', 'enum', None,
-                                         self.thing.set_enum, EnumSetting)
+    def test_set_creates_enum(self):
+        """For enums, set() sets an enum instance, not the enum value"""
+        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_val,
+                                         self.thing.set_val, EnumSetting)
         foo.set(2)
-        self.assertIsInstance(foo.get(), int)
-        self.assertEqual(EnumSetting(2), self.thing.get_enum())
+        self.assertIsInstance(self.thing.val, EnumSetting)
+        self.assertEqual(self.thing.val, EnumSetting(2))
 
+    def test_set_and_get_write_only(self):
+        """get() works for write-only enum settings"""
+        foo = microscope.devices.Setting('foo', 'enum', None,
+                                         self.thing.set_val, EnumSetting)
+        self.assertEqual(EnumSetting(1), self.thing.val)
+        foo.set(2)
+        self.assertEqual(foo.get(), 2)
+        self.assertEqual(EnumSetting(2), self.thing.val)
 
 if __name__ == '__main__':
     unittest.main()
