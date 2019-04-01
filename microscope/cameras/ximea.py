@@ -84,7 +84,6 @@ class XimeaCamera(devices.CameraDevice):
             self._logger.info('Sending image')
             self._triggered = False
             data = np.array(list(self.img.get_image_data_raw()),dtype=np.uint16).reshape(self.img.width,self.img.height)
-            print (data[0:10][0])
             return data
 
     def abort(self):
