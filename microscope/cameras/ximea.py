@@ -56,9 +56,9 @@ TRIGGER_MODES = {
 
 @Pyro4.expose
 @Pyro4.behavior('single')
-class XimaeCamera(devices.CameraDevice):
+class XimeaCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
-        super(XimaeCamera, self).__init__(**kwargs)
+        super(XimeaCamera, self).__init__(**kwargs)
 #example parameter to allow setting.
 #        self.add_setting('_error_percent', 'int',
 #                         lambda: self._error_percent,
