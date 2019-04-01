@@ -26,7 +26,6 @@ import numpy as np
 
 from microscope import devices
 from microscope.devices import keep_acquiring
-from microscope.filterwheel import FilterWheelBase
 
 #import ximea python module.
 from ximea import xiapi
