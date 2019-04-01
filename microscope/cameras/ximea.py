@@ -83,7 +83,9 @@ class XimeaCamera(devices.CameraDevice):
             self.handle.get_image(self.img)
             self._logger.info('Sending image')
             self._triggered = False
-            return self.img.get_image_data_raw()
+            data = np.array(list(self.img.get_image_data_raw()),dtype=np.uint16).reshape(self.img.width,self.img.height)
+            print (data[0:10][0])
+            return data
 
     def abort(self):
         self._logger.info('Disabling acquisition.')
@@ -130,7 +132,7 @@ class XimeaCamera(devices.CameraDevice):
 
     def set_exposure_time(self, value):
         #exposure times are set in us.
-        self.handle.set_exposure(value*1.0E6)
+        self.handle.set_exposure(int(value*1.0E6))
 
     def get_exposure_time(self):
         #exposure times are in us, so multiple by 1E-6 to get seconds.
@@ -187,7 +189,7 @@ class XimeaCamera(devices.CameraDevice):
         return False
 
     def _on_shutdown(self):
-        if self_.acquiring:
+        if self._acquiring:
             self.handle.stop_acquisition()
         self.handle.close_device()
 
