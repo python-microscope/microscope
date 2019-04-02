@@ -40,9 +40,8 @@ TRIGGER_MODES = {
     'software': devices.TRIGGER_SOFT,
 }
 
-    #trig types from define file....
-    # #structure containing information about trigger source
-# XI_TRG_SOURCE = { 
+#trig types from define file....
+# XI_TRG_SOURCE = {
 #     "XI_TRG_OFF": c_uint(0),    #Camera works in free run mode.
 #     "XI_TRG_EDGE_RISING": c_uint(1),    #External trigger (rising edge).
 #     "XI_TRG_EDGE_FALLING": c_uint(2),    #External trigger (falling edge).
@@ -52,31 +51,14 @@ TRIGGER_MODES = {
 #    }
 
 
-
-
 @Pyro4.expose
 @Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(XimeaCamera, self).__init__(**kwargs)
-#example parameter to allow setting.
-#        self.add_setting('_error_percent', 'int',
-#                         lambda: self._error_percent,
-#                         self._set_error_percent,
-#                         lambda: (0, 100))
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
-
-    def _purge_buffers(self):
-        """Purge buffers on both camera and PC."""
-        self._logger.info("Purging buffers.")
-
-    def _create_buffers(self):
-        """Create buffers and store values needed to remove padding later."""
-        self._purge_buffers()
-        self._logger.info("Creating buffers.")
-        #time.sleep(0.5)
 
     def _fetch_data(self):
         if self._acquiring and self._triggered:
@@ -97,7 +79,6 @@ class XimeaCamera(devices.CameraDevice):
 
         Open the connection, connect properties and populate settings dict.
         """
-
         try:
             self.handle = xiapi.Camera()
             self.handle.open_device()
@@ -105,10 +86,7 @@ class XimeaCamera(devices.CameraDevice):
             raise Exception("Problem opening camera.")
         if self.handle == None:
             raise Exception("No camera opened.")
-        
-#        for name, var in sorted(self.__dict__.items()):
         self._logger.info('Initializing.')
-        #create img buffer to hold images.
         self.img=xiapi.Image()
 
     def make_safe(self):
@@ -122,7 +100,6 @@ class XimeaCamera(devices.CameraDevice):
         self._logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
-        self._create_buffers()
         self._acquiring = True
         #actually start camera
         self.handle.start_acquisition()
@@ -143,16 +120,6 @@ class XimeaCamera(devices.CameraDevice):
     def _get_sensor_shape(self):
         return (self.img.width,self.image.height)
 
-    #trig types from define file....
-    # #structure containing information about trigger source
-# XI_TRG_SOURCE = { 
-#     "XI_TRG_OFF": c_uint(0),    #Camera works in free run mode.
-#     "XI_TRG_EDGE_RISING": c_uint(1),    #External trigger (rising edge).
-#     "XI_TRG_EDGE_FALLING": c_uint(2),    #External trigger (falling edge).
-#     "XI_TRG_SOFTWARE": c_uint(3),    #Software(manual) trigger.
-#     "XI_TRG_LEVEL_HIGH": c_uint(4),    #Specifies that the trigger is considered valid as long as the level of the source signal is high.
-#     "XI_TRG_LEVEL_LOW": c_uint(5),    #Specifies that the trigger is considered valid as long as the level of the source signal is low.
-#    }
 
     def get_trigger_type(self):
         trig=self.handle.get_trigger_source()
