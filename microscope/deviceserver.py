@@ -23,7 +23,7 @@ over Pyro. When called from the command line, this module will serve devices
 defined in a specified config file.
 """
 
-import collections
+from collections.abc import Iterable
 import imp # this has been deprecated, we should be using importlib
 import logging
 import multiprocessing
@@ -43,6 +43,14 @@ from microscope.devices import FloatingDeviceMixin
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
+
+## We effectively expose all attributes of the classes since our
+## devices don't hold any private data.  The private methods are to
+## signal an interface not meant for public usage, not because there's
+## anything secret or unsafe.  So disable REQUIRE_EXPOSE which avoids
+## requiring Pyro4.expose all over the code (see issue #49)
+Pyro4.config.REQUIRE_EXPOSE = False
+
 
 # Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:'
@@ -138,7 +146,7 @@ class DeviceServer(multiprocessing.Process):
                 break
         if (isinstance(self._device, FloatingDeviceMixin)
             and len(self._id_to_host) > 1):
-            uid = self._device.get_id()
+            uid = str(self._device.get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
             host = self._id_to_host[uid]
@@ -161,6 +169,8 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.daemon = True
         pyro_thread.start()
         logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        if isinstance(self._device, FloatingDeviceMixin):
+            logger.info('Device UID on port %s is %s' % (port, self._device.get_id()))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .
@@ -339,7 +349,7 @@ def validate_devices(configfile):
     devices = getattr(config, 'DEVICES', None)
     if not devices:
         raise Exception("No 'DEVICES=...' in config file.")
-    elif not isinstance(devices, collections.Iterable):
+    elif not isinstance(devices, Iterable):
         raise Exception("Error in config: DEVICES should be an iterable.")
     return devices
 

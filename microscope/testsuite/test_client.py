@@ -26,7 +26,7 @@ import Pyro4
 import microscope.clients
 import microscope.testsuite.devices as dummies
 
-@Pyro4.expose
+
 class PyroService(object):
     """Simple class to test serving via Pyro.
 

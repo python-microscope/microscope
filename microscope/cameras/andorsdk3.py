@@ -92,7 +92,6 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_binning', '_aoi_left', '_aoi_top',
                        '_aoi_width', '_aoi_height', ]
 
-@Pyro4.expose
 @Pyro4.behavior('single')
 class AndorSDK3(devices.FloatingDeviceMixin,
                 devices.CameraDevice):
@@ -369,7 +368,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             data = self._fetch_data(timeout=500)
             timestamp = time.time()
             if data is not None:
-                self._dispatch_buffer.put((data, timestamp))
+                self._put(data, timestamp)
                 return 0
             else:
                 return -1

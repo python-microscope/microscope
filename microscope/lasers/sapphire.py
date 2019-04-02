@@ -24,7 +24,6 @@ import Pyro4
 from microscope import devices
 
 
-@Pyro4.expose
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     laser_status = {
