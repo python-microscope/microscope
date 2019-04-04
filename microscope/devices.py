@@ -404,6 +404,7 @@ class DataDevice(Device):
 
     def __del__(self):
         self.disable()
+        super().__del__()
 
     # Wrap set_setting to pause and resume acquisition.
     set_setting = keep_acquiring(Device.set_setting)
