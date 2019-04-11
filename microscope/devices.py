@@ -31,16 +31,13 @@ import logging
 import time
 from ast import literal_eval
 from collections import OrderedDict
-from six import string_types
 from threading import Thread
 import threading
 import Pyro4
 import numpy
+import queue
 
-from six.moves import queue
 from enum import Enum, EnumMeta
-
-from six import iteritems
 
 import numpy
 
@@ -291,7 +288,7 @@ class Device(object):
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v.get() for k, v in iteritems(self.settings)}
+            return {k: v.get() for k, v in self.settings.items()}
         except Exception as err:
             self._logger.error("in get_all_settings:", exc_info=err)
             raise
@@ -309,7 +306,7 @@ class Device(object):
 
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, v.describe()) for (k, v) in iteritems(self.settings)]
+        return [(k, v.describe()) for (k, v) in self.settings.items()]
 
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
@@ -567,7 +564,7 @@ class DataDevice(Device):
         and remove only that caller from the client stack.
         """
         if new_client is not None:
-            if isinstance(new_client, (string_types, Pyro4.core.URI)):
+            if isinstance(new_client, (str, Pyro4.core.URI)):
                 self._client = Pyro4.Proxy(new_client)
             else:
                 self._client = new_client
@@ -671,7 +668,7 @@ class CameraDevice(DataDevice):
 
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, string_types)):
+        if isinstance(transform, str):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))

@@ -23,7 +23,6 @@ import unittest.mock
 
 import numpy
 import serial
-import six
 
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
@@ -65,20 +64,17 @@ class TestDeformableMirror(unittest.TestCase):
   def test_validate_pattern(self):
     ## Pattern too long.
     patterns = numpy.zeros((self.planned_n_actuators +1))
-    with six.assertRaisesRegex(self, Exception,
-                               "length of second dimension"):
+    with self.assertRaisesRegex(Exception, "length of second dimension"):
       self.dm.apply_pattern(patterns)
 
     ## Swapped dimensions.
     patterns = numpy.zeros((self.planned_n_actuators, 1))
-    with six.assertRaisesRegex(self, Exception,
-                               "length of second dimension"):
+    with self.assertRaisesRegex(Exception, "length of second dimension"):
       self.dm.apply_pattern(patterns)
 
     ## One dimension too many.
     patterns = numpy.zeros((2, 1, self.planned_n_actuators))
-    with six.assertRaisesRegex(self, Exception,
-                               "dimensions \(must be 1 or 2\)"):
+    with self.assertRaisesRegex(Exception, "dimensions \(must be 1 or 2\)"):
       self.dm.apply_pattern(patterns)
 
 

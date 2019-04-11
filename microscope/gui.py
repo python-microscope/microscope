@@ -29,9 +29,9 @@ It also prevents the version compatibility problems we have had with
 wxPython and PyQt.
 """
 
-import numpy
+import tkinter
 
-import six.moves.tkinter as tkinter
+import numpy
 
 
 class Device(tkinter.Frame):

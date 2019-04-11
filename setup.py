@@ -10,9 +10,15 @@
 
 import distutils.cmd
 import sys
+import unittest.mock
 
 import setuptools
 import setuptools.command.sdist
+
+
+project_name = 'microscope'
+project_version = '0.2.0+dev'
+
 
 ## setup.py is used for both maintainers actions (build documentation,
 ## run testuite, etc), and users actions (mainly install).  We need to
@@ -25,33 +31,11 @@ try:
 except ImportError:
   has_sphinx = False
 
-## Since Python 3.3, the mock package is included in the unittest
-## package which is part of the Python standard library.
-has_mock = True
-try:
-  import unittest.mock as mock
-except ImportError:
-  try:
-    import mock
-  except ImportError:
-    has_mock = False
-
-project_name = 'microscope'
-project_version = '0.2.0+dev'
-
-extra_requires = []
-
-## The enum34 package will cause conflicts with the builtin enum
-## package so don't require it.  See
-## https://bitbucket.org/stoneleaf/enum34/issues/19/enum34-isnt-compatible-with-python-36#comment-36515102
-if sys.version_info < (3, 4):
-  extra_requires += ["enum34"]
-
 
 ## Shadow the sphinx provided command, in order to run sphinx-apidoc
 ## before sphinx-build.  This builds the rst files with the actual
 ## package inline documentation.
-if has_sphinx and has_mock:
+if has_sphinx:
   try: # In sphinx 1.7, apidoc was moved to the ext subpackage
     import sphinx.ext.apidoc as apidoc
     ## In addition of changing the subpackage, the signature for main()
@@ -66,7 +50,7 @@ if has_sphinx and has_mock:
   import microscope.testsuite.libs
 
   class BuildDoc(sphinx.setup_command.BuildDoc):
-    @mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
+    @unittest.mock.patch('ctypes.CDLL', new=microscope.testsuite.libs.CDLL)
     def run(self):
       apidoc.main(apidoc_ini_args + [
         "--separate", # each module on its own page
@@ -80,9 +64,7 @@ else:
   class BuildDoc(distutils.cmd.Command):
     user_options = []
     def __init__(self, *args, **kwargs):
-      raise RuntimeError(('sphinx and mock are required to build the'
-                          ' documentation'))
-
+      raise RuntimeError('sphinx is required to build the documentation')
 
 
 ## Modify the sdist command class to include extra files in the source
@@ -121,15 +103,13 @@ setuptools.setup(
 
   packages = setuptools.find_packages(),
 
+  python_requires='>=3.5',
+
   install_requires = [
     "numpy",
     "Pyro4",
     "pyserial",
-    ## We use six instead of anything else because we are already
-    ## indirectly dependent on it due to serpent which is a Pyro4
-    ## dependency.
-    "six",
-  ] + extra_requires,
+  ],
 
   entry_points = {
     'console_scripts' : [

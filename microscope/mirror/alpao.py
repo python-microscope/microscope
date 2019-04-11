@@ -21,7 +21,6 @@ import warnings
 
 import Pyro4
 import numpy
-import six
 
 from microscope.devices import DeformableMirror
 from microscope.devices import TriggerMode
@@ -110,7 +109,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     ## each time, have a buffer per instance.
     self._err_msg = ctypes.create_string_buffer(self._err_msg_len)
 
-    self._dm = asdk.Init(six.b(serial_number))
+    self._dm = asdk.Init(serial_number.encode())
     if not self._dm:
       raise Exception("Failed to initialise connection: don't know why")
     ## In theory, asdkInit should return a NULL pointer in case of
@@ -120,7 +119,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     self._raise_if_error(asdk.FAILURE)
 
     value = asdk.Scalar_p(asdk.Scalar())
-    status = asdk.Get(self._dm, six.b("NbOfActuator"), value)
+    status = asdk.Get(self._dm, b'NbOfActuator', value)
     self._raise_if_error(status)
     self._n_actuators = int(value.contents.value)
     self._trigger_type = TriggerType.SOFTWARE
@@ -147,7 +146,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     except KeyError:
       raise Exception("unsupported trigger of type '%s' for Alpao Mirrors"
                       % ttype.name)
-    status = asdk.Set(self._dm, six.b("TriggerIn"), value)
+    status = asdk.Set(self._dm, b'TriggerIn', value)
     self._raise_if_error(status)
     self._trigger_type = ttype
 

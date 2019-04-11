@@ -24,7 +24,6 @@ import os
 import warnings
 
 import Pyro4
-import six
 
 from microscope.devices import DeformableMirror
 
@@ -37,11 +36,11 @@ class BMCDeformableMirror(DeformableMirror):
     self._dm = BMC.DM()
 
     if __debug__:
-      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_ALL)
+      BMC.ConfigureLog(os.devnull.encode(), BMC.LOG_ALL)
     else:
-      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_OFF)
+      BMC.ConfigureLog(os.devnull.encode(), BMC.LOG_OFF)
 
-    status = BMC.Open(self._dm, six.b(serial_number))
+    status = BMC.Open(self._dm, serial_number.encode())
     if status:
       raise Exception(BMC.ErrorString(status))
 
