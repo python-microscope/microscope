@@ -45,32 +45,37 @@ class ThingWithSomething:
         return self.val
 
 
+def create_enum_setting(default, with_getter=True, with_setter=True):
+    thing = ThingWithSomething(EnumSetting(default))
+    getter = thing.get_val if with_getter else None
+    setter = thing.set_val if with_setter else None
+    setting = microscope.devices.Setting('foobar', 'enum', get_func=getter,
+                                         set_func=setter, values=EnumSetting)
+    return setting, thing
+
+
 class TestEnumSetting(unittest.TestCase):
-    def setUp(self):
-        self.thing = ThingWithSomething(EnumSetting(1))
 
     def test_get_returns_enum_value(self):
         """For enums, get() returns the enum value not the enum instance"""
-        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_val,
-                                         self.thing.set_val, EnumSetting)
-        self.assertIsInstance(foo.get(), int)
+        setting, thing = create_enum_setting(1)
+        self.assertIsInstance(setting.get(), int)
 
     def test_set_creates_enum(self):
         """For enums, set() sets an enum instance, not the enum value"""
-        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_val,
-                                         self.thing.set_val, EnumSetting)
-        foo.set(2)
-        self.assertIsInstance(self.thing.val, EnumSetting)
-        self.assertEqual(self.thing.val, EnumSetting(2))
+        setting, thing = create_enum_setting(1)
+        setting.set(2)
+        self.assertIsInstance(thing.val, EnumSetting)
+        self.assertEqual(thing.val, EnumSetting(2))
 
     def test_set_and_get_write_only(self):
         """get() works for write-only enum settings"""
-        foo = microscope.devices.Setting('foo', 'enum', None,
-                                         self.thing.set_val, EnumSetting)
-        self.assertEqual(EnumSetting(1), self.thing.val)
-        foo.set(2)
-        self.assertEqual(foo.get(), 2)
-        self.assertEqual(EnumSetting(2), self.thing.val)
+        setting, thing = create_enum_setting(1, with_getter=False)
+        self.assertEqual(EnumSetting(1), thing.val)
+        setting.set(2)
+        self.assertEqual(setting.get(), 2)
+        self.assertEqual(EnumSetting(2), thing.val)
+
 
 if __name__ == '__main__':
     unittest.main()
