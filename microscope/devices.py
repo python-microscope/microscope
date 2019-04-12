@@ -588,22 +588,22 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
     def grab_next_data(self, soft_trigger=True):
-            """Returns results from next trigger via a direct call.
+        """Returns results from next trigger via a direct call.
 
-            :param soft_trigger: calls soft_trigger if True,
-                                 waits for hardware trigger if False.
-            """
-            self._new_data_condition.acquire()
-            # Push self onto client stack.
-            self.set_client(self)
-            # Wait for data from next trigger.
-            if soft_trigger:
-                self.soft_trigger()
-            self._new_data_condition.wait()
-            # Pop self from client stack
-            self.set_client(None)
-            # Return the data.
-            return self._new_data
+        :param soft_trigger: calls soft_trigger if True,
+                               waits for hardware trigger if False.
+        """
+        self._new_data_condition.acquire()
+        # Push self onto client stack.
+        self.set_client(self)
+        # Wait for data from next trigger.
+        if soft_trigger:
+            self.soft_trigger()
+        self._new_data_condition.wait()
+        # Pop self from client stack
+        self.set_client(None)
+        # Return the data.
+        return self._new_data
 
     # noinspection PyPep8Naming
     def receiveData(self, data, timestamp):

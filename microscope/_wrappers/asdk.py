@@ -30,14 +30,14 @@ from ctypes import c_uint32
 
 
 if os.name in ("nt", "ce"):
-  SDK = ctypes.WinDLL("ASDK")
+    SDK = ctypes.WinDLL("ASDK")
 else:
-  ## Not actually tested yet
-  SDK = ctypes.CDLL("libasdk.so")
+    ## Not actually tested yet
+    SDK = ctypes.CDLL("libasdk.so")
 
 
 class DM(ctypes.Structure):
-  pass
+    pass
 pDM = ctypes.POINTER(DM)
 
 ## We have this "typedefs" to ease matching with alpao's headers.
@@ -53,10 +53,10 @@ FAILURE = -1
 
 
 def make_prototype(name, argtypes, restype=COMPL_STAT):
-  func = getattr(SDK, name)
-  func.argtypes = argtypes
-  func.restype = restype
-  return func
+    func = getattr(SDK, name)
+    func.argtypes = argtypes
+    func.restype = restype
+    return func
 
 Get = make_prototype("asdkGet", [pDM, CStr, Scalar_p])
 

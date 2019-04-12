@@ -164,7 +164,7 @@ class TestCamera(devices.CameraDevice):
             self._triggered += 1
 
     def _get_binning(self):
-         return (1,1)
+        return (1,1)
 
     @keep_acquiring
     def _set_binning(self, h, v):

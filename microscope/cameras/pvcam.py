@@ -1147,7 +1147,7 @@ class PVParam(object):
     def current(self):
         """Return the current (or cached) parameter value."""
         if self._pvtype == TYPE_CHAR_PTR:
-                return str(memoryview(self.raw).tobytes()) or ''
+            return str(memoryview(self.raw).tobytes()) or ''
         elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)

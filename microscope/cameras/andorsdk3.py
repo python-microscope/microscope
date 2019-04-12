@@ -441,8 +441,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         return self._software_trigger()
 
     def _get_binning(self):
-         as_text = self._aoi_binning.get_string().split('x')
-         return tuple(int(t) for t in as_text)
+        as_text = self._aoi_binning.get_string().split('x')
+        return tuple(int(t) for t in as_text)
 
     @keep_acquiring
     def _set_binning(self, h, v):
