@@ -18,6 +18,24 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Test all the concrete device classes.
+
+We have the same tests for all devices of the same type.  To do this,
+there is a :class:`unittest.TestCase` class for each device that
+subclasses from that device type class of tests.  Each such class only
+needs to implement the `setUp` method.  It may also add device
+specific tests.
+
+Using lasers as example, there is a :class:`.LaserTests` class full of
+`test_*` methods, each of them a test on its own.  For each laser
+device supported there is one test class, e.g.,
+`TestOmicronDeepstarLaser`, and `TestCoherentSapphireLaser`.  These
+subclass from both :class:`unittest.TestCase` and `LaserTests` and
+need only to implement `setUp` which sets up the fake and constructs
+the device instance required to run the tests.
+
+"""
+
 import unittest
 import unittest.mock
 
@@ -126,107 +144,189 @@ class TestSerialMock(unittest.TestCase):
         self.assertEqual(self.serial.readline(), b'qux\r\n')
 
 
-class LaserTests:
+class DeviceTests:
+    """Tests cases for all devices.
+
+    This collection of tests cover the very basic behaviour of
+    devices,stuff like initialising and enabling the device.  Classes
+    of tests specific to each device type should subclass from it.
+
+    Subclasses must define a `device` property during `setUp`, an
+    instance of :class:`Device`.
+
+    """
+
+    def test_on_and_off(self):
+        """Device can be turned on and off"""
+        self.device.initialize()
+        self.device.shutdown()
+
+    def test_enable_and_disable(self):
+        ## TODO: we need to define what happens when enable is called
+        ## and device has not been initialised.  See issue #69
+        self.device.initialize()
+        self.device.enable()
+        self.assertTrue(self.device.enabled)
+        ## We don't check if it is disabled after shutdown because
+        ## some devices can't be turned off.
+        ## TODO: add a `has_disabled_state` to the fake so we can
+        ## query whether we can check about being disabled.
+        self.device.disable()
+        self.device.shutdown()
+
+    def test_enable_enabled(self):
+        """Handles enabling of an already enabled device"""
+        self.device.initialize()
+        self.device.enable()
+        self.assertTrue(self.device.enabled)
+        self.device.enable()
+        self.assertTrue(self.device.enabled)
+
+    def test_disable_disabled(self):
+        """Handles disabling of an already disabled device.
+
+        Test disabling twice, both before and after enabling it for
+        the first time.
+        """
+        self.device.initialize()
+        self.device.disable()
+        self.device.disable()
+        self.device.enable()
+        self.assertTrue(self.device.enabled)
+        self.device.disable()
+        self.device.disable()
+
+    def test_make_safe_on_initialized(self):
+        """Can make safe an initialized device"""
+        self.device.initialize()
+        self.device.make_safe()
+
+    def test_make_safe_on_enabled(self):
+        """Can make safe an enabled device"""
+        self.device.initialize()
+        self.device.enable()
+        self.device.make_safe()
+
+    def test_make_safe_on_disabled(self):
+        """Can make safe a disabled device"""
+        self.device.initialize()
+        self.device.enable()
+        self.device.make_safe()
+
+    def test_make_safe_on_shutdown(self):
+        """Can make safe a shutdown device"""
+        self.device.initialize()
+        self.device.enable()
+        self.device.disable()
+        self.device.shutdown()
+        self.device.make_safe()
+
+
+class LaserTests(DeviceTests):
     """Base class for :class:`LaserDevice` tests.
 
-    This class implements all the general laser tests and is meant to be
-    mixed with :class:`unittest.TestCase`.  The subclass must implement
-    the `setUp` method which must add two properties:
+    This class implements all the general laser tests and is meant to
+    be mixed with :class:`unittest.TestCase`.  Subclasses must
+    implement the `setUp` method which must add two properties:
 
     `device`
-        Instance of the :class:`LaserDevice` implementation being tested.
+        Instance of the :class:`LaserDevice` implementation being
+        tested.
 
-    `laser`
-        Object with a multiple attributes that specify the hardware and
-        control the tests, such as the device max and min power values.
-        Such attributes may as well be attributes in the class that mocks
-        the hardware.
+    `fake`
+        Object with a multiple attributes that specify the hardware
+        and control the tests, such as the device max and min power
+        values.  Such attributes may as well be attributes in the
+        class that fakes the hardware.
+
     """
-    def __init__(self):
-        self.laser = None
-        self.device = None
+    def assertEqualMW(self, first, second, msg=None):
+        ## We could be smarter, but rounding the values should be
+        ## enough to check the values when comparing power levels.
+        self.assertEqual(round(first), round(second), msg)
 
     def test_connection_defaults(self):
-        self.assertEqual(self.laser.connection.baudrate, self.device.baudrate)
-        self.assertEqual(self.laser.connection.parity, self.device.parity)
-        self.assertEqual(self.laser.connection.bytesize, self.device.bytesize)
-        self.assertEqual(self.laser.connection.stopbits, self.device.stopbits)
-        self.assertEqual(self.laser.connection.rtscts, self.device.rtscts)
-        self.assertEqual(self.laser.connection.dsrdtr, self.device.dsrdtr)
+        self.assertEqual(self.device.connection.baudrate, self.fake.baudrate)
+        self.assertEqual(self.device.connection.parity, self.fake.parity)
+        self.assertEqual(self.device.connection.bytesize, self.fake.bytesize)
+        self.assertEqual(self.device.connection.stopbits, self.fake.stopbits)
+        self.assertEqual(self.device.connection.rtscts, self.fake.rtscts)
+        self.assertEqual(self.device.connection.dsrdtr, self.fake.dsrdtr)
 
     def test_being(self):
-        self.assertTrue(self.laser.is_alive())
+        self.assertTrue(self.device.is_alive())
 
     def test_get_is_on(self):
-        self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
-        self.laser.enable()
-        self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
-        self.laser.disable()
-        self.assertEqual(self.laser.connection.light, self.laser.get_is_on())
+        self.assertEqual(self.device.connection.light, self.device.get_is_on())
+        self.device.enable()
+        self.assertEqual(self.device.connection.light, self.device.get_is_on())
+        self.device.disable()
+        self.assertEqual(self.device.connection.light, self.device.get_is_on())
 
     def test_off_after_constructor(self):
         ## Some lasers, such as our Coherent Sapphire emit laser
         ## radiation as soon as the key is switched on.  We should
         ## ensure that the laser is turned off during the
         ## construction.
-        self.assertFalse(self.laser.get_is_on())
+        self.assertFalse(self.device.get_is_on())
 
     def test_turning_on_and_off(self):
-        self.laser.enable()
-        self.assertTrue(self.laser.get_is_on())
-        self.laser.disable()
-        self.assertFalse(self.laser.get_is_on())
+        self.device.enable()
+        self.assertTrue(self.device.get_is_on())
+        self.device.disable()
+        self.assertFalse(self.device.get_is_on())
 
     def test_shutdown(self):
-        self.laser.enable()
-        self.laser.disable()
-        self.laser.shutdown()
+        self.device.enable()
+        self.device.disable()
+        self.device.shutdown()
 
     def test_query_power_range(self):
-        min_mw = self.laser.get_min_power_mw()
-        max_mw = self.laser.get_max_power_mw()
+        min_mw = self.device.get_min_power_mw()
+        max_mw = self.device.get_max_power_mw()
         self.assertIsInstance(min_mw, float)
         self.assertIsInstance(max_mw, float)
-        self.assertEqual(round(min_mw), self.device.min_power)
-        self.assertEqual(round(max_mw), self.device.max_power)
+        self.assertEqualMW(min_mw, self.fake.min_power)
+        self.assertEqualMW(max_mw, self.fake.max_power)
 
     def test_power_when_off(self):
-        self.laser.disable()
-        power = self.laser.get_power_mw()
+        self.device.disable()
+        power = self.device.get_power_mw()
         self.assertIsInstance(power, float)
         self.assertEqual(power, 0.0)
 
     def test_setting_power(self):
-        self.laser.enable()
-        power = self.laser.get_power_mw()
+        self.device.enable()
+        power = self.device.get_power_mw()
         self.assertIsInstance(power, float)
-        self.assertEqual(round(power), self.device.default_power)
-        self.assertEqual(power, self.laser.get_set_power_mw())
+        self.assertEqualMW(power, self.fake.default_power)
+        self.assertEqualMW(power, self.device.get_set_power_mw())
 
-        new_power = (self.device.min_power
-                     + ((self.device.max_power - self.device.min_power) /2.0))
-        self.laser.set_power_mw(new_power)
-        self.assertEqual(round(self.laser.get_power_mw()), round(new_power))
-        self.assertEqual(round(new_power), round(self.laser.get_set_power_mw()))
+        new_power = (self.fake.min_power
+                     + ((self.fake.max_power - self.fake.min_power) /2.0))
+        self.device.set_power_mw(new_power)
+        self.assertEqualMW(self.device.get_power_mw(), new_power)
+        self.assertEqualMW(new_power, self.device.get_set_power_mw())
 
     def test_setting_power_outside_limit(self):
-        self.laser.enable()
-        below_limit = self.device.min_power - 10.0
-        above_limit = self.device.max_power + 10.0
-        self.laser.set_power_mw(below_limit)
-        self.assertEqual(self.laser.get_power_mw(),
-                         self.laser.get_min_power_mw(),
-                         'clip setting power to the valid range')
-        self.laser.set_power_mw(above_limit)
-        self.assertEqual(self.laser.get_power_mw(),
-                         self.laser.get_max_power_mw(),
-                         'clip setting power to the valid range')
+        self.device.enable()
+        below_limit = self.fake.min_power - 10.0
+        above_limit = self.fake.max_power + 10.0
+        self.device.set_power_mw(below_limit)
+        self.assertEqualMW(self.device.get_power_mw(),
+                           self.device.get_min_power_mw(),
+                           'clip setting power to the valid range')
+        self.device.set_power_mw(above_limit)
+        self.assertEqualMW(self.device.get_power_mw(),
+                           self.device.get_max_power_mw(),
+                           'clip setting power to the valid range')
 
     def test_status(self):
-        status = self.laser.get_status()
+        status = self.device.get_status()
         self.assertIsInstance(status, list)
         for msg in status:
             self.assertIsInstance(msg, str)
+
 
 class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
     def setUp(self):
@@ -234,10 +334,10 @@ class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
         from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
         with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
                                  new=CoherentSapphireLaserMock):
-            self.laser = SapphireLaser('/dev/null')
-        self.laser.initialize()
+            self.device = SapphireLaser('/dev/null')
+        self.device.initialize()
 
-        self.device = CoherentSapphireLaserMock
+        self.fake = CoherentSapphireLaserMock
 
 class TestCoboltLaser(unittest.TestCase, LaserTests):
     def setUp(self):
@@ -245,10 +345,10 @@ class TestCoboltLaser(unittest.TestCase, LaserTests):
         from microscope.testsuite.mock_devices import CoboltLaserMock
         with unittest.mock.patch('microscope.lasers.cobolt.serial.Serial',
                                  new=CoboltLaserMock):
-            self.laser = CoboltLaser('/dev/null')
-        self.laser.initialize()
+            self.device = CoboltLaser('/dev/null')
+        self.device.initialize()
 
-        self.device = CoboltLaserMock
+        self.fake = CoboltLaserMock
 
 class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests):
     def setUp(self):
@@ -256,28 +356,28 @@ class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests):
         from microscope.testsuite.mock_devices import OmicronDeepstarLaserMock
         with unittest.mock.patch('microscope.lasers.deepstar.serial.Serial',
                                  new=OmicronDeepstarLaserMock):
-            self.laser = DeepstarLaser('/dev/null')
-        self.laser.initialize()
+            self.device = DeepstarLaser('/dev/null')
+        self.device.initialize()
 
-        self.device = OmicronDeepstarLaserMock
+        self.fake = OmicronDeepstarLaserMock
 
     def test_weird_initial_state(self):
         ## The initial state of the laser may not be ideal to actual
         ## turn it on, so test that weird settings are reset to
         ## something adequate.
 
-        self.laser.connection.internal_peak_power = False
-        self.laser.connection.bias_modulation = True
-        self.laser.connection.digital_modulation = True
-        self.laser.connection.analog2digital = True
+        self.device.connection.internal_peak_power = False
+        self.device.connection.bias_modulation = True
+        self.device.connection.digital_modulation = True
+        self.device.connection.analog2digital = True
 
-        self.laser.enable()
-        self.assertTrue(self.laser.get_is_on())
+        self.device.enable()
+        self.assertTrue(self.device.get_is_on())
 
-        self.assertTrue(self.laser.connection.internal_peak_power)
-        self.assertFalse(self.laser.connection.bias_modulation)
-        self.assertFalse(self.laser.connection.digital_modulation)
-        self.assertFalse(self.laser.connection.analog2digital)
+        self.assertTrue(self.device.connection.internal_peak_power)
+        self.assertFalse(self.device.connection.bias_modulation)
+        self.assertFalse(self.device.connection.digital_modulation)
+        self.assertFalse(self.device.connection.analog2digital)
 
 
 if __name__ == '__main__':
