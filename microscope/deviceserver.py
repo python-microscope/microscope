@@ -322,12 +322,15 @@ def serve_devices(devices, exit_event=None):
 def __main__():
     """Serve devices via Pyro.
 
-    Usage:
-      To run in the terminal, use
+    To run in the terminal, use::
+
         deviceserver CONFIG
-      To configure and run as a Windows service use:
+
+    To configure and run as a Windows service use::
+
         deviceserver [install,remove,update,start,stop,restart,status] CONFIG
-    CONFIG is a .py file that exports DEVICES = [device(...), ...]
+
+    ``CONFIG`` is a ``.py`` file that exports ``DEVICES = [device(...), ...]``
     """
 
     if len(sys.argv) == 1:

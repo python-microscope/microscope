@@ -554,14 +554,18 @@ class DataDevice(Device):
     def set_client(self, new_client):
         """Set up a connection to our client.
 
-        Clients now sit in a stack so that a single device may send different data
-        to multiple clients in a single experiment. The usage is currently:
-          set_client(client) # Add client to top of stack
-          # do stuff, send triggers, receive data
-          set_client(None)   # Pop top client off stack.
-        There is a risk that some other client calls None before the current client
-        is finished. Avoiding this will require rework here to identify the caller
-        and remove only that caller from the client stack.
+        Clients now sit in a stack so that a single device may send
+        different data to multiple clients in a single experiment.
+        The usage is currently::
+
+            device.set_client(client) # Add client to top of stack
+            # do stuff, send triggers, receive data
+            device.set_client(None)   # Pop top client off stack.
+
+        There is a risk that some other client calls ``None`` before
+        the current client is finished.  Avoiding this will require
+        rework here to identify the caller and remove only that caller
+        from the client stack.
         """
         if new_client is not None:
             if isinstance(new_client, (str, Pyro4.core.URI)):
