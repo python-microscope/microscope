@@ -330,6 +330,30 @@ class LaserTests(DeviceTests):
             self.assertIsInstance(msg, str)
 
 
+class TestDummyLaser(unittest.TestCase, LaserTests):
+    def setUp(self):
+        self.device = dummies.TestLaser()
+
+        ## TODO: we need to rethink the test so this is not needed.
+        self.fake = self.device
+        self.fake.default_power = self.fake._set_point
+        self.fake.min_power = 0.0
+        self.fake.max_power = 100.0
+
+    def test_being(self):
+        ## TODO: this test uses is_alive but that's actually a method
+        ## of SerialDeviceMixIn and not specific to lasers.  It is not
+        ## implemented on our dummy laser.  We need to decide what to
+        ## do about it.  Is this general enough that should go to all
+        ## devices?
+        pass
+
+    def test_get_is_on(self):
+        ## TODO: this test assumes the connection property to be the
+        ## fake.  We need to rethink how the mock lasers work.
+        pass
+
+
 class TestCoherentSapphireLaser(unittest.TestCase, LaserTests,
                                 SerialDeviceTests):
     def setUp(self):

@@ -203,12 +203,12 @@ class TestFilterWheel(FilterWheelBase):
 class TestLaser(devices.LaserDevice):
     def __init__(self, *args, **kwargs):
         super(TestLaser, self).__init__()
-        self._power = 0
+        self._set_point = 0.0
+        self._power = 0.0
         self._emission = False
 
     def get_status(self):
-        result = [self._emission, self._power, self._set_point]
-        return result
+        return [str(x) for x in (self._emission, self._power, self._set_point)]
 
     def _on_enable(self):
         self._emission = True
@@ -232,13 +232,16 @@ class TestLaser(devices.LaserDevice):
         self._power = level
 
     def get_max_power_mw(self):
-        return 100
+        return 100.0
 
     def get_min_power_mw(self):
-        return 0
+        return 0.0
 
     def get_power_mw(self):
-        return [0, self._power][self._emission]
+        if self._emission:
+            return self._power
+        else:
+            return 0.0
 
 
 class TestDeformableMirror(devices.DeformableMirror):
