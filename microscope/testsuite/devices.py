@@ -252,6 +252,9 @@ class TestDeformableMirror(devices.DeformableMirror):
         self._validate_patterns(pattern)
         self._current_pattern = pattern
 
+    def get_current_pattern(self):
+        return self._current_pattern
+
 
 @Pyro4.behavior('single')
 class DummySLM(devices.Device):

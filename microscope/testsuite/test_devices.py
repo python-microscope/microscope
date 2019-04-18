@@ -46,58 +46,6 @@ import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 
 
-class TestDeformableMirror(unittest.TestCase):
-    def setUp(self):
-        self.planned_n_actuators = 10
-        self.pattern = numpy.zeros((self.planned_n_actuators))
-        self.dm = dummies.TestDeformableMirror(self.planned_n_actuators)
-
-    def test_number_of_actuators(self):
-        self.assertEqual(self.dm.n_actuators, self.planned_n_actuators)
-
-    def test_applying_pattern(self):
-        ## This mainly checks the implementation of the dummy device.
-        ## It is not that important but it is the basis to trust the
-        ## other tests wich will actually test the base class.
-        self.pattern[:] = 0.2
-        self.dm.apply_pattern(self.pattern)
-        numpy.testing.assert_array_equal(self.dm._current_pattern, self.pattern)
-
-    def test_out_of_range_pattern(self):
-        ## While we expect values in the [0 1] range, we should not
-        ## actually be checking for that.
-        for v in [-1000, -1, 0, 1, 3]:
-            self.pattern[:] = v
-            self.dm.apply_pattern(self.pattern)
-            numpy.testing.assert_array_equal(self.dm._current_pattern,
-                                             self.pattern)
-
-    def test_software_triggering(self):
-        n_patterns = 5
-        patterns = numpy.random.rand(n_patterns, self.planned_n_actuators)
-        self.dm.queue_patterns(patterns)
-        for i in range(n_patterns):
-            self.dm.next_pattern()
-            numpy.testing.assert_array_equal(self.dm._current_pattern,
-                                             patterns[i,:])
-
-    def test_validate_pattern(self):
-        ## Pattern too long.
-        patterns = numpy.zeros((self.planned_n_actuators +1))
-        with self.assertRaisesRegex(Exception, "length of second dimension"):
-            self.dm.apply_pattern(patterns)
-
-        ## Swapped dimensions.
-        patterns = numpy.zeros((self.planned_n_actuators, 1))
-        with self.assertRaisesRegex(Exception, "length of second dimension"):
-            self.dm.apply_pattern(patterns)
-
-        ## One dimension too many.
-        patterns = numpy.zeros((2, 1, self.planned_n_actuators))
-        with self.assertRaisesRegex(Exception, "dimensions \(must be 1 or 2\)"):
-            self.dm.apply_pattern(patterns)
-
-
 class TestSerialMock(unittest.TestCase):
     ## Our tests for serial devices depend on our SerialMock base
     ## class working properly so yeah, we need tests for that too.
@@ -339,7 +287,59 @@ class FilterWheelTests(DeviceTests):
 
 
 class DeformableMirrorTests(DeviceTests):
-    pass
+    """Collection of test cases for deformable mirrors.
+
+    Should have the following properties defined during `setUp`:
+        `planned_n_actuators` (int): number of actuators
+        `device` (DeformableMirror): the microscope device instance
+        `fake`: an object with the method `get_current_pattern`
+    """
+
+    def assertCurrentPattern(self, expected_pattern, msg=''):
+        numpy.testing.assert_array_equal(self.fake.get_current_pattern(),
+                                         expected_pattern, msg)
+
+    def test_get_number_of_actuators(self):
+        self.assertIsInstance(self.device.n_actuators, int)
+        self.assertGreater(self.device.n_actuators, 0)
+        self.assertEqual(self.device.n_actuators, self.planned_n_actuators)
+
+    def test_applying_pattern(self):
+        pattern = numpy.full((self.planned_n_actuators,), 0.2)
+        self.device.apply_pattern(pattern)
+        self.assertCurrentPattern(pattern)
+
+    def test_out_of_range_pattern(self):
+        ## While we expect values in the [0 1] range, we should not
+        ## actually be checking for that.
+        pattern = numpy.zeros((self.planned_n_actuators,))
+        for v in [-1000, -1, 0, 1, 3]:
+            pattern[:] = v
+            self.device.apply_pattern(pattern)
+            self.assertCurrentPattern(pattern)
+
+    def test_software_triggering(self):
+        n_patterns = 5
+        patterns = numpy.random.rand(n_patterns, self.planned_n_actuators)
+        self.device.queue_patterns(patterns)
+        for i in range(n_patterns):
+            self.device.next_pattern()
+            self.assertCurrentPattern(patterns[i])
+
+    def test_validate_pattern_too_long(self):
+        patterns = numpy.zeros((self.planned_n_actuators +1))
+        with self.assertRaisesRegex(Exception, "length of second dimension"):
+            self.device.apply_pattern(patterns)
+
+    def test_validate_pattern_swapped_dimensions(self):
+        patterns = numpy.zeros((self.planned_n_actuators, 1))
+        with self.assertRaisesRegex(Exception, "length of second dimension"):
+            self.device.apply_pattern(patterns)
+
+    def test_validate_pattern_with_extra_dimension(self):
+        patterns = numpy.zeros((2, 1, self.planned_n_actuators))
+        with self.assertRaisesRegex(Exception, "dimensions \(must be 1 or 2\)"):
+            self.device.apply_pattern(patterns)
 
 
 class SLMTests(DeviceTests):
@@ -453,7 +453,9 @@ class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
 
 class TestDummyDeformableMirror(unittest.TestCase, DeformableMirrorTests):
     def setUp(self):
-        self.device = dummies.TestDeformableMirror(86)
+        self.planned_n_actuators = 86
+        self.device = dummies.TestDeformableMirror(self.planned_n_actuators)
+        self.fake = self.device
 
 
 class TestDummySLM(unittest.TestCase, SLMTests):
