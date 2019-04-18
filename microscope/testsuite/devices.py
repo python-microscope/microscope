@@ -365,10 +365,10 @@ class DummyDSP(devices.Device):
             self._client.receiveData("DSP done")
         self._logger.info('... RunActions done.')
 
-    def receiveClient(self):
+    def receiveClient(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
-        return devices.DataDevice.receiveClient(self)
+        return devices.DataDevice.receiveClient(self, *args, **kwargs)
 
-    def set_client(self):
+    def set_client(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
-        return devices.DataDevice.set_client(self)
+        return devices.DataDevice.set_client(self, *args, **kwargs)
