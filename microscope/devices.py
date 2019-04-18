@@ -1061,7 +1061,7 @@ class FilterWheelBase(Device):
 
     def __init__(self, filters, *args, **kwargs):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
+        self._filters = {f[0]: f[1:] for f in filters}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         # The position as an integer.
         self.add_setting('position',
