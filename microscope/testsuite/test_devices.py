@@ -330,6 +330,26 @@ class LaserTests(DeviceTests):
             self.assertIsInstance(msg, str)
 
 
+class CameraTests(DeviceTests):
+    pass
+
+
+class FilterWheelTests(DeviceTests):
+    pass
+
+
+class DeformableMirrorTests(DeviceTests):
+    pass
+
+
+class SLMTests(DeviceTests):
+    pass
+
+
+class DSPTests(DeviceTests):
+    pass
+
+
 class TestDummyLaser(unittest.TestCase, LaserTests):
     def setUp(self):
         self.device = dummies.TestLaser()
@@ -408,6 +428,42 @@ class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests,
         self.assertFalse(self.device.connection.bias_modulation)
         self.assertFalse(self.device.connection.digital_modulation)
         self.assertFalse(self.device.connection.analog2digital)
+
+
+class TestDummyCamera(unittest.TestCase, CameraTests):
+    def setUp(self):
+        self.device = dummies.TestCamera()
+
+
+class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
+    def setUp(self):
+        self.device = dummies.TestFilterWheel()
+
+
+class TestOneFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
+    def setUp(self):
+        self.device = dummies.TestFilterWheel([(0, 'DAPI', '430')])
+
+
+class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
+    def setUp(self):
+        self.device = dummies.TestFilterWheel([(0, 'DAPI', '430'),
+                                               (1, 'GFP', '580'),])
+
+
+class TestDummyDeformableMirror(unittest.TestCase, DeformableMirrorTests):
+    def setUp(self):
+        self.device = dummies.TestDeformableMirror(86)
+
+
+class TestDummySLM(unittest.TestCase, SLMTests):
+    def setUp(self):
+        self.device = dummies.DummySLM()
+
+
+class TestDummyDSP(unittest.TestCase, DSPTests):
+    def setUp(self):
+        self.device = dummies.DummyDSP()
 
 
 if __name__ == '__main__':
