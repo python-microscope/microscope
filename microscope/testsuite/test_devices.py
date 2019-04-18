@@ -222,6 +222,16 @@ class DeviceTests:
         self.device.make_safe()
 
 
+class SerialDeviceTests:
+    def test_connection_defaults(self):
+        self.assertEqual(self.device.connection.baudrate, self.fake.baudrate)
+        self.assertEqual(self.device.connection.parity, self.fake.parity)
+        self.assertEqual(self.device.connection.bytesize, self.fake.bytesize)
+        self.assertEqual(self.device.connection.stopbits, self.fake.stopbits)
+        self.assertEqual(self.device.connection.rtscts, self.fake.rtscts)
+        self.assertEqual(self.device.connection.dsrdtr, self.fake.dsrdtr)
+
+
 class LaserTests(DeviceTests):
     """Base class for :class:`LaserDevice` tests.
 
@@ -244,14 +254,6 @@ class LaserTests(DeviceTests):
         ## We could be smarter, but rounding the values should be
         ## enough to check the values when comparing power levels.
         self.assertEqual(round(first), round(second), msg)
-
-    def test_connection_defaults(self):
-        self.assertEqual(self.device.connection.baudrate, self.fake.baudrate)
-        self.assertEqual(self.device.connection.parity, self.fake.parity)
-        self.assertEqual(self.device.connection.bytesize, self.fake.bytesize)
-        self.assertEqual(self.device.connection.stopbits, self.fake.stopbits)
-        self.assertEqual(self.device.connection.rtscts, self.fake.rtscts)
-        self.assertEqual(self.device.connection.dsrdtr, self.fake.dsrdtr)
 
     def test_being(self):
         self.assertTrue(self.device.is_alive())
@@ -328,7 +330,8 @@ class LaserTests(DeviceTests):
             self.assertIsInstance(msg, str)
 
 
-class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
+class TestCoherentSapphireLaser(unittest.TestCase, LaserTests,
+                                SerialDeviceTests):
     def setUp(self):
         from microscope.lasers.sapphire import SapphireLaser
         from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
@@ -339,7 +342,8 @@ class TestCoherentSapphireLaser(unittest.TestCase, LaserTests):
 
         self.fake = CoherentSapphireLaserMock
 
-class TestCoboltLaser(unittest.TestCase, LaserTests):
+
+class TestCoboltLaser(unittest.TestCase, LaserTests, SerialDeviceTests):
     def setUp(self):
         from microscope.lasers.cobolt import CoboltLaser
         from microscope.testsuite.mock_devices import CoboltLaserMock
@@ -350,7 +354,9 @@ class TestCoboltLaser(unittest.TestCase, LaserTests):
 
         self.fake = CoboltLaserMock
 
-class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests):
+
+class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests,
+                               SerialDeviceTests):
     def setUp(self):
         from microscope.lasers.deepstar import DeepstarLaser
         from microscope.testsuite.mock_devices import OmicronDeepstarLaserMock
