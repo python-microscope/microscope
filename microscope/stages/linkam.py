@@ -28,6 +28,7 @@ import ctypes
 from ctypes import addressof, byref, POINTER
 from enum import Enum, IntEnum
 from microscope import devices
+from microscope.devices import Setting
 import time
 
 _max_version_length = 20
@@ -1178,14 +1179,21 @@ class LinkamMDSMixin():
         self._mdsstatus = _MDSStatus()
 
     def _post_connect(self):
-        # Motors don't move unless their velocities have been written to, 
-        # despite velocities having a non-zero default value. There's no 
-        # way to tell if they've been written to, so write them once here.
-        for flag, svt in ( (self._stageconfig.flags.motorX, _StageValueType.MotorVelX),
-                           (self._stageconfig.flags.motorY, _StageValueType.MotorVelY),
-                           (self._stageconfig.flags.motorZ, _StageValueType.MotorVelZ)):
+        """Set up motors: set velocities and add velocity settings."""
+        for name, flag, svt in (("X_velocity", self._stageconfig.flags.motorX, _StageValueType.MotorVelX),
+                                ("Y_velocity", self._stageconfig.flags.motorY, _StageValueType.MotorVelY),
+                                ("Z_velocity", self._stageconfig.flags.motorZ, _StageValueType.MotorVelZ)):
             if flag:
+                # Motors don't move unless their velocities have been written to, 
+                # despite velocities having a non-zero power-on default. There's no 
+                # way to tell if they've been written to, so write them once here.
                 self.set_value(svt, self.get_value(svt))
+                # Also add a Setting that clients can use to modify the velocity.
+                self.add_setting(name, float, 
+                                 lambda svt=svt: self.get_value(svt),
+                                 lambda val, svt=svt, s=self: self.set_value(svt, val),
+                                 lambda svt=svt: self.get_value_limits(svt))
+
         super()._post_connect()
 
     def _update_status(self, status):
@@ -1239,7 +1247,13 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
         self._cmsstatus = _CMSStatus()
         self._cmserror = _CMSError()
         self._refill_times = dict(refill_stage=1e99, refill_external=1e99)
+        # Condensor LED level when on
+        self._condensor_level = 100
         self.open_comms()
+        self.add_setting("condensor", float,
+                         self.get_condensor_level,
+                         self.set_condensor_level,
+                         self.get_value_limits(_StageValueType.CmsCondenserLEDLevel))
 
     def _update_status(self, status):
         super()._update_status(status)
@@ -1257,27 +1271,29 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
     def temperatures(self):
         return dict( (key, self.get_value(svt)) for key, svt in self._heater_map.items())
 
-    def FetchAllStatus(self):
-        status = {}
-        unions = (self._connectionstatus, self._status, self._cmsstatus, self._cmserror)
-        for u in unions:
-            for name, _, _ in u.flags._fields_:
-                if name.startswith('unused'):
-                    continue
-                status[name] = getattr(u.flags, name)
-        return status
-
     def set_light(self, state):
         self.set_value(_StageValueType.CmsLight, state)
 
     def get_light(self):
         return self.get_value(_StageValueType.CmsLight)
 
-    def set_condensor_level(self, level):
+    def set_condensor(self, state):
+        """Turn the condensor LED on or off"""
+        if state:
+            level = self._condensor_level
+        else:
+            level = 0
         self.set_value(_StageValueType.CmsCondenserLEDLevel, level)
 
+    def set_condensor_level(self, level):
+        """Set the condensor LED level"""
+        self._condensor_level = level
+        if self.get_value(_StageValueType.CmsCondenserLEDLevel) > 0:
+            # Condnesor LED is on, so write out new level immediately.
+            self.set_condensor(True)
+
     def get_condensor_level(self):
-        return self.get_value(_StageValueType.CmsCondenserLEDLevel)
+        return self._condensor_level
 
     def get_motors(self):
         res = {}
