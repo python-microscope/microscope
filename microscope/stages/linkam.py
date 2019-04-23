@@ -1007,7 +1007,6 @@ class LinkamBase(devices.Device):
             self.init_sdk()
         self._reconnect_thread = None
 
-
     def __del__(self):
         self._process_msg(Msg.CloseComms)
 
@@ -1030,6 +1029,10 @@ class LinkamBase(devices.Device):
         """Raise an exception if the connection is down."""
         if not self._connectionstatus.flags.connected:
             raise Exception("Stage not connected.")
+
+    def get_data_rate(self):
+        """Return the status update period in seconds."""
+        return self._process_msg(Msg.GetDataRate).vUint32 / 1000
 
     def get_error(self):
         """Fetch the controller error."""
@@ -1203,6 +1206,8 @@ class LinkamMDSMixin():
         if z is not None:
             self.set_value(_StageValueType.MotorSetpointZ, z)
             self._process_msg(Msg.StartMotors, True, 2)
+        # Allow time for status structures to indicate stage is moving
+        time.sleep(2 * self.get_data_rate())
 
     def get_status(self, *args):
         """Includes MDSStatus in the get_status call."""
@@ -1273,6 +1278,17 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
 
     def get_condensor_level(self):
         return self.get_value(_StageValueType.CmsCondenserLEDLevel)
+
+    def get_motors(self):
+        res = {}
+        for axis in 'XYZ':
+            if getattr(self._stageconfig.flags, 'motor' + axis):
+                res[axis] = (self.get_value(getattr(_StageValueType, 'MotorPos' + axis)),
+                             self.get_value(getattr(_StageValueType, 'MotorSetpoint' + axis)),
+                             getattr(self._status.flags, 'motorStopped' + axis))
+            else:
+                res[axis] = None
+        return res
 
     def refill_chamber(self, state=True):
         return self.set_value(_StageValueType.CmsMainDewarFillSig, True)
