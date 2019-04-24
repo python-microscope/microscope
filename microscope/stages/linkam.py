@@ -1234,19 +1234,49 @@ class LinkamMDSMixin():
 
 class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
     """Linkam correlative-microscopy stage."""
-    _refill_map = {'fill_sample': 'sampleDewarFillSignal',
-                   'fill_external': 'mainDewarFillSignal'}
+    _refill_map = {'sample': 'sampleDewarFillSignal',
+                   'external': 'mainDewarFillSignal'}
     _heater_map = {'t_bridge': _StageValueType.Heater1Temp,
                    't_chamber': _StageValueType.Heater2Temp,
                    't_dewar': _StageValueType.Heater3Temp,
                    't_base': _StageValueType.Heater4Temp}
+
+    class RefillTracker():
+        # Is refill in progress?
+        refilling = False
+        # Time between last refills.
+        dt = 0
+        # Last refill time.
+        t = 0
+
+        def start_refill(self):
+            print("START REFILL")
+            self.refilling = True
+            if self.t > 0:
+                self.dt = time.time() - self.t
+
+        def end_refill(self):
+            print("END REFILL")
+            self.refilling = False
+            self.t = time.time()
+
+        def as_dict(self):
+            t = time.time()
+            since_last = 0 if (self.refilling or self.t == 0) else (t - self.t)
+            return dict(refilling=self.refilling, since_last=since_last, between_last=self.dt)
+
+        def __repr__(self):
+            return "refilling: %s, t: %f, dt: %f" % (self.refilling, self.t, self.dt)
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.uid = kwargs.get('uid', '')
         self.init_usb(self.uid)
         self._cmsstatus = _CMSStatus()
         self._cmserror = _CMSError()
-        self._refill_times = dict(refill_stage=1e99, refill_external=1e99)
+        # Refill tracking
+        self._refills = dict({k:self.RefillTracker() for k in self._refill_map})
         # Condensor LED level when on
         self._condensor_level = 100
         self.open_comms()
@@ -1259,11 +1289,14 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
         super()._update_status(status)
         self.get_value(_StageValueType.CmsStatus, result=self._cmsstatus)
         self.get_value(_StageValueType.CmsError, result=self._cmserror)
-        t = time.time()
         # Update the refill timers.
         for (key, flagname) in self._refill_map.items():
-            if getattr(self._cmsstatus.flags, flagname):
-                self._refill_times[key] = t
+            tracker = self._refills[key]
+            is_refilling = getattr(self._cmsstatus.flags, flagname)
+            if is_refilling and not tracker.refilling:
+                tracker.start_refill()
+            elif self._refills[key].refilling and not is_refilling:
+                tracker.end_refill()
 
     def get_id(self):
         return self.uid
@@ -1312,9 +1345,8 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
     def refill_dewar(self, state=True):
         return self.set_value(_StageValueType.CmsSampleDewarFillSig, True)
 
-    def time_since_refills(self):
-        t = time.time()
-        return dict([(k, t-v) for k, v in self._refill_times.items()])
+    def refill_stats(self):
+        return dict([(k, v.as_dict()) for k, v in self._refills.items()])
 
     def get_status(self, *args):
         status = super().get_status(*args, self._cmsstatus)
@@ -1324,5 +1356,5 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
 
 
 if __name__ == '__main__':
-    l = LinkamCMS(b'DV3658-0037')
+    l = LinkamCMS(b'')
     print(l._h.value)
