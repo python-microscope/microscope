@@ -29,7 +29,7 @@ from ctypes import addressof, byref, POINTER
 from enum import Enum, IntEnum
 from microscope import devices
 from microscope.devices import Setting
-import time
+import datetime, time
 
 _max_version_length = 20
 
@@ -1245,28 +1245,24 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
         # Is refill in progress?
         refilling = False
         # Time between last refills.
-        dt = 0
+        dt = datetime.timedelta(0)
         # Last refill time.
-        t = 0
+        t = None
 
         def start_refill(self):
-            print("START REFILL")
             self.refilling = True
-            if self.t > 0:
-                self.dt = time.time() - self.t
+            if self.t is not None:
+                self.dt = datetime.datetime.now() - self.t
 
         def end_refill(self):
-            print("END REFILL")
             self.refilling = False
-            self.t = time.time()
+            self.t = datetime.datetime.now()
 
         def as_dict(self):
-            t = time.time()
-            since_last = 0 if (self.refilling or self.t == 0) else (t - self.t)
-            return dict(refilling=self.refilling, since_last=since_last, between_last=self.dt)
+            return dict(refilling=self.refilling, last=self.t, between_last=self.dt)
 
         def __repr__(self):
-            return "refilling: %s, t: %f, dt: %f" % (self.refilling, self.t, self.dt)
+            return "refilling: %s, t: %s, dt: %s" % (self.refilling, self.t, self.dt)
 
 
     def __init__(self, *args, **kwargs):
@@ -1351,7 +1347,7 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
     def get_status(self, *args):
         status = super().get_status(*args, self._cmsstatus)
         status.update(self.temperatures())
-        status.update(self.time_since_refills())
+        status.update(refills=self.refill_stats())
         return status
 
 
