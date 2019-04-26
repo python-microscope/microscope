@@ -1053,7 +1053,11 @@ class LinkamBase(devices.Device):
         """
         # Don't self.check_connection on read as it can cause get_status to throw exception.
         # Ensure svt is an Enum member (not a raw value), as it is used as a key.
-        svt = _StageValueType(svt)
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         # Determine the appropriate Variant member for the value type.
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         variant = self._process_msg(Msg.GetValue, svt.value, result=result)
@@ -1063,7 +1067,11 @@ class LinkamBase(devices.Device):
             return getattr(variant, vtype)
 
     def get_value_limits(self, svt):
-        svt = _StageValueType(svt)
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         vmin = self._process_msg(Msg.GetMinValue, svt.value)
         vmax = self._process_msg(Msg.GetMaxValue, svt.value)
@@ -1072,7 +1080,11 @@ class LinkamBase(devices.Device):
     def set_value(self, svt, val):
         """Set value identified by svt to val"""
         self.check_connection()
-        svt = _StageValueType(svt)
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         v = _Variant(**{vtype: val})
         return self._process_msg(Msg.SetValue,
