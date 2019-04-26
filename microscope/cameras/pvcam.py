@@ -1083,7 +1083,7 @@ class PVParam(object):
             except Exception as e:
                 err = e
 
-        if err and err.message.startswith('pvcam error 49'):
+        if err and getattr(err, 'message', '').startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
             result = None
         elif err:
