@@ -1051,8 +1051,8 @@ class LinkamBase(devices.Device):
             svt: a StageValueType
             result: an existing Variant to use to return a result, or None.
         """
+        # Don't self.check_connection on read as it can cause get_status to throw exception.
         # Ensure svt is an Enum member (not a raw value), as it is used as a key.
-        self.check_connection()
         svt = _StageValueType(svt)
         # Determine the appropriate Variant member for the value type.
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
