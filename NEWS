@@ -1,6 +1,27 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
+Version 0.3.0 (yyyy/mm/dd)
+--------------------------
+
+* Python 3.5 or later is now required.  Python 2 is no longer
+  supported.  This drops the dependency on the six and enum34.
+
+* `CoboltLaser` now has a default value for its `baud` argument.
+
+* `LaserDevice.set_power_mw` now clips the set value to the device
+  actual range.  Previously, the behaviour was undefined.
+
+* Added Device server support for Windows services.
+
+* DataDevices now handle a stack of clients to receive data.
+
+* New abstract methods:
+
+  * `LaserDevice.get_min_power_mw`
+  * `LaserDevice.is_alive`
+
+
 Version 0.2.0 (2018/06/13)
 --------------------------
 

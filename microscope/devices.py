@@ -31,24 +31,25 @@ import logging
 import time
 from ast import literal_eval
 from collections import OrderedDict
-from six import string_types
 from threading import Thread
 import threading
 import Pyro4
 import numpy
+import queue
 
-from six.moves import queue
-from enum import Enum
-
-from six import iteritems
+from enum import Enum, EnumMeta
 
 import numpy
 
+from collections import namedtuple
+# A tuple that defines a region of interest.
+Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+# A tuple containing parameters for horizontal and vertical binning.
+Binning = namedtuple('Binning', ['h', 'v'])
+
+
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
-
-# Device types.
-(UGENERIC, USWITCHABLE, UDATA, UCAMERA, ULASER, UFILTER) = range(6)
 
 # Mapping of setting data types to descriptors allowed-value description types.
 # For python 2 and 3 compatibility, we convert the type into a descriptor string.
@@ -57,16 +58,94 @@ import numpy
 DTYPES = {'int': ('int', tuple),
           'float': ('float', tuple),
           'bool': ('bool', type(None)),
-          'enum': ('enum', list),
+          'enum': ('enum', list, EnumMeta),
           'str': ('str', int),
+          'tuple': ('tuple', type(None)),
           int: ('int', tuple),
           float: ('float', tuple),
           bool: ('bool', type(None)),
-          str: ('str', int)}
+          str: ('str', int),
+          tuple: ('tuple', type(None))}
 
 # A utility function to call callables or return value of non-callables.
 # noinspection PyPep8
 _call_if_callable = lambda f: f() if callable(f) else f
+
+
+class Setting():
+    def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
+        """Create a setting.
+
+        :param name: the setting's name
+        :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
+        :param get_func: a function to get the current value
+        :param set_func: a function to set the value
+        :param values: a description of allowed values dependent on dtype,
+                       or function that returns a description
+        :param readonly: an optional flag to indicate a read-only setting.
+
+        A client needs some way of knowing a setting name and data type,
+        retrieving the current value and, if settable, a way to retrieve
+        allowable values, and set the value.
+        """
+        self.name = name
+        if dtype not in DTYPES:
+            raise Exception('Unsupported dtype.')
+        elif not (isinstance(values, DTYPES[dtype][1]) or callable(values)):
+            raise Exception('Invalid values type for %s: expected function or %s' %
+                            (dtype, DTYPES[dtype][1]))
+        self.dtype = DTYPES[dtype][0]
+        self._get = get_func
+        self._values = values
+        self._readonly = readonly
+        self._last_written = None
+        if self._get is not None:
+            self._set = set_func
+        else:
+            # Cache last written value for write-only settings.
+            def w(value):
+                self._last_written = value
+                set_func(value)
+            self._set = w
+
+    def describe(self):
+        return {  # wrap type in str since can't serialize types
+            'type': str(self.dtype),
+            'values': self.values(),
+            'readonly': self.readonly(),
+            'cached': self._last_written is not None}
+
+    def get(self):
+        if self._get is not None:
+            value = self._get()
+        else:
+            value = self._last_written
+        if isinstance(self._values, EnumMeta):
+            return self._values(value).value
+        else:
+            return value
+
+    def readonly(self):
+        return _call_if_callable(self._readonly)
+
+    def set(self, value):
+        """Set a setting."""
+        if self._set is None:
+            raise NotImplementedError
+        # TODO further validation.
+        if isinstance(self._values, EnumMeta):
+            value = self._values(value)
+        self._set(value)
+
+    def values(self):
+        if isinstance(self._values, EnumMeta):
+            return [(v.value, v.name) for v in self._values]
+        values = _call_if_callable(self._values)
+        if values is not None:
+            if self.dtype is 'enum': # but self._values is a list or tuple
+                return list(enumerate(values))
+            elif self._values is not None:
+                return values
 
 
 def device(cls, host, port, uid=None, **kwargs):
@@ -78,7 +157,7 @@ def device(cls, host, port, uid=None, **kwargs):
     UID is used to identify 'floating' devices (see below).
     kwargs can be used to pass any other parameters to cls.__init__.
     """
-    return dict(cls=cls, host=host, port=int(port), uid=None, **kwargs)
+    return dict(cls=cls, host=host, port=int(port), uid=uid, **kwargs)
 
 
 class FloatingDeviceMixin(object):
@@ -93,7 +172,6 @@ class FloatingDeviceMixin(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    @Pyro4.expose
     def get_id(self):
         """Return a unique hardware identifier, such as a serial number."""
         pass
@@ -111,18 +189,11 @@ class Device(object):
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger(self.__class__.__name__)
         self._index = kwargs['index'] if 'index' in kwargs else None
-        self._utype = UGENERIC
 
     def __del__(self):
         self.shutdown()
 
 
-    @Pyro4.expose
-    def get_device_type(self):
-        return self._utype
-
-
-    @Pyro4.expose
     def get_is_enabled(self):
         return self.enabled
 
@@ -135,7 +206,6 @@ class Device(object):
         """
         return True
 
-    @Pyro4.expose
     def disable(self):
         """Disable the device for a short period for inactivity."""
         self._on_disable()
@@ -149,7 +219,6 @@ class Device(object):
         """
         return True
 
-    @Pyro4.expose
     def enable(self):
         """Enable the device."""
         try:
@@ -163,26 +232,25 @@ class Device(object):
         pass
 
     @abc.abstractmethod
-    @Pyro4.expose
     def initialize(self, *args, **kwargs):
         """Initialize the device."""
         pass
 
-    @Pyro4.expose
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
-        self.enabled = False
+        self.disable()
         self._logger.info("Shutting down ... ... ...")
         self._on_shutdown()
         self._logger.info("... ... ... ... shut down completed.")
 
-    @Pyro4.expose
     def make_safe(self):
         """Put the device into a safe state."""
         pass
 
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
+
+        Can also use self.settings[name] = Setting(name, dtype,...)
 
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
@@ -207,65 +275,39 @@ class Device(object):
             raise Exception('Invalid values type for %s: expected function or %s' %
                             (dtype, DTYPES[dtype][1]))
         else:
-            self.settings.update({name: {'type': DTYPES[dtype][0],
-                                         'get': get_func,
-                                         'set': set_func,
-                                         'values': values,
-                                         'readonly': readonly}})
+            self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
-    @Pyro4.expose
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
-            return self.settings[name]['get']()
+            return self.settings[name].get()
         except Exception as err:
             self._logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
 
-    @Pyro4.expose
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v['get']() if v['get'] else None
-                    for k, v in iteritems(self.settings)}
+            return {k: v.get() for k, v in self.settings.items()}
         except Exception as err:
             self._logger.error("in get_all_settings:", exc_info=err)
             raise
 
-    @Pyro4.expose
     def set_setting(self, name, value):
         """Set a setting."""
-        if self.settings[name]['set'] is None:
-            raise NotImplementedError
-        # TODO further validation.
         try:
-            self.settings[name]['set'](value)
+            self.settings[name].set(value)
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
 
-
-    @Pyro4.expose
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
-        v = self.settings.get(name, None)
-        if v is None:
-            return v
-        else:
-            return {  # wrap type in str since can't serialize types
-                'type': str(v['type']),
-                'values': _call_if_callable(v['values']),
-                'readonly': _call_if_callable(v['readonly']), }
+        return self.settings[name].describe()
 
-    @Pyro4.expose
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, {  # wrap type in str since can't serialize types
-            'type': str(v['type']),
-            'values': _call_if_callable(v['values']),
-            'readonly': _call_if_callable(v['readonly']), })
-                for (k, v) in iteritems(self.settings)]
+        return [(k, v.describe()) for (k, v) in self.settings.items()]
 
-    @Pyro4.expose
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
@@ -287,17 +329,17 @@ class Device(object):
         results = {}
         # Update values.
         for key in update_keys:
-            if key not in my_keys or not self.settings[key]['set']:
+            if key not in my_keys or not self.settings[key].set:
                 # Setting not recognised or no set function implemented
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if self.settings[key]['readonly']:
+            if _call_if_callable(self.settings[key].readonly):
                 continue
-            self.settings[key]['set'](incoming[key])
+            self.settings[key].set(incoming[key])
         # Read back values in second loop.
         for key in update_keys:
-            results[key] = self.settings[key]['get']()
+            results[key] = self.settings[key].get()
         return results
 
 
@@ -344,28 +386,31 @@ class DataDevice(Device):
         self._fetch_thread_run = False
         # A flag to indicate that this class uses a fetch callback.
         self._using_callback = False
-        # A client to which we send data.
-        self._client = None
+        # Clients to which we send data.
+        self._clientStack = []
+        # A set of live clients to avoid repeated dispatch to disconnected client.
+        self._liveClients = set()
         # A thread to dispatch data.
         self._dispatch_thread = None
         # A buffer for data dispatch.
         self._dispatch_buffer = queue.Queue(maxsize=buffer_length)
         # A flag to indicate if device is ready to acquire.
         self._acquiring = False
+        # A condition to signal arrival of a new data and unblock grab_next_data
+        self._new_data_condition = threading.Condition()
 
     def __del__(self):
         self.disable()
+        super().__del__()
 
     # Wrap set_setting to pause and resume acquisition.
-    set_setting = Pyro4.expose(keep_acquiring(Device.set_setting))
+    set_setting = keep_acquiring(Device.set_setting)
 
     @abc.abstractmethod
-    @Pyro4.expose
     def abort(self):
         """Stop acquisition as soon as possible."""
         self._acquiring = False
 
-    @Pyro4.expose
     def enable(self):
         """Enable the data capture device.
 
@@ -399,7 +444,7 @@ class DataDevice(Device):
         self._logger.debug("... enabled.")
         return self.enabled
 
-    @Pyro4.expose
+
     def disable(self):
         """Disable the data capture device.
 
@@ -428,24 +473,27 @@ class DataDevice(Device):
         """Do any data processing and return data."""
         return data
 
-    def _send_data(self, data, timestamp):
+    def _send_data(self, client, data, timestamp):
         """Dispatch data to the client."""
-        if self._client:
-            try:
-                # Currently uses legacy receiveData. Would like to pass
-                # this function name as an argument to set_client, but
-                # not sure how to subsequently resolve this over Pyro.
-                self._client.receiveData(data, timestamp)
-            except Pyro4.errors.ConnectionClosedError:
-                # Nothing is listening
-                self._client = None
-            except:
-                raise
+        try:
+            # Currently uses legacy receiveData. Would like to pass
+            # this function name as an argument to set_client, but
+            # not sure how to subsequently resolve this over Pyro.
+            client.receiveData(data, timestamp)
+        except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
+            # Client not listening
+            self._logger.info("Removing %s from client stack: disconnected." % client._pyroUri)
+            self._clientStack = list(filter(client.__ne__, self._clientStack))
+            self._liveClients = self._liveClients.difference([client])
+        except:
+            raise
 
     def _dispatch_loop(self):
         """Process data and send results to any client."""
         while True:
-            data, timestamp = self._dispatch_buffer.get(block=True)
+            client, data, timestamp = self._dispatch_buffer.get(block=True)
+            if client not in self._liveClients:
+                continue
             err = None
             if isinstance(data, Exception):
                 standard_exception = Exception(str(data).encode('ascii'))
@@ -455,10 +503,9 @@ class DataDevice(Device):
                     err = e
             else:
                 try:
-                    self._send_data(self._process_data(data), timestamp)
+                    self._send_data(client, self._process_data(data), timestamp)
                 except Exception as e:
                     err = e
-
             if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
@@ -477,35 +524,97 @@ class DataDevice(Device):
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
-                self._dispatch_buffer.put((e, timestamp))
+                self._put(e, timestamp)
                 data = None
             if data is not None:
                 # ***TODO*** Add support for timestamp from hardware.
                 timestamp = time.time()
-                self._dispatch_buffer.put((data, timestamp))
+                self._put(data, timestamp)
             else:
                 time.sleep(0.001)
 
-    @Pyro4.expose
-    def set_client(self, client_uri):
-        """Set up a connection to our client."""
-        self._logger.info("Setting client to %s." % client_uri)
-        if client_uri is not None:
-            self._client = Pyro4.Proxy(client_uri)
+    @property
+    def _client(self):
+        """A getter for the current client."""
+        return (self._clientStack or [None])[-1]
+
+    @_client.setter
+    def _client(self, val):
+        """Push or pop a client from the _clientStack."""
+        if val is None:
+            self._clientStack.pop()
+        else:
+            self._clientStack.append(val)
+        self._liveClients = set(self._clientStack)
+
+    def _put(self, data, timestamp):
+        """Put data and timestamp into dispatch buffer with target dispatch client."""
+        self._dispatch_buffer.put((self._client, data, timestamp))
+
+    def set_client(self, new_client):
+        """Set up a connection to our client.
+
+        Clients now sit in a stack so that a single device may send
+        different data to multiple clients in a single experiment.
+        The usage is currently::
+
+            device.set_client(client) # Add client to top of stack
+            # do stuff, send triggers, receive data
+            device.set_client(None)   # Pop top client off stack.
+
+        There is a risk that some other client calls ``None`` before
+        the current client is finished.  Avoiding this will require
+        rework here to identify the caller and remove only that caller
+        from the client stack.
+        """
+        if new_client is not None:
+            if isinstance(new_client, (str, Pyro4.core.URI)):
+                self._client = Pyro4.Proxy(new_client)
+            else:
+                self._client = new_client
         else:
             self._client = None
+        # _client uses a setter. Log the result of assignment.
+        if self._client is None:
+            self._logger.info("Current client is None.")
+        else:
+            self._logger.info("Current client is %s." % str(self._client))
 
-    @Pyro4.expose
+
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
         super(DataDevice, self).update_settings(settings, init)
 
     # noinspection PyPep8Naming
-    @Pyro4.expose
     def receiveClient(self, client_uri):
         """A passthrough for compatibility."""
         self.set_client(client_uri)
+
+    def grab_next_data(self, soft_trigger=True):
+        """Returns results from next trigger via a direct call.
+
+        :param soft_trigger: calls soft_trigger if True,
+                               waits for hardware trigger if False.
+        """
+        self._new_data_condition.acquire()
+        # Push self onto client stack.
+        self.set_client(self)
+        # Wait for data from next trigger.
+        if soft_trigger:
+            self.soft_trigger()
+        self._new_data_condition.wait()
+        # Pop self from client stack
+        self.set_client(None)
+        # Return the data.
+        return self._new_data
+
+    # noinspection PyPep8Naming
+    def receiveData(self, data, timestamp):
+        """Unblocks grab_next_frame so it can return."""
+        with self._new_data_condition:
+            self._new_data = (data, timestamp)
+            self._new_data_condition.notify()
 
 
 class CameraDevice(DataDevice):
@@ -520,8 +629,8 @@ class CameraDevice(DataDevice):
         super(CameraDevice, self).__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ['default']
-        # The current readout mode.
-        self._readout_mode = 'default'
+        # The index of the current readout mode.
+        self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
         # Transform to correct for readout order.
         self._readout_transform = (0, 0, 0)
@@ -529,9 +638,9 @@ class CameraDevice(DataDevice):
         self._transform = (0, 0, 0)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
-                         self.get_transform,
-                         self.set_transform,
-                         lambda: CameraDevice.ALLOWED_TRANSFORMS)
+                         lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
+                         lambda index: self.set_transform(CameraDevice.ALLOWED_TRANSFORMS[index]),
+                         CameraDevice.ALLOWED_TRANSFORMS)
         self.add_setting('readout mode', 'enum',
                          lambda: self._readout_mode,
                          self.set_readout_mode,
@@ -551,24 +660,19 @@ class CameraDevice(DataDevice):
                 }[flips]
 
 
-    @Pyro4.expose
     def set_readout_mode(self, description):
-        """Set the readout mode and _readout_transform.
-
-        Takes a description string from _readout_modes."""
+        """Set the readout mode and _readout_transform."""
         pass
 
 
-    @Pyro4.expose
     def get_transform(self):
         """Return the current transform without readout transform."""
         return tuple(self._readout_transform[i] ^ self._transform[i]
                      for i in range(3))
 
-    @Pyro4.expose
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, string_types)):
+        if isinstance(transform, str):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
@@ -582,7 +686,6 @@ class CameraDevice(DataDevice):
 
 
     @abc.abstractmethod
-    @Pyro4.expose
     def set_exposure_time(self, value):
         """Set the exposure time on the device.
 
@@ -590,17 +693,14 @@ class CameraDevice(DataDevice):
         """
         pass
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time, in seconds."""
         pass
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time, in seconds."""
         pass
 
-    @Pyro4.expose
     def get_sensor_temperature(self):
         """Return the sensor temperature."""
         pass
@@ -610,7 +710,6 @@ class CameraDevice(DataDevice):
         """Return a tuple of (width, height) indicating shape in pixels."""
         pass
 
-    @Pyro4.expose
     def get_sensor_shape(self):
         """Return a tuple of (width, height), corrected for transform."""
         shape = self._get_sensor_shape()
@@ -624,7 +723,6 @@ class CameraDevice(DataDevice):
         """Return a tuple of (horizontal, vertical)"""
         pass
 
-    @Pyro4.expose
     def get_binning(self):
         """Return a tuple of (horizontal, vertical), corrected for transform."""
         binning = self._get_binning()
@@ -638,7 +736,6 @@ class CameraDevice(DataDevice):
         """Set binning along both axes. Return True if successful."""
         pass
 
-    @Pyro4.expose
     def set_binning(self, h_bin, v_bin):
         """Set binning along both axes. Return True if successful."""
         if self._transform[2]:
@@ -653,7 +750,6 @@ class CameraDevice(DataDevice):
         """Return the ROI as it is on hardware."""
         return left, top, width, height
 
-    @Pyro4.expose
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).
 
@@ -670,7 +766,6 @@ class CameraDevice(DataDevice):
         """Set the ROI on the hardware, return True if successful."""
         return False
 
-    @Pyro4.expose
     def set_roi(self, left, top, width, height):
         """Set the ROI according to the provided rectangle.
 
@@ -681,7 +776,6 @@ class CameraDevice(DataDevice):
             roi = (left, top, width, height)
         return self._set_roi(*roi)
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger mode.
 
@@ -692,12 +786,10 @@ class CameraDevice(DataDevice):
         """
         pass
 
-    @Pyro4.expose
     def get_meta_data(self):
         """Return metadata."""
         pass
 
-    @Pyro4.expose
     def soft_trigger(self):
         """Optional software trigger - implement if available."""
         pass
@@ -716,7 +808,6 @@ class TriggerMode(Enum):
     START = 4
 
 
-@Pyro4.expose
 class TriggerTargetMixIn(object):
     """MixIn for Device that may be the target of a hardware trigger.
 
@@ -746,7 +837,6 @@ class TriggerTargetMixIn(object):
         pass
 
 
-@Pyro4.expose
 class SerialDeviceMixIn(object):
     """MixIn for devices that are controlled via serial.
 
@@ -806,7 +896,6 @@ class SerialDeviceMixIn(object):
         return wrapper
 
 
-@Pyro4.expose
 class DeformableMirror(Device):
     """Base class for Deformable Mirrors.
 
@@ -901,6 +990,7 @@ class DeformableMirror(Device):
 
     def initialize(self):
         pass
+
     def _on_shutdown(self):
         pass
 
@@ -940,7 +1030,6 @@ class LaserDevice(Device):
         """"" Return the current power in mW."""
         pass
 
-    @Pyro4.expose
     def get_set_power_mw(self):
         """Return the power set point."""
         return self._set_point
@@ -950,7 +1039,6 @@ class LaserDevice(Device):
         """Set the power on the device in mW."""
         pass
 
-    @Pyro4.expose
     def set_power_mw(self, mw):
         """Set the power from an argument in mW and save the set point.
 
@@ -973,8 +1061,7 @@ class FilterWheelBase(Device):
 
     def __init__(self, filters, *args, **kwargs):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._utype = UFILTER
-        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
+        self._filters = {f[0]: f[1:] for f in filters}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         # The position as an integer.
         self.add_setting('position',
@@ -997,6 +1084,5 @@ class FilterWheelBase(Device):
     def _set_position(self, position):
         self._position = position
 
-    @Pyro4.expose
     def get_filters(self):
         return self._filters.items()

@@ -28,52 +28,55 @@ from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
 
+
 class BaseTestServeDevices(unittest.TestCase):
-  """Handles start and termination of deviceserver.
+    """Handles start and termination of deviceserver.
 
-  Subclasses may overload class properties defaults as needed.
+    Subclasses may overload class properties defaults as needed.
 
-  Attributes:
-    DEVICES (list): list of :class:`microscope.devices` to initialise.
-    TIMEOUT (number): time given for service to terminate after
-      receiving signal to terminate.
-    p (multiprocessing.Process): device server process.
-  """
-  DEVICES = []
-  TIMEOUT = 5
-  def setUp(self):
-    init = microscope.deviceserver.serve_devices
-    self.p = multiprocessing.Process(target=init, args=(self.DEVICES,))
-    self.p.start()
+    Attributes:
+        DEVICES (list): list of :class:`microscope.devices` to initialise.
+        TIMEOUT (number): time given for service to terminate after
+            receiving signal to terminate.
+        p (multiprocessing.Process): device server process.
+    """
+    DEVICES = []
+    TIMEOUT = 5
+    def setUp(self):
+        init = microscope.deviceserver.serve_devices
+        self.p = multiprocessing.Process(target=init, args=(self.DEVICES,))
+        self.p.start()
 
-  def tearDown(self):
-    self.p.terminate()
-    self.p.join(self.TIMEOUT)
-    self.assertFalse(self.p.is_alive(),
-                     "deviceserver not dead after SIGTERM")
+    def tearDown(self):
+        self.p.terminate()
+        self.p.join(self.TIMEOUT)
+        self.assertFalse(self.p.is_alive(),
+                         "deviceserver not dead after SIGTERM")
+
 
 class TestStarting(BaseTestServeDevices):
-  DEVICES = [
-    device(TestCamera, '127.0.0.1', 8001, otherargs=1,),
-    device(TestFilterWheel, '127.0.0.1', 8003,
-           filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
-   ]
+    DEVICES = [
+        device(TestCamera, '127.0.0.1', 8001, otherargs=1,),
+        device(TestFilterWheel, '127.0.0.1', 8003,
+               filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
+    ]
 
-  def test_standard(self):
-    """Simplest case, start and exit, given enough time to start all devices"""
-    time.sleep(2)
-    self.assertTrue(self.p.is_alive(), "service dies at start")
+    def test_standard(self):
+        """Simplest case, start and exit, given enough time to start all devices"""
+        time.sleep(2)
+        self.assertTrue(self.p.is_alive(), "service dies at start")
 
-  def test_immediate_interrupt(self):
-    """Check issues on SIGTERM before starting all devices"""
-    pass
+    def test_immediate_interrupt(self):
+        """Check issues on SIGTERM before starting all devices"""
+        pass
+
 
 class TestInputCheck(BaseTestServeDevices):
-  def test_empty_devices(self):
-    """Check behaviour if there are no devices."""
-    time.sleep(2)
-    self.assertTrue(not self.p.is_alive(),
-                    "not dying for empty list of devices")
+    def test_empty_devices(self):
+        """Check behaviour if there are no devices."""
+        time.sleep(2)
+        self.assertTrue(not self.p.is_alive(),
+                        "not dying for empty list of devices")
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

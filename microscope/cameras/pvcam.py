@@ -128,14 +128,15 @@ This module exposes pvcam C library functions in python.
 """
 
 import ctypes
-import numpy as np
 import os
 import platform
+import time
+
 import Pyro4
+import numpy as np
+
 from microscope import devices
 from microscope.devices import keep_acquiring
-from six import string_types
-import time
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
 READOUT_TRANSFORMS = {
@@ -1033,7 +1034,7 @@ class PVParam(object):
             values, descriptions = zip(*self.values)
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
-            elif isinstance(new_value, string_types):
+            elif isinstance(new_value, str):
                 desc = str(new_value)
             else:
                 desc = None
@@ -1146,7 +1147,7 @@ class PVParam(object):
     def current(self):
         """Return the current (or cached) parameter value."""
         if self._pvtype == TYPE_CHAR_PTR:
-                return str(memoryview(self.raw).tobytes()) or ''
+            return str(memoryview(self.raw).tobytes()) or ''
         elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
@@ -1251,7 +1252,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 frame = self._buffer.copy()
                 self._logger.debug("Fetched single frame.")
                 _exp_finish_seq(self.handle, CCS_CLEAR)
-                self._dispatch_buffer.put((frame, timestamp))
+                self._put(frame, timestamp)
                 return
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
@@ -1269,7 +1270,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
                 frame = np.ctypeslib.as_array(frame_p, (self.roi[2], self.roi[3])).copy()
                 self._logger.debug("Fetched frame from circular buffer.")
-                self._dispatch_buffer.put((frame, timestamp))
+                self._put(frame, timestamp)
                 return
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
@@ -1356,7 +1357,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self._params[PARAM_HEAD_SER_NUM_ALPHA].current
 
 
-    @Pyro4.expose
     def abort(self):
         """Abort acquisition.
 
@@ -1370,7 +1370,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         self._acquiring = False
 
 
-    @Pyro4.expose
     def initialize(self):
         """Initialise the camera."""
         # Init the DLL if necessary.
@@ -1477,7 +1476,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
-    @Pyro4.expose
     @keep_acquiring
     def set_readout_mode(self, description):
         """Set the readout mode and transform."""
@@ -1495,7 +1493,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             self._set_readout_transform(new_readout_transform)
 
 
-    @Pyro4.expose
     def make_safe(self):
         """Put the camera into a safe state.
 
@@ -1505,14 +1502,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             self.abort()
 
 
-    @Pyro4.expose
     @keep_acquiring
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
         self.exposure_time = value
 
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time.
 
@@ -1521,7 +1516,6 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.exposure_time
 
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time.
 
@@ -1530,13 +1524,11 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.cycle_time
 
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
         return TRIGGER_MODES[self._trigger].microscope_mode
 
 
-    @Pyro4.expose
     @Pyro4.oneway
     def soft_trigger(self):
         """Expose software triggering to a client.
