@@ -1347,10 +1347,10 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
                 res[axis] = None
         return res
 
-    def refill_chamber(self, state=True):
+    def refill_dewar(self, state=True):
         return self.set_value(_StageValueType.CmsMainDewarFillSig, True)
 
-    def refill_dewar(self, state=True):
+    def refill_chamber(self, state=True):
         return self.set_value(_StageValueType.CmsSampleDewarFillSig, True)
 
     def refill_stats(self):
