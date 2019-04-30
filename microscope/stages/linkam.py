@@ -940,7 +940,7 @@ class LinkamBase(devices.Device):
         #else:
         import os
         sdk_log = os.devnull
-        _lib.linkamInitialiseSDK(b'', sdk_log, True)
+        _lib.linkamInitialiseSDK(sdk_log, b'', True)
         # NewValue event callback
         cfunc = ctypes.CFUNCTYPE(_uint32_t, _CommsHandle, _ControllerStatus)(__class__._on_new_value)
         _lib.linkamSetCallbackNewValue(cfunc)
