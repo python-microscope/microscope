@@ -35,7 +35,6 @@ from logging.handlers import RotatingFileHandler
 from threading import Thread
 
 import Pyro4
-from six import iteritems
 
 from microscope.devices import FloatingDeviceMixin
 
@@ -232,7 +231,7 @@ def serve_devices(devices, exit_event=None):
         logger.critical("No valid devices specified. Exiting")
         sys.exit()
 
-    for cls, devs in iteritems(by_class):
+    for cls, devs in by_class.items():
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
@@ -323,12 +322,15 @@ def serve_devices(devices, exit_event=None):
 def __main__():
     """Serve devices via Pyro.
 
-    Usage:
-      To run in the terminal, use
+    To run in the terminal, use::
+
         deviceserver CONFIG
-      To configure and run as a Windows service use:
+
+    To configure and run as a Windows service use::
+
         deviceserver [install,remove,update,start,stop,restart,status] CONFIG
-    CONFIG is a .py file that exports DEVICES = [device(...), ...]
+
+    ``CONFIG`` is a ``.py`` file that exports ``DEVICES = [device(...), ...]``
     """
 
     if len(sys.argv) == 1:

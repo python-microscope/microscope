@@ -33,35 +33,48 @@ class EnumSetting(enum.Enum):
     C = 2
 
 
-class ThingWithEnum:
-    def __init__(self, enum_val):
-        self._enum = enum_val
+class ThingWithSomething:
+    """Very simple container with setter and getter methods"""
+    def __init__(self, val):
+        self.val = val
 
-    def set_enum(self, val):
-        self._enum = EnumSetting(val)
+    def set_val(self, val):
+        self.val = val
 
-    def get_enum(self):
-        return self._enum
+    def get_val(self):
+        return self.val
+
+
+def create_enum_setting(default, with_getter=True, with_setter=True):
+    thing = ThingWithSomething(EnumSetting(default))
+    getter = thing.get_val if with_getter else None
+    setter = thing.set_val if with_setter else None
+    setting = microscope.devices.Setting('foobar', 'enum', get_func=getter,
+                                         set_func=setter, values=EnumSetting)
+    return setting, thing
 
 
 class TestEnumSetting(unittest.TestCase):
-    def setUp(self):
-        self.thing = ThingWithEnum(EnumSetting(1))
 
-    def test_get_returns_value(self):
+    def test_get_returns_enum_value(self):
         """For enums, get() returns the enum value not the enum instance"""
-        foo = microscope.devices.Setting('foo', 'enum', self.thing.get_enum,
-                                         self.thing.set_enum, EnumSetting)
-        self.assertIsInstance(foo.get(), int)
+        setting, thing = create_enum_setting(1)
+        self.assertIsInstance(setting.get(), int)
 
+    def test_set_creates_enum(self):
+        """For enums, set() sets an enum instance, not the enum value"""
+        setting, thing = create_enum_setting(1)
+        setting.set(2)
+        self.assertIsInstance(thing.val, EnumSetting)
+        self.assertEqual(thing.val, EnumSetting(2))
 
-    def test_get_last_written(self):
-        """For enums, """
-        foo = microscope.devices.Setting('foo', 'enum', None,
-                                         self.thing.set_enum, EnumSetting)
-        foo.set(2)
-        self.assertIsInstance(foo.get(), int)
-        self.assertEqual(EnumSetting(2), self.thing.get_enum())
+    def test_set_and_get_write_only(self):
+        """get() works for write-only enum settings"""
+        setting, thing = create_enum_setting(1, with_getter=False)
+        self.assertEqual(EnumSetting(1), thing.val)
+        setting.set(2)
+        self.assertEqual(setting.get(), 2)
+        self.assertEqual(EnumSetting(2), thing.val)
 
 
 if __name__ == '__main__':

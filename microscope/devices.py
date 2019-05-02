@@ -31,16 +31,13 @@ import logging
 import time
 from ast import literal_eval
 from collections import OrderedDict
-from six import string_types
 from threading import Thread
 import threading
 import Pyro4
 import numpy
+import queue
 
-from six.moves import queue
 from enum import Enum, EnumMeta
-
-from six import iteritems
 
 import numpy
 
@@ -136,8 +133,8 @@ class Setting():
         if self._set is None:
             raise NotImplementedError
         # TODO further validation.
-        if isinstance(value, Enum):
-            value = value.value
+        if isinstance(self._values, EnumMeta):
+            value = self._values(value)
         self._set(value)
 
     def values(self):
@@ -291,7 +288,7 @@ class Device(object):
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v.get() for k, v in iteritems(self.settings)}
+            return {k: v.get() for k, v in self.settings.items()}
         except Exception as err:
             self._logger.error("in get_all_settings:", exc_info=err)
             raise
@@ -309,7 +306,7 @@ class Device(object):
 
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, v.describe()) for (k, v) in iteritems(self.settings)]
+        return [(k, v.describe()) for (k, v) in self.settings.items()]
 
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
@@ -404,6 +401,7 @@ class DataDevice(Device):
 
     def __del__(self):
         self.disable()
+        super().__del__()
 
     # Wrap set_setting to pause and resume acquisition.
     set_setting = keep_acquiring(Device.set_setting)
@@ -556,17 +554,21 @@ class DataDevice(Device):
     def set_client(self, new_client):
         """Set up a connection to our client.
 
-        Clients now sit in a stack so that a single device may send different data
-        to multiple clients in a single experiment. The usage is currently:
-          set_client(client) # Add client to top of stack
-          # do stuff, send triggers, receive data
-          set_client(None)   # Pop top client off stack.
-        There is a risk that some other client calls None before the current client
-        is finished. Avoiding this will require rework here to identify the caller
-        and remove only that caller from the client stack.
+        Clients now sit in a stack so that a single device may send
+        different data to multiple clients in a single experiment.
+        The usage is currently::
+
+            device.set_client(client) # Add client to top of stack
+            # do stuff, send triggers, receive data
+            device.set_client(None)   # Pop top client off stack.
+
+        There is a risk that some other client calls ``None`` before
+        the current client is finished.  Avoiding this will require
+        rework here to identify the caller and remove only that caller
+        from the client stack.
         """
         if new_client is not None:
-            if isinstance(new_client, (string_types, Pyro4.core.URI)):
+            if isinstance(new_client, (str, Pyro4.core.URI)):
                 self._client = Pyro4.Proxy(new_client)
             else:
                 self._client = new_client
@@ -590,22 +592,22 @@ class DataDevice(Device):
         self.set_client(client_uri)
 
     def grab_next_data(self, soft_trigger=True):
-            """Returns results from next trigger via a direct call.
+        """Returns results from next trigger via a direct call.
 
-            :param soft_trigger: calls soft_trigger if True,
-                                 waits for hardware trigger if False.
-            """
-            self._new_data_condition.acquire()
-            # Push self onto client stack.
-            self.set_client(self)
-            # Wait for data from next trigger.
-            if soft_trigger:
-                self.soft_trigger()
-            self._new_data_condition.wait()
-            # Pop self from client stack
-            self.set_client(None)
-            # Return the data.
-            return self._new_data
+        :param soft_trigger: calls soft_trigger if True,
+                               waits for hardware trigger if False.
+        """
+        self._new_data_condition.acquire()
+        # Push self onto client stack.
+        self.set_client(self)
+        # Wait for data from next trigger.
+        if soft_trigger:
+            self.soft_trigger()
+        self._new_data_condition.wait()
+        # Pop self from client stack
+        self.set_client(None)
+        # Return the data.
+        return self._new_data
 
     # noinspection PyPep8Naming
     def receiveData(self, data, timestamp):
@@ -670,7 +672,7 @@ class CameraDevice(DataDevice):
 
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
-        if isinstance(transform, (str, string_types)):
+        if isinstance(transform, str):
             transform = literal_eval(transform)
         self._transform = tuple(self._readout_transform[i] ^ transform[i]
                                 for i in range(3))
@@ -1059,7 +1061,7 @@ class FilterWheelBase(Device):
 
     def __init__(self, filters, *args, **kwargs):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._filters = dict(map(lambda f: (f[0], f[1:]), filters))
+        self._filters = {f[0]: f[1:] for f in filters}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         # The position as an integer.
         self.add_setting('position',

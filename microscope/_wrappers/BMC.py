@@ -31,10 +31,10 @@ from ctypes import c_uint32
 
 
 if os.name in ("nt", "ce"):
-  ## Not actually tested yet
-  SDK = ctypes.WinDLL("BMC2")
+    ## Not actually tested yet
+    SDK = ctypes.WinDLL("BMC2")
 else:
-  SDK = ctypes.CDLL("libBMC.so.3")
+    SDK = ctypes.CDLL("libBMC.so.3")
 
 
 ## Definitions from BMCDefs.h
@@ -43,37 +43,37 @@ SERIAL_NUMBER_LEN = 11
 MAX_DM_SIZE = 4096
 
 class DM_PRIV(ctypes.Structure):
-  pass
+    pass
 
 class DM_DRIVER(ctypes.Structure):
-  _fields_ = [
-      ("channel_count", c_uint),
-      ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
-      ("reserved", c_uint * 7)
-  ]
+    _fields_ = [
+        ("channel_count", c_uint),
+        ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
+        ("reserved", c_uint * 7)
+    ]
 
 class DM(ctypes.Structure):
-  _fields_ = [
-      ("Driver_Type", c_uint),
-      ("DevId", c_uint),
-      ("HVA_Type", c_uint),
-      ("use_fiber", c_uint),
-      ("use_CL", c_uint),
-      ("burst_mode", c_uint),
-      ("fiber_mode", c_uint),
-      ("ActCount", c_uint),
-      ("MaxVoltage", c_uint),
-      ("VoltageLimit", c_uint),
-      ("mapping", c_char * MAX_PATH),
-      ("inactive", c_uint * MAX_DM_SIZE),
-      ("profiles_path", c_char * MAX_PATH),
-      ("maps_path", c_char * MAX_PATH),
-      ("cals_path", c_char * MAX_PATH),
-      ("cal", c_char * MAX_PATH),
-      ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
-      ("driver", DM_DRIVER),
-      ("priv", ctypes.POINTER(DM_PRIV)),
-  ]
+    _fields_ = [
+        ("Driver_Type", c_uint),
+        ("DevId", c_uint),
+        ("HVA_Type", c_uint),
+        ("use_fiber", c_uint),
+        ("use_CL", c_uint),
+        ("burst_mode", c_uint),
+        ("fiber_mode", c_uint),
+        ("ActCount", c_uint),
+        ("MaxVoltage", c_uint),
+        ("VoltageLimit", c_uint),
+        ("mapping", c_char * MAX_PATH),
+        ("inactive", c_uint * MAX_DM_SIZE),
+        ("profiles_path", c_char * MAX_PATH),
+        ("maps_path", c_char * MAX_PATH),
+        ("cals_path", c_char * MAX_PATH),
+        ("cal", c_char * MAX_PATH),
+        ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
+        ("driver", DM_DRIVER),
+        ("priv", ctypes.POINTER(DM_PRIV)),
+    ]
 
 DMHANDLE = ctypes.POINTER(DM)
 
@@ -91,10 +91,10 @@ LOG_OFF = 6
 
 
 def make_prototype(name, argtypes, restype=RC):
-  func = getattr(SDK, name)
-  func.argtypes = argtypes
-  func.restype = restype
-  return func
+    func = getattr(SDK, name)
+    func.argtypes = argtypes
+    func.restype = restype
+    return func
 
 Open = make_prototype("BMCOpen", [DMHANDLE, c_char_p])
 

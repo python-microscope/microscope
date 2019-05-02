@@ -93,7 +93,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
-    def enable(self):
+    def _on_enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l1')

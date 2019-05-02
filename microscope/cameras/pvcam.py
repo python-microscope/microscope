@@ -128,14 +128,15 @@ This module exposes pvcam C library functions in python.
 """
 
 import ctypes
-import numpy as np
 import os
 import platform
+import time
+
 import Pyro4
+import numpy as np
+
 from microscope import devices
 from microscope.devices import keep_acquiring
-from six import string_types
-import time
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
 READOUT_TRANSFORMS = {
@@ -1033,7 +1034,7 @@ class PVParam(object):
             values, descriptions = zip(*self.values)
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
-            elif isinstance(new_value, string_types):
+            elif isinstance(new_value, str):
                 desc = str(new_value)
             else:
                 desc = None
@@ -1146,7 +1147,7 @@ class PVParam(object):
     def current(self):
         """Return the current (or cached) parameter value."""
         if self._pvtype == TYPE_CHAR_PTR:
-                return str(memoryview(self.raw).tobytes()) or ''
+            return str(memoryview(self.raw).tobytes()) or ''
         elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
