@@ -20,7 +20,6 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
-import sys
 import time
 
 import Pyro4
@@ -164,7 +163,7 @@ class TestCamera(devices.CameraDevice):
             self._triggered += 1
 
     def _get_binning(self):
-         return (1,1)
+        return (1,1)
 
     @keep_acquiring
     def _set_binning(self, h, v):
@@ -203,12 +202,12 @@ class TestFilterWheel(FilterWheelBase):
 class TestLaser(devices.LaserDevice):
     def __init__(self, *args, **kwargs):
         super(TestLaser, self).__init__()
-        self._power = 0
+        self._set_point = 0.0
+        self._power = 0.0
         self._emission = False
 
     def get_status(self):
-        result = [self._emission, self._power, self._set_point]
-        return result
+        return [str(x) for x in (self._emission, self._power, self._set_point)]
 
     def _on_enable(self):
         self._emission = True
@@ -232,13 +231,16 @@ class TestLaser(devices.LaserDevice):
         self._power = level
 
     def get_max_power_mw(self):
-        return 100
+        return 100.0
 
     def get_min_power_mw(self):
-        return 0
+        return 0.0
 
     def get_power_mw(self):
-        return [0, self._power][self._emission]
+        if self._emission:
+            return self._power
+        else:
+            return 0.0
 
 
 class TestDeformableMirror(devices.DeformableMirror):
@@ -249,6 +251,9 @@ class TestDeformableMirror(devices.DeformableMirror):
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
         self._current_pattern = pattern
+
+    def get_current_pattern(self):
+        return self._current_pattern
 
 
 @Pyro4.behavior('single')
@@ -363,9 +368,10 @@ class DummyDSP(devices.Device):
             self._client.receiveData("DSP done")
         self._logger.info('... RunActions done.')
 
-if sys.version_info[0] < 3:
-    DummyDSP.receiveClient = devices.DataDevice.receiveClient.im_func
-    DummyDSP.set_client = devices.DataDevice.set_client.im_func
-else:
-    DummyDSP.receiveClient = devices.DataDevice.receiveClient
-    DummyDSP.set_client = devices.DataDevice.set_client
+    def receiveClient(self, *args, **kwargs):
+        ## XXX: maybe this should be on its own mixin instead of on DataDevice
+        return devices.DataDevice.receiveClient(self, *args, **kwargs)
+
+    def set_client(self, *args, **kwargs):
+        ## XXX: maybe this should be on its own mixin instead of on DataDevice
+        return devices.DataDevice.set_client(self, *args, **kwargs)

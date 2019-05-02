@@ -24,7 +24,6 @@ import os
 import warnings
 
 import Pyro4
-import six
 
 from microscope.devices import DeformableMirror
 
@@ -32,30 +31,30 @@ import microscope._wrappers.BMC as BMC
 
 
 class BMCDeformableMirror(DeformableMirror):
-  def __init__(self, serial_number, *args, **kwargs):
-    super(BMCDeformableMirror, self).__init__()
-    self._dm = BMC.DM()
+    def __init__(self, serial_number, *args, **kwargs):
+        super(BMCDeformableMirror, self).__init__()
+        self._dm = BMC.DM()
 
-    if __debug__:
-      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_ALL)
-    else:
-      BMC.ConfigureLog(six.b(os.devnull), BMC.LOG_OFF)
+        if __debug__:
+            BMC.ConfigureLog(os.devnull.encode(), BMC.LOG_ALL)
+        else:
+            BMC.ConfigureLog(os.devnull.encode(), BMC.LOG_OFF)
 
-    status = BMC.Open(self._dm, six.b(serial_number))
-    if status:
-      raise Exception(BMC.ErrorString(status))
+        status = BMC.Open(self._dm, serial_number.encode())
+        if status:
+            raise Exception(BMC.ErrorString(status))
 
-    self._n_actuators = self._dm.ActCount
+        self._n_actuators = self._dm.ActCount
 
-  def apply_pattern(self, pattern):
-    self._validate_patterns(pattern)
-    data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
-    status = BMC.SetArray(self._dm, data_pointer, None)
-    if status:
-      raise Exception(BMC.ErrorString(status))
+    def apply_pattern(self, pattern):
+        self._validate_patterns(pattern)
+        data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        status = BMC.SetArray(self._dm, data_pointer, None)
+        if status:
+            raise Exception(BMC.ErrorString(status))
 
-  def __del__(self):
-    status = BMC.Close(self._dm)
-    if status:
-      warnings.warn(BMC.ErrorString(status), RuntimeWarning)
-    super(BMCDeformableMirror, self).__del__()
+    def __del__(self):
+        status = BMC.Close(self._dm)
+        if status:
+            warnings.warn(BMC.ErrorString(status), RuntimeWarning)
+            super(BMCDeformableMirror, self).__del__()
