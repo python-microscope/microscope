@@ -49,6 +49,7 @@ class XimeaCamera(devices.CameraDevice):
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
+        self.handle = None
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
