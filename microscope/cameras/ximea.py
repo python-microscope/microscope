@@ -72,8 +72,11 @@ class XimeaCamera(devices.CameraDevice):
                     self._triggered = False
                     return self.img.get_image_data_numpy()
                 except Exception as err:
-                    self._logger.info('Get image error %s' % err)
-                    raise
+                    if getattr(err, 'status', None) == 10:
+                        # This is a Timeout error
+                        return None
+                    else:
+                        raise err
         elif trigger_type == 'XI_TRG_EDGE_RISING':
             if self._acquiring:
                 try:
@@ -83,10 +86,11 @@ class XimeaCamera(devices.CameraDevice):
                     self._logger.info('Sending image')
                     return self.img.get_image_data_numpy()
                 except Exception as err:
-                    if err.args is xiapi.Xi_error(10).args:
+                    if getattr(err, 'status', None) == 10:
+                        #This is a Timeout error
                         return None
                     else:
-                        self._logger.info('Get image error %s' % err)
+                        raise err
 
     def abort(self):
         self._logger.info('Disabling acquisition.')
@@ -130,9 +134,12 @@ class XimeaCamera(devices.CameraDevice):
                 self._logger.info('Sending image')
                 self._triggered = False
                 return data
-        except Exception as e:
-            self._logger.info("Error in ximeaCam: %s" % (e))
-            raise Exception(str(xiapi.Xi_error(e.status)))
+        except Exception as err:
+            if getattr(err, 'status', None) == 10:
+                # This is a Timeout error
+                return None
+            else:
+                raise err
 
     def make_safe(self):
         if self._acquiring:
