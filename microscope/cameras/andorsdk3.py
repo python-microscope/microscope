@@ -15,19 +15,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 """AndorSDK3 camera device.
 
 This class provides a wrapper for PYME's SDK3 interface that allows
 a camera and all its settings to be exposed over Pyro.
 """
-from microscope import devices
-from microscope.devices import keep_acquiring
-import numpy as np
-import Pyro4
+
+import queue
 import time
 
-from six.moves import queue
+import Pyro4
+import numpy as np
+
+from microscope import devices
+from microscope.devices import keep_acquiring
+
 from .SDK3Cam import *
+
 
 # SDK data pointer type
 DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
@@ -91,7 +96,6 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_binning', '_aoi_left', '_aoi_top',
                        '_aoi_width', '_aoi_height', ]
 
-@Pyro4.expose
 @Pyro4.behavior('single')
 class AndorSDK3(devices.FloatingDeviceMixin,
                 devices.CameraDevice):
@@ -102,6 +106,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             SDK3.InitialiseLibrary()
         self._index = kwargs.get('index', 0)
         self.handle = None
+        #self._sdk3cam = SDK3Camera(self._index)
+        #SDK3Camera.__init__(self, self._index)
         self.add_setting('use_callback', 'bool',
                          lambda: self._using_callback,
                          self._enable_callback,
@@ -435,8 +441,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         return self._software_trigger()
 
     def _get_binning(self):
-         as_text = self._aoi_binning.get_string().split('x')
-         return tuple(int(t) for t in as_text)
+        as_text = self._aoi_binning.get_string().split('x')
+        return tuple(int(t) for t in as_text)
 
     @keep_acquiring
     def _set_binning(self, h, v):

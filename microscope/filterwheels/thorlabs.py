@@ -23,7 +23,7 @@ import serial
 
 import microscope.devices
 
-@Pyro4.expose
+
 class ThorlabsFilterWheel(microscope.devices.FilterWheelBase):
     """Implements FilterServer wheel interface for Thorlabs FW102C."""
     def __init__(self, com, baud, timeout, **kwargs):

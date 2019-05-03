@@ -34,8 +34,8 @@ Experiments
   data = []
 
   for i in range(10):
-    data.append(camera.trigger_and_wait())
-    print("Frame %d captured." % i)
+      data.append(camera.trigger_and_wait())
+      print("Frame %d captured." % i)
 
   print(data)
 
@@ -61,8 +61,8 @@ Configurations
   from microscope.testsuite.devices import TestFilterWheel
 
   DEVICES = [
-    device(TestCamera, '127.0.0.1', 8005, otherargs=1,),
-    device(TestLaser, '127.0.0.1', 8006),
-    device(TestFilterWheel, '127.0.0.1', 8007,
-           filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
+      device(TestCamera, '127.0.0.1', 8005, otherargs=1,),
+      device(TestLaser, '127.0.0.1', 8006),
+      device(TestFilterWheel, '127.0.0.1', 8007,
+             filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
   ]
