@@ -22,7 +22,13 @@ This module requires the LinkamSDK library and a license file, available
 from Linkam Scientific Instruments.
 
 Currently, this module supports on the the correlative microscopy stage,
-but should be readily extensible to support other Linkam stages."""
+but should be readily extensible to support other Linkam stages.
+
+NOTE: this module does not run correctly with python optimisations in
+use. When invoked with python -O, there seem to be issues with accessing
+ctypes objects.
+  * get_status() throws AttributeError "c_ulonglong has no attribute 'flags'";
+  * get_id returns an empty string, not the device serial number."""
 
 import ctypes
 from ctypes import addressof, byref, POINTER
@@ -920,6 +926,7 @@ class LinkamBase(devices.Device):
 
     @staticmethod
     def init_sdk():
+        """Initialise the SDK and set up event callbacks"""
         try:
             __class__._lib = ctypes.WinDLL("LinkamSDK.dll")
         except:
@@ -927,8 +934,13 @@ class LinkamBase(devices.Device):
             __class__._lib = ctypes.CDLL("libLinkamSDK.so")
         _lib = __class__._lib
         """Initialise the SDK, and create and set the callbacks."""
-        _lib.linkamInitialiseSDK(b'', b'', True)
-        print(__class__)
+        # Omit conditional pending a fix for ctypes issues when optimisations in use.
+        #if __debug__:
+        #    sdk_log = b''
+        #else:
+        import os
+        sdk_log = os.devnull
+        _lib.linkamInitialiseSDK(sdk_log, b'', True)
         # NewValue event callback
         cfunc = ctypes.CFUNCTYPE(_uint32_t, _CommsHandle, _ControllerStatus)(__class__._on_new_value)
         _lib.linkamSetCallbackNewValue(cfunc)
@@ -959,7 +971,6 @@ class LinkamBase(devices.Device):
     def _on_error(cls, h: _CommsHandle, errcode: _uint32_t):
         """Error event callback"""
         err = ErrorCode(errcode)
-        print(err)
         stage = cls._connectionMap.get(h, None)
         if not stage:
             return
@@ -1009,6 +1020,7 @@ class LinkamBase(devices.Device):
         self._reconnect_thread = None
 
     def __del__(self):
+        """Close comms on object deletion"""
         self._process_msg(Msg.CloseComms)
 
     def _post_connect(self):
@@ -1043,7 +1055,8 @@ class LinkamBase(devices.Device):
         """Fetch the device's serial number"""
         buf = ctypes.create_string_buffer(18)
         self._process_msg(Msg.GetControllerSerial, byref(buf), 18)
-        return buf.value
+        # Decode from bytes to string and strip trailing spaces.
+        return buf.value.decode().rstrip()
 
     def get_value(self, svt, result=None):
         """Fetch a value from the device.
@@ -1051,9 +1064,13 @@ class LinkamBase(devices.Device):
             svt: a StageValueType
             result: an existing Variant to use to return a result, or None.
         """
+        # Don't self.check_connection on read as it can cause get_status to throw exception.
         # Ensure svt is an Enum member (not a raw value), as it is used as a key.
-        self.check_connection()
-        svt = _StageValueType(svt)
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         # Determine the appropriate Variant member for the value type.
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         variant = self._process_msg(Msg.GetValue, svt.value, result=result)
@@ -1063,7 +1080,12 @@ class LinkamBase(devices.Device):
             return getattr(variant, vtype)
 
     def get_value_limits(self, svt):
-        svt = _StageValueType(svt)
+        """Returns the bounds for a StageValueType"""
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         vmin = self._process_msg(Msg.GetMinValue, svt.value)
         vmax = self._process_msg(Msg.GetMaxValue, svt.value)
@@ -1072,7 +1094,11 @@ class LinkamBase(devices.Device):
     def set_value(self, svt, val):
         """Set value identified by svt to val"""
         self.check_connection()
-        svt = _StageValueType(svt)
+        if isinstance(svt, str):
+            # Allow access using parameter names - useful for Pyro.
+            svt = getattr(_StageValueType, svt)
+        else:
+            svt = _StageValueType(svt)
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
         v = _Variant(**{vtype: val})
         return self._process_msg(Msg.SetValue,
@@ -1197,6 +1223,7 @@ class LinkamMDSMixin():
         super()._post_connect()
 
     def _update_status(self, status):
+        """Call parent class update_status, then update MDS status structure."""
         super()._update_status(status)
         self.get_value(_StageValueType.MotorDrivenStageStatus, result=self._mdsstatus)
 
@@ -1250,18 +1277,22 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
         t = None
 
         def start_refill(self):
+            """Start a refill: update status flag and last cycle time."""
             self.refilling = True
             if self.t is not None:
                 self.dt = datetime.datetime.now() - self.t
 
         def end_refill(self):
+            """End a refill: update status flag and last refill time."""
             self.refilling = False
             self.t = datetime.datetime.now()
 
         def as_dict(self):
+            """Represent this object as a dict for status queries."""
             return dict(refilling=self.refilling, last=self.t, between_last=self.dt)
 
         def __repr__(self):
+            """Display tracker properties in representation."""
             return "refilling: %s, t: %s, dt: %s" % (self.refilling, self.t, self.dt)
 
 
@@ -1275,13 +1306,21 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
         self._refills = dict({k:self.RefillTracker() for k in self._refill_map})
         # Condensor LED level when on
         self._condensor_level = 100
-        self.open_comms()
         self.add_setting("condensor", float,
                          self.get_condensor_level,
                          self.set_condensor_level,
-                         self.get_value_limits(_StageValueType.CmsCondenserLEDLevel))
+                         (0, 100))
+        # Connect to the stage.
+        if self.uid:
+            # Deviceserver needs uid to associate device to address, so call
+            # open_comms directly to throw an exception on connection error.
+            self.open_comms()
+        else:
+            # Device id not required - just keep trying to connect until success.
+            self._reopen_comms()
 
     def _update_status(self, status):
+        """Update status structures."""
         super()._update_status(status)
         self.get_value(_StageValueType.CmsStatus, result=self._cmsstatus)
         self.get_value(_StageValueType.CmsError, result=self._cmserror)
@@ -1294,20 +1333,20 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
             elif self._refills[key].refilling and not is_refilling:
                 tracker.end_refill()
 
-    def get_id(self):
-        return self.uid
-
     def temperatures(self):
+        """Return a dict of temperature sensor readings."""
         return dict( (key, self.get_value(svt)) for key, svt in self._heater_map.items())
 
     def set_light(self, state):
+        """Set the state of the chamber light."""
         self.set_value(_StageValueType.CmsLight, state)
 
     def get_light(self):
+        """Report the state of the chamber light."""
         return self.get_value(_StageValueType.CmsLight)
 
     def set_condensor(self, state):
-        """Turn the condensor LED on or off"""
+        """Turn the condensor LED on or off."""
         if state:
             level = self._condensor_level
         else:
@@ -1322,9 +1361,11 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
             self.set_condensor(True)
 
     def get_condensor_level(self):
+        """Return the condensor level"""
         return self._condensor_level
 
     def get_motors(self):
+        """Return the position, set point and stopped status of available motors."""
         res = {}
         for axis in 'XYZ':
             if getattr(self._stageconfig.flags, 'motor' + axis):
@@ -1335,22 +1376,21 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
                 res[axis] = None
         return res
 
-    def refill_chamber(self, state=True):
+    def refill_dewar(self, state=True):
+        """Start a refill of the internal dewar from an external reservoir"""
         return self.set_value(_StageValueType.CmsMainDewarFillSig, True)
 
-    def refill_dewar(self, state=True):
+    def refill_chamber(self, state=True):
+        """Start a refill of the sample chamber from the internal dewar"""
         return self.set_value(_StageValueType.CmsSampleDewarFillSig, True)
 
     def refill_stats(self):
+        """Return information about refill times and cycle lengths."""
         return dict([(k, v.as_dict()) for k, v in self._refills.items()])
 
     def get_status(self, *args):
+        """Return a dict containing aggregated stage status."""
         status = super().get_status(*args, self._cmsstatus)
         status.update(self.temperatures())
         status.update(refills=self.refill_stats())
         return status
-
-
-if __name__ == '__main__':
-    l = LinkamCMS(b'')
-    print(l._h.value)

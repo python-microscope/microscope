@@ -27,7 +27,8 @@ import microscope.clients
 import microscope.testsuite.devices as dummies
 
 
-class PyroService(object):
+@Pyro4.expose
+class PyroService:
     """Simple class to test serving via Pyro.
 
     We can use one of our own test devices but the idea is to have
@@ -43,6 +44,19 @@ class PyroService(object):
     @attr.setter
     def attr(self, value):  # exposed as 'proxy.attr' writable
         self._value = value
+
+
+@Pyro4.expose
+class ExposedDeformableMirror(dummies.TestDeformableMirror):
+    """
+    Microscope device server is configure to not require @expose but
+    this is to test our client with Pyro4's own Daemon.  We need to
+    subclass and have the passthrough because the property comes from
+    the Abstract Base class, not the TestDeformableMirror class.
+    """
+    @property
+    def n_actuators(self):
+        return super().n_actuators
 
 
 class TestClient(unittest.TestCase):
@@ -65,7 +79,7 @@ class TestClient(unittest.TestCase):
         ## list of (object-to-serve, property-name-to-test)
         objs2prop = [
             (PyroService(), 'attr'),
-            (dummies.TestDeformableMirror(10), 'n_actuators'),
+            (ExposedDeformableMirror(10), 'n_actuators'),
         ]
         clients = self._serve_objs([x[0] for x in objs2prop])
         for client, obj_prop in zip(clients, objs2prop):
@@ -82,3 +96,7 @@ class TestClient(unittest.TestCase):
         client.attr = 10
         self.assertTrue(client.attr, 10)
         self.assertTrue(obj.attr, 10)
+
+
+if __name__ == '__main__':
+    unittest.main()
