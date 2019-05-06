@@ -81,6 +81,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         status = asdk.GetLastError(err, self._err_msg, self._err_msg_len)
         if status == asdk.SUCCESS:
             msg = self._err_msg.value
+            msg = msg.decode()
             if len(msg) > self._err_msg_len:
                 msg = msg + "..."
             msg += "(error %i)" % (err.contents.value)
@@ -128,9 +129,11 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
         pattern = self._normalize_patterns(pattern)
+        self._logger.info(pattern)
         data_pointer = pattern.ctypes.data_as(asdk.Scalar_p)
         status = asdk.Send(self._dm, data_pointer)
         self._raise_if_error(status)
+        self._logger.info("End of appply pattern")
 
     def set_trigger(self, ttype, tmode):
         if tmode not in self._supported_TriggerModes:
