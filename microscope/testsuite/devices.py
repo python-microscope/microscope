@@ -181,15 +181,16 @@ class TestCamera(devices.CameraDevice):
 
 
 class TestFilterWheel(FilterWheelBase):
-    def __init__(self, filters=[], *args, **kwargs):
-        super(TestFilterWheel, self).__init__(filters, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(TestFilterWheel, self).__init__(*args, **kwargs)
         self._position = 0
 
-    def _get_position(self):
+    def get_position(self):
         return self._position
 
-    def _set_position(self, position):
+    def set_position(self, position):
         time.sleep(1)
+        self._logger.info("Setting position to %s" % position)
         self._position = position
 
     def initialize(self):
