@@ -442,14 +442,17 @@ class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
 
 class TestOneFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel([(0, 'DAPI', '430')])
+        self.device = dummies.TestFilterWheel(filteres=[(0, 'DAPI', '430')])
 
 
 class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel([(0, 'DAPI', '430'),
-                                               (1, 'GFP', '580'),])
+        self.device = dummies.TestFilterWheel(filters=[(0, 'DAPI', '430'),
+                                                       (1, 'GFP', '580'),])
 
+class TestEmptySixPositionFilterWheel(unittest.TestCase, FilterWheelTests):
+    def setUp(self):
+        self.device = dummies.TestFilterWheel(positions=6)
 
 class TestDummyDeformableMirror(unittest.TestCase, DeformableMirrorTests):
     def setUp(self):
