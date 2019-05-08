@@ -87,6 +87,10 @@ class Setting():
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
         allowable values, and set the value.
+
+        Setters and getters accept or return:
+            the setting value for int, float, bool and str;
+            the setting index into a list, dict or Enum type for enum.
         """
         self.name = name
         if dtype not in DTYPES:
