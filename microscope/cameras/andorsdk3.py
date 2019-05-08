@@ -345,8 +345,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
 
                 is_readonly_func = var.is_readonly
                 if type(var) is ATEnum:
-                    set_func = var.set_string
-                    get_func = var.get_string
+                    set_func = var.set_index
+                    get_func = var.get_index
                     vals_func = var.get_available_values
                 else:
                     set_func = var.set_value
