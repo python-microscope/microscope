@@ -442,8 +442,7 @@ class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
 
 class TestOneFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel(filteres=[(0, 'DAPI', '430')])
-
+        self.device = dummies.TestFilterWheel(filters=[(0, 'DAPI', '430')])
 
 class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
