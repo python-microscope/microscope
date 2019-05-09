@@ -502,7 +502,7 @@ class DataDevice(Device):
             if isinstance(data, Exception):
                 standard_exception = Exception(str(data).encode('ascii'))
                 try:
-                    self._send_data(standard_exception, timestamp)
+                    self._send_data(client, standard_exception, timestamp)
                 except Exception as e:
                     err = e
             else:
