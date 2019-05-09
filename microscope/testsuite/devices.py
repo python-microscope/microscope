@@ -91,7 +91,7 @@ class TestCamera(devices.CameraDevice):
 
     def _set_error_percent(self, value):
         self._error_percent = value
-        self._a_setting = value / 10
+        self._a_setting = value // 10
 
     def _set_gain(self, value):
         self._gain = value
