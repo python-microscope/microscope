@@ -1070,7 +1070,7 @@ class FilterWheelBase(Device):
         else:
             self._filters = {i:f for (i, f) in enumerate(filters)}
         self._inv_filters = {val: key for key, val in self._filters.items()}
-        if not hasattr(self, '_positions') and positions != 0:
+        if not hasattr(self, '_positions'):
             self._positions = positions
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
