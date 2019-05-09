@@ -71,16 +71,26 @@ class TestCamera(devices.CameraDevice):
                          self._set_gain,
                          lambda: (0, 8192))
         # Enum-setting tests
-        self._listEnum = 0
-        self.add_setting('listEnum', 'enum',
-                         lambda: self._listEnum,
-                         lambda val: setattr(self, '_listEnum', val),
-                         ['A', 'B', 'C', 'D'])
         self._intEnum = CamEnum.A
         self.add_setting('intEnum', 'enum',
                          lambda: self._intEnum,
                          lambda val: setattr(self, '_intEnum', val),
                          CamEnum)
+        self._dictEnum = 0
+        self.add_setting('dictEnum', 'enum',
+                         lambda: self._dictEnum,
+                         lambda val: setattr(self, '_dictEnum', val),
+                         {0:'A', 8:'B', 13:'C', 22:'D'})
+        self._listEnum = 0
+        self.add_setting('listEnum', 'enum',
+                         lambda: self._listEnum,
+                         lambda val: setattr(self, '_listEnum', val),
+                         ['A', 'B', 'C', 'D'])
+        self._tupleEnum = 0
+        self.add_setting('tupleEnum', 'enum',
+                         lambda: self._tupleEnum,
+                         lambda val: setattr(self, '_tupleEnum', val),
+                         ('A', 'B', 'C', 'D'))
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = 0

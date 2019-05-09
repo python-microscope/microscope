@@ -58,7 +58,7 @@ Binning = namedtuple('Binning', ['h', 'v'])
 DTYPES = {'int': ('int', tuple),
           'float': ('float', tuple),
           'bool': ('bool', type(None)),
-          'enum': ('enum', list, EnumMeta),
+          'enum': ('enum', list, EnumMeta, dict, tuple),
           'str': ('str', int),
           'tuple': ('tuple', type(None)),
           int: ('int', tuple),
@@ -95,9 +95,9 @@ class Setting():
         self.name = name
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not (isinstance(values, DTYPES[dtype][1]) or callable(values)):
+        elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
             raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1]))
+                            (dtype, DTYPES[dtype][1:]))
         self.dtype = DTYPES[dtype][0]
         self._get = get_func
         self._values = values
@@ -146,8 +146,12 @@ class Setting():
             return [(v.value, v.name) for v in self._values]
         values = _call_if_callable(self._values)
         if values is not None:
-            if self.dtype is 'enum': # but self._values is a list or tuple
-                return list(enumerate(values))
+            if self.dtype is 'enum':
+                if isinstance(values, dict):
+                    return list(values.items())
+                else:
+                    # self._values is a list or tuple
+                    return list(enumerate(values))
             elif self._values is not None:
                 return values
 
@@ -275,9 +279,9 @@ class Device(object):
         """
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not (isinstance(values, DTYPES[dtype][1]) or callable(values)):
+        elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
             raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1]))
+                            (dtype, DTYPES[dtype][1:]))
         else:
             self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
