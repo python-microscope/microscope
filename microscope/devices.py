@@ -1083,7 +1083,7 @@ class FilterWheelBase(Device):
                          'int',
                          self.get_position,
                          self.set_position,
-                         (0, self.get_num_positions) )
+                         lambda: (0, self.get_num_positions()) )
 
 
     def get_num_positions(self):
