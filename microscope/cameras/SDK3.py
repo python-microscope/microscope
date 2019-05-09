@@ -34,8 +34,8 @@ AT_WC = ctypes.c_wchar
 _stdcall_libraries = {}
 
 if os.name in ('nt', 'ce'):
-        _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
-        _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
+    _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
+    _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 else:
     _stdcall_libraries['ATCORE'] = ctypes.CDLL('atcore.so')
