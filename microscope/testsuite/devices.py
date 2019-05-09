@@ -30,6 +30,15 @@ from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import FilterWheelBase
 
+from enum import IntEnum
+
+class CamEnum(IntEnum):
+    A = 1
+    B = 2
+    C = 3
+    D = 4
+
+
 @Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
@@ -61,6 +70,17 @@ class TestCamera(devices.CameraDevice):
                          lambda: self._gain,
                          self._set_gain,
                          lambda: (0, 8192))
+        # Enum-setting tests
+        self._listEnum = 0
+        self.add_setting('listEnum', 'enum',
+                         lambda: self._listEnum,
+                         lambda val: setattr(self, '_listEnum', val),
+                         ['A', 'B', 'C', 'D'])
+        self._intEnum = CamEnum.A
+        self.add_setting('intEnum', 'enum',
+                         lambda: self._intEnum,
+                         lambda val: setattr(self, '_intEnum', val),
+                         CamEnum)
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = 0
@@ -181,15 +201,16 @@ class TestCamera(devices.CameraDevice):
 
 
 class TestFilterWheel(FilterWheelBase):
-    def __init__(self, filters=[], *args, **kwargs):
-        super(TestFilterWheel, self).__init__(filters, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(TestFilterWheel, self).__init__(*args, **kwargs)
         self._position = 0
 
-    def _get_position(self):
+    def get_position(self):
         return self._position
 
-    def _set_position(self, position):
+    def set_position(self, position):
         time.sleep(1)
+        self._logger.info("Setting position to %s" % position)
         self._position = position
 
     def initialize(self):

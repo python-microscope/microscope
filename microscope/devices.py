@@ -87,6 +87,10 @@ class Setting():
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
         allowable values, and set the value.
+
+        Setters and getters accept or return:
+            the setting value for int, float, bool and str;
+            the setting index into a list, dict or Enum type for enum.
         """
         self.name = name
         if dtype not in DTYPES:
@@ -1059,30 +1063,38 @@ class LaserDevice(Device):
 class FilterWheelBase(Device):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, filters, *args, **kwargs):
+    def __init__(self, *args, filters=[], positions=0, **kwargs):
         super(FilterWheelBase, self).__init__(*args, **kwargs)
-        self._filters = {f[0]: f[1:] for f in filters}
+        if isinstance(filters, dict):
+            self._filters = filters
+        else:
+            self._filters = {i:f for (i, f) in enumerate(filters)}
         self._inv_filters = {val: key for key, val in self._filters.items()}
+        if not hasattr(self, '_positions') and positions != 0:
+            self._positions = positions
         # The position as an integer.
+        # Deprecated: clients should call get_position and set_position;
+        # still exposed as a setting until cockpit uses set_position.
         self.add_setting('position',
                          'int',
-                         self._get_position,
-                         self._set_position,
-                         (0, 5))
-        # The selected filter.
-        self.add_setting('filter',
-                         'enum',
-                         lambda: self._filters[self._get_position()],
-                         lambda val: self._set_position(self._inv_filters[val]),
-                         self._filters.values)
+                         self.get_position,
+                         self.set_position,
+                         (0, self.get_num_positions) )
+
+
+    def get_num_positions(self):
+        """Returns the number of wheel positions."""
+        return(max( self._positions, len(self._filters)))
 
     @abc.abstractmethod
-    def _get_position(self):
-        return self._position
+    def get_position(self):
+        """Return the wheel's current position"""
+        return 0
 
     @abc.abstractmethod
-    def _set_position(self, position):
-        self._position = position
+    def set_position(self, position):
+        """Set the wheel position."""
+        pass
 
     def get_filters(self):
-        return self._filters.items()
+        return [(k,v) for k,v in self._filters.items()]
