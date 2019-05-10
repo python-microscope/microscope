@@ -1297,6 +1297,13 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                           setter is None)
         # Set a conservative default temperature set-point.
         self.settings[name].set(-20)
+        # Fan control
+        name = 'Fan mode'
+        self.settings[name] = Setting(name, 'enum',
+                                      self._bind(GetFanMode),
+                                      self._bind(SetFanMode),
+                                      {0:'full', 1:'low', 2:'off'}
+                                      )
         # Cooler control
         name = 'Cooler Enabled'
         self.settings[name] = Setting(name, 'bool',
