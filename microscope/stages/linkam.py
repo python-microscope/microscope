@@ -1012,9 +1012,8 @@ class LinkamBase(devices.Device):
         self._h = _CommsHandle()
         self._connectionstatus = _ConnectionStatus()
         self._stageconfig = _StageConfig()
-        self._status = _ControllerStatus()
         # Stage status struct, updated by the NewValue callback.
-        self._status = _uint64_t()
+        self._status = _ControllerStatus()
         if __class__._lib is None:
             self.init_sdk()
         self._reconnect_thread = None
@@ -1145,7 +1144,7 @@ class LinkamBase(devices.Device):
             # Already trying to reconnect
             return
         import threading
-        self._reconnect_thread = threading.Thread(target=self._reopen_loop)
+        self._reconnect_thread = threading.Thread(target=self._reopen_loop, daemon=True)
         self._reconnect_thread.start()
 
     def _reopen_loop(self):
@@ -1255,7 +1254,7 @@ class LinkamMDSMixin():
             if getattr(self._stageconfig.flags, 'motor' + axis):
                 pos[axis] = self.get_value(getattr(_StageValueType, 'MotorPos' + axis))
             else:
-                pos[axis] = None
+                pos[axis] = float('nan')
         return pos
 
 

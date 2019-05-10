@@ -1083,7 +1083,8 @@ class PVParam(object):
             except Exception as e:
                 err = e
 
-        if err and getattr(err, 'message', '').startswith('pvcam error 49'):
+        # Test on err.args prevents indexing into empty tuple.
+        if err and err.args and err.args[0].startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
             result = None
         elif err:
@@ -1422,8 +1423,9 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 # Raise these here, as the message is a tuple, not a str.
                 raise
             except Exception as err:
-                if not err.message.startswith('pvcam error 49'):
-                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name), exc_info=err.message)
+                # Test on err.args prevents indexing into empty tuple.
+                if err.args and not err.args[0].startswith('pvcam error 49'):
+                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name))
                     continue
             self.add_setting(p.name,
                              p.dtype,
