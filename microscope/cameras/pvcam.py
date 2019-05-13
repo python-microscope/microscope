@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8
 #
-# Copyright 2017 Mick Phillips (mick.phillips@gmail.com)
+# Copyright 2017-2019 Mick Phillips (mick.phillips@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -770,7 +770,6 @@ class dllFunction(object):
         res = self.f(*ars)
         # print res
 
-
         if res == False:
             err_code = _lib.pl_error_code()
             err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
@@ -790,7 +789,6 @@ def _status():
     err_code = _lib.pl_error_code()
     err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
     _lib.pl_error_message(err_code, err_msg)
-    print (str(buffer(err_msg)))
 
 
 def dllFunc(name, args=[], argnames=[], buf_len=0):
@@ -980,12 +978,6 @@ STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
                   FRAME_AVAILABLE: 'FRAME_AVAILABLE',}
 
 
-# Allowable enum values that the hardware fails to report.
-_ENUM_FIXES = {
-    'Evolve-5': {PARAM_PMODE: [(0, 'Normal'), (4, 'Alternate Normal')],},
-}
-
-
 # === Python classes ===
 # Trigger modes.
 class TriggerMode(object):
@@ -1032,7 +1024,7 @@ class PVParam(object):
         if self.dtype == 'enum':
             # We may be passed a value, a description string, or a tuple of
             # (value, string).
-            values, descriptions = zip(*self.values)
+            values, descriptions = zip(*self.values.items())
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
             elif isinstance(new_value, str):
@@ -1054,7 +1046,6 @@ class PVParam(object):
                    ctypes.byref(ctypes.c_void_p(new_value)))
         # Read back the value to update cache.
         self._query(force_query=True)
-
 
 
     def _query(self, what=ATTR_CURRENT, force_query=False):
@@ -1117,17 +1108,11 @@ class PVParam(object):
     def values(self):
         """Get parameter values, range or string length."""
         if self.dtype == 'enum':
-            values = []
+            values = {}
             for i in range(self.count):
                 length = _enum_str_length(self.cam.handle, self.param_id, i)
                 value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
-                values.append((value.value, desc.value))
-            chip = self.cam._params[PARAM_CHIP_NAME].current
-            missing = _ENUM_FIXES.get(chip, {}).get(self.param_id, [])
-            for m in missing:
-                if m[0] not in zip(*values)[0]:
-                    values.append(m)
-            values.sort()
+                values[value.value] = desc.value
         elif self.dtype in [str, 'str']:
             values = _length_map[self.param_id] or 0
         else:
@@ -1154,15 +1139,7 @@ class PVParam(object):
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
         elif self._pvtype == TYPE_ENUM:
-            value = int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
-            vals, descs = zip(*self.values)
-            if value in vals:
-                index = vals.index(value)
-                description = descs[index]
-            else:
-                index = None
-                description = '*UNDEFINED*'
-            return (value, description)
+            return int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
         else:
             return ctypes.POINTER(self._ctype)(self.raw).contents.value
 
@@ -1204,13 +1181,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                          float,
                          lambda: self.exposure_time,
                          self.set_exposure_time,
-                         lambda: (1e-6, 1))
+                         lambda: (1e-6, 1) )
         self.add_setting('trigger mode',
-                          'enum',
-                          lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
-                          lambda args: setattr(self, '_trigger', int(args[0])),
-                          [(k, v.label) for k, v in TRIGGER_MODES.items()]
-                          )
+                         'enum',
+                         lambda: self._trigger,
+                         lambda value: setattr(self, '_trigger', value),
+                         {k: v.label for k,v in TRIGGER_MODES.items()} )
         self.add_setting('circular buffer length',
                          int,
                          lambda: self._circ_buffer_length,
@@ -1455,8 +1431,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         # table entries.
         ro_ports = self._params[PARAM_READOUT_PORT].values
         self._readout_modes = []
-        self._readout_mode_parameters = {}
-        for i, port in ro_ports:
+        self._readout_mode_parameters = []
+        for i, port in ro_ports.items():
             self._params[PARAM_READOUT_PORT].set_value(i)
             ro_speeds = self._params[PARAM_SPDTAB_INDEX].values
             for j in range(ro_speeds[0], ro_speeds[1]+1):
@@ -1473,19 +1449,19 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                     prefix = 'Hz'
                 mode_str = "%s, %s-bit, %s %sHz" % (port, bit_depth, freq, prefix)
                 self._readout_modes.append(mode_str)
-                self._readout_mode_parameters[mode_str] = {'port':i, 'spdtab_index': j}
+                self._readout_mode_parameters.append({'port':i, 'spdtab_index': j})
         # Set to default mode.
-        self.set_readout_mode(self._readout_modes[0])
+        self.set_readout_mode(0)
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
     @keep_acquiring
-    def set_readout_mode(self, description):
+    def set_readout_mode(self, index):
         """Set the readout mode and transform."""
-        params = self._readout_mode_parameters[description]
+        params = self._readout_mode_parameters[index]
         self._params[PARAM_READOUT_PORT].set_value(params['port'])
         self._params[PARAM_SPDTAB_INDEX].set_value(params['spdtab_index'])
-        self._readout_mode = description
+        self._readout_mode = index
         # Update transforms, if available.
         chip = self._params[PARAM_CHIP_NAME].current
         new_readout_transform = None
