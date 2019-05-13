@@ -1021,7 +1021,7 @@ class PVParam(object):
         if self.dtype == 'enum':
             # We may be passed a value, a description string, or a tuple of
             # (value, string).
-            values, descriptions = zip(*self.values.items())
+            values, descriptions = list(zip(*self.values.items()))
             if hasattr(new_value, '__iter__'):
                 desc = str(new_value[1])
             elif isinstance(new_value, str):
