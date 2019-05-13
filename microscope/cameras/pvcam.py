@@ -606,9 +606,6 @@ class md_frame_roi_header(ctypes.Structure):
         ("_reserved", uns8*7),
     ]
 
-
-PL_MD_EXT_TAGS_MAX_SUPPORTED = 255
-
 class md_ext_item_info(ctypes.Structure):
     _fields_ = [
         ("tag", uns16),
