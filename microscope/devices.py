@@ -96,8 +96,8 @@ class Setting():
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s': expected function or %s" %
+                            (dtype, name, DTYPES[dtype][1:]))
         self.dtype = DTYPES[dtype][0]
         self._get = get_func
         self._values = values
@@ -280,8 +280,8 @@ class Device(object):
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s': expected function or %s" %
+                            (dtype, name, DTYPES[dtype][1:]))
         else:
             self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
@@ -307,6 +307,7 @@ class Device(object):
             self.settings[name].set(value)
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
+            raise
 
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
