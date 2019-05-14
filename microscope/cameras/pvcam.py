@@ -937,7 +937,7 @@ _dtypemap = {
 # querying PARAM_DD_INFO_LEN. However, querying PARAM_DD_INFO frequently causes
 # a general protection fault in the DLL, regardless of buffer length.
 _length_map = {
-    PARAM_DD_INFO: None,
+    PARAM_DD_INFO: PARAM_DD_INFO_LENGTH,
     PARAM_CHIP_NAME: CCD_NAME_LEN,
     PARAM_SYSTEM_NAME: MAX_SYSTEM_NAME_LEN,
     PARAM_VENDOR_NAME: MAX_VENDOR_NAME_LEN,
@@ -1002,48 +1002,50 @@ TRIGGER_MODES = {
     TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION),
 }
 
-
-class PVParam(object):
+class PVParam():
     """A wrapper around PVCAM parameters."""
-    def __init__(self, camera, param_id):
-        self.cam = camera
-        self.param_id = param_id
+    @staticmethod
+    def factory(camera, param_id):
+        """Create a PVParam or appropriate subclass"""
+        # A mapping of pv parameters types to python types.
+        #   None means unsupported.
+        #   Parameters omitted from the mapping will default to PVParam.
+        __types__ = {TYPE_SMART_STREAM_TYPE: None,
+                     TYPE_SMART_STREAM_TYPE_PTR: None,
+                     TYPE_VOID_PTR: None,
+                     TYPE_VOID_PTR_PTR: None,
+                     TYPE_ENUM: PVEnumParam,
+                     TYPE_CHAR_PTR: PVStringParam}
+        # Determine the appropiate type from its id.
+        pvtype = __types__.get(param_id >> 24 & 255, PVParam)
+        if pvtype is None:
+            raise Exception("Parameter %s not supported" % _param_to_name[param_id])
+        return pvtype(camera, param_id)
 
+    def __init__(self, camera, param_id):
+        # Use a weakref back to the camera to avoid circular dependency.
+        import weakref
+        self.cam = weakref.proxy(camera)
+        self.param_id = param_id
         self.name = _param_to_name[param_id]
         self._pvtype = param_id >> 24 & 255
         self.dtype = _dtypemap[self._pvtype]
         self._ctype = _typemap[self._pvtype]
         self.__cache = {}
 
-
     def set_value(self, new_value):
-        """Set a parameter value."""
-        if self.dtype == 'enum':
-            # We may be passed a value, a description string, or a tuple of
-            # (value, string).
-            values, descriptions = list(zip(*self.values.items()))
-            if hasattr(new_value, '__iter__'):
-                desc = str(new_value[1])
-            elif isinstance(new_value, str):
-                desc = str(new_value)
-            else:
-                desc = None
-            # If we have a description, rely on that, as this avoids any confusion
-            # of index and value.
-            if desc and desc in descriptions:
-                new_index = descriptions.index(desc)
-                new_value = values[new_index]
-            elif desc:
-                raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
-        _set_param(self.cam.handle,
-                   self.param_id,
-                   # TODO: this throws errors on strings, since need to put them into
-                   # a buffer before creating a pointer. Does any pvcam hardware let you
-                   # write to strings, though?
-                   ctypes.byref(ctypes.c_void_p(new_value)))
+        """Set a parameter value.
+
+        Subclasses should do whatever processing they need on new_value,
+        then call super().set_value(new_value)"""
+        try:
+            ref = ctypes.byref(new_value)
+        except TypeError:
+            # Need to convert python type to ctype first.
+            ref = ctypes.byref(self._ctype(new_value) )
+        _set_param(self.cam.handle, self.param_id, ref)
         # Read back the value to update cache.
         self._query(force_query=True)
-
 
     def _query(self, what=ATTR_CURRENT, force_query=False):
         """Query the DLL for an attribute for this parameter."""
@@ -1071,7 +1073,6 @@ class PVParam(object):
                 result = _get_param(self.cam.handle, self.param_id, what)
             except Exception as e:
                 err = e
-
         # Test on err.args prevents indexing into empty tuple.
         if err and err.args and err.args[0].startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
@@ -1082,58 +1083,95 @@ class PVParam(object):
             self.__cache[key] = result
         return result
 
-
     @property
     def access(self):
         """Return parameter access attribute."""
-        return self._query(what=ATTR_ACCESS).value
-
+        return int(_get_param(self.cam.handle, self.param_id, ATTR_ACCESS).value)
 
     @property
     def available(self):
         """Return whether or not parameter is available on hardware."""
-        return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL))
-
+        return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL).value)
 
     @property
     def count(self):
         """Return count of parameter enum entries."""
-        return self._query(what=ATTR_COUNT).value
-
+        return int(_get_param(self.cam.handle, self.param_id, ATTR_COUNT).value)
 
     @property
     def values(self):
-        """Get parameter values, range or string length."""
-        if self.dtype == 'enum':
-            values = {}
-            for i in range(self.count):
-                length = _enum_str_length(self.cam.handle, self.param_id, i)
-                value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
-                values[value.value] = desc.value.decode()
-        elif self.dtype in [str, 'str']:
-            values = _length_map[self.param_id] or 0
-        else:
-            try:
-                values = (ctypes.POINTER(self._ctype)(self._query(ATTR_MIN)).contents.value,
-                          ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
-            except:
-                raise
-        return values
+        """Get parameter min and max values.
 
+        Subclasses for strings and enum override this."""
+        return (ctypes.POINTER(self._ctype)(self._query(ATTR_MIN)).contents.value,
+                ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
 
     @property
     def current(self):
-        """Return the current (or cached) parameter value."""
+        """Return the current (or cached) parameter value.
+
+        Subclasses should override this for more complex data types."""
         q = self._query()
-        if self._pvtype == TYPE_CHAR_PTR:
-            return q.value.decode() or ''
-        elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
-                              TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
-            raise Exception('Value conversion not supported for parameter %s.' % self.name)
-        elif self._pvtype == TYPE_ENUM:
-            return int(q or 0) # c_void_p(0) is None, so replace with 0
+        return ctypes.POINTER(self._ctype)(q).contents.value
+
+
+class PVEnumParam(PVParam):
+    """PVParam subclass for enums"""
+    def set_value(self, new_value):
+        """Set an enum parameter value."""
+        # We may be passed a value, a description string, or a tuple of
+        # (value, string).
+        values, descriptions = list(zip(*self.values.items()))
+        if hasattr(new_value, '__iter__'):
+            desc = str(new_value[1])
+        elif isinstance(new_value, str):
+            desc = str(new_value)
         else:
-            return ctypes.POINTER(self._ctype)(q).contents.value
+            desc = None
+        # If we have a description, rely on that, as this avoids any confusion
+        # of index and value.
+        if desc and desc in descriptions:
+            new_index = descriptions.index(desc)
+            new_value = values[new_index]
+        elif desc:
+            raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
+        super().set_value(new_value)
+
+    @property
+    def current(self):
+        """Return the current (or cached) enum parameter value."""
+        # c_void_p(0) is None, so replace with 0
+        return int(self._query().value or 0)
+
+    @property
+    def values(self):
+        """Get allowable enum values"""
+        values = {}
+        for i in range(self.count):
+            length = _enum_str_length(self.cam.handle, self.param_id, i)
+            value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
+            values[value.value] = desc.value.decode()
+        return values
+
+
+class PVStringParam(PVParam):
+    """PVParam subclass for strings"""
+    def set_value(self, new_value):
+        """Set a string parameter value"""
+        if hasattr(new_value, "encode"):
+            new_value = new_value.encode()
+        super().set_value(new_value)
+
+    @property
+    def current(self):
+        """Return the current (or cached) string parameter value."""
+        return self._query().value.decode()
+
+    @property
+    def values(self):
+        """Get allowable string length."""
+        values = _length_map[self.param_id] or 0
+        return values
 
 
 @Pyro4.behavior('single')
@@ -1375,12 +1413,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         _cam_register_callback(self.handle, PL_CALLBACK_CAM_RESUMED, self._cbs['resumed'])
         # Repopulate _params.
         self._params = {}
-        # Add chip before anything else, as chip name is used to add missing enums.
-        self._params[PARAM_CHIP_NAME] = PVParam(self, PARAM_CHIP_NAME)
         for (param_id, name) in _param_to_name.items():
-            if param_id in self._params:
+            try:
+                p = PVParam.factory(self, param_id)
+            except:
+                self._logger.warn("Skipping unsupported parameter %s." % name)
                 continue
-            p = PVParam(self, param_id)
             if not p.dtype or not p.available:
                 continue
             self._params[param_id] = p
