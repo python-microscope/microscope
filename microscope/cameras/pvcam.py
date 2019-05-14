@@ -1109,7 +1109,7 @@ class PVParam(object):
             for i in range(self.count):
                 length = _enum_str_length(self.cam.handle, self.param_id, i)
                 value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
-                values[value.value] = desc.value
+                values[value.value] = desc.value.decode()
         elif self.dtype in [str, 'str']:
             values = _length_map[self.param_id] or 0
         else:
@@ -1122,23 +1122,18 @@ class PVParam(object):
 
 
     @property
-    def raw(self):
-        """Return a raw parameter query result."""
-        return self._query()
-
-
-    @property
     def current(self):
         """Return the current (or cached) parameter value."""
+        q = self._query()
         if self._pvtype == TYPE_CHAR_PTR:
-            return str(memoryview(self.raw).tobytes()) or ''
+            return q.value.decode() or ''
         elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
                               TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
             raise Exception('Value conversion not supported for parameter %s.' % self.name)
         elif self._pvtype == TYPE_ENUM:
-            return int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
+            return int(q or 0) # c_void_p(0) is None, so replace with 0
         else:
-            return ctypes.POINTER(self._ctype)(self.raw).contents.value
+            return ctypes.POINTER(self._ctype)(q).contents.value
 
 
 @Pyro4.behavior('single')
