@@ -40,14 +40,14 @@ _Clarity__SLDPOS1 = 0x01 #disk pos 1, low sectioning
 _Clarity__SLDPOS2 = 0x02 #disk pos 2, mid sectioning
 _Clarity__SLDPOS3 = 0x03 #disk pos 3, high sectioning
 _Clarity__SLDERR = 0xff #An error has occurred in setting slide position (end stops not detected)
-_Clarity__SLDMID = 0x10 #slide in mid position (was =0x03 for SD62)
+_Clarity__SLDMID = 0x10 #slide between positions (was =0x03 for SD62)
 # Filter position/status
 _Clarity__FLTPOS1 = 0x01 #Filter in position 1
 _Clarity__FLTPOS2 = 0x02 #Filter in position 2
 _Clarity__FLTPOS3 = 0x03 #Filter in position 3
 _Clarity__FLTPOS4 = 0x04 #Filter in position 4
 _Clarity__FLTERR = 0xff #An error has been detected in the filter drive (eg filters not present)
-_Clarity__FLTMID = 0x10 #Filter in mid position
+_Clarity__FLTMID = 0x10 #Filter between positions
 # Calibration LED state
 _Clarity__CALON = 0x01 #CALibration led power on
 _Clarity__CALOFF = 0x02 #CALibration led power off
@@ -72,12 +72,12 @@ _Clarity__SETCAL = 0x25 #1 byte out CAL led status, echoes command or SLEEP
 _Clarity__SETSVCMODE1 = 0xe0 #1 byte for service mode. SLEEP activates service mode. RUN returns to normal mode.
 
 
+
 class Clarity(microscope.devices.FilterWheelBase):
     _slide_to_sectioning = {__SLDPOS0: 'bypass',
                             __SLDPOS1: 'low',
                             __SLDPOS2: 'mid',
-                            __SLDPOS3: 'high',
-                            __SLDMID: 'mid',}
+                            __SLDPOS3: 'high',}
     _positions = 4
 
     def __init__(self, *args, **kwargs):
@@ -91,18 +91,28 @@ class Clarity(microscope.devices.FilterWheelBase):
                          self._slide_to_sectioning)
 
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
+        """Send a command to the Clarity and return its response"""
         if not self._hid:
-            raise Exception("Not connected to device.")
+            self.open()
         with self._lock:
-            buffer = [0x00] * max_length
-            buffer[0] = command
-            buffer[1] = param
+            # The device expects a list of 16 integers
+            buffer = [0x00] * max_length # The 0th element must be 0.
+            buffer[1] = command # The 1st element is the command
+            buffer[2] = param # The 2nd element is any command argument.
             result = self._hid.write(buffer)
-            response = self._hid.read(max_length, timeout_ms)
-            if response[0] != command:
+            if result == -1:
+                # Nothing to read back
                 return None
-            else:
-                return response[1:]
+            while True:
+                # Read responses until we see the response to our command.
+                # (We should get the correct response on the first read.)
+                response = self._hid.read(result - 1, timeout_ms)
+                if not response:
+                    # No response
+                    return None
+                elif response[0] == command:
+                    break
+            return response[1:]
 
     @property
     def is_connected(self):
@@ -129,7 +139,7 @@ class Clarity(microscope.devices.FilterWheelBase):
         if not self.is_connected:
             self.open()
         self._send_command(__SETONOFF, __RUN)
-        return self._send_command(__GETONOFF) == __RUN
+        return self._send_command(__GETONOFF)[0] == __RUN
 
     def _on_disable(self):
         self._send_command(__SETONOFF, __SLEEP)
@@ -143,16 +153,18 @@ class Clarity(microscope.devices.FilterWheelBase):
 
     def get_slide_position(self):
         """Get the current slide position"""
-        result = self._slide_to_sectioning.get(self._send_command(__GETSLIDE), None)
+        result = self._send_command(__GETSLIDE)
         if result is None:
             raise Exception("Slide position error.")
-        return result
+        return result[0]
 
-    def set_slide_position(self, position):
+    def set_slide_position(self, position, blocking=True):
         """Set the slide position"""
         result = self._send_command(__SETSLIDE, position)
         if result is None:
             raise Exception("Slide position error.")
+        while blocking and self.moving():
+            pass
         return result
 
     def get_slides(self):
@@ -166,23 +178,35 @@ class Clarity(microscope.devices.FilterWheelBase):
         slide = result[4]
         status['slide'] = (slide, self._slide_to_sectioning.get(slide, None))
         status['filter'] = (result[6], self._filters.get(result[6], None))
-        status['calibration'] == result[7] == __CALON
+        status['calibration'] = result[7] == __CALON
         return status
 
     # Implemented by FilterWheelBase
     #def get_filters(self):
     #    pass
 
+    def moving(self):
+        """Report whether or not the device is between positions."""
+        import time
+        # Wait a short time to avoid false negatives when called
+        # immediately after initiating a move. Trial and error
+        # indicates a delay of 50ms is required.
+        time.sleep(0.05)
+        return any( (self.get_slide_position() == __SLDMID,
+                     self.get_position() == __FLTMID) )
+
     def get_position(self):
         """Return the current filter position"""
         result = self._send_command(__GETFILT)
         if result ==  __FLTERR:
             raise Exception("Filter position error.")
-        return result
+        return result[0]
 
-    def set_position(self, pos):
+    def set_position(self, pos, blocking=True):
         """Set the filter position"""
         result = self._send_command(__SETFILT, pos)
         if result is None:
             raise Exception("Filter position error.")
+        while blocking and self.moving():
+            pass
         return result
