@@ -192,20 +192,40 @@ class Clarity(microscope.devices.FilterWheelBase):
         result = self._send_command(__FULLSTAT)
         if result is None:
             return
+        # A status dict to populate and return
         status = {}
+        # A list to track states, any one of which mean the device is busy.
+        busy = []
+        # Disk running
         status['on'] = result[3] == __RUN
-        status['shutter'] = result[4]
+        # Door open
+        # Note - it appears that the __DOOROPEN and __DOORCLOSED status states
+        # are switched, or that the DOOR is in fact an internal shutter. I'll
+        # interpret 'door' as the external door here, as that is what the user
+        # can see. When the external door is open, result[4] == __DOORCLOSED
+        door = result[4] == __DOORCLOSED
+        status['door open'] = door
+        busy.append(door)
+        # Slide position
         slide = result[5]
         if slide == __SLDMID:
+            # Slide is moving
             status['slide'] = (None, 'moving')
+            busy.append(True)
         else:
             status['slide'] = (slide, self._slide_to_sectioning.get(slide, None))
+        # Filter position
         filter = result[6]
         if filter == __FLTMID:
+            # Filter is moving
             status['filter'] = (None, 'moving')
+            busy.append(True)
         else:
             status['filter'] = (result[6], self._filters.get(result[6], None))
+        # Calibration LED on
         status['calibration'] = result[7] == __CALON
+        # Slide or filter moving
+        status['busy'] = any(busy)
         return status
 
     # Implemented by FilterWheelBase
