@@ -1308,7 +1308,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         name = 'Binning'
         self.settings[name] = Setting(name, 'tuple',
                                       self.get_binning,
-                                      lambda hv: self.set_binning(*hv),
+                                      self.set_binning,
                                       None)
         # Roi
         name = 'Roi'
@@ -1511,9 +1511,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return self._binning
 
     @keep_acquiring
-    def _set_binning(self, h=1, v=1):
+    def _set_binning(self, binning):
         """Set horizontal and vertical binning. Default to single pixel."""
-        self._binning = Binning(h, v)
+        self._binning = binning
         return True
 
     def _get_roi(self):
@@ -1521,19 +1521,15 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return self._roi
 
     @keep_acquiring
-    def _set_roi(self, left=None, top=None, width=None, height=None):
+    def _set_roi(self, roi):
         """Set the ROI, defaulting to full sensor area."""
         with self:
             x, y = GetDetector()
-        if left is None:
-            left = 1
-        if top is None:
-            top = 1
-        if width is None:
-            width = x
-        if height is None:
-            height = y
+        left = roi.left or 1
+        top = roi.top or 1
+        width = roi.width or x
+        height = roi.height or y
         if any([left < 1, top < 1, left+width-1 > x, top+height-1 > y]):
             return False
-        self._roi = Roi(left, top, width, height)
+        self._roi = ROI(left, top, width, height)
         return True

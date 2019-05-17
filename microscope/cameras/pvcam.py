@@ -136,6 +136,7 @@ import Pyro4
 import numpy as np
 
 from microscope import devices
+from microscope.devices import ROI, Binning
 from microscope.devices import keep_acquiring
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
@@ -1186,7 +1187,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         # Region of interest.
         self.roi = (None, None, None, None)
         # Binning setting.
-        self.binning = (1, 1)
+        self.binning = Binning(1, 1)
         self._trigger = TRIG_STROBED
         self.exposure_time = 0.001 # in seconds
         # Cycle time
@@ -1219,8 +1220,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     @property
     def _region(self):
         """Return a rgn_type for current roi and binning settings."""
-        return rgn_type(self.roi[0], self.roi[2]-1, self.binning[0],
-                        self.roi[1], self.roi[3]-1, self.binning[1])
+        return rgn_type(self.roi.left, self.width - self.roi.left, self.binning[0],
+                        self.roi.top, self.roi.height - self.roi.top, self.binning[1])
 
 
     """Private methods, called here and within super classes."""
@@ -1276,7 +1277,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-            buffer_shape = (self._circ_buffer_length*self.roi[2], self.roi[3])
+            buffer_shape = (self._circ_buffer_length*self.roi.width, self.roi.height)
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
@@ -1337,19 +1338,19 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.binning
 
     @keep_acquiring
-    def _set_binning(self, h, v):
+    def _set_binning(self, binning):
         """Set binning to (h, v)."""
         #  The keep_acquiring decorator will cause recreation of buffers.
-        self.binning = (h, v)
+        self.binning = Binning(binning.h, binning.v)
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
         return self.roi
 
     @keep_acquiring
-    def _set_roi(self, left, top, width, height):
+    def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
-        self.roi = (left, top, width, height)
+        self.roi = roi
 
 
     """Public methods, callable from client."""
@@ -1448,7 +1449,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                              self._params[PARAM_PMODE].values)
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
-        self.roi = (0, 0, self.shape[0], self.shape[1])
+        self.roi = ROI(0, 0, self.shape[0], self.shape[1])
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
