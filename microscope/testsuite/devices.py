@@ -38,6 +38,90 @@ class CamEnum(IntEnum):
     C = 3
     D = 4
 
+def _theta_generator():
+    """A generator that yields values between 0 and 2*pi"""
+    TWOPI = 2 * np.pi
+    th = 0
+    while True:
+        yield th
+        th = (th + 0.01*TWOPI) % TWOPI
+
+class _ImageGenerator():
+    """Generates test images, with methods for configuration via a Setting."""
+    def __init__(self):
+        self._methods = (self.noise, self.gradient, self.sawtooth,
+                         self.one_gaussian, self.black, self.white)
+        self._method_index = 0
+        self._datatypes = (np.uint8, np.uint16, np.float)
+        self._datatype_index = 0
+        self._theta = _theta_generator()
+
+    def get_data_types(self):
+        return(t.__name__ for t in self._datatypes)
+
+    def data_type(self):
+        return self._datatype_index
+
+    def set_data_type(self, index):
+        self._datatype_index = index
+
+    def get_methods(self):
+        """Return the names of available image generation methods"""
+        return (m.__name__ for m in self._methods)
+
+    def method(self):
+        """Return the index of the current image generation method."""
+        return self._method_index
+
+    def set_method(self, index):
+        """Set the image generation method."""
+        self._method_index = index
+
+    def get_image(self, width, height, dark=0, light=255):
+        """Return an image using the currently selected method."""
+        m = self._methods[self._method_index]
+        d = self._datatypes[self._datatype_index]
+        return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
+
+    def black(self, w, h, dark, light):
+        """Ignores dark and light - returns zeros"""
+        return np.zeros((w, h))
+
+    def white(self, w, h, dark, light):
+        """Ignores dark and light - returns max value for current data type."""
+        d = self._datatypes[self._datatype_index]
+        if issubclass(d, np.integer):
+            value = np.iinfo(d).max
+        else:
+            value = 1.
+        return value * np.ones((w, h)).astype(d)
+
+    def gradient(self, w, h, dark, light):
+        """A single gradient across the whole image that rotates about 0,0."""
+        th = next(self._theta)
+        xx, yy = np.meshgrid(range(w), range(h))
+        return dark + light * (np.sin(th)*xx + np.cos(th)*yy) / (xx.max() + yy.max())
+
+    def noise(self, w, h, dark, light):
+        """Random noise."""
+        size = (w, h)
+        return np.random.randint(dark, light, size=size)
+
+    def one_gaussian(self, w, h, dark, light):
+        "A single gaussian"
+        sigma = 0.01 * max(w, h)
+        x0 = np.random.randint(w)
+        y0 = np.random.randint(h)
+        xx, yy = np.meshgrid(range(w), range(h))
+        return dark + light * np.exp(-((xx-x0)**2 + (yy-y0)**2) / (2*sigma**2))
+
+    def sawtooth(self, w, h, dark, light):
+        """A sawtooth gradient that rotates about 0,0."""
+        th = next(self._theta)
+        xx, yy = np.meshgrid(range(w), range(h))
+        wrap = 0.1 * max(xx.max(), yy.max())
+        return dark + light * ((np.sin(th)*xx + np.cos(th)*yy) % wrap) / (wrap)
+
 
 @Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
@@ -46,6 +130,16 @@ class TestCamera(devices.CameraDevice):
         # Binning and ROI
         self._roi = (0,0,511,511)
         self._binning = (1,1)
+        # Function used to generate test image
+        self._image_generator = _ImageGenerator()
+        self.add_setting('image pattern', 'enum',
+                         self._image_generator.method,
+                         self._image_generator.set_method,
+                         self._image_generator.get_methods)
+        self.add_setting('image data type', 'enum',
+                         self._image_generator.data_type,
+                         self._image_generator.set_data_type,
+                         self._image_generator.get_data_types)
         self.add_setting('binning', 'tuple',
                          lambda: self._binning,
                          lambda val: setattr(self, '_binning', val),
@@ -129,8 +223,7 @@ class TestCamera(devices.CameraDevice):
             width = (self._roi[2] - self._roi[0]) // self._binning[0]
             height = (self._roi[3] - self._roi[1]) // self._binning[1]
             size = (width, height)
-            image = Image.fromarray(
-                np.random.randint(dark, light, size=size).astype(np.uint8), 'L')
+            image = self._image_generator.get_image(width, height, dark, light)
             # Render text
             text = "%d" % self._sent
             tsize = self._font.getsize(text)
