@@ -29,6 +29,7 @@ from PIL import Image, ImageFont, ImageDraw
 from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import FilterWheelBase
+from microscope.devices import ROI, Binning
 
 from enum import IntEnum
 
@@ -127,8 +128,8 @@ class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
         # Binning and ROI
-        self._roi = (0,0,512,512)
-        self._binning = (1,1)
+        self._roi = ROI(0,0,512,512)
+        self._binning = Binning(1,1)
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
         self.add_setting('image pattern', 'enum',
@@ -139,14 +140,6 @@ class TestCamera(devices.CameraDevice):
                          self._image_generator.data_type,
                          self._image_generator.set_data_type,
                          self._image_generator.get_data_types)
-        self.add_setting('binning', 'tuple',
-                         lambda: self._binning,
-                         lambda val: setattr(self, '_binning', val),
-                         None)
-        self.add_setting('roi', 'tuple',
-                         self._get_roi,
-                         lambda val: setattr(self, '_roi', val),
-                         None)
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
         self.add_setting('a_setting', 'int',
@@ -219,16 +212,16 @@ class TestCamera(devices.CameraDevice):
             # Create an image
             dark = int(32 * np.random.rand())
             light = int(255 - 128 * np.random.rand())
-            width = (self._roi[2] - self._roi[0]) // self._binning[0]
-            height = (self._roi[3] - self._roi[1]) // self._binning[1]
+            width = self._roi.width // self._binning.h
+            height = self._roi.height // self._binning.v
             size = (width, height)
             image = self._image_generator.get_image(width, height, dark, light)
             # Render text
             text = "%d" % self._sent
             tsize = self._font.getsize(text)
             ctx = ImageDraw.Draw(image)
-            ctx.rectangle([size[0]-tsize[0]-8, 0, size[0], tsize[1]+8], fill=dark)
-            ctx.text((size[0]-tsize[0]-4, 4), text, fill=light)
+            ctx.rectangle([size[1]-tsize[0]-8, 0, size[1], tsize[1]+8], fill=dark)
+            ctx.text((size[1]-tsize[0]-4, 4), text, fill=light)
 
             self._sent += 1
             return np.asarray(image).T
@@ -285,18 +278,18 @@ class TestCamera(devices.CameraDevice):
             self._triggered += 1
 
     def _get_binning(self):
-        return (1,1)
+        return self._binning
 
     @keep_acquiring
-    def _set_binning(self, h, v):
-        return False
+    def _set_binning(self, binning):
+        self._binning = binning
 
     def _get_roi(self):
         return self._roi
 
     @keep_acquiring
-    def _set_roi(self, x, y, width, height):
-        return False
+    def _set_roi(self, roi):
+        self._roi = roi
 
     def _on_shutdown(self):
         pass

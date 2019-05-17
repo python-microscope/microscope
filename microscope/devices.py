@@ -43,7 +43,7 @@ import numpy
 
 from collections import namedtuple
 # A tuple that defines a region of interest.
-Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+ROI = namedtuple('ROI', ['left', 'top', 'width', 'height'])
 # A tuple containing parameters for horizontal and vertical binning.
 Binning = namedtuple('Binning', ['h', 'v'])
 
@@ -652,8 +652,14 @@ class CameraDevice(DataDevice):
                          lambda: self._readout_mode,
                          self.set_readout_mode,
                          lambda: self._readout_modes)
-
-
+        self.add_setting('binning', 'tuple',
+                         self.get_binning,
+                         self.set_binning,
+                         None)
+        self.add_setting('roi', 'tuple',
+                         self.get_roi,
+                         self.set_roi,
+                         None)
     def _process_data(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
@@ -738,23 +744,24 @@ class CameraDevice(DataDevice):
         return binning
 
     @abc.abstractmethod
-    def _set_binning(self, h_bin, v_bin):
+    def _set_binning(self, binning):
         """Set binning along both axes. Return True if successful."""
         pass
 
-    def set_binning(self, h_bin, v_bin):
+    def set_binning(self, binning):
         """Set binning along both axes. Return True if successful."""
+        h_bin, v_bin = binning
         if self._transform[2]:
             # 90 degree rotation
-            binning = (v_bin, h_bin)
+            binning = Binning(v_bin, h_bin)
         else:
-            binning = (h_bin, v_bin)
-        return self._set_binning(*binning)
+            binning = Binning(h_bin, v_bin)
+        return self._set_binning(binning)
 
     @abc.abstractmethod
     def _get_roi(self):
         """Return the ROI as it is on hardware."""
-        return left, top, width, height
+        return ROI(left, top, width, height)
 
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).
@@ -764,23 +771,30 @@ class CameraDevice(DataDevice):
         roi = self._get_roi()
         if self._transform[2]:
             # 90 degree rotation
-            roi = (roi[1], roi[0], roi[3], roi[2])
+            roi = ROI(roi[1], roi[0], roi[3], roi[2])
         return roi
 
     @abc.abstractmethod
-    def _set_roi(self, left, top, width, height):
+    def _set_roi(self, roi):
         """Set the ROI on the hardware, return True if successful."""
         return False
 
-    def set_roi(self, left, top, width, height):
+    def set_roi(self, roi):
         """Set the ROI according to the provided rectangle.
-
+        ROI is a tuple (left, right, width, height)
         Return True if ROI set correctly, False otherwise."""
+        maxw, maxh = self.get_sensor_shape()
+        binning = self.get_binning()
+        left, top, width, height = roi
+        if not width: # 0 or None
+            width = maxw // binning.h
+        if not height: # 0 o rNone
+            height = maxh // binning.v
         if self._transform[2]:
-            roi = (top, left, height, width)
+            roi = ROI(left, top, height, width)
         else:
-            roi = (left, top, width, height)
-        return self._set_roi(*roi)
+            roi = ROI(left, top, width, height)
+        return self._set_roi(roi)
 
     def get_trigger_type(self):
         """Return the current trigger mode.
