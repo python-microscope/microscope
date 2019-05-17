@@ -628,7 +628,7 @@ class CameraDevice(DataDevice):
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
@@ -638,9 +638,11 @@ class CameraDevice(DataDevice):
         self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
         # Transform to correct for readout order.
-        self._readout_transform = (0, 0, 0)
+        self._readout_transform = (False, False, False)
         # Transform supplied by client to correct for system geometry.
-        self._transform = (0, 0, 0)
+        self._client_transform = (False, False, False)
+        # Result of combining client and readout transforms
+        self._transform = (False, False, False)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
                          lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
@@ -669,26 +671,25 @@ class CameraDevice(DataDevice):
         """Set the readout mode and _readout_transform."""
         pass
 
-
     def get_transform(self):
         """Return the current transform without readout transform."""
-        return tuple(self._readout_transform[i] ^ self._transform[i]
-                     for i in range(3))
+        return self._client_transform
 
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
         if isinstance(transform, str):
             transform = literal_eval(transform)
-        self._transform = tuple(self._readout_transform[i] ^ transform[i]
-                                for i in range(3))
-
+        self._client_transform = transform
+        lr, ud, rot = (self._readout_transform[i] ^ transform[i] for i in range(3))
+        if self._readout_transform[2] and rot:
+            lr = not lr
+            ud = not ud
+        self._transform = (lr, ud, rot)
 
     def _set_readout_transform(self, new_transform):
         """Update readout transform and update resultant transform."""
-        client_transform = self.get_transform()
         self._readout_transform = new_transform
-        self.set_transform(client_transform)
-
+        self.set_transform(self._client_transform)
 
     @abc.abstractmethod
     def set_exposure_time(self, value):
