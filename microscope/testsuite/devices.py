@@ -85,7 +85,7 @@ class _ImageGenerator():
 
     def black(self, w, h, dark, light):
         """Ignores dark and light - returns zeros"""
-        return np.zeros((w, h))
+        return np.zeros((h, w))
 
     def white(self, w, h, dark, light):
         """Ignores dark and light - returns max value for current data type."""
@@ -94,7 +94,7 @@ class _ImageGenerator():
             value = np.iinfo(d).max
         else:
             value = 1.
-        return value * np.ones((w, h)).astype(d)
+        return value * np.ones((h, w)).astype(d)
 
     def gradient(self, w, h, dark, light):
         """A single gradient across the whole image that rotates about 0,0."""
@@ -104,8 +104,7 @@ class _ImageGenerator():
 
     def noise(self, w, h, dark, light):
         """Random noise."""
-        size = (w, h)
-        return np.random.randint(dark, light, size=size)
+        return np.random.randint(dark, light, size=(h, w))
 
     def one_gaussian(self, w, h, dark, light):
         "A single gaussian"
