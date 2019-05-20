@@ -127,7 +127,7 @@ class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
         # Binning and ROI
-        self._roi = (0,0,511,511)
+        self._roi = (0,0,512,512)
         self._binning = (1,1)
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
@@ -144,7 +144,7 @@ class TestCamera(devices.CameraDevice):
                          lambda val: setattr(self, '_binning', val),
                          None)
         self.add_setting('roi', 'tuple',
-                         lambda: self._roi,
+                         self._get_roi,
                          lambda val: setattr(self, '_roi', val),
                          None)
         # Software buffers and parameters for data conversion.
@@ -292,7 +292,7 @@ class TestCamera(devices.CameraDevice):
         return False
 
     def _get_roi(self):
-        return (0, 0, 512, 512)
+        return self._roi
 
     @keep_acquiring
     def _set_roi(self, x, y, width, height):
