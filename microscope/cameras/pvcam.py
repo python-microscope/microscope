@@ -1363,6 +1363,10 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     @keep_acquiring
     def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
+        right = roi.left + roi.width
+        bottom = roi.top + roi.height
+        if (right, bottom) > self.shape:
+            raise Exception("ROI exceeds sensor area.")
         self.roi = roi
 
 
