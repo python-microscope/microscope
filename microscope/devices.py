@@ -688,14 +688,14 @@ class CameraDevice(DataDevice):
             transform = literal_eval(transform)
         self._client_transform = transform
         lr, ud, rot = (self._readout_transform[i] ^ transform[i] for i in range(3))
-        if self._readout_transform[2] and rot:
+        if self._readout_transform[2] and self._client_transform[2]:
             lr = not lr
             ud = not ud
         self._transform = (lr, ud, rot)
 
     def _set_readout_transform(self, new_transform):
         """Update readout transform and update resultant transform."""
-        self._readout_transform = new_transform
+        self._readout_transform = [bool(int(t)) for t in new_transform]
         self.set_transform(self._client_transform)
 
     @abc.abstractmethod
