@@ -109,10 +109,9 @@ class _ImageGenerator():
         return value * np.ones((h, w)).astype(d)
 
     def gradient(self, w, h, dark, light):
-        """A single gradient across the whole image that rotates about 0,0."""
-        th = next(self._theta)
+        """A single gradient across the whole image from top left to bottom right."""
         xx, yy = np.meshgrid(range(w), range(h))
-        return dark + light * (np.sin(th)*xx + np.cos(th)*yy) / (xx.max() + yy.max())
+        return dark + light * (xx + yy) / (xx.max() + yy.max())
 
     def noise(self, w, h, dark, light):
         """Random noise."""
