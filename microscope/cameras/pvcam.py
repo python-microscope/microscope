@@ -1048,7 +1048,9 @@ class PVParam():
         self._query(force_query=True)
 
     def _query(self, what=ATTR_CURRENT, force_query=False):
-        """Query the DLL for an attribute for this parameter."""
+        """Query the DLL for an attribute for this parameter.
+
+        This returns pythonic types, not ctypes."""
         err = None
         key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
@@ -1068,11 +1070,15 @@ class PVParam():
                 result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
             except Exception as e:
                 err = e
+            else:
+                result = result.value
         else:
             try:
                 result = _get_param(self.cam.handle, self.param_id, what)
             except Exception as e:
                 err = e
+            else:
+                result = ctypes.POINTER(self._ctype)(result).contents.value
         # Test on err.args prevents indexing into empty tuple.
         if err and err.args and err.args[0].startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
@@ -1103,16 +1109,14 @@ class PVParam():
         """Get parameter min and max values.
 
         Subclasses for strings and enum override this."""
-        return (ctypes.POINTER(self._ctype)(self._query(ATTR_MIN)).contents.value,
-                ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
+        return (self._query(ATTR_MIN), self._query(ATTR_MAX))
 
     @property
     def current(self):
         """Return the current (or cached) parameter value.
 
         Subclasses should override this for more complex data types."""
-        q = self._query()
-        return ctypes.POINTER(self._ctype)(q).contents.value
+        return self._query()
 
 
 class PVEnumParam(PVParam):
@@ -1141,7 +1145,7 @@ class PVEnumParam(PVParam):
     def current(self):
         """Return the current (or cached) enum parameter value."""
         # c_void_p(0) is None, so replace with 0
-        return int(self._query().value or 0)
+        return int(self._query() or 0)
 
     @property
     def values(self):
@@ -1165,7 +1169,7 @@ class PVStringParam(PVParam):
     @property
     def current(self):
         """Return the current (or cached) string parameter value."""
-        return self._query().value.decode()
+        return self._query().decode()
 
     @property
     def values(self):
