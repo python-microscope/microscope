@@ -447,8 +447,10 @@ class TestImageGenerator(unittest.TestCase):
         for i, pattern in enumerate(patterns):
             with self.subTest(pattern):
                 generator.set_method(i)
-                pil_image = generator.get_image(width, height, 0, 255)
-                self.assertEqual(pil_image.size, (width, height))
+                array = generator.get_image(width, height, 0, 255)
+                # In matplotlib, an M-wide by N-tall image has M columns
+                # and N rows, so a shape of (N, M)
+                self.assertEqual(array.shape, (height, width))
 
 
 class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
