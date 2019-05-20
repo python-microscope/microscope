@@ -56,6 +56,8 @@ class _ImageGenerator():
         self._datatypes = (np.uint8, np.uint16, np.float)
         self._datatype_index = 0
         self._theta = _theta_generator()
+        # Font for rendering counter in images.
+        self._font = ImageFont.load_default()
 
     def get_data_types(self):
         return(t.__name__ for t in self._datatypes)
@@ -78,11 +80,20 @@ class _ImageGenerator():
         """Set the image generation method."""
         self._method_index = index
 
-    def get_image(self, width, height, dark=0, light=255):
+    def get_image(self, width, height, dark=0, light=255, index=None):
         """Return an image using the currently selected method."""
         m = self._methods[self._method_index]
         d = self._datatypes[self._datatype_index]
-        return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
+        #return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
+        data = m(width, height, dark, light).astype(d)
+        if index is not None:
+            text = "%d" % index
+            size = tuple(d+2 for d in self._font.getsize(text))
+            img = Image.new('L', size)
+            ctx = ImageDraw.Draw(img)
+            ctx.text((1, 1), text, fill=light)
+            data[0:size[1],0:size[0]] = np.asarray(img)
+        return data
 
     def black(self, w, h, dark, light):
         """Ignores dark and light - returns zeros"""
@@ -182,8 +193,6 @@ class TestCamera(devices.CameraDevice):
         self._triggered = 0
         # Count number of images sent since last enable.
         self._sent = 0
-        # Font for rendering counter in images.
-        self._font = ImageFont.load_default()
 
     def _set_error_percent(self, value):
         self._error_percent = value
@@ -215,16 +224,9 @@ class TestCamera(devices.CameraDevice):
             width = self._roi.width // self._binning.h
             height = self._roi.height // self._binning.v
             size = (width, height)
-            image = self._image_generator.get_image(width, height, dark, light)
-            # Render text
-            text = "%d" % self._sent
-            tsize = self._font.getsize(text)
-            ctx = ImageDraw.Draw(image)
-            ctx.rectangle([size[1]-tsize[0]-8, 0, size[1], tsize[1]+8], fill=dark)
-            ctx.text((size[1]-tsize[0]-4, 4), text, fill=light)
-
+            image = self._image_generator.get_image(width, height, dark, light, index=self._sent)
             self._sent += 1
-            return np.asarray(image).T
+            return image
 
     def abort(self):
         self._logger.info("Disabling acquisition; %d images sent." % self._sent)
