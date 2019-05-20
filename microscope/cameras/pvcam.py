@@ -1226,8 +1226,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     @property
     def _region(self):
         """Return a rgn_type for current roi and binning settings."""
-        return rgn_type(self.roi.left, self.width - self.roi.left, self.binning[0],
-                        self.roi.top, self.roi.height - self.roi.top, self.binning[1])
+        return rgn_type(self.roi.left, self.roi.left + self.roi.width - 1, self.binning.h,
+                        self.roi.top, self.roi.top + self.roi.height - 1, self.binning.v)
 
 
     """Private methods, called here and within super classes."""
@@ -1267,7 +1267,9 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
             nbytes = _exp_setup_seq(self.handle, 1, 1, # cam, num epxosures, num regions
                                     self._region, TRIGGER_MODES[self._trigger].pv_mode, t_exp)
-            self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+            buffer_shape = (self.roi.width//self.binning.h,
+                            self.roi.height//self.binning.v)
+            self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                       requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
         else:
             # Use a circular buffer.
@@ -1283,7 +1285,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-            buffer_shape = (self._circ_buffer_length*self.roi.width, self.roi.height)
+            buffer_shape = (self._circ_buffer_length, self.roi.width//self.binning.h,
+                            self.roi.height//self.binning.v)
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
