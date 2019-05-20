@@ -1129,7 +1129,7 @@ class ReadoutMode():
 from threading import Lock
 import functools
 from microscope import devices
-from microscope.devices import keep_acquiring, Setting, Binning, Roi
+from microscope.devices import keep_acquiring, Setting, Binning, ROI
 import time
 
 # A lock on the DLL used to ensure DLL calls act on the correct device.
@@ -1223,8 +1223,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Initialize the library and connect to camera.
             Initialize(b'')
             # Initialise ROI to full sensor area and binning to single-pixel.
-            self._set_roi()
-            self._set_binning()
+            self._set_roi(ROI(0,0,0,0))
+            self._set_binning(Binning(1,1))
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1<<2:
@@ -1364,7 +1364,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         height = roi.height // binning.v
         try:
             with self:
-                data = GetOldestImage16(width * height).reshape(width, height)
+                data = GetOldestImage16(width * height).reshape(height, width)
         except AtmcdException as e:
             if e.status == DRV_NO_NEW_DATA:
                 return None
@@ -1478,7 +1478,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # opposite edges from the chip. We set the horizontal flip
             # so that the returned image orientation is independent of
             # amplifier selection
-            SetImageFlip(mode.amp, 0)
+            SetImageFlip(not mode.amp, 0)
             SetHSSpeed(mode.amp, mode.hsindex)
 
     def _get_sensor_shape(self):
