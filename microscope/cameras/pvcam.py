@@ -1271,8 +1271,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
             nbytes = _exp_setup_seq(self.handle, 1, 1, # cam, num epxosures, num regions
                                     self._region, TRIGGER_MODES[self._trigger].pv_mode, t_exp)
-            buffer_shape = (self.roi.width//self.binning.h,
-                            self.roi.height//self.binning.v)
+            buffer_shape = (self.roi.height//self.binning.v,
+                            self.roi.width // self.binning.h)
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                       requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
         else:
@@ -1289,8 +1289,9 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-            buffer_shape = (self._circ_buffer_length, self.roi.width//self.binning.h,
-                            self.roi.height//self.binning.v)
+            buffer_shape = (self._circ_buffer_length,
+                            self.roi.height//self.binning.v,
+                            self.roi.width // self.binning.h)
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
