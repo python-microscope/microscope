@@ -1169,7 +1169,9 @@ class LinkamBase(devices.Device):
         # suggest that an OpenComms message should open a connection to the 
         # device with that serial number; with only one stage attached, it
         # appears that OpenComms ignores the value of serialNumber.
-        if not isinstance(uid, bytes):
+        if uid is None:
+            uid = b''
+        elif not isinstance(uid, bytes):
             uid = uid.encode()
         self._lib.linkamInitialiseUSBCommsInfo(byref(self._commsinfo), ctypes.c_char_p(uid))
 
