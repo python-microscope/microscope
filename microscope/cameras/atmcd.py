@@ -1300,7 +1300,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         # Fan control
         name = 'Fan mode'
         self.settings[name] = Setting(name, 'enum',
-                                      self._bind(GetFanMode),
+                                      None, # Can't query fan mode
                                       self._bind(SetFanMode),
                                       {0:'full', 1:'low', 2:'off'}
                                       )
