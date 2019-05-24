@@ -1243,7 +1243,7 @@ class LinkamMDSMixin():
             self.set_value(_StageValueType.MotorSetpointZ, z)
             self._process_msg(Msg.StartMotors, True, 2)
         # Allow time for status structures to indicate stage is moving
-        time.sleep(2 * self.get_data_rate())
+        time.sleep(5 * self.get_data_rate())
 
     def get_status(self, *args):
         """Includes MDSStatus in the get_status call."""
