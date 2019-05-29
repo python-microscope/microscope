@@ -117,6 +117,15 @@ class DeviceServer(multiprocessing.Process):
         # Some SDKs need an index to access more than one device.
         self.count = count
 
+    def clone(self):
+        """Create new instance with same settings.
+
+        This is useful to restart a device server.
+        """
+        return DeviceServer(self._device_def, self._id_to_host,
+                            self._id_to_port, exit_event=self.exit_event,
+                            count=self.count)
+
     def run(self):
         logger = logging.getLogger(self._device_def['cls'].__name__)
         if __debug__:
@@ -268,11 +277,7 @@ def serve_devices(devices, exit_event=None):
                                  " exitcode %s. Restarting...")
                                 % (s.pid, s.exitcode))
                     servers.remove(s)
-                    servers.append(DeviceServer(s._device_def,
-                                                s._id_to_host,
-                                                s._id_to_port,
-                                                exit_event=exit_event,
-                                                count=s.count))
+                    servers.append(s.clone())
 
                     try:
                         s.join(30)
