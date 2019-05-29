@@ -141,8 +141,14 @@ class DeviceServer(multiprocessing.Process):
         logger.addHandler(stderr_handler)
         logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
-        self._device = self._device_def['cls'](index=self.count,
-                                               **self._device_def)
+
+        ## The device definition includes stuff that were never
+        ## meant for the device.  Remove those.
+        init_kwargs = self._device_def.copy()
+        for def_key in ['cls', 'host', 'port', 'uid']:
+            init_kwargs.pop(def_key)
+
+        self._device = self._device_def['cls'](index=self.count, **init_kwargs)
         while not self.exit_event.is_set():
             try:
                 self._device.initialize()
