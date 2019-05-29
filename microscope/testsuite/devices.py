@@ -376,7 +376,7 @@ class TestDeformableMirror(devices.DeformableMirror):
 @Pyro4.behavior('single')
 class DummySLM(devices.Device):
     def __init__(self, *args, **kwargs):
-        devices.Device.__init__(self, args, kwargs)
+        devices.Device.__init__(self, *args, **kwargs)
         self.sim_diffraction_angle = 0.
         self.sequence_params = []
         self.sequence_index = 0
@@ -419,7 +419,7 @@ class DummySLM(devices.Device):
 @Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, *args, **kwargs):
-        devices.Device.__init__(self, args, kwargs)
+        devices.Device.__init__(self, *args, **kwargs)
         self._digi = 0
         self._ana = [0,0,0,0]
         self._client = None
