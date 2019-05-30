@@ -900,7 +900,7 @@ _StageValueTypeToVariant = {
 }
 
 
-class LinkamBase(devices.Device):
+class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     """Base class for connecting to Linkam SDK devices.
     
     This class deals with SDK initialisation and setting callbacks to 
@@ -1260,7 +1260,7 @@ class LinkamMDSMixin():
         return pos
 
 
-class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
+class LinkamCMS(LinkamMDSMixin, LinkamBase):
     """Linkam correlative-microscopy stage."""
     _refill_map = {'sample': 'sampleDewarFillSignal',
                    'external': 'mainDewarFillSignal'}
