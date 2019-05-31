@@ -186,17 +186,22 @@ class FloatingDeviceMixin(object):
 
 
 class Device(object):
-    """A base device class. All devices should subclass this class."""
+    """A base device class. All devices should subclass this class.
+
+    Args:
+        index (int): the index of the device on a shared library.
+            This argument is added by the deviceserver.
+    """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, index=None, *args, **kwargs):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._index = kwargs['index'] if 'index' in kwargs else None
+        self._index = index
 
     def __del__(self):
         self.shutdown()
