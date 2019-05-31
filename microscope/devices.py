@@ -156,16 +156,21 @@ class Setting():
                 return values
 
 
-def device(cls, host, port, uid=None, **kwargs):
+def device(cls, host, port, conf={}, uid=None):
     """Define a device and where to serve it.
 
-    A device definition for use in config files.
+    A device definition for use in deviceserver config files.
 
-    Defines a device of type cls, served on host:port.
-    UID is used to identify 'floating' devices (see below).
-    kwargs can be used to pass any other parameters to cls.__init__.
+    Args:
+        cls (type): type/class of device to serve.
+        host (str): hostname or ip address serving the device.
+        port (int): port number used to serve the device.
+        conf (dict): keyword arguments to construct the device.  The
+            device is effectively constructed with `cls(**conf)`.
+        uid (str): used to identify "floating" devices (see
+            documentation for :class:`FloatingDeviceMixin`)
     """
-    return dict(cls=cls, host=host, port=int(port), uid=uid, **kwargs)
+    return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
 class FloatingDeviceMixin(object):
