@@ -24,7 +24,7 @@ defined in a specified config file.
 """
 
 from collections.abc import Iterable
-import imp # this has been deprecated, we should be using importlib
+import importlib.util
 import logging
 import multiprocessing
 import signal
@@ -352,8 +352,15 @@ def __main__():
         __console__()
 
 
+def _load_source(filepath):
+    spec = importlib.util.spec_from_file_location('config', filepath)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_devices(configfile):
-    config = imp.load_source('microscope.config', configfile)
+    config = _load_source(configfile)
     devices = getattr(config, 'DEVICES', None)
     if not devices:
         raise Exception("No 'DEVICES=...' in config file.")
