@@ -39,7 +39,7 @@ trigger_type_to_value = {
 @Pyro4.expose
 @Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dev_id = 0, *args, **kwargs):
         super(XimeaCamera, self).__init__(**kwargs)
         # example parameter to allow setting.
         #        self.add_setting('_error_percent', 'int',
@@ -50,6 +50,7 @@ class XimeaCamera(devices.CameraDevice):
         self._exposure_time = 0.1
         self._triggered = False
         self.handle = None
+        self.dev_id = dev_id
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
@@ -106,7 +107,7 @@ class XimeaCamera(devices.CameraDevice):
         """
 
         try:
-            self.handle = xiapi.Camera()
+            self.handle = xiapi.Camera(self.dev_id)
             self.handle.open_device()
         except:
             raise Exception("Problem opening camera.")
