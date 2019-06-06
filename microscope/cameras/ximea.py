@@ -123,8 +123,11 @@ class XimeaCamera(devices.CameraDevice):
 
     def get_trigger_type(self):
         trig=self.handle.get_trigger_source()
-        return devices.TRIGGER_SOFT
-
+        if trig==XI_TRG_SOFTWARE:
+            return devices.TRIGGER_SOFT
+        else if trig==XI_TRG_EDGE_RISING:
+            return devices.TRIGGER_BEFORE
+            
     def set_trigger_type(self, trigger):
         if (trigger == devices.TRIGGER_SOFT):
             self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
