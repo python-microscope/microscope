@@ -51,7 +51,7 @@ TRIGGER_MODES = {
 #    }
 
 
-@Pyro4.expose
+
 @Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
