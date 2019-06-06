@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8
 #
-# Copyright 2017 Mick Phillips (mick.phillips@gmail.com)
+# Copyright 2017-2019 Mick Phillips (mick.phillips@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -136,6 +136,7 @@ import Pyro4
 import numpy as np
 
 from microscope import devices
+from microscope.devices import ROI, Binning
 from microscope.devices import keep_acquiring
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
@@ -605,9 +606,6 @@ class md_frame_roi_header(ctypes.Structure):
         ("_reserved", uns8*7),
     ]
 
-
-PL_MD_EXT_TAGS_MAX_SUPPORTED = 255
-
 class md_ext_item_info(ctypes.Structure):
     _fields_ = [
         ("tag", uns16),
@@ -769,7 +767,6 @@ class dllFunction(object):
         res = self.f(*ars)
         # print res
 
-
         if res == False:
             err_code = _lib.pl_error_code()
             err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
@@ -789,7 +786,6 @@ def _status():
     err_code = _lib.pl_error_code()
     err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
     _lib.pl_error_message(err_code, err_msg)
-    print (str(buffer(err_msg)))
 
 
 def dllFunc(name, args=[], argnames=[], buf_len=0):
@@ -941,7 +937,7 @@ _dtypemap = {
 # querying PARAM_DD_INFO_LEN. However, querying PARAM_DD_INFO frequently causes
 # a general protection fault in the DLL, regardless of buffer length.
 _length_map = {
-    PARAM_DD_INFO: None,
+    PARAM_DD_INFO: PARAM_DD_INFO_LENGTH,
     PARAM_CHIP_NAME: CCD_NAME_LEN,
     PARAM_SYSTEM_NAME: MAX_SYSTEM_NAME_LEN,
     PARAM_VENDOR_NAME: MAX_VENDOR_NAME_LEN,
@@ -979,12 +975,6 @@ STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
                   FRAME_AVAILABLE: 'FRAME_AVAILABLE',}
 
 
-# Allowable enum values that the hardware fails to report.
-_ENUM_FIXES = {
-    'Evolve-5': {PARAM_PMODE: [(0, 'Normal'), (4, 'Alternate Normal')],},
-}
-
-
 # === Python classes ===
 # Trigger modes.
 class TriggerMode(object):
@@ -1012,52 +1002,55 @@ TRIGGER_MODES = {
     TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION),
 }
 
-
-class PVParam(object):
+class PVParam():
     """A wrapper around PVCAM parameters."""
-    def __init__(self, camera, param_id):
-        self.cam = camera
-        self.param_id = param_id
+    @staticmethod
+    def factory(camera, param_id):
+        """Create a PVParam or appropriate subclass"""
+        # A mapping of pv parameters types to python types.
+        #   None means unsupported.
+        #   Parameters omitted from the mapping will default to PVParam.
+        __types__ = {TYPE_SMART_STREAM_TYPE: None,
+                     TYPE_SMART_STREAM_TYPE_PTR: None,
+                     TYPE_VOID_PTR: None,
+                     TYPE_VOID_PTR_PTR: None,
+                     TYPE_ENUM: PVEnumParam,
+                     TYPE_CHAR_PTR: PVStringParam}
+        # Determine the appropiate type from its id.
+        pvtype = __types__.get(param_id >> 24 & 255, PVParam)
+        if pvtype is None:
+            raise Exception("Parameter %s not supported" % _param_to_name[param_id])
+        return pvtype(camera, param_id)
 
+    def __init__(self, camera, param_id):
+        # Use a weakref back to the camera to avoid circular dependency.
+        import weakref
+        self.cam = weakref.proxy(camera)
+        self.param_id = param_id
         self.name = _param_to_name[param_id]
         self._pvtype = param_id >> 24 & 255
         self.dtype = _dtypemap[self._pvtype]
         self._ctype = _typemap[self._pvtype]
         self.__cache = {}
 
-
     def set_value(self, new_value):
-        """Set a parameter value."""
-        if self.dtype == 'enum':
-            # We may be passed a value, a description string, or a tuple of
-            # (value, string).
-            values, descriptions = zip(*self.values)
-            if hasattr(new_value, '__iter__'):
-                desc = str(new_value[1])
-            elif isinstance(new_value, str):
-                desc = str(new_value)
-            else:
-                desc = None
-            # If we have a description, rely on that, as this avoids any confusion
-            # of index and value.
-            if desc and desc in descriptions:
-                new_index = descriptions.index(desc)
-                new_value = values[new_index]
-            elif desc:
-                raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
-        _set_param(self.cam.handle,
-                   self.param_id,
-                   # TODO: this throws errors on strings, since need to put them into
-                   # a buffer before creating a pointer. Does any pvcam hardware let you
-                   # write to strings, though?
-                   ctypes.byref(ctypes.c_void_p(new_value)))
+        """Set a parameter value.
+
+        Subclasses should do whatever processing they need on new_value,
+        then call super().set_value(new_value)"""
+        try:
+            ref = ctypes.byref(new_value)
+        except TypeError:
+            # Need to convert python type to ctype first.
+            ref = ctypes.byref(self._ctype(new_value) )
+        _set_param(self.cam.handle, self.param_id, ref)
         # Read back the value to update cache.
         self._query(force_query=True)
 
-
-
     def _query(self, what=ATTR_CURRENT, force_query=False):
-        """Query the DLL for an attribute for this parameter."""
+        """Query the DLL for an attribute for this parameter.
+
+        This returns pythonic types, not ctypes."""
         err = None
         key = (self, what) # key for cache
         if self.cam._acquiring and not force_query:
@@ -1077,12 +1070,15 @@ class PVParam(object):
                 result = _get_param(self.cam.handle, self.param_id, what, buf_len=buf_len)
             except Exception as e:
                 err = e
+            else:
+                result = result.value
         else:
             try:
                 result = _get_param(self.cam.handle, self.param_id, what)
             except Exception as e:
                 err = e
-
+            else:
+                result = ctypes.POINTER(self._ctype)(result).contents.value
         # Test on err.args prevents indexing into empty tuple.
         if err and err.args and err.args[0].startswith('pvcam error 49'):
             self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
@@ -1093,77 +1089,93 @@ class PVParam(object):
             self.__cache[key] = result
         return result
 
-
     @property
     def access(self):
         """Return parameter access attribute."""
-        return self._query(what=ATTR_ACCESS).value
-
+        return int(_get_param(self.cam.handle, self.param_id, ATTR_ACCESS).value)
 
     @property
     def available(self):
         """Return whether or not parameter is available on hardware."""
-        return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL))
-
+        return bool(_get_param(self.cam.handle, self.param_id, ATTR_AVAIL).value)
 
     @property
     def count(self):
         """Return count of parameter enum entries."""
-        return self._query(what=ATTR_COUNT).value
-
+        return int(_get_param(self.cam.handle, self.param_id, ATTR_COUNT).value)
 
     @property
     def values(self):
-        """Get parameter values, range or string length."""
-        if self.dtype == 'enum':
-            values = []
-            for i in range(self.count):
-                length = _enum_str_length(self.cam.handle, self.param_id, i)
-                value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
-                values.append((value.value, desc.value))
-            chip = self.cam._params[PARAM_CHIP_NAME].current
-            missing = _ENUM_FIXES.get(chip, {}).get(self.param_id, [])
-            for m in missing:
-                if m[0] not in zip(*values)[0]:
-                    values.append(m)
-            values.sort()
-        elif self.dtype in [str, 'str']:
-            values = _length_map[self.param_id] or 0
-        else:
-            try:
-                values = (ctypes.POINTER(self._ctype)(self._query(ATTR_MIN)).contents.value,
-                          ctypes.POINTER(self._ctype)(self._query(ATTR_MAX)).contents.value)
-            except:
-                raise
-        return values
+        """Get parameter min and max values.
 
-
-    @property
-    def raw(self):
-        """Return a raw parameter query result."""
-        return self._query()
-
+        Subclasses for strings and enum override this."""
+        return (self._query(ATTR_MIN), self._query(ATTR_MAX))
 
     @property
     def current(self):
-        """Return the current (or cached) parameter value."""
-        if self._pvtype == TYPE_CHAR_PTR:
-            return str(memoryview(self.raw).tobytes()) or ''
-        elif self._pvtype in [TYPE_SMART_STREAM_TYPE, TYPE_SMART_STREAM_TYPE_PTR,
-                              TYPE_VOID_PTR, TYPE_VOID_PTR_PTR]:
-            raise Exception('Value conversion not supported for parameter %s.' % self.name)
-        elif self._pvtype == TYPE_ENUM:
-            value = int(self.raw.value or 0) # c_void_p(0) is None, so replace with 0
-            vals, descs = zip(*self.values)
-            if value in vals:
-                index = vals.index(value)
-                description = descs[index]
-            else:
-                index = None
-                description = '*UNDEFINED*'
-            return (value, description)
+        """Return the current (or cached) parameter value.
+
+        Subclasses should override this for more complex data types."""
+        return self._query()
+
+
+class PVEnumParam(PVParam):
+    """PVParam subclass for enums"""
+    def set_value(self, new_value):
+        """Set an enum parameter value."""
+        # We may be passed a value, a description string, or a tuple of
+        # (value, string).
+        values, descriptions = list(zip(*self.values.items()))
+        if hasattr(new_value, '__iter__'):
+            desc = str(new_value[1])
+        elif isinstance(new_value, str):
+            desc = str(new_value)
         else:
-            return ctypes.POINTER(self._ctype)(self.raw).contents.value
+            desc = None
+        # If we have a description, rely on that, as this avoids any confusion
+        # of index and value.
+        if desc and desc in descriptions:
+            new_index = descriptions.index(desc)
+            new_value = values[new_index]
+        elif desc:
+            raise Exception("Could not find description '%s' for enum %s." % (desc, self.name))
+        super().set_value(new_value)
+
+    @property
+    def current(self):
+        """Return the current (or cached) enum parameter value."""
+        # c_void_p(0) is None, so replace with 0
+        return int(self._query() or 0)
+
+    @property
+    def values(self):
+        """Get allowable enum values"""
+        values = {}
+        for i in range(self.count):
+            length = _enum_str_length(self.cam.handle, self.param_id, i)
+            value, desc = _get_enum_param(self.cam.handle, self.param_id, i, length)
+            values[value.value] = desc.value.decode()
+        return values
+
+
+class PVStringParam(PVParam):
+    """PVParam subclass for strings"""
+    def set_value(self, new_value):
+        """Set a string parameter value"""
+        if hasattr(new_value, "encode"):
+            new_value = new_value.encode()
+        super().set_value(new_value)
+
+    @property
+    def current(self):
+        """Return the current (or cached) string parameter value."""
+        return self._query().decode()
+
+    @property
+    def values(self):
+        """Get allowable string length."""
+        values = _length_map[self.param_id] or 0
+        return values
 
 
 @Pyro4.behavior('single')
@@ -1173,10 +1185,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     open_cameras = []
 
 
-    def __init__(self, *args, **kwargs):
-        super(PVCamera, self).__init__(**kwargs)
-        # Camera index in DLL.
-        self._index = kwargs.get('index', 0)
+    def __init__(self, index=0, *args, **kwargs):
+        super(PVCamera, self).__init__(index=index, **kwargs)
         # Camera name in DLL.
         self._pv_name = None
         # Camera handle.
@@ -1186,7 +1196,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         # Region of interest.
         self.roi = (None, None, None, None)
         # Binning setting.
-        self.binning = (1, 1)
+        self.binning = Binning(1, 1)
         self._trigger = TRIG_STROBED
         self.exposure_time = 0.001 # in seconds
         # Cycle time
@@ -1203,13 +1213,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                          float,
                          lambda: self.exposure_time,
                          self.set_exposure_time,
-                         lambda: (1e-6, 1))
+                         lambda: (1e-6, 1) )
         self.add_setting('trigger mode',
-                          'enum',
-                          lambda: (self._trigger, TRIGGER_MODES[self._trigger].label),
-                          lambda args: setattr(self, '_trigger', int(args[0])),
-                          [(k, v.label) for k, v in TRIGGER_MODES.items()]
-                          )
+                         'enum',
+                         lambda: self._trigger,
+                         lambda value: setattr(self, '_trigger', value),
+                         {k: v.label for k,v in TRIGGER_MODES.items()} )
         self.add_setting('circular buffer length',
                          int,
                          lambda: self._circ_buffer_length,
@@ -1219,8 +1228,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     @property
     def _region(self):
         """Return a rgn_type for current roi and binning settings."""
-        return rgn_type(self.roi[0], self.roi[2]-1, self.binning[0],
-                        self.roi[1], self.roi[3]-1, self.binning[1])
+        return rgn_type(self.roi.left, self.roi.left + self.roi.width - 1, self.binning.h,
+                        self.roi.top, self.roi.top + self.roi.height - 1, self.binning.v)
 
 
     """Private methods, called here and within super classes."""
@@ -1260,7 +1269,9 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
             nbytes = _exp_setup_seq(self.handle, 1, 1, # cam, num epxosures, num regions
                                     self._region, TRIGGER_MODES[self._trigger].pv_mode, t_exp)
-            self._buffer = np.require(np.zeros(self.shape, dtype='uint16'),
+            buffer_shape = (self.roi.height//self.binning.v,
+                            self.roi.width // self.binning.h)
+            self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                       requirements=['C_CONTIGUOUS','ALIGNED','OWNDATA'])
         else:
             # Use a circular buffer.
@@ -1276,7 +1287,9 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             # Need to keep a reference to the callback.
             self._eof_callback = CALLBACK(cb)
             _cam_register_callback(self.handle, PL_CALLBACK_EOF, self._eof_callback)
-            buffer_shape = (self._circ_buffer_length*self.roi[2], self.roi[3])
+            buffer_shape = (self._circ_buffer_length,
+                            self.roi.height//self.binning.v,
+                            self.roi.width // self.binning.h)
             self._buffer = np.require(np.zeros(buffer_shape, dtype='uint16'),
                                           requirements=['C_CONTIGUOUS', 'ALIGNED', 'OWNDATA'])
             nbytes = _exp_setup_cont(self.handle, 1, self._region,
@@ -1337,19 +1350,23 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         return self.binning
 
     @keep_acquiring
-    def _set_binning(self, h, v):
+    def _set_binning(self, binning):
         """Set binning to (h, v)."""
         #  The keep_acquiring decorator will cause recreation of buffers.
-        self.binning = (h, v)
+        self.binning = Binning(binning.h, binning.v)
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
         return self.roi
 
     @keep_acquiring
-    def _set_roi(self, left, top, width, height):
+    def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
-        self.roi = (left, top, width, height)
+        right = roi.left + roi.width
+        bottom = roi.top + roi.height
+        if (right, bottom) > self.shape:
+            raise Exception("ROI exceeds sensor area.")
+        self.roi = roi
 
 
     """Public methods, callable from client."""
@@ -1406,12 +1423,12 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         _cam_register_callback(self.handle, PL_CALLBACK_CAM_RESUMED, self._cbs['resumed'])
         # Repopulate _params.
         self._params = {}
-        # Add chip before anything else, as chip name is used to add missing enums.
-        self._params[PARAM_CHIP_NAME] = PVParam(self, PARAM_CHIP_NAME)
         for (param_id, name) in _param_to_name.items():
-            if param_id in self._params:
+            try:
+                p = PVParam.factory(self, param_id)
+            except:
+                self._logger.warn("Skipping unsupported parameter %s." % name)
                 continue
-            p = PVParam(self, param_id)
             if not p.dtype or not p.available:
                 continue
             self._params[param_id] = p
@@ -1448,14 +1465,14 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                              self._params[PARAM_PMODE].values)
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
-        self.roi = (0, 0, self.shape[0], self.shape[1])
+        self.roi = ROI(0, 0, self.shape[0], self.shape[1])
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
         ro_ports = self._params[PARAM_READOUT_PORT].values
         self._readout_modes = []
-        self._readout_mode_parameters = {}
-        for i, port in ro_ports:
+        self._readout_mode_parameters = []
+        for i, port in ro_ports.items():
             self._params[PARAM_READOUT_PORT].set_value(i)
             ro_speeds = self._params[PARAM_SPDTAB_INDEX].values
             for j in range(ro_speeds[0], ro_speeds[1]+1):
@@ -1472,19 +1489,19 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                     prefix = 'Hz'
                 mode_str = "%s, %s-bit, %s %sHz" % (port, bit_depth, freq, prefix)
                 self._readout_modes.append(mode_str)
-                self._readout_mode_parameters[mode_str] = {'port':i, 'spdtab_index': j}
+                self._readout_mode_parameters.append({'port':i, 'spdtab_index': j})
         # Set to default mode.
-        self.set_readout_mode(self._readout_modes[0])
+        self.set_readout_mode(0)
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
     @keep_acquiring
-    def set_readout_mode(self, description):
+    def set_readout_mode(self, index):
         """Set the readout mode and transform."""
-        params = self._readout_mode_parameters[description]
+        params = self._readout_mode_parameters[index]
         self._params[PARAM_READOUT_PORT].set_value(params['port'])
         self._params[PARAM_SPDTAB_INDEX].set_value(params['spdtab_index'])
-        self._readout_mode = description
+        self._readout_mode = index
         # Update transforms, if available.
         chip = self._params[PARAM_CHIP_NAME].current
         new_readout_transform = None

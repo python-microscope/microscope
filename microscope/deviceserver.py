@@ -24,7 +24,7 @@ defined in a specified config file.
 """
 
 from collections.abc import Iterable
-import imp # this has been deprecated, we should be using importlib
+import importlib.util
 import logging
 import multiprocessing
 import signal
@@ -93,14 +93,12 @@ class Filter(logging.Filter):
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, device_def, id_to_host, id_to_port, count=0,
-                 exit_event=None):
+    def __init__(self, device_def, id_to_host, id_to_port, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def: definition of the device
         :param id_to_host: host or mapping of device identifiers to hostname
         :param id_to_port: map or mapping of device identifiers to port number
-        :param count:      this is the countth process serving this class
         :param exit_event: a shared event to signal that the process
             should quit.
         """
@@ -114,8 +112,14 @@ class DeviceServer(multiprocessing.Process):
         self.exit_event = exit_event
         super(DeviceServer, self).__init__()
         self.daemon = True
-        # Some SDKs need an index to access more than one device.
-        self.count = count
+
+    def clone(self):
+        """Create new instance with same settings.
+
+        This is useful to restart a device server.
+        """
+        return DeviceServer(self._device_def, self._id_to_host,
+                            self._id_to_port, exit_event=self.exit_event)
 
     def run(self):
         logger = logging.getLogger(self._device_def['cls'].__name__)
@@ -132,8 +136,14 @@ class DeviceServer(multiprocessing.Process):
         logger.addHandler(stderr_handler)
         logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
-        self._device = self._device_def['cls'](index=self.count,
-                                               **self._device_def)
+
+        ## The device definition includes stuff that were never
+        ## meant for the device.  Remove those.
+        init_kwargs = self._device_def.copy()
+        for def_key in ['cls', 'host', 'port', 'uid']:
+            init_kwargs.pop(def_key)
+
+        self._device = self._device_def['cls'](**init_kwargs)
         while not self.exit_event.is_set():
             try:
                 self._device.initialize()
@@ -248,9 +258,9 @@ def serve_devices(devices, exit_event=None):
             uid_to_port = None
 
         for dev in devs:
-            servers.append(DeviceServer(dev,
-                                        uid_to_host, uid_to_port,
-                                        exit_event=exit_event, count=count))
+            dev['index'] = count
+            servers.append(DeviceServer(dev, uid_to_host, uid_to_port,
+                                        exit_event=exit_event))
             servers[-1].start()
             count += 1
 
@@ -268,11 +278,7 @@ def serve_devices(devices, exit_event=None):
                                  " exitcode %s. Restarting...")
                                 % (s.pid, s.exitcode))
                     servers.remove(s)
-                    servers.append(DeviceServer(s._device_def,
-                                                s._id_to_host,
-                                                s._id_to_port,
-                                                exit_event=exit_event,
-                                                count=s.count))
+                    servers.append(s.clone())
 
                     try:
                         s.join(30)
@@ -346,8 +352,15 @@ def __main__():
         __console__()
 
 
+def _load_source(filepath):
+    spec = importlib.util.spec_from_file_location('config', filepath)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_devices(configfile):
-    config = imp.load_source('microscope.config', configfile)
+    config = _load_source(configfile)
     devices = getattr(config, 'DEVICES', None)
     if not devices:
         raise Exception("No 'DEVICES=...' in config file.")
