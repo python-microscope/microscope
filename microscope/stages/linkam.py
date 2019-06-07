@@ -1297,9 +1297,9 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase):
             return "refilling: %s, t: %s, dt: %s" % (self.refilling, self.t, self.dt)
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, uid='', *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.uid = kwargs.get('uid', '')
+        self.uid = uid
         self.init_usb(self.uid)
         self._cmsstatus = _CMSStatus()
         self._cmserror = _CMSError()
