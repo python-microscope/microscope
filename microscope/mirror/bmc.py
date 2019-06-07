@@ -32,7 +32,7 @@ import microscope._wrappers.BMC as BMC
 
 class BMCDeformableMirror(DeformableMirror):
     def __init__(self, serial_number, *args, **kwargs):
-        super(BMCDeformableMirror, self).__init__()
+        super(BMCDeformableMirror, self).__init__(*args, **kwargs)
         self._dm = BMC.DM()
 
         if __debug__:
