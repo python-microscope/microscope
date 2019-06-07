@@ -29,6 +29,7 @@ from PIL import Image, ImageFont, ImageDraw
 from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import FilterWheelBase
+from microscope.devices import ROI, Binning
 
 from enum import IntEnum
 
@@ -38,22 +39,117 @@ class CamEnum(IntEnum):
     C = 3
     D = 4
 
+def _theta_generator():
+    """A generator that yields values between 0 and 2*pi"""
+    TWOPI = 2 * np.pi
+    th = 0
+    while True:
+        yield th
+        th = (th + 0.01*TWOPI) % TWOPI
+
+class _ImageGenerator():
+    """Generates test images, with methods for configuration via a Setting."""
+    def __init__(self):
+        self._methods = (self.noise, self.gradient, self.sawtooth,
+                         self.one_gaussian, self.black, self.white)
+        self._method_index = 0
+        self._datatypes = (np.uint8, np.uint16, np.float)
+        self._datatype_index = 0
+        self._theta = _theta_generator()
+        # Font for rendering counter in images.
+        self._font = ImageFont.load_default()
+
+    def get_data_types(self):
+        return(t.__name__ for t in self._datatypes)
+
+    def data_type(self):
+        return self._datatype_index
+
+    def set_data_type(self, index):
+        self._datatype_index = index
+
+    def get_methods(self):
+        """Return the names of available image generation methods"""
+        return (m.__name__ for m in self._methods)
+
+    def method(self):
+        """Return the index of the current image generation method."""
+        return self._method_index
+
+    def set_method(self, index):
+        """Set the image generation method."""
+        self._method_index = index
+
+    def get_image(self, width, height, dark=0, light=255, index=None):
+        """Return an image using the currently selected method."""
+        m = self._methods[self._method_index]
+        d = self._datatypes[self._datatype_index]
+        #return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
+        data = m(width, height, dark, light).astype(d)
+        if index is not None:
+            text = "%d" % index
+            size = tuple(d+2 for d in self._font.getsize(text))
+            img = Image.new('L', size)
+            ctx = ImageDraw.Draw(img)
+            ctx.text((1, 1), text, fill=light)
+            data[0:size[1],0:size[0]] = np.asarray(img)
+        return data
+
+    def black(self, w, h, dark, light):
+        """Ignores dark and light - returns zeros"""
+        return np.zeros((h, w))
+
+    def white(self, w, h, dark, light):
+        """Ignores dark and light - returns max value for current data type."""
+        d = self._datatypes[self._datatype_index]
+        if issubclass(d, np.integer):
+            value = np.iinfo(d).max
+        else:
+            value = 1.
+        return value * np.ones((h, w)).astype(d)
+
+    def gradient(self, w, h, dark, light):
+        """A single gradient across the whole image from top left to bottom right."""
+        xx, yy = np.meshgrid(range(w), range(h))
+        return dark + light * (xx + yy) / (xx.max() + yy.max())
+
+    def noise(self, w, h, dark, light):
+        """Random noise."""
+        return np.random.randint(dark, light, size=(h, w))
+
+    def one_gaussian(self, w, h, dark, light):
+        "A single gaussian"
+        sigma = 0.01 * max(w, h)
+        x0 = np.random.randint(w)
+        y0 = np.random.randint(h)
+        xx, yy = np.meshgrid(range(w), range(h))
+        return dark + light * np.exp(-((xx-x0)**2 + (yy-y0)**2) / (2*sigma**2))
+
+    def sawtooth(self, w, h, dark, light):
+        """A sawtooth gradient that rotates about 0,0."""
+        th = next(self._theta)
+        xx, yy = np.meshgrid(range(w), range(h))
+        wrap = 0.1 * max(xx.max(), yy.max())
+        return dark + light * ((np.sin(th)*xx + np.cos(th)*yy) % wrap) / (wrap)
+
 
 @Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
         # Binning and ROI
-        self._roi = (0,0,511,511)
-        self._binning = (1,1)
-        self.add_setting('binning', 'tuple',
-                         lambda: self._binning,
-                         lambda val: setattr(self, '_binning', val),
-                         None)
-        self.add_setting('roi', 'tuple',
-                         lambda: self._roi,
-                         lambda val: setattr(self, '_roi', val),
-                         None)
+        self._roi = ROI(0,0,512,512)
+        self._binning = Binning(1,1)
+        # Function used to generate test image
+        self._image_generator = _ImageGenerator()
+        self.add_setting('image pattern', 'enum',
+                         self._image_generator.method,
+                         self._image_generator.set_method,
+                         self._image_generator.get_methods)
+        self.add_setting('image data type', 'enum',
+                         self._image_generator.data_type,
+                         self._image_generator.set_data_type,
+                         self._image_generator.get_data_types)
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
         self.add_setting('a_setting', 'int',
@@ -96,8 +192,6 @@ class TestCamera(devices.CameraDevice):
         self._triggered = 0
         # Count number of images sent since last enable.
         self._sent = 0
-        # Font for rendering counter in images.
-        self._font = ImageFont.load_default()
 
     def _set_error_percent(self, value):
         self._error_percent = value
@@ -126,20 +220,12 @@ class TestCamera(devices.CameraDevice):
             # Create an image
             dark = int(32 * np.random.rand())
             light = int(255 - 128 * np.random.rand())
-            width = (self._roi[2] - self._roi[0]) // self._binning[0]
-            height = (self._roi[3] - self._roi[1]) // self._binning[1]
+            width = self._roi.width // self._binning.h
+            height = self._roi.height // self._binning.v
             size = (width, height)
-            image = Image.fromarray(
-                np.random.randint(dark, light, size=size).astype(np.uint8), 'L')
-            # Render text
-            text = "%d" % self._sent
-            tsize = self._font.getsize(text)
-            ctx = ImageDraw.Draw(image)
-            ctx.rectangle([size[0]-tsize[0]-8, 0, size[0], tsize[1]+8], fill=dark)
-            ctx.text((size[0]-tsize[0]-4, 4), text, fill=light)
-
+            image = self._image_generator.get_image(width, height, dark, light, index=self._sent)
             self._sent += 1
-            return np.asarray(image).T
+            return image
 
     def abort(self):
         self._logger.info("Disabling acquisition; %d images sent." % self._sent)
@@ -193,18 +279,18 @@ class TestCamera(devices.CameraDevice):
             self._triggered += 1
 
     def _get_binning(self):
-        return (1,1)
+        return self._binning
 
     @keep_acquiring
-    def _set_binning(self, h, v):
-        return False
+    def _set_binning(self, binning):
+        self._binning = binning
 
     def _get_roi(self):
-        return (0, 0, 512, 512)
+        return self._roi
 
     @keep_acquiring
-    def _set_roi(self, x, y, width, height):
-        return False
+    def _set_roi(self, roi):
+        self._roi = roi
 
     def _on_shutdown(self):
         pass
@@ -290,7 +376,7 @@ class TestDeformableMirror(devices.DeformableMirror):
 @Pyro4.behavior('single')
 class DummySLM(devices.Device):
     def __init__(self, *args, **kwargs):
-        devices.Device.__init__(self, args, kwargs)
+        devices.Device.__init__(self, *args, **kwargs)
         self.sim_diffraction_angle = 0.
         self.sequence_params = []
         self.sequence_index = 0
@@ -333,7 +419,7 @@ class DummySLM(devices.Device):
 @Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, *args, **kwargs):
-        devices.Device.__init__(self, args, kwargs)
+        devices.Device.__init__(self, *args, **kwargs)
         self._digi = 0
         self._ana = [0,0,0,0]
         self._client = None

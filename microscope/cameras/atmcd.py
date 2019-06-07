@@ -1129,7 +1129,7 @@ class ReadoutMode():
 from threading import Lock
 import functools
 from microscope import devices
-from microscope.devices import keep_acquiring, Setting, Binning, Roi
+from microscope.devices import keep_acquiring, Setting, Binning, ROI
 import time
 
 # A lock on the DLL used to ensure DLL calls act on the correct device.
@@ -1140,11 +1140,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                  devices.CameraDevice):
     """ Implements CameraDevice interface for Andor ATMCD library."""
     def __init__(self, index=0, *args, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(index=index, **kwargs)
         # Recursion depth for context manager behaviour.
         self._rdepth = 0
-        # The camera index in the list maintained by the DLL.
-        self._index = index
         # The handle used by the DLL to identify this camera.
         self._handle = None
         # The following parameters will be populated after hardware init.
@@ -1223,8 +1221,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Initialize the library and connect to camera.
             Initialize(b'')
             # Initialise ROI to full sensor area and binning to single-pixel.
-            self._set_roi()
-            self._set_binning()
+            self._set_roi(ROI(0,0,0,0))
+            self._set_binning(Binning(1,1))
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1<<2:
@@ -1297,6 +1295,17 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                           setter is None)
         # Set a conservative default temperature set-point.
         self.settings[name].set(-20)
+        # Fan control
+        name = 'Temperature'
+        self.settings[name] = Setting(name, 'int',
+                                      self.get_sensor_temperature,
+                                      None, (None, None), True)
+        name = 'Fan mode'
+        self.settings[name] = Setting(name, 'enum',
+                                      None, # Can't query fan mode
+                                      self._bind(SetFanMode),
+                                      {0:'full', 1:'low', 2:'off'}
+                                      )
         # Cooler control
         name = 'Cooler Enabled'
         self.settings[name] = Setting(name, 'bool',
@@ -1308,7 +1317,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         name = 'Binning'
         self.settings[name] = Setting(name, 'tuple',
                                       self.get_binning,
-                                      lambda hv: self.set_binning(*hv),
+                                      self.set_binning,
                                       None)
         # Roi
         name = 'Roi'
@@ -1364,7 +1373,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         height = roi.height // binning.v
         try:
             with self:
-                data = GetOldestImage16(width * height).reshape(width, height)
+                data = GetOldestImage16(width * height).reshape(height, width)
         except AtmcdException as e:
             if e.status == DRV_NO_NEW_DATA:
                 return None
@@ -1478,7 +1487,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # opposite edges from the chip. We set the horizontal flip
             # so that the returned image orientation is independent of
             # amplifier selection
-            SetImageFlip(mode.amp, 0)
+            SetImageFlip(not mode.amp, 0)
             SetHSSpeed(mode.amp, mode.hsindex)
 
     def _get_sensor_shape(self):
@@ -1511,9 +1520,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return self._binning
 
     @keep_acquiring
-    def _set_binning(self, h=1, v=1):
+    def _set_binning(self, binning):
         """Set horizontal and vertical binning. Default to single pixel."""
-        self._binning = Binning(h, v)
+        self._binning = binning
         return True
 
     def _get_roi(self):
@@ -1521,19 +1530,15 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         return self._roi
 
     @keep_acquiring
-    def _set_roi(self, left=None, top=None, width=None, height=None):
+    def _set_roi(self, roi):
         """Set the ROI, defaulting to full sensor area."""
         with self:
             x, y = GetDetector()
-        if left is None:
-            left = 1
-        if top is None:
-            top = 1
-        if width is None:
-            width = x
-        if height is None:
-            height = y
+        left = roi.left or 1
+        top = roi.top or 1
+        width = roi.width or x
+        height = roi.height or y
         if any([left < 1, top < 1, left+width-1 > x, top+height-1 > y]):
             return False
-        self._roi = Roi(left, top, width, height)
+        self._roi = ROI(left, top, width, height)
         return True

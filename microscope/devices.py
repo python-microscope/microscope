@@ -43,7 +43,7 @@ import numpy
 
 from collections import namedtuple
 # A tuple that defines a region of interest.
-Roi = namedtuple('Roi', ['left', 'top', 'width', 'height'])
+ROI = namedtuple('ROI', ['left', 'top', 'width', 'height'])
 # A tuple containing parameters for horizontal and vertical binning.
 Binning = namedtuple('Binning', ['h', 'v'])
 
@@ -96,8 +96,8 @@ class Setting():
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s': expected function or %s" %
+                            (dtype, name, DTYPES[dtype][1:]))
         self.dtype = DTYPES[dtype][0]
         self._get = get_func
         self._values = values
@@ -156,16 +156,21 @@ class Setting():
                 return values
 
 
-def device(cls, host, port, uid=None, **kwargs):
+def device(cls, host, port, conf={}, uid=None):
     """Define a device and where to serve it.
 
-    A device definition for use in config files.
+    A device definition for use in deviceserver config files.
 
-    Defines a device of type cls, served on host:port.
-    UID is used to identify 'floating' devices (see below).
-    kwargs can be used to pass any other parameters to cls.__init__.
+    Args:
+        cls (type): type/class of device to serve.
+        host (str): hostname or ip address serving the device.
+        port (int): port number used to serve the device.
+        conf (dict): keyword arguments to construct the device.  The
+            device is effectively constructed with `cls(**conf)`.
+        uid (str): used to identify "floating" devices (see
+            documentation for :class:`FloatingDeviceMixin`)
     """
-    return dict(cls=cls, host=host, port=int(port), uid=uid, **kwargs)
+    return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
 class FloatingDeviceMixin(object):
@@ -186,17 +191,22 @@ class FloatingDeviceMixin(object):
 
 
 class Device(object):
-    """A base device class. All devices should subclass this class."""
+    """A base device class. All devices should subclass this class.
+
+    Args:
+        index (int): the index of the device on a shared library.
+            This argument is added by the deviceserver.
+    """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, index=None, *args, **kwargs):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
         # We fetch a logger here, but it can't log anything until
         # a handler is attached after we've identified this device.
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._index = kwargs['index'] if 'index' in kwargs else None
+        self._index = index
 
     def __del__(self):
         self.shutdown()
@@ -280,8 +290,8 @@ class Device(object):
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception('Invalid values type for %s: expected function or %s' %
-                            (dtype, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s': expected function or %s" %
+                            (dtype, name, DTYPES[dtype][1:]))
         else:
             self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
 
@@ -307,6 +317,7 @@ class Device(object):
             self.settings[name].set(value)
         except Exception as err:
             self._logger.error("in set_setting(%s):" % (name), exc_info=err)
+            raise
 
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
@@ -374,7 +385,6 @@ class DataDevice(Device):
 
     Derived classed should implement::
       * abort(self)                ---  required
-      * start_acquisition(self)    ---  required
       * _fetch_data(self)          ---  required
       * _process_data(self, data)  ---  optional
 
@@ -386,8 +396,6 @@ class DataDevice(Device):
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
         super(DataDevice, self).__init__(**kwargs)
-        # A length-1 buffer for fetching data.
-        self._data = None
         # A thread to fetch and dispatch data.
         self._fetch_thread = None
         # A flag to control the _fetch_thread.
@@ -631,7 +639,7 @@ class CameraDevice(DataDevice):
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [range(2)])]
+    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
     def __init__(self, *args, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
@@ -641,9 +649,11 @@ class CameraDevice(DataDevice):
         self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
         # Transform to correct for readout order.
-        self._readout_transform = (0, 0, 0)
+        self._readout_transform = (False, False, False)
         # Transform supplied by client to correct for system geometry.
-        self._transform = (0, 0, 0)
+        self._client_transform = (False, False, False)
+        # Result of combining client and readout transforms
+        self._transform = (False, False, False)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
                          lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
@@ -653,8 +663,14 @@ class CameraDevice(DataDevice):
                          lambda: self._readout_mode,
                          self.set_readout_mode,
                          lambda: self._readout_modes)
-
-
+        self.add_setting('binning', 'tuple',
+                         self.get_binning,
+                         self.set_binning,
+                         None)
+        self.add_setting('roi', 'tuple',
+                         self.get_roi,
+                         self.set_roi,
+                         None)
     def _process_data(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
@@ -672,26 +688,25 @@ class CameraDevice(DataDevice):
         """Set the readout mode and _readout_transform."""
         pass
 
-
     def get_transform(self):
         """Return the current transform without readout transform."""
-        return tuple(self._readout_transform[i] ^ self._transform[i]
-                     for i in range(3))
+        return self._client_transform
 
     def set_transform(self, transform):
         """Combine provided transform with readout transform."""
         if isinstance(transform, str):
             transform = literal_eval(transform)
-        self._transform = tuple(self._readout_transform[i] ^ transform[i]
-                                for i in range(3))
-
+        self._client_transform = transform
+        lr, ud, rot = (self._readout_transform[i] ^ transform[i] for i in range(3))
+        if self._readout_transform[2] and self._client_transform[2]:
+            lr = not lr
+            ud = not ud
+        self._transform = (lr, ud, rot)
 
     def _set_readout_transform(self, new_transform):
         """Update readout transform and update resultant transform."""
-        client_transform = self.get_transform()
-        self._readout_transform = new_transform
-        self.set_transform(client_transform)
-
+        self._readout_transform = [bool(int(t)) for t in new_transform]
+        self.set_transform(self._client_transform)
 
     @abc.abstractmethod
     def set_exposure_time(self, value):
@@ -740,23 +755,24 @@ class CameraDevice(DataDevice):
         return binning
 
     @abc.abstractmethod
-    def _set_binning(self, h_bin, v_bin):
+    def _set_binning(self, binning):
         """Set binning along both axes. Return True if successful."""
         pass
 
-    def set_binning(self, h_bin, v_bin):
+    def set_binning(self, binning):
         """Set binning along both axes. Return True if successful."""
+        h_bin, v_bin = binning
         if self._transform[2]:
             # 90 degree rotation
-            binning = (v_bin, h_bin)
+            binning = Binning(v_bin, h_bin)
         else:
-            binning = (h_bin, v_bin)
-        return self._set_binning(*binning)
+            binning = Binning(h_bin, v_bin)
+        return self._set_binning(binning)
 
     @abc.abstractmethod
     def _get_roi(self):
         """Return the ROI as it is on hardware."""
-        return left, top, width, height
+        return ROI(left, top, width, height)
 
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).
@@ -766,23 +782,30 @@ class CameraDevice(DataDevice):
         roi = self._get_roi()
         if self._transform[2]:
             # 90 degree rotation
-            roi = (roi[1], roi[0], roi[3], roi[2])
+            roi = ROI(roi[1], roi[0], roi[3], roi[2])
         return roi
 
     @abc.abstractmethod
-    def _set_roi(self, left, top, width, height):
+    def _set_roi(self, roi):
         """Set the ROI on the hardware, return True if successful."""
         return False
 
-    def set_roi(self, left, top, width, height):
+    def set_roi(self, roi):
         """Set the ROI according to the provided rectangle.
-
+        ROI is a tuple (left, right, width, height)
         Return True if ROI set correctly, False otherwise."""
+        maxw, maxh = self.get_sensor_shape()
+        binning = self.get_binning()
+        left, top, width, height = roi
+        if not width: # 0 or None
+            width = maxw // binning.h
+        if not height: # 0 o rNone
+            height = maxh // binning.v
         if self._transform[2]:
-            roi = (top, left, height, width)
+            roi = ROI(left, top, height, width)
         else:
-            roi = (left, top, width, height)
-        return self._set_roi(*roi)
+            roi = ROI(left, top, width, height)
+        return self._set_roi(roi)
 
     def get_trigger_type(self):
         """Return the current trigger mode.

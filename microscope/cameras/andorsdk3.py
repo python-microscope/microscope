@@ -30,6 +30,7 @@ import numpy as np
 
 from microscope import devices
 from microscope.devices import keep_acquiring
+from microscope.devices import ROI
 
 from .SDK3Cam import *
 
@@ -100,11 +101,10 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
 class AndorSDK3(devices.FloatingDeviceMixin,
                 devices.CameraDevice):
     SDK_INITIALIZED = False
-    def __init__(self, *args, **kwargs):
-        super(AndorSDK3, self).__init__(**kwargs)
+    def __init__(self, index=0, *args, **kwargs):
+        super(AndorSDK3, self).__init__(index=index, **kwargs)
         if not AndorSDK3.SDK_INITIALIZED:
             SDK3.InitialiseLibrary()
-        self._index = kwargs.get('index', 0)
         self.handle = None
         #self._sdk3cam = SDK3Camera(self._index)
         #SDK3Camera.__init__(self, self._index)
@@ -445,9 +445,9 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         return tuple(int(t) for t in as_text)
 
     @keep_acquiring
-    def _set_binning(self, h, v):
+    def _set_binning(self, binning):
         modes = self._aoi_binning.get_available_values()
-        as_text = '%dx%d' % (h,v)
+        as_text = '%dx%d' % (binning.h, binning.v)
         if as_text in modes:
             self._aoi_binning.set_string(as_text)
             self._create_buffers()
@@ -456,26 +456,26 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             return False
 
     def _get_roi(self):
-        return (self._aoi_left.get_value(),
-                self._aoi_top.get_value(),
-                self._aoi_width.get_value(),
-                self._aoi_height.get_value())
+        return ROI(self._aoi_left.get_value(),
+                   self._aoi_top.get_value(),
+                   self._aoi_width.get_value(),
+                   self._aoi_height.get_value())
 
     @keep_acquiring
-    def _set_roi(self, x, y, width, height):
+    def _set_roi(self, roi):
         current = self.get_roi()
         if self._acquiring:
             self.abort()
         try:
-            self._aoi_width.set_value(width)
-            self._aoi_height.set_value(height)
-            self._aoi_left.set_value(x)
-            self._aoi_top.set_value(y)
+            self._aoi_width.set_value(roi.width)
+            self._aoi_height.set_value(roi.height)
+            self._aoi_left.set_value(roi.left)
+            self._aoi_top.set_value(roi.top)
         except:
-            self._aoi_width.set_value(current[2])
-            self._aoi_height.set_value(current[3])
-            self._aoi_left.set_value(current[0])
-            self._aoi_top.set_value(current[1])
+            self._aoi_width.set_value(current.width)
+            self._aoi_height.set_value(current.height)
+            self._aoi_left.set_value(current.left)
+            self._aoi_top.set_value(current.top)
             return False
         return True
 

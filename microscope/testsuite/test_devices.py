@@ -435,6 +435,24 @@ class TestDummyCamera(unittest.TestCase, CameraTests):
         self.device = dummies.TestCamera()
 
 
+class TestImageGenerator(unittest.TestCase):
+    def test_non_square_patterns_shape(self):
+        ## TODO: we should also be testing this via the camera but the
+        ## TestCamera is only square.  In the mean time, we only test
+        ## directly the _ImageGenerator.
+        width = 16
+        height = 32
+        generator = dummies._ImageGenerator()
+        patterns = list(generator.get_methods())
+        for i, pattern in enumerate(patterns):
+            with self.subTest(pattern):
+                generator.set_method(i)
+                array = generator.get_image(width, height, 0, 255)
+                # In matplotlib, an M-wide by N-tall image has M columns
+                # and N rows, so a shape of (N, M)
+                self.assertEqual(array.shape, (height, width))
+
+
 class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel()
