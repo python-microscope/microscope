@@ -1140,7 +1140,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                  devices.CameraDevice):
     """ Implements CameraDevice interface for Andor ATMCD library."""
     def __init__(self, index=0, *args, **kwargs):
-        super().__init__(index=0, **kwargs)
+        super().__init__(index=index, **kwargs)
         # Recursion depth for context manager behaviour.
         self._rdepth = 0
         # The handle used by the DLL to identify this camera.

@@ -137,13 +137,7 @@ class DeviceServer(multiprocessing.Process):
         logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
 
-        ## The device definition includes stuff that were never
-        ## meant for the device.  Remove those.
-        init_kwargs = self._device_def.copy()
-        for def_key in ['cls', 'host', 'port', 'uid']:
-            init_kwargs.pop(def_key)
-
-        self._device = self._device_def['cls'](**init_kwargs)
+        self._device = self._device_def['cls'](**self._device_def['conf'])
         while not self.exit_event.is_set():
             try:
                 self._device.initialize()
@@ -258,7 +252,7 @@ def serve_devices(devices, exit_event=None):
             uid_to_port = None
 
         for dev in devs:
-            dev['index'] = count
+            dev['conf']['index'] = count
             servers.append(DeviceServer(dev, uid_to_host, uid_to_port,
                                         exit_event=exit_event))
             servers[-1].start()
