@@ -381,7 +381,7 @@ class DummySLM(devices.Device):
         self.sequence_params = []
         self.sequence_index = 0
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         pass
 
     def _on_shutdown(self):

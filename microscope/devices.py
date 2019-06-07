@@ -250,7 +250,7 @@ class Device(object):
         pass
 
     @abc.abstractmethod
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         """Initialize the device."""
         pass
 
