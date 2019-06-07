@@ -199,7 +199,7 @@ class Device(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, index=None, *args, **kwargs):
+    def __init__(self, index=None):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
