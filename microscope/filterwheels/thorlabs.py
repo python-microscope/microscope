@@ -53,7 +53,7 @@ class ThorlabsFilterWheel(FilterWheelBase):
         self.connection = io.TextIOWrapper(io.BufferedRWPair(rawSerial, rawSerial, 1))
         # Last received wheel position.
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         pass
 
     def _on_shutdown(self):

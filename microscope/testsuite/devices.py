@@ -425,7 +425,7 @@ class DummyDSP(devices.Device):
         self._client = None
         self._actions = []
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         pass
 
     def _on_shutdown(self):
