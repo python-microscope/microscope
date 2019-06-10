@@ -104,8 +104,8 @@ class TestInputCheck(BaseTestServeDevices):
 
 
 class DeviceWithPort(microscope.devices.Device):
-    def __init__(self, port, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, port, **kwargs):
+        super().__init__(**kwargs)
         self._port = port
 
     @property

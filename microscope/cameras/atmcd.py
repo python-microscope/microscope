@@ -1139,7 +1139,7 @@ _dll_lock = Lock()
 class AndorAtmcd(devices.FloatingDeviceMixin,
                  devices.CameraDevice):
     """ Implements CameraDevice interface for Andor ATMCD library."""
-    def __init__(self, index=0, *args, **kwargs):
+    def __init__(self, index=0, **kwargs):
         super().__init__(index=index, **kwargs)
         # Recursion depth for context manager behaviour.
         self._rdepth = 0
