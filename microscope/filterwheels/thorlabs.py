@@ -30,7 +30,7 @@ class ThorlabsFilterWheel(FilterWheelBase):
 
     Note that the FW102C also has manual controls on the device, so clients
     should periodically query the current wheel position."""
-    def __init__(self, com, baud, timeout, **kwargs):
+    def __init__(self, com, baud=115200, timeout=2.0, **kwargs):
         """Create ThorlabsFilterWheel
 
         :param com: COM port
