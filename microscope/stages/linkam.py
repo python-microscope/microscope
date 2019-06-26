@@ -900,7 +900,7 @@ _StageValueTypeToVariant = {
 }
 
 
-class LinkamBase(devices.Device):
+class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     """Base class for connecting to Linkam SDK devices.
     
     This class deals with SDK initialisation and setting callbacks to 
@@ -1004,17 +1004,16 @@ class LinkamBase(devices.Device):
         stage._connectionstatus.flags.connected = 0
         return
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """Initalise the device and, if necessary, the SDK."""
         # Connection handle, info struct and status struct.
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self._commsinfo = _CommsInfo()
         self._h = _CommsHandle()
         self._connectionstatus = _ConnectionStatus()
         self._stageconfig = _StageConfig()
-        self._status = _ControllerStatus()
         # Stage status struct, updated by the NewValue callback.
-        self._status = _uint64_t()
+        self._status = _ControllerStatus()
         if __class__._lib is None:
             self.init_sdk()
         self._reconnect_thread = None
@@ -1145,7 +1144,7 @@ class LinkamBase(devices.Device):
             # Already trying to reconnect
             return
         import threading
-        self._reconnect_thread = threading.Thread(target=self._reopen_loop)
+        self._reconnect_thread = threading.Thread(target=self._reopen_loop, daemon=True)
         self._reconnect_thread.start()
 
     def _reopen_loop(self):
@@ -1170,7 +1169,9 @@ class LinkamBase(devices.Device):
         # suggest that an OpenComms message should open a connection to the 
         # device with that serial number; with only one stage attached, it
         # appears that OpenComms ignores the value of serialNumber.
-        if not isinstance(uid, bytes):
+        if uid is None:
+            uid = b''
+        elif not isinstance(uid, bytes):
             uid = uid.encode()
         self._lib.linkamInitialiseUSBCommsInfo(byref(self._commsinfo), ctypes.c_char_p(uid))
 
@@ -1200,8 +1201,8 @@ class LinkamBase(devices.Device):
 
 class LinkamMDSMixin():
     """A mixin for motor-driven stages"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._mdsstatus = _MDSStatus()
 
     def _post_connect(self):
@@ -1242,7 +1243,7 @@ class LinkamMDSMixin():
             self.set_value(_StageValueType.MotorSetpointZ, z)
             self._process_msg(Msg.StartMotors, True, 2)
         # Allow time for status structures to indicate stage is moving
-        time.sleep(2 * self.get_data_rate())
+        time.sleep(5 * self.get_data_rate())
 
     def get_status(self, *args):
         """Includes MDSStatus in the get_status call."""
@@ -1255,11 +1256,11 @@ class LinkamMDSMixin():
             if getattr(self._stageconfig.flags, 'motor' + axis):
                 pos[axis] = self.get_value(getattr(_StageValueType, 'MotorPos' + axis))
             else:
-                pos[axis] = None
+                pos[axis] = float('nan')
         return pos
 
 
-class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
+class LinkamCMS(LinkamMDSMixin, LinkamBase):
     """Linkam correlative-microscopy stage."""
     _refill_map = {'sample': 'sampleDewarFillSignal',
                    'external': 'mainDewarFillSignal'}
@@ -1296,9 +1297,9 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase, devices.FloatingDeviceMixin):
             return "refilling: %s, t: %s, dt: %s" % (self.refilling, self.t, self.dt)
 
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.uid = kwargs.get('uid', '')
+    def __init__(self, uid='', **kwargs):
+        super().__init__(**kwargs)
+        self.uid = uid
         self.init_usb(self.uid)
         self._cmsstatus = _CMSStatus()
         self._cmserror = _CMSError()

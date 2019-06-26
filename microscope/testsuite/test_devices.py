@@ -42,6 +42,7 @@ import unittest.mock
 import numpy
 import serial
 
+import microscope.devices
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 
@@ -435,6 +436,24 @@ class TestDummyCamera(unittest.TestCase, CameraTests):
         self.device = dummies.TestCamera()
 
 
+class TestImageGenerator(unittest.TestCase):
+    def test_non_square_patterns_shape(self):
+        ## TODO: we should also be testing this via the camera but the
+        ## TestCamera is only square.  In the mean time, we only test
+        ## directly the _ImageGenerator.
+        width = 16
+        height = 32
+        generator = dummies._ImageGenerator()
+        patterns = list(generator.get_methods())
+        for i, pattern in enumerate(patterns):
+            with self.subTest(pattern):
+                generator.set_method(i)
+                array = generator.get_image(width, height, 0, 255)
+                # In matplotlib, an M-wide by N-tall image has M columns
+                # and N rows, so a shape of (N, M)
+                self.assertEqual(array.shape, (height, width))
+
+
 class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel()
@@ -442,8 +461,7 @@ class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
 
 class TestOneFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel(filteres=[(0, 'DAPI', '430')])
-
+        self.device = dummies.TestFilterWheel(filters=[(0, 'DAPI', '430')])
 
 class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
@@ -469,6 +487,24 @@ class TestDummySLM(unittest.TestCase, SLMTests):
 class TestDummyDSP(unittest.TestCase, DSPTests):
     def setUp(self):
         self.device = dummies.DummyDSP()
+
+
+class TestBaseDevice(unittest.TestCase):
+    def test_unexpected_kwargs_raise_exception(self):
+        """Unexpected kwargs on constructor raise exception.
+
+        Test first that we can construct the device.  Then test that
+        it fails if there's a typo on the argument.  See issue #84.
+        """
+        filters = [(0, 'DAPI', '430')]
+        dummies.TestFilterWheel(filters=filters)
+        ## XXX: Device.__del__ calls shutdown().  However, if __init__
+        ## failed the device is not complete and shutdown() fails
+        ## because the logger has not been created.  See comments on
+        ## issue #69.  patch __del__ to workaround this issue.
+        with unittest.mock.patch('microscope.devices.Device.__del__'):
+            with self.assertRaisesRegex(TypeError, "argument 'filteres'"):
+                dummies.TestFilterWheel(filteres=filters)
 
 
 if __name__ == '__main__':

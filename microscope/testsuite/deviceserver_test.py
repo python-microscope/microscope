@@ -24,6 +24,8 @@ import time
 import unittest
 import unittest.mock
 
+import microscope.clients
+import microscope.devices
 import microscope.deviceserver
 
 from microscope.devices import device
@@ -78,9 +80,9 @@ class BaseTestServeDevices(unittest.TestCase):
 
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
-        device(TestCamera, '127.0.0.1', 8001, otherargs=1,),
+        device(TestCamera, '127.0.0.1', 8001, {'buffer_length' : 0}),
         device(TestFilterWheel, '127.0.0.1', 8003,
-               filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
+               {'filters' : [(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]}),
     ]
 
     def test_standard(self):
@@ -99,6 +101,33 @@ class TestInputCheck(BaseTestServeDevices):
         time.sleep(2)
         self.assertTrue(not self.p.is_alive(),
                         "not dying for empty list of devices")
+
+
+class DeviceWithPort(microscope.devices.Device):
+    def __init__(self, port, **kwargs):
+        super().__init__(**kwargs)
+        self._port = port
+
+    @property
+    def port(self):
+        return self._port
+
+    def _on_shutdown(self):
+        pass
+
+    def initialize(self):
+        pass
+
+
+class TestClashingArguments(BaseTestServeDevices):
+    """Device server and device constructor arguments do not clash"""
+    DEVICES = [
+        device(DeviceWithPort, '127.0.0.1', 8000, {'port' : 7000}),
+    ]
+    def test_port_conflict(self):
+        time.sleep(2)
+        client = microscope.clients.Client('PYRO:DeviceWithPort@127.0.0.1:8000')
+        self.assertEqual(client.port, 7000)
 
 
 if __name__ == '__main__':
