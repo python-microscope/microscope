@@ -25,7 +25,7 @@ import Pyro4
 import numpy as np
 
 from microscope import devices
-from microscope.devices import keep_acquiring
+from microscope.devices import keep_acquiring, Binning, ROI
 
 #import ximea python module.
 from ximea import xiapi
@@ -59,6 +59,7 @@ class XimeaCamera(devices.CameraDevice):
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
+        self.Roi=ROI(None,None,None,None)
 
     def _fetch_data(self):
         if self._acquiring and self._triggered:
@@ -151,11 +152,11 @@ class XimeaCamera(devices.CameraDevice):
         return False
 
     def _get_roi(self):
-        return (0, 0, 512, 512)
+        return self.Roi
 
     @keep_acquiring
     def _set_roi(self, x, y, width, height):
-        return False
+        self.Roi = ROI(x, y, width, height):
 
     def _on_shutdown(self):
         if self._acquiring:
