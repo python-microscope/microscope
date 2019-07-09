@@ -54,7 +54,7 @@ TRIGGER_MODES = {
 
 @Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super(XimeaCamera, self).__init__(**kwargs)
         self._acquiring = False
         self._exposure_time = 0.1
@@ -126,7 +126,7 @@ class XimeaCamera(devices.CameraDevice):
         trig=self.handle.get_trigger_source()
         if trig==XI_TRG_SOFTWARE:
             return devices.TRIGGER_SOFT
-        else if trig==XI_TRG_EDGE_RISING:
+        elif trig==XI_TRG_EDGE_RISING:
             return devices.TRIGGER_BEFORE
             
     def set_trigger_type(self, trigger):
@@ -156,7 +156,7 @@ class XimeaCamera(devices.CameraDevice):
 
     @keep_acquiring
     def _set_roi(self, x, y, width, height):
-        self.Roi = ROI(x, y, width, height):
+        self.Roi = ROI(x, y, width, height)
 
     def _on_shutdown(self):
         if self._acquiring:
