@@ -1125,3 +1125,56 @@ class FilterWheelBase(Device):
 
     def get_filters(self):
         return [(k,v) for k,v in self._filters.items()]
+
+class StageDevice(Device):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def __init__(self, **kwargs):
+        super(StageDevice, self).__init__(**kwargs)
+
+    @abc.abstractmethod
+    def get_status(self):
+        """Query and return the stage status."""
+        result = []
+        # ...
+        return result
+
+    @abc.abstractmethod
+    def send(self):
+        """Send a message to the stage."""
+        result = []
+        # ...
+        return result
+
+    @abc.abstractmethod
+    def get_position(self):
+        """Return the stage position."""
+        result = []
+        # ...
+        return result
+
+    @abc.abstractmethod
+    def stop(self):
+        """Stops all stage motion"""
+        pass
+
+    @abc.abstractmethod
+    def move_abs(self):
+        """Move to a passed absolute position"""
+        pass
+    
+    @abc.abstractmethod
+    def move_relative(self):
+        """Move to a passed relative position"""
+        pass
+
+    @abc.abstractmethod
+    def get_hard_limits(self):
+        """Return stage hard limits"""
+        pass
+
+    @abc.abstractmethod
+    def get_is_moving(self):
+        """Returns True if stage is moving and False if not"""
+        pass
