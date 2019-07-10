@@ -20,12 +20,11 @@
 
 This module provides a server to make microscope control objects available
 over Pyro. When called from the command line, this module will serve devices
-defined in a specified config file, any 'config.py' found at the current
-working directory, or default test objects found in microscope.config.
+defined in a specified config file.
 """
 
-import collections
-import imp # this has been deprecated, we should be using importlib
+from collections.abc import Iterable
+import importlib.util
 import logging
 import multiprocessing
 import signal
@@ -36,7 +35,6 @@ from logging.handlers import RotatingFileHandler
 from threading import Thread
 
 import Pyro4
-from six import iteritems
 
 from microscope.devices import FloatingDeviceMixin
 
@@ -44,6 +42,14 @@ from microscope.devices import FloatingDeviceMixin
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
+
+## We effectively expose all attributes of the classes since our
+## devices don't hold any private data.  The private methods are to
+## signal an interface not meant for public usage, not because there's
+## anything secret or unsafe.  So disable REQUIRE_EXPOSE which avoids
+## requiring Pyro4.expose all over the code (see issue #49)
+Pyro4.config.REQUIRE_EXPOSE = False
+
 
 # Logging formatter.
 LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:'
@@ -87,14 +93,12 @@ class Filter(logging.Filter):
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, device_def, id_to_host, id_to_port, count=0,
-                 exit_event=None):
+    def __init__(self, device_def, id_to_host, id_to_port, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def: definition of the device
         :param id_to_host: host or mapping of device identifiers to hostname
         :param id_to_port: map or mapping of device identifiers to port number
-        :param count:      this is the countth process serving this class
         :param exit_event: a shared event to signal that the process
             should quit.
         """
@@ -108,8 +112,14 @@ class DeviceServer(multiprocessing.Process):
         self.exit_event = exit_event
         super(DeviceServer, self).__init__()
         self.daemon = True
-        # Some SDKs need an index to access more than one device.
-        self.count = count
+
+    def clone(self):
+        """Create new instance with same settings.
+
+        This is useful to restart a device server.
+        """
+        return DeviceServer(self._device_def, self._id_to_host,
+                            self._id_to_port, exit_event=self.exit_event)
 
     def run(self):
         logger = logging.getLogger(self._device_def['cls'].__name__)
@@ -126,8 +136,8 @@ class DeviceServer(multiprocessing.Process):
         logger.addHandler(stderr_handler)
         logger.addFilter(Filter())
         logger.debug("Debugging messages on.")
-        self._device = self._device_def['cls'](index=self.count,
-                                               **self._device_def)
+
+        self._device = self._device_def['cls'](**self._device_def['conf'])
         while not self.exit_event.is_set():
             try:
                 self._device.initialize()
@@ -139,7 +149,7 @@ class DeviceServer(multiprocessing.Process):
                 break
         if (isinstance(self._device, FloatingDeviceMixin)
             and len(self._id_to_host) > 1):
-            uid = self._device.get_id()
+            uid = str(self._device.get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
             host = self._id_to_host[uid]
@@ -162,6 +172,8 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.daemon = True
         pyro_thread.start()
         logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        if isinstance(self._device, FloatingDeviceMixin):
+            logger.info('Device UID on port %s is %s' % (port, self._device.get_id()))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .
@@ -175,19 +187,27 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread.join()
         self._device.shutdown()
 
-def serve_devices(devices):
+
+def serve_devices(devices, exit_event=None):
     logger = logging.getLogger(__name__)
+    log_handler = RotatingFileHandler("__MAIN__.log")
+    log_handler.setFormatter(LOG_FORMATTER)
+    logger.addHandler(log_handler)
+    logger.setLevel(logging.DEBUG)
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
     # exit, as __del__ is not necessarily called when the interpreter exits.
-    exit_event = multiprocessing.Event()
+    if exit_event is None:
+        exit_event = multiprocessing.Event()
 
     servers = [] # DeviceServers instances that we need to wait for when exiting
 
     ## Child processes inherit signal handling from the parent so we
-    ## need to make sure that only the parent process sets the exist
+    ## need to make sure that only the parent process sets the exit
     ## event and waits for the DeviceServers to exit.  See issue #9.
+    ## This won't work behind a Windows service wrapper, so we deal with
+    ## clean shutdown on win32 elsewhere.
     parent = multiprocessing.current_process ()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
@@ -201,8 +221,9 @@ def serve_devices(devices):
                 this_server.join()
             sys.exit()
 
-    signal.signal(signal.SIGTERM, term_func)
-    signal.signal(signal.SIGINT, term_func)
+    if sys.platform != 'win32':
+        signal.signal(signal.SIGTERM, term_func)
+        signal.signal(signal.SIGINT, term_func)
 
     # Group devices by class.
     by_class = {}
@@ -214,7 +235,7 @@ def serve_devices(devices):
         logger.critical("No valid devices specified. Exiting")
         sys.exit()
 
-    for cls, devs in iteritems(by_class):
+    for cls, devs in by_class.items():
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
@@ -231,9 +252,9 @@ def serve_devices(devices):
             uid_to_port = None
 
         for dev in devs:
-            servers.append(DeviceServer(dev,
-                                        uid_to_host, uid_to_port,
-                                        exit_event=exit_event, count=count))
+            dev['conf']['index'] = count
+            servers.append(DeviceServer(dev, uid_to_host, uid_to_port,
+                                        exit_event=exit_event))
             servers[-1].start()
             count += 1
 
@@ -251,11 +272,7 @@ def serve_devices(devices):
                                  " exitcode %s. Restarting...")
                                 % (s.pid, s.exitcode))
                     servers.remove(s)
-                    servers.append(DeviceServer(s._device_def,
-                                                s._id_to_host,
-                                                s._id_to_port,
-                                                exit_event=exit_event,
-                                                count=s.count))
+                    servers.append(s.clone())
 
                     try:
                         s.join(30)
@@ -283,11 +300,71 @@ def serve_devices(devices):
 
     while not exit_event.is_set():
         try:
-            time.sleep(100)
+            time.sleep(5)
         except (KeyboardInterrupt, IOError):
-            pass
+            logger.debug("KeyboardInterrupt or IOError")
+            exit_event.set()
+
+    logger.debug("Shutting down servers ...")
+    while len(servers) > 0:
+        for s in servers:
+            if not s.is_alive():
+                servers.remove(s)
+                del(s)
+        time.sleep(1)
+    logger.info(" ... No more servers running.")
+    logger.debug("Joining threads ...")
+    keep_alive_thread.join()
+    logger.debug("... Threads joined. Exiting.")
+    return
+
 
 def __main__():
+    """Serve devices via Pyro.
+
+    To run in the terminal, use::
+
+        deviceserver CONFIG
+
+    To configure and run as a Windows service use::
+
+        deviceserver [install,remove,update,start,stop,restart,status] CONFIG
+
+    ``CONFIG`` is a ``.py`` file that exports ``DEVICES = [device(...), ...]``
+    """
+
+    if len(sys.argv) == 1:
+        print("\nToo few arguments.\n", file=sys.stderr)
+        print(__main__.__doc__, file=sys.stderr)
+        sys.exit(1)
+
+    if sys.argv[1].lower() in ['install', 'update',
+                               'start', 'stop', 'restart',
+                               'remove', 'status']:
+        __winservice__()
+    else:
+        __console__()
+
+
+def _load_source(filepath):
+    spec = importlib.util.spec_from_file_location('config', filepath)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def validate_devices(configfile):
+    config = _load_source(configfile)
+    devices = getattr(config, 'DEVICES', None)
+    if not devices:
+        raise Exception("No 'DEVICES=...' in config file.")
+    elif not isinstance(devices, Iterable):
+        raise Exception("Error in config: DEVICES should be an iterable.")
+    return devices
+
+
+def __console__():
+    """Serve devices from a console process."""
     logger = logging.getLogger(__name__)
     if __debug__:
         logger.setLevel(logging.DEBUG)
@@ -298,27 +375,27 @@ def __main__():
     logger.addHandler(stderr_handler)
     logger.addFilter(Filter())
 
-    devices = None
-    if len(sys.argv) == 2:
-        config = imp.load_source ('microscope.config', sys.argv[1])
-        devices = getattr(config, 'DEVICES', None)
-        if not devices:
-            logger.critical("No 'DEVICES=...' in config file. Exiting.")
-        elif not isinstance(devices, collections.Iterable):
-            logger.critical("Error in config: DEVICES should be an iterable."
-                            " Exiting.")
-            devices = None
-    else:
+    if len(sys.argv) < 2:
         logger.critical("No config file specified. Exiting.")
+        devices = []
+    else:
+        try:
+            devices = validate_devices(sys.argv[1])
+        except Exception as e:
+            logger.critical(e)
+            devices = []
 
     if not devices:
-        sys.exit()
+        sys.exit(1)
 
     serve_devices(devices)
 
-if __name__ == '__main__':
-    """Serve devices via Pyro.
 
-    Usage:  deviceserver CONFIG
-    """
+def __winservice__():
+    """Configure and control a Windows service to serve devices."""
+    from microscope.win32 import handle_command_line
+    handle_command_line()
+
+
+if __name__ == '__main__':
     __main__()

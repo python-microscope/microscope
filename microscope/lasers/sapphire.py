@@ -24,7 +24,6 @@ import Pyro4
 from microscope import devices
 
 
-@Pyro4.expose
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     laser_status = {
@@ -36,17 +35,22 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         b'6': 'Error',
     }
 
-    def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
+    def __init__(self, com=None, baud=19200, timeout=0.5, **kwargs):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__(*args, **kwargs)
+        super(SapphireLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # Turning off command prompt
         self.send(b'>=0')
+
+        ## The sapphire laser turns on as soon as the key is switched
+        ## on.  So turn radiation off before we start.
+        self.send(b'L=0')
+
         # Head ID value is a float point value,
         # but only the integer part is significant
         headID = int(float(self.send(b'?hid')))
@@ -120,7 +124,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
-    def enable(self):
+    def _on_enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l=1')
@@ -168,7 +172,6 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = max(min(mW, self.get_max_power_mw()), self.get_min_power_mw())
         mW_str = '%.3f' % mW
         self._logger.info("Setting laser power to %s mW." % mW_str)
         # using send instead of _write, because
@@ -177,4 +180,4 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_set_power_mw(self):
-        return float(self.send('b?sp'))
+        return float(self.send(b'?sp'))

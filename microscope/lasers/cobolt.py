@@ -23,10 +23,9 @@ import Pyro4
 from microscope import devices
 
 
-@Pyro4.expose
 class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
-    def __init__(self, com=None, baud=None, timeout=0.01, *args, **kwargs):
-        super(CoboltLaser, self).__init__(*args, **kwargs)
+    def __init__(self, com=None, baud=115200, timeout=0.01, **kwargs):
+        super(CoboltLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -41,18 +40,21 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     def send(self, command):
         """Send command and retrieve response."""
-        self._write(command)
-        return self._readline()
+        success = False
+        while not success:
+            self._write(command)
+            response = self._readline()
+            # Catch zero-length responses to queries and retry.
+            if not command.endswith(b'?'):
+                success = True
+            elif len(response) > 0:
+                success = True
+        return response
 
     @devices.SerialDeviceMixIn.lock_comms
     def clearFault(self):
         self.send(b'cf')
         return self.get_status()
-
-    def flush_buffer(self):
-        line = b' '
-        while len(line) > 0:
-            line = self._readline()
 
     @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
@@ -76,13 +78,13 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Disable laser.
         self.disable()
         self.send(b'@cob0')
-        self.flush_buffer()
+        self.connection.flushInput()
 
 
     ##  Initialization to do when cockpit connects.
     @devices.SerialDeviceMixIn.lock_comms
     def initialize(self):
-        self.flush_buffer()
+        self.connection.flushInput()
         #We don't want 'direct control' mode.
         self.send(b'@cobasdr 0')
         # Force laser into autostart mode.
@@ -91,7 +93,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
-    def enable(self):
+    def _on_enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l1')
@@ -118,25 +120,36 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         response = self.send(b'l?')
         return response == b'1'
 
+    def get_min_power_mw(self):
+        return 0.0
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
         # 'gmlp?' gets the maximum laser power in mW.
         response = self.send(b'gmlp?')
-        return float(response)
+        try:
+            return float(response)
+        except:
+            self._logger.info("Bad response to gmlp?\n    %s" % response.decode())
 
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_power_mw(self):
         if not self.get_is_on():
-            return 0
-        response = self.send(b'pa?')
+            return 0.0
+        success = False
+        # Sometimes the controller returns b'1' rather than the power.
+        while not success:
+            response = self.send(b'pa?')
+            if response != b'1':
+                success = True
         return 1000 * float(response)
 
 
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
-        mW = min(mW, self.get_max_power_mw())
+        ## There is no minimum power in cobolt lasers.  Any
+        ## non-negative number is accepted.
         W_str = '%.4f' % (mW / 1000.0)
         self._logger.info("Setting laser power to %s W.", W_str)
         return self.send(b'@cobasp ' + W_str.encode())
