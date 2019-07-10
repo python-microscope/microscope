@@ -43,7 +43,7 @@ TRIGGER_MODES = {
     'internal': None,
     'external': devices.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
+    'external exposure': devices.TRIGGER_DURATION_PSEUDOGLOBAL,
     'software': devices.TRIGGER_SOFT,
 }
 
