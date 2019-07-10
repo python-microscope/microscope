@@ -18,6 +18,7 @@
 """Test camera device. """
 from microscope import devices
 from microscope.devices import keep_acquiring
+from microscope.devices import ROI, Binning
 import Pyro4
 
 # Trigger mode to type.
@@ -69,19 +70,19 @@ class TemplateCamera(devices.CameraDevice):
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-        return (1,1)
+        return Binning(1,1)
 
     @keep_acquiring
-    def _set_binning(self, h, v):
+    def _set_binning(self, binning):
         """Set binning to (h, v)."""
         return False
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
-        return (0, 0, 512, 512)
+        return ROI(0, 0, 512, 512)
 
     @keep_acquiring
-    def _set_roi(self, left, top, width, height):
+    def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
         return False
 

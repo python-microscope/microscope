@@ -24,10 +24,9 @@ import Pyro4
 
 from microscope import devices
 
-@Pyro4.expose
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
-    def __init__(self, com, baud=9600, timeout=2.0, *args, **kwargs):
-        super(DeepstarLaser, self).__init__(*args, **kwargs)
+    def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
+        super(DeepstarLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -81,7 +80,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
-    def enable(self):
+    def _on_enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on deepstar mode with internal voltage ref
         # Enable internal peak power
@@ -113,7 +112,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser OFF.
     @devices.SerialDeviceMixIn.lock_comms
-    def disable(self):
+    def _on_disable(self):
         self._logger.info("Turning laser OFF.")
         self._write(b'LF')
         return self._readline().decode()
