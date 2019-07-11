@@ -19,8 +19,6 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
-
 import Pyro4
 import numpy as np
 
@@ -116,7 +114,7 @@ class XimeaCamera(devices.CameraDevice):
         return (self.handle.get_exposure()*1.0E-6) 
 
     def get_cycle_time(self):
-        return (self.handle.get_exposure()*1.0E-6)
+        return (1.0/self.handle.get_framerate())
 
     def _get_sensor_shape(self):
         return (self.img.width,self.image.height)
