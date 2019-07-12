@@ -35,11 +35,11 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         b'6': 'Error',
     }
 
-    def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
+    def __init__(self, com=None, baud=19200, timeout=0.5, **kwargs):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__(*args, **kwargs)
+        super(SapphireLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,

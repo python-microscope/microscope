@@ -42,6 +42,7 @@ import unittest.mock
 import numpy
 import serial
 
+import microscope.devices
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 
@@ -486,6 +487,24 @@ class TestDummySLM(unittest.TestCase, SLMTests):
 class TestDummyDSP(unittest.TestCase, DSPTests):
     def setUp(self):
         self.device = dummies.DummyDSP()
+
+
+class TestBaseDevice(unittest.TestCase):
+    def test_unexpected_kwargs_raise_exception(self):
+        """Unexpected kwargs on constructor raise exception.
+
+        Test first that we can construct the device.  Then test that
+        it fails if there's a typo on the argument.  See issue #84.
+        """
+        filters = [(0, 'DAPI', '430')]
+        dummies.TestFilterWheel(filters=filters)
+        ## XXX: Device.__del__ calls shutdown().  However, if __init__
+        ## failed the device is not complete and shutdown() fails
+        ## because the logger has not been created.  See comments on
+        ## issue #69.  patch __del__ to workaround this issue.
+        with unittest.mock.patch('microscope.devices.Device.__del__'):
+            with self.assertRaisesRegex(TypeError, "argument 'filteres'"):
+                dummies.TestFilterWheel(filteres=filters)
 
 
 if __name__ == '__main__':

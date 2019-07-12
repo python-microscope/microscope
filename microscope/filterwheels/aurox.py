@@ -86,8 +86,8 @@ class Clarity(microscope.devices.FilterWheelBase):
                   __GETSERIAL: 4,
                   __FULLSTAT: 10}
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         from threading import Lock
         self._lock = Lock()
         self._hid = None

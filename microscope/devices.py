@@ -199,7 +199,7 @@ class Device(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, index=None, *args, **kwargs):
+    def __init__(self, index=None):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
@@ -250,7 +250,7 @@ class Device(object):
         pass
 
     @abc.abstractmethod
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         """Initialize the device."""
         pass
 
@@ -641,7 +641,7 @@ class CameraDevice(DataDevice):
     """
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super(CameraDevice, self).__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ['default']
@@ -880,8 +880,8 @@ class SerialDeviceMixIn(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, **kwargs):
-        super(SerialDeviceMixIn, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(SerialDeviceMixIn, self).__init__(**kwargs)
         ## TODO: We should probably construct the connection here but
         ##       the Serial constructor takes a lot of arguments, and
         ##       it becomes tricky to separate those from arguments to
@@ -948,7 +948,7 @@ class DeformableMirror(Device):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """Constructor.
 
         Subclasses must define the following properties during
@@ -960,7 +960,7 @@ class DeformableMirror(Device):
         `_pattern_idx` are initialized to None to support the queueing
         of patterns and software triggering.
         """
-        super(DeformableMirror, self).__init__(*args, **kwargs)
+        super(DeformableMirror, self).__init__(**kwargs)
 
         self._patterns = None
         self._patterns_idx = None
@@ -1030,8 +1030,8 @@ class LaserDevice(Device):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        super(LaserDevice, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super(LaserDevice, self).__init__(**kwargs)
         self._set_point = None
 
     @abc.abstractmethod
@@ -1090,8 +1090,8 @@ class LaserDevice(Device):
 class FilterWheelBase(Device):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, *args, filters=[], positions=0, **kwargs):
-        super(FilterWheelBase, self).__init__(*args, **kwargs)
+    def __init__(self, filters=[], positions=0, **kwargs):
+        super(FilterWheelBase, self).__init__(**kwargs)
         if isinstance(filters, dict):
             self._filters = filters
         else:

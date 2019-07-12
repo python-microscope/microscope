@@ -24,8 +24,8 @@ import Pyro4
 from microscope import devices
 
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
-    def __init__(self, com, baud=9600, timeout=2.0, *args, **kwargs):
-        super(DeepstarLaser, self).__init__(*args, **kwargs)
+    def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
+        super(DeepstarLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
