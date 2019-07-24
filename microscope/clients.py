@@ -19,11 +19,11 @@
 """
 import inspect
 import itertools
-import Pyro4
+import queue
 import socket
 import threading
 
-from six.moves import queue
+import Pyro4
 
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')

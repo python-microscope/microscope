@@ -24,10 +24,10 @@ master_doc = 'index'
 
 
 extensions = [
-  'sphinx.ext.autodoc',
-  'sphinx.ext.napoleon',
-  'sphinx.ext.todo',
-  'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
 ]
 
 #autodoc_mock_imports = ["microscope._wrappers"]

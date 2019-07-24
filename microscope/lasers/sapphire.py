@@ -24,7 +24,6 @@ import Pyro4
 from microscope import devices
 
 
-@Pyro4.expose
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     laser_status = {
@@ -36,11 +35,11 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         b'6': 'Error',
     }
 
-    def __init__(self, com=None, baud=19200, timeout=0.5, *args, **kwargs):
+    def __init__(self, com=None, baud=19200, timeout=0.5, **kwargs):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__(*args, **kwargs)
+        super(SapphireLaser, self).__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -125,7 +124,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
-    def enable(self):
+    def _on_enable(self):
         self._logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l=1')
