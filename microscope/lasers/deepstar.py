@@ -24,18 +24,19 @@ import Pyro4
 
 from microscope import devices
 
+
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
         super(DeepstarLaser, self).__init__(**kwargs)
-        self.connection = serial.Serial(port = com,
-            baudrate = baud, timeout = timeout,
-            stopbits = serial.STOPBITS_ONE,
-            bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
+        self.connection = serial.Serial(port=com,
+                                        baudrate=baud, timeout = timeout,
+                                        stopbits=serial.STOPBITS_ONE,
+                                        bytesize=serial.EIGHTBITS, parity = serial.PARITY_NONE)
         # If the laser is currently on, then we need to use 7-byte mode; otherwise we need to
         # use 16-byte mode.
         self._write(b'S?')
         response = self._readline()
-        self._logger.info("Current laser state: [%s]", response.decode())
+        self._logger.info("Current laser state: [%s]" % response.decode())
 
         self._write(b'STAT0')
         model_code = self._readline()
@@ -66,7 +67,6 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         time.sleep(.2)
         return response
 
-
     ## Get the status of the laser, by sending the
     # STAT0, STAT1, STAT2, and STAT3 commands.
     @devices.SerialDeviceMixIn.lock_comms
@@ -76,7 +76,6 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             self._write(('STAT%d' % i).encode())
             result.append(self._readline().decode())
         return result
-
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
@@ -117,13 +116,11 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._write(b'LF')
         return self._readline().decode()
 
-
     @devices.SerialDeviceMixIn.lock_comms
     def is_alive(self):
         self._write(b'S?')
         response = self._readline()
         return response.startswith(b'S')
-
 
     ## Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
@@ -134,10 +131,9 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._logger.info("Are we on? [%s]", response.decode())
         return response == b'S2'
 
-
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power(self, level):
-        if (level > 1.0) :
+        if level > 1.0:
             return
         self._logger.info("level=%d", level)
         power = int(level*0xFFF)
