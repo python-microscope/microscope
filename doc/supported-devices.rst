@@ -21,6 +21,7 @@ Deformable Mirrors
 
 - Alpao (:class:`microscope.mirror.alpao`)
 - Boston Micromachines Corporation (:class:`microscope.mirror.bmc`)
+- Imagine Optic Mirao 52e (:class:`microscope.mirror.mirao52e`)
 
 Filter Wheels
 -------------

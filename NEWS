@@ -21,6 +21,7 @@ Version 0.3.0 (yyyy/mm/dd)
 
   * Andor (EM)CCD cameras (requires Andor's atmcd C library)
   * Aurox Clarity (requires hidapi Python package)
+  * Imagine Optic Mirao 52-e deformable mirror (requires mirao52e C library)
   * Linkam stage (requires LinkamSDK C library)
   * Ximea cameras (requires Ximea's xiAPI Python package)
 
