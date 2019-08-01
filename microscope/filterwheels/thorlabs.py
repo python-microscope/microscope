@@ -30,7 +30,7 @@ class ThorlabsFilterWheel(FilterWheelBase):
 
     Note that the FW102C also has manual controls on the device, so clients
     should periodically query the current wheel position."""
-    def __init__(self, com, baud, timeout, **kwargs):
+    def __init__(self, com, baud=115200, timeout=2.0, **kwargs):
         """Create ThorlabsFilterWheel
 
         :param com: COM port
@@ -38,22 +38,26 @@ class ThorlabsFilterWheel(FilterWheelBase):
         :param timeout: serial timeout
         :keyword filters: optional list of filters
         """
-        super().__init__(com, baud, timeout, **kwargs)
+        super().__init__(**kwargs)
         self.eol = '\r'
-        # The EOL character means the serial connection must be wrapped in a
-        # TextIOWrapper.
         rawSerial = serial.Serial(port=com,
                 baudrate=baud, timeout=timeout,
                 stopbits=serial.STOPBITS_ONE,
                 bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
                 xonxoff=0)
-        # Use a buffer size of 1 in the BufferedRWPair. Without this,
-        # either 8192 chars need to be read before data is passed upwards,
-        # or he buffer needs to be flushed, incurring a serial timeout.
-        self.connection = io.TextIOWrapper(io.BufferedRWPair(rawSerial, rawSerial, 1))
-        # Last received wheel position.
+        # The Thorlabs controller serial implementation is strange.
+        # Generally, it uses \r as EOL, but error messages use \n.
+        # A readline after sending a 'pos?\r' command always times out,
+        # but returns a string terminated by a newline.
+        # We use TextIOWrapper with newline=None to perform EOL translation
+        # inbound, but must explicitly append \r to outgoing commands.
+        # The TextIOWrapper also deals with conversion between unicode
+        # and bytes.
+        self.connection = io.TextIOWrapper(rawSerial, newline=None,
+                                           line_buffering=True, # flush on write
+                                           write_through=True) # write out immediately
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self):
         pass
 
     def _on_shutdown(self):
@@ -62,30 +66,18 @@ class ThorlabsFilterWheel(FilterWheelBase):
     def set_position(self, n):
         """Public method to move to position n."""
         command = 'pos=%d' % n
-        self.connection.write(command + self.eol)
-        # The serial connection will timeout until new position is reached.
-        # Count timeouts to detect failure to return to responsive state.
-        count = 0
-        maxCount = 10
-        while True:
-            response = self.connection.readline().strip()
-            if response == command:
-                # Command echo received - reset counter.
-                count = 0
-            elif response == '>':
-                # Command input caret received - connection is responsive again.
-                break
-            else:
-                # Increment counter and test against maxCount.
-                count += 1
-                if count > maxCount:
-                    self.connection.flush()
-                    raise Exception('fw102c: Communication error.')
-                time.sleep(0.1)
+        self._send_command(command)
 
     def get_position(self):
         """Public method to query the current position"""
         return int(self._send_command('pos?'))
+
+    def _readline(self):
+        """A custom _readline to overcome limitations of the serial implementation."""
+        result = [None]
+        while result[-1] not in ('\n', ''):
+            result.append(self.connection.read())
+        return ''.join(result[1:])
 
     def _send_command(self, command):
         """Send a command and return any result."""
@@ -94,13 +86,10 @@ class ThorlabsFilterWheel(FilterWheelBase):
         response = 'dummy'
         while response not in [command, '']:
             # Read until we receive the command echo.
-            response = self.connection.readline().strip()
+            response = self._readline().strip('> \n\r')
         if command.endswith('?'):
             # Last response was the command. Next is result.
-            result = self.connection.readline().strip()
-        while response not in ['>', '']:
-            # Read until we receive the input caret.
-            response = self.connection.readline().strip()
+            result = self._readline().strip()
         return result
 
 

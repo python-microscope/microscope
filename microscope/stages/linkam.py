@@ -1004,10 +1004,10 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         stage._connectionstatus.flags.connected = 0
         return
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """Initalise the device and, if necessary, the SDK."""
         # Connection handle, info struct and status struct.
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self._commsinfo = _CommsInfo()
         self._h = _CommsHandle()
         self._connectionstatus = _ConnectionStatus()
@@ -1201,8 +1201,8 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
 
 class LinkamMDSMixin():
     """A mixin for motor-driven stages"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._mdsstatus = _MDSStatus()
 
     def _post_connect(self):
@@ -1297,9 +1297,9 @@ class LinkamCMS(LinkamMDSMixin, LinkamBase):
             return "refilling: %s, t: %s, dt: %s" % (self.refilling, self.t, self.dt)
 
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.uid = kwargs.get('uid', '')
+    def __init__(self, uid='', **kwargs):
+        super().__init__(**kwargs)
+        self.uid = uid
         self.init_usb(self.uid)
         self._cmsstatus = _CMSStatus()
         self._cmserror = _CMSError()

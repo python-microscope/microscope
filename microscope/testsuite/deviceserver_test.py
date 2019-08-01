@@ -80,7 +80,7 @@ class BaseTestServeDevices(unittest.TestCase):
 
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
-        device(TestCamera, '127.0.0.1', 8001, {'otherargs' : 1}),
+        device(TestCamera, '127.0.0.1', 8001, {'buffer_length' : 0}),
         device(TestFilterWheel, '127.0.0.1', 8003,
                {'filters' : [(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]}),
     ]
@@ -104,8 +104,8 @@ class TestInputCheck(BaseTestServeDevices):
 
 
 class DeviceWithPort(microscope.devices.Device):
-    def __init__(self, port, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, port, **kwargs):
+        super().__init__(**kwargs)
         self._port = port
 
     @property
