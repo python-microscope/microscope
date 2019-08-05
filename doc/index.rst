@@ -20,6 +20,7 @@ Python Microscope
    supported-devices
    API <api/modules>
    hacking
+   maintainer
    history
    contributors
 
