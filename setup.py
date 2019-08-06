@@ -106,7 +106,11 @@ if has_sphinx:
                 "--module-first",
                 "--output-dir", "doc/api",
                 "microscope",
-                "microscope/win32.py"]) # skip win32 so docs will build on other platforms.
+                # exclude win32 so docs will build on other platforms
+                "microscope/win32.py",
+                # exclude the test unit modules
+                "microscope/testsuite/test_*"
+            ])
 
             with unittest.mock.patch('ctypes.CDLL', new=cdll_diversion):
                 super().run()
