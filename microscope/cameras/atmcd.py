@@ -471,7 +471,7 @@ def lookup_status(code):
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
-class _meta(object):
+class _meta:
     pass
 
 STRING = c_char_p
@@ -555,7 +555,7 @@ class AtmcdException(Exception):
         self.status = status
 
 
-class dllFunction(object):
+class dllFunction:
     """A wrapper class for DLL functions to make them available in python."""
     def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
         # the library function

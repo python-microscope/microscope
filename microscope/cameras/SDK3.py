@@ -120,7 +120,7 @@ AT_HANDLE_SYSTEM  = 1
 STRING = POINTER(AT_WC)
 
 #classes so that we do some magic and automatically add byrefs etc ... can classify outputs
-class _meta(object):
+class _meta:
     pass
 
 class OUTPUT(_meta):
@@ -155,7 +155,7 @@ def stripMeta(val):
     else:
         return val
         
-class dllFunction(object):
+class dllFunction:
     def __init__(self, name, args = [], argnames = [], lib='ATCORE'):
         self.f = getattr(_stdcall_libraries[lib], name)
         self.f.restype = c_int

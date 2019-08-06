@@ -24,7 +24,7 @@
 
 from .import SDK3
 
-class ATProperty(object):
+class ATProperty:
     def connect(self, handle, propertyName):
         self.handle = handle
         self.propertyName = propertyName
@@ -112,7 +112,7 @@ class ATCommand(ATProperty):
     def __call__(self):
         return SDK3.Command(self.handle, self.propertyName)
         
-class camReg(object):
+class camReg:
     #keep track of the number of cameras initialised so we can initialise and finalise the library
     numCameras = 0
     
@@ -139,7 +139,7 @@ def GetSoftwareVersion():
     return SDK3.GetString(SDK3.AT_HANDLE_SYSTEM, 'SoftwareVersion', 255)
 
 
-class SDK3Camera(object):         
+class SDK3Camera:         
     def __init__(self, camNum):
         """camera initialisation - note that this should be called  from derived classes
         *AFTER* the properties have been defined"""

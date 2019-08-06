@@ -33,7 +33,7 @@ Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 LISTENERS = {}
 
 
-class Client(object):
+class Client:
     """Base Client object that makes methods on proxy available locally."""
     def __init__(self, url):
         self._url = url

@@ -173,7 +173,7 @@ def device(cls, host, port, conf={}, uid=None):
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
-class FloatingDeviceMixin(object):
+class FloatingDeviceMixin:
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -190,7 +190,7 @@ class FloatingDeviceMixin(object):
         pass
 
 
-class Device(object):
+class Device:
     """A base device class. All devices should subclass this class.
 
     Args:
@@ -839,7 +839,7 @@ class TriggerMode(Enum):
     START = 4
 
 
-class TriggerTargetMixIn(object):
+class TriggerTargetMixIn:
     """MixIn for Device that may be the target of a hardware trigger.
 
     Subclasses must set a `_trigger_type` and `_trigger_mode` property
@@ -868,7 +868,7 @@ class TriggerTargetMixIn(object):
         pass
 
 
-class SerialDeviceMixIn(object):
+class SerialDeviceMixIn:
     """MixIn for devices that are controlled via serial.
 
     Currently handles the flushing and locking of the comms channel

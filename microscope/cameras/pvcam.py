@@ -661,7 +661,7 @@ STRING = ctypes.c_char_p
 
 # classes so that we do some magic and automatically add byrefs etc ... can classify outputs
 # (Nicked from PYME's Ixon wrapper.)
-class _meta(object):
+class _meta:
     pass
 
 
@@ -703,7 +703,7 @@ def stripMeta(val):
 CALLBACK = ctypes.CFUNCTYPE(ctypes.c_void_p)
 
 
-class dllFunction(object):
+class dllFunction:
     """Expose a DLL function to python.
 
     (Again, largely nicked from PYME.)"""
@@ -977,7 +977,7 @@ STATUS_STRINGS = {READOUT_NOT_ACTIVE: 'READOUT_NOT_ACTIVE',
 
 # === Python classes ===
 # Trigger modes.
-class TriggerMode(object):
+class TriggerMode:
     """A microscope trigger mode using PVCAM PMODES."""
     def __init__(self, id, label, pv_mode, microscope_mode):
         self.id = id
