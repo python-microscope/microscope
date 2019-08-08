@@ -10,8 +10,15 @@ Version 0.3.0 (yyyy/mm/dd)
     changed signature.  The arguments to the device constructor must
     now be passed as a dict.
 
-* Python 3.5 or later is now required.  Python 2 is no longer
-  supported.  This drops the dependency on the six and enum34.
+  * Python 2 is no longer supported.
+
+* New requirements:
+    * Python >= 3.5
+    * hidapi
+
+* Removed requirements:
+    * enum34
+    * six
 
 * `CoboltLaser` now has a default value for its `baud` argument.
 
