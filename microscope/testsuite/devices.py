@@ -56,8 +56,12 @@ class _ImageGenerator():
         self._datatypes = (np.uint8, np.uint16, np.float)
         self._datatype_index = 0
         self._theta = _theta_generator()
+        self.numbering = True
         # Font for rendering counter in images.
         self._font = ImageFont.load_default()
+
+    def enable_numbering(self, enab):
+        self.numbering = enab
 
     def get_data_types(self):
         return(t.__name__ for t in self._datatypes)
@@ -86,7 +90,7 @@ class _ImageGenerator():
         d = self._datatypes[self._datatype_index]
         #return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
         data = m(width, height, dark, light).astype(d)
-        if index is not None:
+        if self.numbering and index is not None:
             text = "%d" % index
             size = tuple(d+2 for d in self._font.getsize(text))
             img = Image.new('L', size)
@@ -150,6 +154,10 @@ class TestCamera(devices.CameraDevice):
                          self._image_generator.data_type,
                          self._image_generator.set_data_type,
                          self._image_generator.get_data_types)
+        self.add_setting('display image number', 'bool',
+                         lambda: self._image_generator.numbering,
+                         self._image_generator.enable_numbering,
+                         None)
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
         self.add_setting('a_setting', 'int',
