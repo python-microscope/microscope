@@ -47,6 +47,85 @@ TRIGGER_MODES = {
     'software': devices.TRIGGER_SOFT,
 }
 
+SDK_NAMES = {
+    "_accumulate_count" : "AccumulateCount",
+    "_acquisition_start" : "AcquisitionStart",
+    "_acquisition_stop" : "AcquisitionStop",
+    "_alternating_readout_direction" : "AlternatingReadoutDirection",
+    "_aoi_binning" : "AOIBinning",
+    "_aoi_height" : "AOIHeight",
+    "_aoi_left" : "AOILeft",
+    "_aoi_top" : "AOITop",
+    "_aoi_width" : "AOIWidth",
+    "_aoi_stride" : "AOIStride",
+    "_auxiliary_out_source" : "AuxiliaryOutSource",
+    "_aux_out_source_two" : "AuxOutSourceTwo",
+    "_baseline_level" : "BaselineLevel",
+    "_bit_depth" : "BitDepth",
+    "_buffer_overflow_event" : "BufferOverflowEvent",
+    "_bytes_per_pixel" : "BytesPerPixel",
+    "_camera_acquiring" : "CameraAcquiring",
+    "_camera_dump" : "CameraDump",
+    "_camera_model" : "CameraModel",
+    "_camera_name" : "CameraName",
+    "_camera_present" : "CameraPresent",
+    "_controller_id" : "ControllerId",
+    "_frame_count" : "FrameCount",
+    "_cycle_mode" : "CycleMode",
+    "_electronic_shuttering_mode" : "ElectronicShutteringMode",
+    "_event_enable" : "EventEnable",
+    "_events_missed_event" : "EventsMissedEvent",
+    "_event_selector" : "EventSelector",
+    "_exposed_pixel_height" : "ExposedPixelHeight",
+    "_exposure_time" : "ExposureTime",
+    "_exposure_end_event" : "ExposureEndEvent",
+    "_exposure_start_event" : "ExposureStartEvent",
+    "_external_trigger_delay" : "ExternalTriggerDelay",
+    "_fan_speed" : "FanSpeed",
+    "_firmware_version" : "FirmwareVersion",
+    "_frame_rate" : "FrameRate",
+    "_full_aoi_control" : "FullAOIControl",
+    "_image_size_bytes" : "ImageSizeBytes",
+    "_interface_type" : "InterfaceType",
+    "_io_invert" : "IoInvert",
+    "_io_selector" : "IoSelector",
+    "_line_scan_speed" : "LineScanSpeed",
+    "_lut_index" : "LutIndex",
+    "_lut_value" : "LutValue",
+    "_max_interface_transfer_rate" : "MaxInterfaceTransferRate",
+    "_metadata_enable" : "MetadataEnable",
+    "_metadata_timestamp" : "MetadataTimestamp",
+    "_metadata_frame" : "MetadataFrame",
+    "_overlap" : "Overlap",
+    "_pixel_encoding" : "PixelEncoding",
+    "_pixel_readout_rate" : "PixelReadoutRate",
+    "_pre_amp_gain_control" : "PreAmpGainControl",
+    "_readout_time" : "ReadoutTime",
+    "_rolling_shutter_global_clear" : "RollingShutterGlobalClear",
+    "_row_n_exposure_end_event" : "RowNExposureEndEvent",
+    "_row_n_exposure_start_event" : "RowNExposureStartEvent",
+    "_row_read_time" : "RowReadTime",
+    "_scan_speed_control_enable" : "ScanSpeedControlEnable",
+    "_sensor_cooling" : "SensorCooling",
+    "_sensor_height" : "SensorHeight",
+    "_sensor_readout_mode" : "SensorReadoutMode",
+    "_sensor_temperature" : "SensorTemperature",
+    "_sensor_width" : "SensorWidth",
+    "_serial_number" : "SerialNumber",
+    "_simple_pre_amp_gain_control" : "SimplePreAmpGainControl",
+    "_software_trigger" : "SoftwareTrigger",
+    "_static_blemish_correction" : "StaticBlemishCorrection",
+    "_spurious_noise_filter" : "SpuriousNoiseFilter",
+    "_target_sensor_temperature" : "TargetSensorTemperature",
+    "_temperature_control" : "TemperatureControl",
+    "_temperature_status" : "TemperatureStatus",
+    "_timestamp_clock" : "TimestampClock",
+    "_timestamp_clock_frequency" : "TimestampClockFrequency",
+    "_timestamp_clock_reset" : "TimestampClockReset",
+    "_trigger_mode" : "TriggerMode",
+    "_vertically_centre_aoi" : "VerticallyCentreAOI",
+}
+
 # Wrapper to ensure feature is readable.
 def readable_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -333,8 +412,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         if self.handle == None:
             raise Exception("No camera opened.")
         for name, var in sorted(self.__dict__.items()):
-            sdk_name = name.replace('_', '')
             if isinstance(var, ATProperty):
+                sdk_name = SDK_NAMES[name]
                 if not SDK3.IsImplemented(self.handle, sdk_name):
                     delattr(self, name)
                     continue
@@ -365,8 +444,12 @@ class AndorSDK3(devices.FloatingDeviceMixin,
                                  get_func, set_func, vals_func, is_readonly_func)
         # Default setup.
         self.set_cooling(True)
-        self._trigger_mode.set_string('Software')
-        self._cycle_mode.set_string('Continuous')
+        if not self._camera_model.getValue().startswith('SIMCAM'):
+            self._trigger_mode.set_string('Software')
+            self._cycle_mode.set_string('Continuous')
+        else:
+            self._logger.warn("No hardware found - using SIMCAM")
+
 
         def callback(*args):
             data = self._fetch_data(timeout=500)
