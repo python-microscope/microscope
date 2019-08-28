@@ -105,8 +105,11 @@ class ATEnum(ATProperty):
         
     def getAvailableValues(self):
         n = SDK3.GetEnumCount(self.handle, self.propertyName).value
-        
         return [SDK3.GetEnumStringByIndex(self.handle, self.propertyName, i, 255).value for i in range(n) if SDK3.IsEnumIndexAvailable(self.handle, self.propertyName, i).value]
+
+    def getAvailableValueMap(self):
+        n = SDK3.GetEnumCount(self.handle, self.propertyName).value
+        return {i: SDK3.GetEnumStringByIndex(self.handle, self.propertyName, i, 255).value for i in range(n) if SDK3.IsEnumIndexAvailable(self.handle, self.propertyName, i).value}
         
 class ATCommand(ATProperty):
     def __call__(self):
