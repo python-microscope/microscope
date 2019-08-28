@@ -160,7 +160,7 @@ ATEnum.get_index  = readable_wrapper(ATEnum.getIndex)
 ATEnum.set_index  = writable_wrapper(ATEnum.setIndex)
 ATEnum.get_string = readable_wrapper(ATEnum.getString)
 ATEnum.set_string = writable_wrapper(ATEnum.setString)
-ATEnum.get_available_values = readable_wrapper(ATEnum.getAvailableValues)
+ATEnum.get_available_values = readable_wrapper(ATEnum.getAvailableValueMap)
 ATProperty.is_readonly = lambda self: not SDK3.IsWritable(self.handle, self.propertyName)
 
 # Mapping of AT type to python type.
