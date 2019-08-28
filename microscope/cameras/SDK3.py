@@ -188,6 +188,9 @@ class dllFunction:
         i = 0
         ret = []
 
+        if len(args) < len(self.in_args):
+            raise Exception ("Not enough arguments passed to %s" % self.name)
+
         if self.buf_size_arg_pos >= 0:
             bs = args[self.buf_size_arg_pos]
         else:
