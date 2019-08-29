@@ -4,35 +4,70 @@ python-microscope releases.
 Version 0.3.0 (yyyy/mm/dd)
 --------------------------
 
-* Backwards incompatible changes:
+* Selected most important, backwards incompatible, changes:
 
-  * `microscope.device()`, function used create a device definition,
-    changed signature.  The arguments to the device constructor must
-    now be passed as a dict.
+  * `microscope.device()`, function used to create a device
+    definition, changed signature.  The arguments to the device
+    constructor must now be passed as a dict.
 
   * Python 2 is no longer supported.
 
-* New requirements:
+  * New requirements:
+
     * Python >= 3.5
     * hidapi
 
+* New devices supported:
+
+  * Andor (EM)CCD cameras (requires Andor's atmcd C library)
+  * Aurox Clarity (requires hidapi Python package)
+  * Linkam stage (requires LinkamSDK C library)
+  * Ximea cameras (requires Ximea's xiAPI Python package)
+
+* Changes to device ABCs:
+
+  * Laser devices:
+
+    * New abstract methods:
+
+      * `LaserDevice.get_min_power_mw`
+      * `LaserDevice.is_alive`
+
+    * `LaserDevice.set_power_mw` now clips the set value to the device
+      actual range.  Previously, the behaviour was undefined and
+      device specific.
+
+  * Camera devices:
+
+    * Added support ROI and binning settings.  Also added new classes
+      `ROI` and `Binning` to represent the new settings.
+
+  * DataDevices:
+
+    * Now handle a stack of clients.  This enables having the data
+      sent to multiple clients.
+
+* Device specific changes:
+
+  * Omicron TA Deepstar laser:
+
+    * Now returns actual laser power instead of the set laser power.
+      Requires device to be fitted with the APC option.
+
+  * Test camera:
+
+    * Added new settings to control generated images.  Instead of
+      always returning noise, can also return stripes or spots.
+
 * Removed requirements:
-    * enum34
-    * six
 
-* `CoboltLaser` now has a default value for its `baud` argument.
+  * enum34
+  * six
 
-* `LaserDevice.set_power_mw` now clips the set value to the device
-  actual range.  Previously, the behaviour was undefined.
+* The `deviceserver` program can now be used as a Windows service.
 
-* Added Device server support for Windows services.
-
-* DataDevices now handle a stack of clients to receive data.
-
-* New abstract methods:
-
-  * `LaserDevice.get_min_power_mw`
-  * `LaserDevice.is_alive`
+* Fixed PyPI releases to include the microscope.mirror and
+  microscope.filterwheels subpackages.
 
 
 Version 0.2.0 (2018/06/13)
