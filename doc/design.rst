@@ -1,4 +1,4 @@
-.. Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+.. Copyright (C) 2019 David Pinto <david.pinto@bioch.ox.ac.uk>
 
    Permission is granted to copy, distribute and/or modify this
    document under the terms of the GNU Free Documentation License,
@@ -13,12 +13,16 @@ Design
 Problem
 =======
 
-Bespoke microscopes are built in research labs by physicists and
-biologists that are often not interested in programming.  However,
-such microscopes are complex systems that rely on the tight
-integration between many components and can only be controlled by
-custom software.  The end result is in-house software that is both
-limited in scope and unusable in other projects.
+Research laboratories are constantly developing new microscopes that
+are are complex systems that rely on the tight integration between
+many components.  Instead of focusing on the microscopy, these teams
+spend substantial time and effort in software development to control
+their new microscopes.  Such software is limited to the specific
+microscope setup and components and becomes unshareable, difficult to
+maintain, or incur ongoing licensing costs.  A huge amount of time,
+effort, and resources is wasted as scientists in different labs, and
+even in the same lab, repeatably implement solutions to the same
+problems.
 
 
 Project aims
@@ -43,16 +47,34 @@ Project aims
 Choices
 =======
 
-µManager
---------
+Why not using µManager
+----------------------
 
-Why we didn't choose µManager...
+`µManager <https://micro-manager.org/>`_ is an existing open source
+software for the control of microscopes.  It is written in Java and
+based on top of ImageJ, an open source image analysis program.
+However, µManager design has issues when controlling more complex
+microscopes where devices are spread over multiple computers, with
+multiple cameras, and devices are synchronised with TTL signals.  In
+addition, while Java makes it easier to access ImageJ it makes more
+difficult to use the whole of numpy and scipy.
 
 Python
 ------
 
-Python is extensively used for scientific computing, and is the most
-likely language the projects users will be familiar with.
+Python has multiple features:
+
+#. it is widely used in the scientific community.  This increases the
+   odds that users of Microscope will be capable to participate in its
+   development.
+
+#. unlike other widespread languages in the scientific community, it
+   is a general purpose programming language and not mainly for
+   numerical or symbolic computation.
+
+#. while Python is not firstly a language for numerical computations,
+   numpy and scipy are the basis for this.  Most algorithms for image
+   analysis are available in Python.
 
 
 Use cases
@@ -116,3 +138,13 @@ State machine
 Devices do not report back their state which prevents from modelling
 Microscope as a state machine.  For example, users will change
 objectives or move the stage.
+
+History
+=======
+
+Development of Python Microscope started at `Oxford Micron Bioimaging
+Unit <https://www.micron.ox.ac.uk>`_ to provide remote control of
+microscope devices independent of hardware specifics.  Locally,
+development was guided to support development of a new version of
+`cockpit <https://www.micron.ox.ac.uk/software/cockpit/>`_, a
+graphical user interface for the control of microscopes.
