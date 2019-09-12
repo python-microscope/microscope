@@ -160,7 +160,7 @@ class Clarity(microscope.devices.FilterWheelBase):
 
     def _on_disable(self):
         self._send_command(__SETONOFF, __SLEEP)
-    
+
     def set_calibration(self, state):
         if state:
             result = self._send_command(__SETCAL, __CALON)

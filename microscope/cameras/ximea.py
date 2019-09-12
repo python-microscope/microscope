@@ -111,7 +111,7 @@ class XimeaCamera(devices.CameraDevice):
 
     def get_exposure_time(self):
         #exposure times are in us, so multiple by 1E-6 to get seconds.
-        return (self.handle.get_exposure()*1.0E-6) 
+        return (self.handle.get_exposure()*1.0E-6)
 
     def get_cycle_time(self):
         return (1.0/self.handle.get_framerate())
@@ -126,7 +126,7 @@ class XimeaCamera(devices.CameraDevice):
             return devices.TRIGGER_SOFT
         elif trig==XI_TRG_EDGE_RISING:
             return devices.TRIGGER_BEFORE
-            
+
     def set_trigger_type(self, trigger):
         if (trigger == devices.TRIGGER_SOFT):
             self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
@@ -160,4 +160,3 @@ class XimeaCamera(devices.CameraDevice):
         if self._acquiring:
             self.handle.stop_acquisition()
         self.handle.close_device()
-
