@@ -117,7 +117,7 @@ class XimeaCamera(devices.CameraDevice):
         return (1.0/self.handle.get_framerate())
 
     def _get_sensor_shape(self):
-        return (self.img.width,self.image.height)
+        return (self.img.width,self.img.height)
 
 
     def get_trigger_type(self):
