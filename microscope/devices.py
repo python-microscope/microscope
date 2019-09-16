@@ -28,20 +28,19 @@ import abc
 import functools
 import itertools
 import logging
-import time
-from ast import literal_eval
-from collections import OrderedDict
-from threading import Thread
-import threading
-import Pyro4
-import numpy
 import queue
+import threading
+import time
+import typing
 
+from ast import literal_eval
+from collections import OrderedDict, namedtuple
+from threading import Thread
 from enum import Enum, EnumMeta
 
 import numpy
+import Pyro4
 
-from collections import namedtuple
 # A tuple that defines a region of interest.
 ROI = namedtuple('ROI', ['left', 'top', 'width', 'height'])
 # A tuple containing parameters for horizontal and vertical binning.
@@ -948,7 +947,7 @@ class DeformableMirror(Device):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Constructor.
 
         Subclasses must define the following properties during
@@ -962,14 +961,14 @@ class DeformableMirror(Device):
         """
         super(DeformableMirror, self).__init__(**kwargs)
 
-        self._patterns = None
-        self._pattern_idx = None
+        self._patterns = None  # type: typing.Optional[numpy.ndarray]
+        self._pattern_idx = -1  # type: int
 
     @property
-    def n_actuators(self):
+    def n_actuators(self) -> int:
         return self._n_actuators
 
-    def _validate_patterns(self, patterns):
+    def _validate_patterns(self, patterns: numpy.ndarray) -> None:
         """Validate the shape of a series of patterns.
 
         Only validates the shape of the patterns, not if the values
@@ -987,12 +986,12 @@ class DeformableMirror(Device):
                              % (patterns.shape[-1], self._n_actuators)))
 
     @abc.abstractmethod
-    def apply_pattern(self, pattern):
+    def apply_pattern(self, pattern: numpy.ndarray) -> None:
         """Apply this pattern.
         """
         pass
 
-    def queue_patterns(self, patterns):
+    def queue_patterns(self, patterns: numpy.ndarray) -> None:
         """Send values to the mirror.
 
         Parameters
@@ -1009,7 +1008,7 @@ class DeformableMirror(Device):
         self._patterns = patterns
         self._pattern_idx = -1 # none is applied yet
 
-    def next_pattern(self):
+    def next_pattern(self) -> None:
         """Apply the next pattern in the queue.
 
         A convenience fallback is provided.
@@ -1019,10 +1018,10 @@ class DeformableMirror(Device):
         self._pattern_idx += 1
         self.apply_pattern(self._patterns[self._pattern_idx,:])
 
-    def initialize(self):
+    def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self):
+    def _on_shutdown(self) -> None:
         pass
 
 

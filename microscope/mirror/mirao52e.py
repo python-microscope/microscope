@@ -39,13 +39,16 @@ applies.
 """
 
 import ctypes
+import typing
+
+import numpy
 
 import microscope.devices
 import microscope._wrappers.mirao52e as mro
 
 
 class Mirao52e(microscope.devices.DeformableMirror):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         ## Status is not the return code of the function calls.
         ## Status is where we can find the error code in case a
@@ -57,14 +60,14 @@ class Mirao52e(microscope.devices.DeformableMirror):
 
         ## super class needs this, but maybe it should be calling the
         ## property directly?
-        self._n_actuators = mro.NB_COMMAND_VALUES
+        self._n_actuators = mro.NB_COMMAND_VALUES # type: int
 
     @property
-    def n_actuators(self):
+    def n_actuators(self) -> int:
         return mro.NB_COMMAND_VALUES
 
     @staticmethod
-    def _normalize_patterns(patterns):
+    def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
         """
         mirao52e SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
@@ -72,19 +75,19 @@ class Mirao52e(microscope.devices.DeformableMirror):
         patterns = (patterns * 2) -1
         return patterns
 
-    def apply_pattern(self, pattern):
+    def apply_pattern(self, pattern: numpy.ndarray) -> None:
         self._validate_patterns(pattern)
         pattern = self._normalize_patterns(pattern)
         command = pattern.ctypes.data_as(mro.Command)
         if not mro.applyCommand(command, mro.FALSE, self._status):
             self._raise_status(mro.applyCommand)
 
-    def _raise_status(self, func):
+    def _raise_status(self, func: typing.Callable) -> None:
         error_code = self._status.contents.value
         raise RuntimeError('mro_%s() failed (error code %d)'
                            % (func.__name__, error_code))
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not mro.close(self._status):
             self._raise_status(mro.close)
         super().__del__()
