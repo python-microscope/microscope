@@ -963,7 +963,7 @@ class DeformableMirror(Device):
         super(DeformableMirror, self).__init__(**kwargs)
 
         self._patterns = None
-        self._patterns_idx = None
+        self._pattern_idx = None
 
     @property
     def n_actuators(self):
