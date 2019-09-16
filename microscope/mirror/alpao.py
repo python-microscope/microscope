@@ -102,7 +102,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         serial_number: string
         The serial number of the deformable mirror, something like "BIL103".
         """
-        super(AlpaoDeformableMirror, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         ## We need to constantly check for errors and need a buffer to
         ## have the message written to.  To avoid creating a new buffer
@@ -152,7 +152,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
 
     def queue_patterns(self, patterns):
         if self._trigger_type == TriggerType.SOFTWARE:
-            super(AlpaoDeformableMirror, self).queue_patterns(patterns)
+            super().queue_patterns(patterns)
             return
 
         self._validate_patterns(patterns)
@@ -182,7 +182,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
 
     def next_pattern(self):
         if self.trigger_type == TriggerType.SOFTWARE:
-            super(AlpaoDeformableMirror, self).next_pattern()
+            super().next_pattern()
         else:
             raise Exception("software trigger received when set for"
                             " hardware trigger")
@@ -192,4 +192,4 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         if status != asdk.SUCCESS:
             msg = self._find_error_str()
             warnings.warn(msg)
-        super(AlpaoDeformableMirror, self).__del__()
+        super().__del__()

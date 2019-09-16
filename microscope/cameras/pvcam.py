@@ -1186,7 +1186,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
 
     def __init__(self, index=0, **kwargs):
-        super(PVCamera, self).__init__(index=index, **kwargs)
+        super().__init__(index=index, **kwargs)
         # Camera name in DLL.
         self._pv_name = None
         # Camera handle.

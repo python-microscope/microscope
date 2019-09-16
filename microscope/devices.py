@@ -394,7 +394,7 @@ class DataDevice(Device):
 
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
-        super(DataDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # A thread to fetch and dispatch data.
         self._fetch_thread = None
         # A flag to control the _fetch_thread.
@@ -469,7 +469,7 @@ class DataDevice(Device):
             if self._fetch_thread.is_alive():
                 self._fetch_thread_run = False
                 self._fetch_thread.join()
-        super(DataDevice, self).disable()
+        super().disable()
 
     @abc.abstractmethod
     def _fetch_data(self):
@@ -599,7 +599,7 @@ class DataDevice(Device):
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
-        super(DataDevice, self).update_settings(settings, init)
+        super().update_settings(settings, init)
 
     # noinspection PyPep8Naming
     def receiveClient(self, client_uri):
@@ -641,7 +641,7 @@ class CameraDevice(DataDevice):
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
     def __init__(self, **kwargs):
-        super(CameraDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ['default']
         # The index of the current readout mode.
@@ -880,7 +880,7 @@ class SerialDeviceMixIn:
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, **kwargs):
-        super(SerialDeviceMixIn, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         ## TODO: We should probably construct the connection here but
         ##       the Serial constructor takes a lot of arguments, and
         ##       it becomes tricky to separate those from arguments to
@@ -959,7 +959,7 @@ class DeformableMirror(Device):
         `_pattern_idx` are initialized to None to support the queueing
         of patterns and software triggering.
         """
-        super(DeformableMirror, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self._patterns = None  # type: typing.Optional[numpy.ndarray]
         self._pattern_idx = -1  # type: int
@@ -1030,7 +1030,7 @@ class LaserDevice(Device):
 
     @abc.abstractmethod
     def __init__(self, **kwargs):
-        super(LaserDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._set_point = None
 
     @abc.abstractmethod
@@ -1090,7 +1090,7 @@ class FilterWheelBase(Device):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, filters=[], positions=0, **kwargs):
-        super(FilterWheelBase, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if isinstance(filters, dict):
             self._filters = filters
         else:

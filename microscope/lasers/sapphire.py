@@ -39,7 +39,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -57,7 +57,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._logger.info("Sapphire laser serial number: [%s]" % headID)
 
     def _write(self, command):
-        count = super(SapphireLaser, self)._write(command)
+        count = super()._write(command)
         ## This device always writes backs something.  If echo is on,
         ## it's the whole command, otherwise just an empty line.  Read
         ## it and throw it away.

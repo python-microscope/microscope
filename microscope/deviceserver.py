@@ -110,7 +110,7 @@ class DeviceServer(multiprocessing.Process):
         self._id_to_port = id_to_port
         # A shared event to allow clean shutdown.
         self.exit_event = exit_event
-        super(DeviceServer, self).__init__()
+        super().__init__()
         self.daemon = True
 
     def clone(self):

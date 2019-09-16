@@ -140,7 +140,7 @@ class _ImageGenerator():
 @Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
     def __init__(self, **kwargs):
-        super(TestCamera, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # Binning and ROI
         self._roi = ROI(0,0,512,512)
         self._binning = Binning(1,1)
@@ -306,7 +306,7 @@ class TestCamera(devices.CameraDevice):
 
 class TestFilterWheel(FilterWheelBase):
     def __init__(self, **kwargs):
-        super(TestFilterWheel, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._position = 0
 
     def get_position(self):
@@ -326,7 +326,7 @@ class TestFilterWheel(FilterWheelBase):
 
 class TestLaser(devices.LaserDevice):
     def __init__(self, **kwargs):
-        super(TestLaser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._set_point = 0.0
         self._power = 0.0
         self._emission = False
@@ -370,7 +370,7 @@ class TestLaser(devices.LaserDevice):
 
 class TestDeformableMirror(devices.DeformableMirror):
     def __init__(self, n_actuators, **kwargs):
-        super(TestDeformableMirror, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._n_actuators = n_actuators
 
     def apply_pattern(self, pattern):
@@ -384,7 +384,7 @@ class TestDeformableMirror(devices.DeformableMirror):
 @Pyro4.behavior('single')
 class DummySLM(devices.Device):
     def __init__(self, **kwargs):
-        devices.Device.__init__(self, **kwargs)
+        super().__init__(**kwargs)
         self.sim_diffraction_angle = 0.
         self.sequence_params = []
         self.sequence_index = 0
@@ -427,7 +427,7 @@ class DummySLM(devices.Device):
 @Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, **kwargs):
-        devices.Device.__init__(self, **kwargs)
+        super().__init__(**kwargs)
         self._digi = 0
         self._ana = [0,0,0,0]
         self._client = None

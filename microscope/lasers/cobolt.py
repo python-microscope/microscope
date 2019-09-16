@@ -25,7 +25,7 @@ from microscope import devices
 
 class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com=None, baud=115200, timeout=0.01, **kwargs):
-        super(CoboltLaser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,

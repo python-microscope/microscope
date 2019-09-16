@@ -59,7 +59,7 @@ class Client:
 class DataClient(Client):
     """A client that can receive and buffer data."""
     def __init__(self, url):
-        super(DataClient, self).__init__(url)
+        super().__init__(url)
         self._buffer = queue.Queue()
         # Register self with a listener.
         if self._url.split('@')[1].split(':')[0] in ['127.0.0.1', 'localhost']:
