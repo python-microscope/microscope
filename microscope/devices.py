@@ -172,7 +172,7 @@ def device(cls, host, port, conf={}, uid=None):
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
-class FloatingDeviceMixin:
+class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -181,22 +181,19 @@ class FloatingDeviceMixin:
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
-    __metaclass__ = abc.ABCMeta
-
     @abc.abstractmethod
     def get_id(self):
         """Return a unique hardware identifier, such as a serial number."""
         pass
 
 
-class Device:
+class Device(metaclass=abc.ABCMeta):
     """A base device class. All devices should subclass this class.
 
     Args:
         index (int): the index of the device on a shared library.
             This argument is added by the deviceserver.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, index=None):
         self.enabled = None
@@ -375,7 +372,7 @@ def keep_acquiring(func):
     return wrapper
 
 
-class DataDevice(Device):
+class DataDevice(Device, metaclass=abc.ABCMeta):
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
@@ -390,8 +387,6 @@ class DataDevice(Device):
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
         super().__init__(**kwargs)
@@ -838,7 +833,7 @@ class TriggerMode(Enum):
     START = 4
 
 
-class TriggerTargetMixIn:
+class TriggerTargetMixIn(metaclass=abc.ABCMeta):
     """MixIn for Device that may be the target of a hardware trigger.
 
     Subclasses must set a `_trigger_type` and `_trigger_mode` property
@@ -851,8 +846,6 @@ class TriggerTargetMixIn:
         supported.
 
     """
-    __metaclass__ = abc.ABCMeta
-
     @property
     def trigger_mode(self):
         return self._trigger_mode
@@ -867,7 +860,7 @@ class TriggerTargetMixIn:
         pass
 
 
-class SerialDeviceMixIn:
+class SerialDeviceMixIn(metaclass=abc.ABCMeta):
     """MixIn for devices that are controlled via serial.
 
     Currently handles the flushing and locking of the comms channel
@@ -877,8 +870,6 @@ class SerialDeviceMixIn:
     TODO: add more logic to handle the code duplication of serial
     devices.
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         ## TODO: We should probably construct the connection here but
@@ -926,7 +917,7 @@ class SerialDeviceMixIn:
         return wrapper
 
 
-class DeformableMirror(Device):
+class DeformableMirror(Device, metaclass=abc.ABCMeta):
     """Base class for Deformable Mirrors.
 
     There is no method to reset or clear a deformable mirror.  While
@@ -944,8 +935,6 @@ class DeformableMirror(Device):
     destroying and re-constructing the DeformableMirror object
     provides the most obvious solution.
     """
-    __metaclass__ = abc.ABCMeta
-
     @abc.abstractmethod
     def __init__(self, **kwargs) -> None:
         """Constructor.
@@ -1025,9 +1014,7 @@ class DeformableMirror(Device):
         pass
 
 
-class LaserDevice(Device):
-    __metaclass__ = abc.ABCMeta
-
+class LaserDevice(Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1086,9 +1073,7 @@ class LaserDevice(Device):
         self._set_power_mw(mw)
 
 
-class FilterWheelBase(Device):
-    __metaclass__ = abc.ABCMeta
-
+class FilterWheelBase(Device, metaclass=abc.ABCMeta):
     def __init__(self, filters=[], positions=0, **kwargs):
         super().__init__(**kwargs)
         if isinstance(filters, dict):
