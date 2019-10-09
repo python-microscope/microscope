@@ -36,7 +36,7 @@ from threading import Thread
 
 import Pyro4
 
-from microscope.devices import FloatingDeviceMixin
+import microscope.devices
 
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
@@ -147,7 +147,7 @@ class DeviceServer(multiprocessing.Process):
                 time.sleep(5)
             else:
                 break
-        if (isinstance(self._device, FloatingDeviceMixin)
+        if (isinstance(self._device, microscope.devices.FloatingDeviceMixin)
             and len(self._id_to_host) > 1):
             uid = str(self._device.get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
@@ -168,11 +168,33 @@ class DeviceServer(multiprocessing.Process):
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_daemon.register(self._device, type(self._device).__name__)
+        if isinstance(self._device, microscope.devices.ControllerDevice):
+            # AUTOPROXY should be enabled by default.  If we find it
+            # disabled, there must be a reason why, so raise an error
+            # instead of silently enabling it.
+            if not Pyro4.config.AUTOPROXY:
+                raise RuntimeError('serving of a ControllerDevice requires'
+                                   ' Pyro4 AUTOPROXY option enabled')
+
+            # Autoproxy does not work with marshal serializer.
+            Pyro4.config.SERIALIZERS_ACCEPTED.discard('marshal')
+
+            for sub_device in self._device.devices.values():
+                # FIXME: by the time we do this the device has already
+                # been created and initialised and that won't be
+                # logged.  We need to rethink having a log per device
+                # (issue #110)
+                sub_device._logger.addHandler(stderr_handler)
+                sub_device._logger.addHandler(log_handler)
+                sub_device._logger.addFilter(Filter())
+                # This requires 
+                pyro_daemon.register(sub_device)
+
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
         logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
-        if isinstance(self._device, FloatingDeviceMixin):
+        if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
             logger.info('Device UID on port %s is %s' % (port, self._device.get_id()))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
@@ -239,7 +261,7 @@ def serve_devices(devices, exit_event=None):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
-        if issubclass(cls, FloatingDeviceMixin):
+        if issubclass(cls, microscope.devices.FloatingDeviceMixin):
             # Need to provide maps of uid to host and port.
             uid_to_host = {}
             uid_to_port = {}

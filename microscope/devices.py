@@ -1109,3 +1109,39 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
 
     def get_filters(self):
         return [(k,v) for k,v in self._filters.items()]
+
+
+class ControllerDevice(Device, metaclass=abc.ABCMeta):
+    """Device that controls multiple devices.
+
+    Controller devices usually control multiple stage devices,
+    typically a XY and Z stage, a filterwheel, and a light source.
+    Controller devices also include multi light source engines.
+
+    Each of the controlled devices requires a name.  The choice of
+    name and its documentation is left to the concrete class.
+
+    Initialising and shutting down a controller device must initialise
+    and shutdown the controlled devices.  Concrete classes should be
+    careful to prevent that the shutdown of a controlled device does
+    not shutdown the controller and the other controlled devices.
+    This might require that controlled devices do nothing as part of
+    their shutdown and initialisation.
+
+    """
+
+    def initialize(self) -> None:
+        super().initialize()
+        for d in self.devices.values():
+            d.initialize()
+
+    @property
+    @abc.abstractmethod
+    def devices(self) -> typing.Mapping[str, Device]:
+        """Map of names to the controlled devices."""
+        raise NotImplementedError()
+
+    def _on_shutdown(self) -> None:
+        for d in self.devices.values():
+            d.shutdown()
+        super()._on_shutdown()

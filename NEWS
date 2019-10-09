@@ -27,6 +27,8 @@ Version 0.3.0 (upcoming)
 
 * Changes to device ABCs:
 
+  * New ABC `ControllerDevice` for controller devices.
+
   * Laser devices:
 
     * New abstract methods:
