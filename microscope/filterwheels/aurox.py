@@ -262,3 +262,12 @@ class Clarity(microscope.devices.FilterWheelBase):
         while blocking and self.moving():
             pass
         return result
+
+    def _on_shutdown(self):
+        """Subclasses over-ride this with tasks to do on shutdown."""
+        pass
+
+    def initialize(self):
+        """Initialize the device."""
+        pass
+    
