@@ -1018,6 +1018,12 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
             self.init_sdk()
         self._reconnect_thread = None
 
+    def initialize(self):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
     def __del__(self):
         """Close comms on object deletion"""
         self._process_msg(Msg.CloseComms)
