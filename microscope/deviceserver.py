@@ -165,8 +165,6 @@ class DeviceServer(multiprocessing.Process):
         logger.addHandler(log_handler)
         logger.info('Device initialized; starting daemon.')
 
-        # Run the Pyro daemon in a separate thread so that we can do
-        # clean shutdown under Windows.
         pyro_daemon.register(self._device, type(self._device).__name__)
         if isinstance(self._device, microscope.devices.ControllerDevice):
             # AUTOPROXY should be enabled by default.  If we find it
@@ -187,9 +185,10 @@ class DeviceServer(multiprocessing.Process):
                 sub_device._logger.addHandler(stderr_handler)
                 sub_device._logger.addHandler(log_handler)
                 sub_device._logger.addFilter(Filter())
-                # This requires 
                 pyro_daemon.register(sub_device)
 
+        # Run the Pyro daemon in a separate thread so that we can do
+        # clean shutdown under Windows.
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
