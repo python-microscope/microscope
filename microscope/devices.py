@@ -41,6 +41,10 @@ from enum import Enum, EnumMeta
 import numpy
 import Pyro4
 
+
+_logger = logging.getLogger(__name__)
+
+
 # A tuple that defines a region of interest.
 ROI = namedtuple('ROI', ['left', 'top', 'width', 'height'])
 # A tuple containing parameters for horizontal and vertical binning.
@@ -199,9 +203,6 @@ class Device(metaclass=abc.ABCMeta):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
         self.settings = OrderedDict()
-        # We fetch a logger here, but it can't log anything until
-        # a handler is attached after we've identified this device.
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._index = index
 
     def __del__(self):
@@ -238,7 +239,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             self.enabled = self._on_enable()
         except Exception as err:
-            self._logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _on_enable:", exc_info=err)
 
     @abc.abstractmethod
     def _on_shutdown(self):
@@ -253,9 +254,9 @@ class Device(metaclass=abc.ABCMeta):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.disable()
-        self._logger.info("Shutting down ... ... ...")
+        _logger.info("Shutting down ... ... ...")
         self._on_shutdown()
-        self._logger.info("... ... ... ... shut down completed.")
+        _logger.info("... ... ... ... shut down completed.")
 
     def make_safe(self):
         """Put the device into a safe state."""
@@ -296,7 +297,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             return self.settings[name].get()
         except Exception as err:
-            self._logger.error("in get_setting(%s):" % (name), exc_info=err)
+            _logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
 
     def get_all_settings(self):
@@ -304,7 +305,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             return {k: v.get() for k, v in self.settings.items()}
         except Exception as err:
-            self._logger.error("in get_all_settings:", exc_info=err)
+            _logger.error("in get_all_settings:", exc_info=err)
             raise
 
     def set_setting(self, name, value):
@@ -312,7 +313,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             self.settings[name].set(value)
         except Exception as err:
-            self._logger.error("in set_setting(%s):" % (name), exc_info=err)
+            _logger.error("in set_setting(%s):" % (name), exc_info=err)
             raise
 
     def describe_setting(self, name):
@@ -333,7 +334,7 @@ class Device(metaclass=abc.ABCMeta):
             if update_keys != my_keys:
                 missing = ', '.join([k for k in my_keys - their_keys])
                 msg = 'update_settings init=True but missing keys: %s.' % missing
-                self._logger.debug(msg)
+                _logger.debug(msg)
                 raise Exception(msg)
         else:
             # Only update changed values.
@@ -427,7 +428,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         Ensures that a data handling threads are running.
         Implement device-specific code in _on_enable .
         """
-        self._logger.debug("Enabling ...")
+        _logger.debug("Enabling ...")
         if self._using_callback:
             if self._fetch_thread:
                 self._fetch_thread_run = False
@@ -444,14 +445,14 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         try:
             result = self._on_enable()
         except Exception as err:
-            self._logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _on_enable:", exc_info=err)
             self.enabled = False
             raise err
         if not result:
             self.enabled = False
         else:
             self.enabled = True
-        self._logger.debug("... enabled.")
+        _logger.debug("... enabled.")
         return self.enabled
 
 
@@ -492,7 +493,8 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             client.receiveData(data, timestamp)
         except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
             # Client not listening
-            self._logger.info("Removing %s from client stack: disconnected." % client._pyroUri)
+            _logger.info("Removing %s from client stack: disconnected."
+                         % client._pyroUri)
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
         except:
@@ -519,7 +521,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
-                self._logger.error("in _dispatch_loop:", exc_info=err)
+                _logger.error("in _dispatch_loop:", exc_info=err)
             self._dispatch_buffer.task_done()
 
     def _fetch_loop(self):
@@ -530,7 +532,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             try:
                 data = self._fetch_data()
             except Exception as e:
-                self._logger.error("in _fetch_loop:", exc_info=e)
+                _logger.error("in _fetch_loop:", exc_info=e)
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
@@ -586,9 +588,9 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self._client = None
         # _client uses a setter. Log the result of assignment.
         if self._client is None:
-            self._logger.info("Current client is None.")
+            _logger.info("Current client is None.")
         else:
-            self._logger.info("Current client is %s." % str(self._client))
+            _logger.info("Current client is %s." % str(self._client))
 
 
     @keep_acquiring

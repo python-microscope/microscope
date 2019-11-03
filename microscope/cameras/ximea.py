@@ -19,6 +19,8 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+
 import numpy as np
 
 from microscope import devices
@@ -26,6 +28,9 @@ from microscope.devices import keep_acquiring, Binning, ROI
 
 #import ximea python module.
 from ximea import xiapi
+
+
+_logger = logging.getLogger(__name__)
 
 
 # Trigger mode to type.
@@ -59,13 +64,13 @@ class XimeaCamera(devices.CameraDevice):
     def _fetch_data(self):
         if self._acquiring and self._triggered:
             self.handle.get_image(self.img)
-            self._logger.info('Sending image')
+            _logger.info('Sending image')
             self._triggered = False
             data = np.array(list(self.img.get_image_data_raw()),dtype=np.uint16).reshape(self.img.width,self.img.height)
             return data
 
     def abort(self):
-        self._logger.info('Disabling acquisition.')
+        _logger.info('Disabling acquisition.')
         if self._acquiring:
             self._acquiring = False
         self.handle.stop_acquisition()
@@ -82,7 +87,7 @@ class XimeaCamera(devices.CameraDevice):
             raise Exception("Problem opening camera.")
         if self.handle == None:
             raise Exception("No camera opened.")
-        self._logger.info('Initializing.')
+        _logger.info('Initializing.')
         self.img=xiapi.Image()
 
     def make_safe(self):
@@ -93,13 +98,13 @@ class XimeaCamera(devices.CameraDevice):
         self.abort()
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
+        _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
         self._acquiring = True
         #actually start camera
         self.handle.start_acquisition()
-        self._logger.info("Acquisition enabled.")
+        _logger.info("Acquisition enabled.")
         return True
 
     def set_exposure_time(self, value):
@@ -134,8 +139,8 @@ class XimeaCamera(devices.CameraDevice):
             self.handle.set_gpi_mode(XI_GPI_TRIGGER)
 
     def soft_trigger(self):
-        self._logger.info('Trigger received; self._acquiring is %s.'
-                          % self._acquiring)
+        _logger.info('Trigger received; self._acquiring is %s.'
+                     % self._acquiring)
         if self._acquiring:
             self._triggered = True
 

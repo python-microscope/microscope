@@ -19,6 +19,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 import random
 import time
 
@@ -31,6 +32,10 @@ from microscope.devices import FilterWheelBase
 from microscope.devices import ROI, Binning
 
 from enum import IntEnum
+
+
+_logger = logging.getLogger(__name__)
+
 
 class CamEnum(IntEnum):
     A = 1
@@ -208,19 +213,19 @@ class TestCamera(devices.CameraDevice):
 
     def _purge_buffers(self):
         """Purge buffers on both camera and PC."""
-        self._logger.info("Purging buffers.")
+        _logger.info("Purging buffers.")
 
     def _create_buffers(self):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
-        self._logger.info("Creating buffers.")
+        _logger.info("Creating buffers.")
 
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
-                self._logger.info('Raising exception')
+                _logger.info('Raising exception')
                 raise Exception('Exception raised in TestCamera._fetch_data')
-            self._logger.info('Sending image')
+            _logger.info('Sending image')
             time.sleep(self._exposure_time)
             self._triggered -= 1
             # Create an image
@@ -234,7 +239,7 @@ class TestCamera(devices.CameraDevice):
             return image
 
     def abort(self):
-        self._logger.info("Disabling acquisition; %d images sent." % self._sent)
+        _logger.info("Disabling acquisition; %d images sent." % self._sent)
         if self._acquiring:
             self._acquiring = False
 
@@ -243,7 +248,7 @@ class TestCamera(devices.CameraDevice):
 
         Open the connection, connect properties and populate settings dict.
         """
-        self._logger.info('Initializing.')
+        _logger.info('Initializing.')
         time.sleep(0.5)
 
     def make_safe(self):
@@ -254,13 +259,13 @@ class TestCamera(devices.CameraDevice):
         self.abort()
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
+        _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
         self._create_buffers()
         self._acquiring = True
         self._sent = 0
-        self._logger.info("Acquisition enabled.")
+        _logger.info("Acquisition enabled.")
         return True
 
     def set_exposure_time(self, value):
@@ -279,8 +284,8 @@ class TestCamera(devices.CameraDevice):
         return devices.TRIGGER_SOFT
 
     def soft_trigger(self):
-        self._logger.info('Trigger received; self._acquiring is %s.'
-                          % self._acquiring)
+        _logger.info('Trigger received; self._acquiring is %s.'
+                     % self._acquiring)
         if self._acquiring:
             self._triggered += 1
 
@@ -312,7 +317,7 @@ class TestFilterWheel(FilterWheelBase):
 
     def set_position(self, position):
         time.sleep(1)
-        self._logger.info("Setting position to %s" % position)
+        _logger.info("Setting position to %s" % position)
         self._position = position
 
     def initialize(self):
@@ -350,7 +355,7 @@ class TestLaser(devices.LaserDevice):
         return self._emission
 
     def _set_power_mw(self, level):
-        self._logger.info("Power set to %s." % level)
+        _logger.info("Power set to %s." % level)
         self._power = level
 
     def get_max_power_mw(self):
@@ -393,7 +398,7 @@ class DummySLM(devices.Device):
         pass
 
     def set_sim_diffraction_angle(self, theta):
-        self._logger.info('set_sim_diffraction_angle %f' % theta)
+        _logger.info('set_sim_diffraction_angle %f' % theta)
         self.sim_diffraction_angle = theta
 
     def get_sim_diffraction_angle(self):
@@ -401,19 +406,19 @@ class DummySLM(devices.Device):
 
     def run(self):
         self.enabled = True
-        self._logger.info('run')
+        _logger.info('run')
         return
 
     def stop(self):
         self.enabled = False
-        self._logger.info('stop')
+        _logger.info('stop')
         return
 
     def get_sim_sequence(self):
         return self.sequence_params
 
     def set_sim_sequence(self, seq):
-        self._logger.info('set_sim_sequence')
+        _logger.info('set_sim_sequence')
         self.sequence_params = seq
         return
 
@@ -436,58 +441,59 @@ class DummyDSP(devices.Device):
         pass
 
     def Abort(self):
-        self._logger.info('Abort')
+        _logger.info('Abort')
 
     def WriteDigital(self, value):
-        self._logger.info('WriteDigital: %s' % "{0:b}".format(value))
+        _logger.info('WriteDigital: %s' % "{0:b}".format(value))
         self._digi = value
 
     def MoveAbsolute(self, aline, pos):
-        self._logger.info('MoveAbsoluteADU: line %d, value %d' % (aline, pos))
+        _logger.info('MoveAbsoluteADU: line %d, value %d' % (aline, pos))
         self._ana[aline] = pos
 
     def arcl(self, mask, pairs):
-        self._logger.info('arcl: %s, %s' % (mask, pairs))
+        _logger.info('arcl: %s, %s' % (mask, pairs))
 
     def profileSet(self, pstr, digitals, *analogs):
-        self._logger.info('profileSet ...')
-        self._logger.info('... ', pstr)
-        self._logger.info('... ', digitals)
-        self._logger.info('... ', analogs)
+        _logger.info('profileSet ...')
+        _logger.info('... ', pstr)
+        _logger.info('... ', digitals)
+        _logger.info('... ', analogs)
 
     def DownloadProfile(self):
-        self._logger.info('DownloadProfile')
+        _logger.info('DownloadProfile')
 
     def InitProfile(self, numReps):
-        self._logger.info('InitProfile')
+        _logger.info('InitProfile')
 
     def trigCollect(self, *args, **kwargs):
-        self._logger.info('trigCollect: ... ')
-        self._logger.info(args)
-        self._logger.info(kwargs)
+        _logger.info('trigCollect: ... ')
+        _logger.info(args)
+        _logger.info(kwargs)
 
     def ReadPosition(self, aline):
-        self._logger.info('ReadPosition   : line %d, value %d' % (aline, self._ana[aline]))
+        _logger.info('ReadPosition   : line %d, value %d'
+                     % (aline, self._ana[aline]))
         return self._ana[aline]
 
     def ReadDigital(self):
-        self._logger.info('ReadDigital: %s' % "{0:b}".format(self._digi))
+        _logger.info('ReadDigital: %s' % "{0:b}".format(self._digi))
         return self._digi
 
     def PrepareActions(self, actions, numReps=1):
-        self._logger.info('PrepareActions')
+        _logger.info('PrepareActions')
         self._actions = actions
         self._repeats = numReps
 
     def RunActions(self):
-        self._logger.info('RunActions ...')
+        _logger.info('RunActions ...')
         for i in range(self._repeats):
             for a in self._actions:
-                self._logger.info(a)
+                _logger.info(a)
                 time.sleep(a[0] / 1000.)
         if self._client:
             self._client.receiveData("DSP done")
-        self._logger.info('... RunActions done.')
+        _logger.info('... RunActions done.')
 
     def receiveClient(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice

@@ -128,6 +128,7 @@ This module exposes pvcam C library functions in python.
 """
 
 import ctypes
+import logging
 import os
 import platform
 import time
@@ -138,6 +139,10 @@ import numpy as np
 from microscope import devices
 from microscope.devices import ROI, Binning
 from microscope.devices import keep_acquiring
+
+
+_logger = logging.getLogger(__name__)
+
 
 # Readout transform mapping - {CHIP_NAME: {port: transform}}
 READOUT_TRANSFORMS = {
@@ -1081,7 +1086,8 @@ class PVParam():
                 result = ctypes.POINTER(self._ctype)(result).contents.value
         # Test on err.args prevents indexing into empty tuple.
         if err and err.args and err.args[0].startswith('pvcam error 49'):
-            self.cam._logger.warn("Parameter %s not available due to camera state." % self.name)
+            _logger.warn("Parameter %s not available due to camera state."
+                         % self.name)
             result = None
         elif err:
             raise e
@@ -1259,7 +1265,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 """Soft trigger mode end-of-frame callback."""
                 timestamp = time.time()
                 frame = self._buffer.copy()
-                self._logger.debug("Fetched single frame.")
+                _logger.debug("Fetched single frame.")
                 _exp_finish_seq(self.handle, CCS_CLEAR)
                 self._put(frame, timestamp)
                 return
@@ -1280,7 +1286,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 timestamp = time.time()
                 frame_p = ctypes.cast(_exp_get_latest_frame(self.handle), ctypes.POINTER(uns16))
                 frame = np.ctypeslib.as_array(frame_p, (self.roi[2], self.roi[3])).copy()
-                self._logger.debug("Fetched frame from circular buffer.")
+                _logger.debug("Fetched frame from circular buffer.")
                 self._put(frame, timestamp)
                 return
             # Need to keep a reference to the callback.
@@ -1333,7 +1339,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         _cam_close(self.handle)
         PVCamera.open_cameras.remove(self.handle)
         if not PVCamera.open_cameras:
-            self._logger.info("No more open cameras - calling _pvcam_uninit.")
+            _logger.info("No more open cameras - calling _pvcam_uninit.")
             _pvcam_uninit()
 
 
@@ -1400,18 +1406,18 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
         # Connect to the camera.
-        self._logger.info("DLL version: %s" % _pvcam_get_ver().value)
+        _logger.info("DLL version: %s" % _pvcam_get_ver().value)
         self._pv_name = _cam_get_name(self._index).value
-        self._logger.info('Initializing %s' % self._pv_name)
+        _logger.info('Initializing %s' % self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
         PVCamera.open_cameras.append(self.handle)
         # Set up event callbacks. Tried to use the resume callback to reinit camera
         # after power loss, but any attempt to close/reopen the camera or deinit the
         # DLL throws a Windows Error 0xE06D7363.
         def _cb(event):
-            self._logger.info("Received %s event." % event)
+            _logger.info("Received %s event." % event)
             if event == 'removed':
-                self._logger.critical("Can not re-init hardware. Exiting.")
+                _logger.critical("Can not re-init hardware. Exiting.")
                 exit(-1)
             return
         self._cbs = {'check': CALLBACK(lambda: _cb('check')),
@@ -1426,7 +1432,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             try:
                 p = PVParam.factory(self, param_id)
             except:
-                self._logger.warn("Skipping unsupported parameter %s." % name)
+                _logger.warn("Skipping unsupported parameter %s." % name)
                 continue
             if not p.dtype or not p.available:
                 continue
@@ -1441,7 +1447,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             except Exception as err:
                 # Test on err.args prevents indexing into empty tuple.
                 if err.args and not err.args[0].startswith('pvcam error 49'):
-                    self._logger.warn("Skipping parameter %s: not supported in python." % (p.name))
+                    _logger.warn('Skipping parameter %s: not supported'
+                                 ' in python.' % (p.name))
                     continue
             self.add_setting(p.name,
                              p.dtype,
@@ -1554,14 +1561,16 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         Trigger an exposure in TRIG_SOFT mode.
         Log some debugging stats in other trigger modes."""
         if self._trigger == TRIG_SOFT:
-            self._logger.debug("Received soft trigger ...")
+            _logger.debug("Received soft trigger ...")
             _exp_start_seq(self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p))
         else:
             cstatus, cbytes, cframes = _exp_check_cont_status(self.handle)
             status, bytes = _exp_check_status(self.handle)
 
-            self._logger.debug("Status checks\ncheck_cont:   %s \t bytes: %d\tframes: %d\n"  \
-                               "check_status: %s \t bytes: %d\t" \
-                               % (STATUS_STRINGS[cstatus.value], cbytes.value, cframes.value,
-                                  STATUS_STRINGS[status.value], bytes.value))
+            _logger.debug('Status checks\n'
+                          'check_cont:   %s \t bytes: %d\tframes: %d\n'
+                          'check_status: %s \t bytes: %d\t'
+                          % (STATUS_STRINGS[cstatus.value], cbytes.value,
+                             cframes.value, STATUS_STRINGS[status.value],
+                             bytes.value))
         return
