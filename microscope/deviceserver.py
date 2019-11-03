@@ -136,7 +136,7 @@ class DeviceServer(multiprocessing.Process):
 
     def run(self):
         cls_name = self._device_def['cls'].__name__
-        logger = logging.getLogger(cls_name)
+        logger = logging.getLogger(__name__)
 
         # If the multiprocessing start method is fork, the child
         # process gets a copy of the root logger.  The copy is
