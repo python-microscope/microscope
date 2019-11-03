@@ -51,9 +51,22 @@ Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 Pyro4.config.REQUIRE_EXPOSE = False
 
 
-# Logging formatter.
-LOG_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:'
-                                  'PID %(process)s: %(message)s')
+def _create_log_formatter(name: str):
+    """Create a logging.Formatter for the device server.
+
+    Each device is served on its own process and each device has its
+    own log file.  But the logs from all device servers also appear on
+    stderr where it will be difficult to figure out from which device
+    server a log message comes.  This creates a logging.Formatter
+    which includes the device server name.
+
+    Args:
+        name (str): device name to be used on the log output.
+
+    """
+    return logging.Formatter('%%(asctime)s:%s (%%(name)s):%%(levelname)s'
+                             ':PID %%(process)s: %%(message)s' % name)
+
 
 class Filter(logging.Filter):
     def __init__(self):
@@ -122,20 +135,37 @@ class DeviceServer(multiprocessing.Process):
                             self._id_to_port, exit_event=self.exit_event)
 
     def run(self):
-        logger = logging.getLogger(self._device_def['cls'].__name__)
+        cls_name = self._device_def['cls'].__name__
+        logger = logging.getLogger(cls_name)
+
+        # If the multiprocessing start method is fork, the child
+        # process gets a copy of the root logger.  The copy is
+        # configured to sign the messages as "device-server", and
+        # write to the main log file and stderr.  We remove those
+        # handlers so that this DeviceServer is logged to a separate
+        # file and the messages are signed with the device name.
+        root_logger = logging.getLogger()
+        # Get a new list of handlers because otherwise we are
+        # iterating over the same list as removeHandler().
+        for handler in list(root_logger.handlers):
+            root_logger.removeHandler(handler)
+
         if __debug__:
-            logger.setLevel(logging.DEBUG)
+            root_logger.setLevel(logging.DEBUG)
         else:
-            logger.setLevel(logging.INFO)
+            root_logger.setLevel(logging.INFO)
+
+
         # Later, we'll log to one file per server, with a filename
         # based on a unique identifier for the device. Some devices
         # don't have UIDs available until after initialization, so
         # log to stderr until then.
         stderr_handler = StreamHandler(sys.stderr)
-        stderr_handler.setFormatter(LOG_FORMATTER)
-        logger.addHandler(stderr_handler)
-        logger.addFilter(Filter())
-        logger.debug("Debugging messages on.")
+        stderr_handler.setFormatter(_create_log_formatter(cls_name))
+        root_logger.addHandler(stderr_handler)
+        root_logger.debug("Debugging messages on.")
+
+        root_logger.addFilter(Filter())
 
         self._device = self._device_def['cls'](**self._device_def['conf'])
         while not self.exit_event.is_set():
@@ -158,14 +188,15 @@ class DeviceServer(multiprocessing.Process):
             host = self._device_def['host']
             port = self._device_def['port']
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
-        log_handler = RotatingFileHandler("%s_%s_%s.log" %
-                                          (type(self._device).__name__,
-                                           host, port))
-        log_handler.setFormatter(LOG_FORMATTER)
-        logger.addHandler(log_handler)
+
+        log_handler = RotatingFileHandler('%s_%s_%s.log'
+                                          % (cls_name, host, port))
+        log_handler.setFormatter(_create_log_formatter(cls_name))
+        root_logger.addHandler(log_handler)
+
         logger.info('Device initialized; starting daemon.')
 
-        pyro_daemon.register(self._device, type(self._device).__name__)
+        pyro_daemon.register(self._device, cls_name)
         if isinstance(self._device, microscope.devices.ControllerDevice):
             # AUTOPROXY should be enabled by default.  If we find it
             # disabled, there must be a reason why, so raise an error
@@ -178,13 +209,6 @@ class DeviceServer(multiprocessing.Process):
             Pyro4.config.SERIALIZERS_ACCEPTED.discard('marshal')
 
             for sub_device in self._device.devices.values():
-                # FIXME: by the time we do this the device has already
-                # been created and initialised and that won't be
-                # logged.  We need to rethink having a log per device
-                # (issue #110)
-                sub_device._logger.addHandler(stderr_handler)
-                sub_device._logger.addHandler(log_handler)
-                sub_device._logger.addFilter(Filter())
                 pyro_daemon.register(sub_device)
 
         # Run the Pyro daemon in a separate thread so that we can do
@@ -211,10 +235,13 @@ class DeviceServer(multiprocessing.Process):
 
 def serve_devices(devices, exit_event=None):
     logger = logging.getLogger(__name__)
+    root_logger = logging.getLogger()
+
     log_handler = RotatingFileHandler("__MAIN__.log")
-    log_handler.setFormatter(LOG_FORMATTER)
-    logger.addHandler(log_handler)
-    logger.setLevel(logging.DEBUG)
+    log_handler.setFormatter(_create_log_formatter('device-server'))
+    root_logger.addHandler(log_handler)
+
+    root_logger.setLevel(logging.DEBUG)
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
@@ -387,14 +414,17 @@ def validate_devices(configfile):
 def __console__():
     """Serve devices from a console process."""
     logger = logging.getLogger(__name__)
+    root_logger = logging.getLogger()
     if __debug__:
-        logger.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)
+
     stderr_handler = StreamHandler(sys.stderr)
-    stderr_handler.setFormatter(LOG_FORMATTER)
-    logger.addHandler(stderr_handler)
-    logger.addFilter(Filter())
+    stderr_handler.setFormatter(_create_log_formatter('device-server'))
+    root_logger.addHandler(stderr_handler)
+
+    root_logger.addFilter(Filter())
 
     if len(sys.argv) < 2:
         logger.critical("No config file specified. Exiting.")
