@@ -38,6 +38,10 @@ import Pyro4
 
 import microscope.devices
 
+
+_logger = logging.getLogger(__name__)
+
+
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
@@ -136,7 +140,6 @@ class DeviceServer(multiprocessing.Process):
 
     def run(self):
         cls_name = self._device_def['cls'].__name__
-        logger = logging.getLogger(__name__)
 
         # If the multiprocessing start method is fork, the child
         # process gets a copy of the root logger.  The copy is
@@ -172,8 +175,8 @@ class DeviceServer(multiprocessing.Process):
             try:
                 self._device.initialize()
             except Exception as e:
-                logger.info("Failed to start device. Retrying in 5s.",
-                            exc_info=e)
+                _logger.info("Failed to start device. Retrying in 5s.",
+                             exc_info=e)
                 time.sleep(5)
             else:
                 break
@@ -194,7 +197,7 @@ class DeviceServer(multiprocessing.Process):
         log_handler.setFormatter(_create_log_formatter(cls_name))
         root_logger.addHandler(log_handler)
 
-        logger.info('Device initialized; starting daemon.')
+        _logger.info('Device initialized; starting daemon.')
 
         pyro_daemon.register(self._device, cls_name)
         if isinstance(self._device, microscope.devices.ControllerDevice):
@@ -216,9 +219,10 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
-        logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        _logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
         if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
-            logger.info('Device UID on port %s is %s' % (port, self._device.get_id()))
+            _logger.info('Device UID on port %s is %s'
+                         % (port, self._device.get_id()))
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .
@@ -234,7 +238,6 @@ class DeviceServer(multiprocessing.Process):
 
 
 def serve_devices(devices, exit_event=None):
-    logger = logging.getLogger(__name__)
     root_logger = logging.getLogger()
 
     log_handler = RotatingFileHandler("__MAIN__.log")
@@ -260,7 +263,7 @@ def serve_devices(devices, exit_event=None):
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""
         if parent == multiprocessing.current_process ():
-            logger.debug("Shutting down all servers.")
+            _logger.debug("Shutting down all servers.")
             exit_event.set()
             # Join keep_alive_thread so that it can't modify the list
             # of servers.
@@ -280,7 +283,7 @@ def serve_devices(devices, exit_event=None):
 
     # Group devices by class.
     if not by_class:
-        logger.critical("No valid devices specified. Exiting")
+        _logger.critical("No valid devices specified. Exiting")
         sys.exit()
 
     for cls, devs in by_class.items():
@@ -316,27 +319,26 @@ def serve_devices(devices, exit_event=None):
                 if s.is_alive():
                     continue
                 else:
-                    logger.info(("DeviceServer Failure. Process %s is dead with"
-                                 " exitcode %s. Restarting...")
-                                % (s.pid, s.exitcode))
+                    _logger.info("DeviceServer Failure. Process %s is dead with"
+                                 " exitcode %s. Restarting..."
+                                 % (s.pid, s.exitcode))
                     servers.remove(s)
                     servers.append(s.clone())
 
                     try:
                         s.join(30)
                     except:
-                        logger.error("... could not join PID %s." % (old_pid))
+                        _logger.error("... could not join PID %s." % (old_pid))
                     else:
                         old_pid = s.pid
                         del (s)
                         servers[-1].start()
-                        logger.info(("... DeviceServer with PID %s restarted"
-                                     " as PID %s.")
-                                    % (old_pid, servers[-1].pid))
+                        _logger.info("... DeviceServer with PID %s restarted"
+                                     " as PID %s." % (old_pid, servers[-1].pid))
             if len(servers) == 0:
                 # Log and exit if no servers running. May want to change this
                 # if we add some interface to interactively restart servers.
-                logger.info("No servers running. Exiting.")
+                _logger.info("No servers running. Exiting.")
                 exit_event.set()
             try:
                 time.sleep(5)
@@ -350,20 +352,20 @@ def serve_devices(devices, exit_event=None):
         try:
             time.sleep(5)
         except (KeyboardInterrupt, IOError):
-            logger.debug("KeyboardInterrupt or IOError")
+            _logger.debug("KeyboardInterrupt or IOError")
             exit_event.set()
 
-    logger.debug("Shutting down servers ...")
+    _logger.debug("Shutting down servers ...")
     while len(servers) > 0:
         for s in servers:
             if not s.is_alive():
                 servers.remove(s)
                 del(s)
         time.sleep(1)
-    logger.info(" ... No more servers running.")
-    logger.debug("Joining threads ...")
+    _logger.info(" ... No more servers running.")
+    _logger.debug("Joining threads ...")
     keep_alive_thread.join()
-    logger.debug("... Threads joined. Exiting.")
+    _logger.debug("... Threads joined. Exiting.")
     return
 
 
@@ -413,7 +415,6 @@ def validate_devices(configfile):
 
 def __console__():
     """Serve devices from a console process."""
-    logger = logging.getLogger(__name__)
     root_logger = logging.getLogger()
     if __debug__:
         root_logger.setLevel(logging.DEBUG)
@@ -427,13 +428,13 @@ def __console__():
     root_logger.addFilter(Filter())
 
     if len(sys.argv) < 2:
-        logger.critical("No config file specified. Exiting.")
+        _logger.critical("No config file specified. Exiting.")
         devices = []
     else:
         try:
             devices = validate_devices(sys.argv[1])
         except Exception as e:
-            logger.critical(e)
+            _logger.critical(e)
             devices = []
 
     if not devices:
