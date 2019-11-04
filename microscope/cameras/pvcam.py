@@ -1178,7 +1178,6 @@ class PVStringParam(PVParam):
         return values
 
 
-@Pyro4.behavior('single')
 class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
     """Implements the CameraDevice interface for the pvcam library."""
     # Keep track of open cameras.

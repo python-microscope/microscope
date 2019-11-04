@@ -22,7 +22,6 @@
 import random
 import time
 
-import Pyro4
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
 
@@ -137,7 +136,6 @@ class _ImageGenerator():
         return dark + light * ((np.sin(th)*xx + np.cos(th)*yy) % wrap) / (wrap)
 
 
-@Pyro4.behavior('single')
 class TestCamera(devices.CameraDevice):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -381,7 +379,6 @@ class TestDeformableMirror(devices.DeformableMirror):
         return self._current_pattern
 
 
-@Pyro4.behavior('single')
 class DummySLM(devices.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -424,7 +421,6 @@ class DummySLM(devices.Device):
         return self.sequence_index
 
 
-@Pyro4.behavior('single')
 class DummyDSP(devices.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

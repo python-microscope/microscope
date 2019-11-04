@@ -25,7 +25,6 @@ a camera and all its settings to be exposed over Pyro.
 import queue
 import time
 
-import Pyro4
 import numpy as np
 
 from microscope import devices
@@ -176,7 +175,7 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_binning', '_aoi_left', '_aoi_top',
                        '_aoi_width', '_aoi_height', ]
 
-@Pyro4.behavior('single')
+
 class AndorSDK3(devices.FloatingDeviceMixin,
                 devices.CameraDevice):
     SDK_INITIALIZED = False

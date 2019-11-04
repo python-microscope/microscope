@@ -19,7 +19,6 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-import Pyro4
 import numpy as np
 
 from microscope import devices
@@ -49,8 +48,6 @@ TRIGGER_MODES = {
 #    }
 
 
-
-@Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
