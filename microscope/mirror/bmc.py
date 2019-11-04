@@ -23,8 +23,6 @@ import ctypes
 import os
 import warnings
 
-import Pyro4
-
 from microscope.devices import DeformableMirror
 
 import microscope._wrappers.BMC as BMC

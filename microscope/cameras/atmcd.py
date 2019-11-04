@@ -36,7 +36,6 @@ from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
 from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
 from ctypes import c_void_p
 from numpy.ctypeslib import ndpointer
-import Pyro4
 
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.

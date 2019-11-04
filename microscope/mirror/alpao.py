@@ -19,7 +19,6 @@
 import ctypes
 import warnings
 
-import Pyro4
 import numpy
 
 from microscope.devices import DeformableMirror
