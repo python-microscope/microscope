@@ -6,9 +6,9 @@ Version 0.3.0 (upcoming)
 
 * Selected most important, backwards incompatible, changes:
 
-  * `microscope.device()`, function used to create a device
-    definition, changed signature.  The arguments to the device
-    constructor must now be passed as a dict.
+  * `microscope.device`, function used to create a device definition,
+    changed signature.  The arguments to the device constructor must
+    now be passed as a dictionary.
 
   * Python 2 is no longer supported.
 
@@ -22,7 +22,7 @@ Version 0.3.0 (upcoming)
   * Andor (EM)CCD cameras (requires Andor's atmcd C library)
   * Aurox Clarity (requires hidapi Python package)
   * Imagine Optic Mirao 52-e deformable mirror (requires mirao52e C library)
-  * Linkam stage (requires LinkamSDK C library)
+  * Linkam Correlative Microscopy Stage (requires LinkamSDK C library)
   * Ximea cameras (requires Ximea's xiAPI Python package)
 
 * Changes to device ABCs:
@@ -42,13 +42,28 @@ Version 0.3.0 (upcoming)
 
   * Camera devices:
 
-    * Added support ROI and binning settings.  Also added new classes
-      `ROI` and `Binning` to represent the new settings.
+    * Added ROIs and binning support.
+
+    * New abstract methods:
+
+      * `CameraDevice._get_binning`
+      * `CameraDevice._get_roi`
+      * `CameraDevice._set_binning`
+      * `CameraDevice._set_roi`
 
   * DataDevices:
 
-    * Now handle a stack of clients.  This enables having the data
-      sent to multiple clients.
+    * Data clients are now on a stack to facilitate temporary
+      redirection of data to some other client.
+
+  * Filterwheel devices:
+
+    * New method `FilterWheelBase.get_num_positions`
+
+    * New abstract methods:
+
+      * `FilterWheelBase.get_position`
+      * `FilterWheelBase.set_position`
 
 * Device specific changes:
 
@@ -59,8 +74,9 @@ Version 0.3.0 (upcoming)
 
   * Test camera:
 
-    * Added new settings to control generated images.  Instead of
-      always returning noise, can also return stripes or spots.
+    * Added new setting to control created image.  In addition of
+      noise, can also return stripes, spots, or gradients.  See
+      `microscope.testsuite.devices.ImageGenerator`.
 
 * Removed requirements:
 
@@ -69,8 +85,11 @@ Version 0.3.0 (upcoming)
 
 * The `deviceserver` program can now be used as a Windows service.
 
-* Fixed PyPI releases to include the microscope.mirror and
-  microscope.filterwheels subpackages.
+* Fixed PyPI releases to include the `microscope.mirrorq and
+  `microscope.filterwheels` subpackages.
+
+* New `microscope.devices.ROI` and `microscope.devices.Binning`
+  classes to represent those camera settings.
 
 
 Version 0.2.0 (2018/06/13)
