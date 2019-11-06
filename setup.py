@@ -113,7 +113,9 @@ if has_sphinx:
             ])
 
             with unittest.mock.patch('ctypes.CDLL', new=cdll_diversion):
-                super().run()
+                with unittest.mock.patch('ctypes.WinDLL', new=cdll_diversion,
+                                         create=True):
+                    super().run()
 
 else:
     class BuildDoc(distutils.cmd.Command):
