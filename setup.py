@@ -54,6 +54,8 @@ optional_c_libs = [
     ## Boston Micromachines Corporation (BMC) SDK
     'BMC',
     'libBMC.so.3',
+    # Mirao52e SDK (windows only)
+    'mirao52e',
     ## pvcam's SDK
     'pvcam.so',
     'pvcam32',
