@@ -900,7 +900,7 @@ _StageValueTypeToVariant = {
 }
 
 
-class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
+class _LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     """Base class for connecting to Linkam SDK devices.
 
     This class deals with SDK initialisation and setting callbacks to
@@ -921,7 +921,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     def get_sdk_version():
         """Fetch the SDK version."""
         b = ctypes.create_string_buffer(_max_version_length)
-        self._lib.linkamGetVersion(b, _max_version_length)
+        __class__._lib.linkamGetVersion(b, _max_version_length)
         return b.value
 
     @staticmethod
@@ -939,8 +939,16 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         #    sdk_log = b''
         #else:
         import os
+        lpaths = ['', os.path.dirname(__file__), os.path.dirname(devices.__file__)]
         sdk_log = os.devnull
-        _lib.linkamInitialiseSDK(sdk_log, b'', True)
+        while True:
+            try:
+                p = lpaths.pop()
+            except IndexError:
+                raise Exception("Could not init SDK: no linkam license file (Linkam.lsk) found.")
+            lskpath = os.path.join(p, 'Linkam.lsk').encode()
+            if (_lib.linkamInitialiseSDK(sdk_log, lskpath, True)):
+                break
         # NewValue event callback
         cfunc = ctypes.CFUNCTYPE(_uint32_t, _CommsHandle, _ControllerStatus)(__class__._on_new_value)
         _lib.linkamSetCallbackNewValue(cfunc)
@@ -1130,8 +1138,8 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     def open_comms(self):
         """Open the comms link and store the comms handle."""
         self._process_msg(Msg.OpenComms,
-                             addressof(self._commsinfo),
-                             addressof(self._h),
+                             byref(self._commsinfo),
+                             byref(self._h),
                              result=self._connectionstatus)
         if self._h.value != 0:
             __class__._connectionMap[self._h.value] = self
@@ -1205,7 +1213,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         return status
 
 
-class LinkamMDSMixin():
+class _LinkamMDSMixin():
     """A mixin for motor-driven stages"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1266,7 +1274,7 @@ class LinkamMDSMixin():
         return pos
 
 
-class LinkamCMS(LinkamMDSMixin, LinkamBase):
+class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
     """Linkam correlative-microscopy stage."""
     _refill_map = {'sample': 'sampleDewarFillSignal',
                    'external': 'mainDewarFillSignal'}
