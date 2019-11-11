@@ -45,7 +45,6 @@ _logger = logging.getLogger(__name__)
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
-Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 ## We effectively expose all attributes of the classes since our
 ## devices don't hold any private data.  The private methods are to

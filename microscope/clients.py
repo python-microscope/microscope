@@ -28,7 +28,6 @@ import Pyro4
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
-Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 LISTENERS = {}
 
