@@ -42,6 +42,13 @@ import microscope.devices
 _logger = logging.getLogger(__name__)
 
 
+# Needed for Python<3.8 in MacOSX High Sierra (issue #106)
+# FIXME: remove this once we are dependent on Python>=3.8
+if sys.platform == 'darwin' and sys.version_info < (3,8):
+    _logger.info("changing multiprocessing start method to 'spawn'")
+    multiprocessing = multiprocessing.get_context('spawn')
+
+
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
