@@ -4,6 +4,23 @@ python-microscope releases.
 Version 0.4.0 (upcoming)
 ------------------------
 
+* New devices supported:
+
+  * Coherent Obis laser.
+
+* Changes to device ABCs:
+
+  * Device:
+
+    * The `Device._logger` attribute has been removed.  It is
+      recommended to use a logger for the module.
+
+* The device server and clients no longer force pickle protocol
+  version 2.  If the client and server are running different Python
+  versions it may be necessary to specify a version number.  This
+  should be done on the side with the highest support version number
+  by setting `Pyro4.config.PICKLE_PROTOCOL_VERSION`.
+
 
 Version 0.3.0 (2019/11/07)
 --------------------------
