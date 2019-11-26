@@ -1076,7 +1076,8 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
-    def __init__(self, filters=[], positions=0, **kwargs):
+    def __init__(self, filters: typing.Union[typing.Mapping[int, str], typing.Iterable] = [],
+                 positions: int = 0, **kwargs) -> None:
         super().__init__(**kwargs)
         if isinstance(filters, dict):
             self._filters = filters
@@ -1084,7 +1085,7 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
             self._filters = {i:f for (i, f) in enumerate(filters)}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         if not hasattr(self, '_positions'):
-            self._positions = positions
+            self._positions = positions # type: int
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
@@ -1095,21 +1096,21 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
                          lambda: (0, self.get_num_positions()) )
 
 
-    def get_num_positions(self):
+    def get_num_positions(self) -> int:
         """Returns the number of wheel positions."""
         return(max( self._positions, len(self._filters)))
 
     @abc.abstractmethod
-    def get_position(self):
+    def get_position(self) -> int:
         """Return the wheel's current position"""
         return 0
 
     @abc.abstractmethod
-    def set_position(self, position):
+    def set_position(self, position: int) -> None:
         """Set the wheel position."""
         pass
 
-    def get_filters(self):
+    def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
         return [(k,v) for k,v in self._filters.items()]
 
 
