@@ -952,8 +952,8 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         """
         super().__init__(**kwargs)
 
-        self._patterns = None  # type: typing.Optional[numpy.ndarray]
-        self._pattern_idx = -1  # type: int
+        self._patterns = None # type: typing.Optional[numpy.ndarray]
+        self._pattern_idx = -1 # type: int
 
     @property
     def n_actuators(self) -> int:

@@ -229,6 +229,7 @@ class DeviceServer(multiprocessing.Process):
         if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
             _logger.info('Device UID on port %s is %s'
                          % (port, self._device.get_id()))
+
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
         # in multiprocessing - see http://bugs.python.org/issue30975 .
