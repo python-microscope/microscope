@@ -614,6 +614,8 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         :param soft_trigger: calls soft_trigger if True,
                                waits for hardware trigger if False.
         """
+        if not self.enabled:
+            raise Exception("Camera not enabled.")
         self._new_data_condition.acquire()
         # Push self onto client stack.
         self.set_client(self)
