@@ -256,7 +256,10 @@ class Device(metaclass=abc.ABCMeta):
 
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
-        self.disable()
+        try:
+            self.disable()
+        except Exception as e:
+            _logger.warning("Exception in disable() during shutdown: %s", e)
         _logger.info("Shutting down ... ... ...")
         self._on_shutdown()
         _logger.info("... ... ... ... shut down completed.")
