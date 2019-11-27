@@ -18,11 +18,22 @@
 
 """Adds support for Aurox devices
 
-Requires package hidapi."""
+Requires package hidapi.
 
+Config sample:
+
+device(microscope.filterwheels.aurox.Clarity,
+       {'camera': 'microscope.Cameras.cameramodule.SomeCamera',
+        'camera.someSetting': value})
+"""
+import functools
 import hid
+import logging
 import microscope.devices
+import typing
 from enum import Enum
+
+_logger = logging.getLogger(__name__)
 
 ## Clarity constants. These may differ across products, so mangle names.
 # USB IDs
@@ -71,8 +82,32 @@ _Clarity__SETCAL = 0x25 #1 byte out CAL led status, echoes command or SLEEP
 # Service mode commands. Stops disk spinning for alignment.
 _Clarity__SETSVCMODE1 = 0xe0 #1 byte for service mode. SLEEP activates service mode. RUN returns to normal mode.
 
+class _CameraAugmentor:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._aurox_processing_enabled = False
 
-class Clarity(microscope.devices.FilterWheelBase):
+    def set_aurox_processing(self, enabled):
+        self._aurox_procesing_enabled = enabled
+
+    def _process_data(self, data):
+        #TODO
+        _logger.info("Clarity processed data.")
+        return data
+
+    def get_sensor_shape(self):
+        """Return image shape accounting for rotation and Aurox processing."""
+        shape = self._get_sensor_shape()
+        if not self._aurox_processing_enabled:
+            shape = (shape[1] // 2, shape[0])
+        if self._transform[2]:
+            # 90 degree rotation
+            shape = (shape[1], shape[0])
+        return shape
+
+
+class Clarity(microscope.devices.ControllerDevice,
+              microscope.devices.FilterWheelBase):
     _slide_to_sectioning = {__SLDPOS0: 'bypass',
                             __SLDPOS1: 'low',
                             __SLDPOS2: 'mid',
@@ -86,15 +121,34 @@ class Clarity(microscope.devices.FilterWheelBase):
                   __GETSERIAL: 4,
                   __FULLSTAT: 10}
 
-    def __init__(self, **kwargs):
+    def __init__(self, camera=None, camera_kwargs={}, **kwargs) -> None:
         super().__init__(**kwargs)
         from threading import Lock
         self._lock = Lock()
         self._hid = None
+        self._devices = {}
+        if camera is None:
+            self._cam = None
+            _logger.warning("No camera specified.")
+        else:
+            AugmentedCamera = type("AuroxAugmented" + camera.__name__,
+                                   (_CameraAugmentor, camera), {})
+            self._cam = AugmentedCamera(**camera_kwargs)
+            self._devices['camera'] = self._cam
+        try:
+            from clarity_process import ClarityProcessor
+        except:
+            _logger.warning("Could not import clarity_process module: "
+                            "no processing available.")
+        self._processor = None
         self.add_setting("sectioning", "enum",
                          self.get_slide_position,
                          lambda val: self.set_slide_position(val),
                          self._slide_to_sectioning)
+
+    @property
+    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
+        return self._devices
 
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
         """Send a command to the Clarity and return its response"""
@@ -166,6 +220,7 @@ class Clarity(microscope.devices.FilterWheelBase):
             result = self._send_command(__SETCAL, __CALON)
         else:
             result = self._send_command(__SETCAL, __CALOFF)
+        self._cam.set_aurox_processing(state)
         return result
 
     def get_slide_position(self):
@@ -262,9 +317,6 @@ class Clarity(microscope.devices.FilterWheelBase):
         while blocking and self.moving():
             pass
         return result
-
-    def _on_shutdown(self):
-        pass
 
     def initialize(self):
         pass
