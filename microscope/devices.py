@@ -411,6 +411,8 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         self._acquiring = False
         # A condition to signal arrival of a new data and unblock grab_next_data
         self._new_data_condition = threading.Condition()
+        # A data processing pipeline: a list of f(data) -> data.
+        self.pipeline = []
 
     def __del__(self):
         self.disable()
@@ -483,8 +485,12 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         return None
 
     def _process_data(self, data):
-        """Do any data processing and return data."""
-        return data
+        """Do any data processing and return data.
+
+        Subclasses should call super()._process_data(data) after doing their
+        own processing."""
+        import functools
+        return functools.reduce(lambda x, f: f(x), self.pipeline, data)
 
     def _send_data(self, client, data, timestamp):
         """Dispatch data to the client."""
@@ -669,18 +675,19 @@ class CameraDevice(DataDevice):
                          self.get_roi,
                          self.set_roi,
                          None)
+
     def _process_data(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
         rot = self._transform[2]
 
         # Choose appropriate transform based on (flips, rot).
-        return {(0, 0): numpy.rot90(data, rot),
-                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
-                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
-                }[flips]
-
+        data = {(0, 0): numpy.rot90(data, rot),
+               (0, 1): numpy.flipud(numpy.rot90(data, rot)),
+               (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
+               (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
+               }[flips]
+        return super()._process_data(data)
 
     def set_readout_mode(self, description):
         """Set the readout mode and _readout_transform."""
