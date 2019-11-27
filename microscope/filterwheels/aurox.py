@@ -18,11 +18,22 @@
 
 """Adds support for Aurox devices
 
-Requires package hidapi."""
+Requires package hidapi.
 
+Config sample:
+
+device(microscope.filterwheels.aurox.Clarity,
+       {'camera': 'microscope.Cameras.cameramodule.SomeCamera',
+        'camera.someSetting': value})
+"""
+import functools
 import hid
+import logging
 import microscope.devices
+import typing
 from enum import Enum
+
+_logger = logging.getLogger(__name__)
 
 ## Clarity constants. These may differ across products, so mangle names.
 # USB IDs
@@ -72,7 +83,7 @@ _Clarity__SETCAL = 0x25 #1 byte out CAL led status, echoes command or SLEEP
 _Clarity__SETSVCMODE1 = 0xe0 #1 byte for service mode. SLEEP activates service mode. RUN returns to normal mode.
 
 
-class Clarity(microscope.devices.FilterWheelBase):
+class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWheelBase):
     _slide_to_sectioning = {__SLDPOS0: 'bypass',
                             __SLDPOS1: 'low',
                             __SLDPOS2: 'mid',
@@ -86,15 +97,43 @@ class Clarity(microscope.devices.FilterWheelBase):
                   __GETSERIAL: 4,
                   __FULLSTAT: 10}
 
-    def __init__(self, **kwargs):
+    def __init__(self, camera=None, **kwargs) -> None:
+        # Extract kwargs for camera device.
+        cam_kw_keys = [k for k in kwargs if k.startswith("camera.")]
+        cam_kwargs = {}
+        for key in cam_kw_keys:
+            cam_kwargs[key.replace("camera.", "")] = kwargs[key]
+            del kwargs[key]
         super().__init__(**kwargs)
         from threading import Lock
         self._lock = Lock()
         self._hid = None
+        self._devices = {}
+        if camera is None:
+            self._cam = None
+            _logger.warn("No camera specified.")
+        else:
+            self._cam = camera(**cam_kwargs)
+            self._cam.pipeline.append(self._c_process_data)
+            self._devices['camera'] = self._cam
+        try:
+            from clarity_process import ClarityProcessor
+        except:
+            _logger.warn("Could not import clarity_process module: no processing available.")
+        self._processor = None
         self.add_setting("sectioning", "enum",
                          self.get_slide_position,
                          lambda val: self.set_slide_position(val),
                          self._slide_to_sectioning)
+
+    def _c_process_data(self, data):
+        # TODO
+        _logger.info("Clarity processed data.")
+        return data
+
+    @property
+    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
+        return self._devices
 
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
         """Send a command to the Clarity and return its response"""
@@ -262,9 +301,6 @@ class Clarity(microscope.devices.FilterWheelBase):
         while blocking and self.moving():
             pass
         return result
-
-    def _on_shutdown(self):
-        pass
 
     def initialize(self):
         pass
