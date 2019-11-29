@@ -25,15 +25,24 @@ Config sample:
 device(microscope.filterwheels.aurox.Clarity,
        {'camera': 'microscope.Cameras.cameramodule.SomeCamera',
         'camera.someSetting': value})
+
+Deconvolving data requires:
+ * availability of clarity_process and cv2
+ * successful completion of a calibration step
+   + set_mode(Modes.calibrate)
+   + trigger the camera to generate an image
+   + when the camera returns the image, calibration is complete
 """
 import functools
 import hid
 import logging
 import microscope.devices
 import typing
-from enum import Enum
+from enum import IntEnum
 
 _logger = logging.getLogger(__name__)
+
+Mode = IntEnum("Mode", "difference, raw, calibrate")
 
 ## Clarity constants. These may differ across products, so mangle names.
 # USB IDs
@@ -97,6 +106,7 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
                   __GETSERIAL: 4,
                   __FULLSTAT: 10}
 
+
     def __init__(self, camera=None, **kwargs) -> None:
         # Extract kwargs for camera device.
         cam_kw_keys = [k for k in kwargs if k.startswith("camera.")]
@@ -121,19 +131,42 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         except:
             _logger.warn("Could not import clarity_process module: no processing available.")
         self._processor = None
+        self._mode = Mode.raw
         self.add_setting("sectioning", "enum",
                          self.get_slide_position,
                          lambda val: self.set_slide_position(val),
                          self._slide_to_sectioning)
+        self.add_setting("mode", "enum",
+                         lambda: self._mode,
+                         self.set_mode,
+                         Mode)
 
     def _c_process_data(self, data):
-        # TODO
-        _logger.info("Clarity processed data.")
-        return data
+        if self._mode == Mode.raw:
+            return data
+        elif self._mode == Mode.difference:
+            if self._processor is None:
+                raise Exception("Not calibrated yet - can not process image")
+            return self._processor.process(data)
+        elif self._mode == Mode.calibrate:
+            # This will introduce a significant delay, but returning the
+            # image indicates that the calibration step is complete.
+            self._processor = clarity_process.ClarityProcessor(data)
+            return data
+        else:
+            raise Exception("Unrecognised mode: %s", self._mode)
 
     @property
     def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
         return self._devices
+
+    def set_mode(self, mode: Mode) -> None:
+        """Set the operation mode"""
+        if mode == Mode.calibrate:
+            self._set_calibration(True)
+        else:
+            self._set_calibration(False)
+        self._mode = mode
 
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
         """Send a command to the Clarity and return its response"""
@@ -200,7 +233,9 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
     def _on_disable(self):
         self._send_command(__SETONOFF, __SLEEP)
 
-    def set_calibration(self, state):
+    def _set_calibration(self, state):
+        # TODO: cockpit will need changes for new calibration method and to
+        # remove references to set_calibration, which is now a private method.
         if state:
             result = self._send_command(__SETCAL, __CALON)
         else:
