@@ -61,7 +61,7 @@ Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.REQUIRE_EXPOSE = False
 
 
-def _create_log_formatter(name: str):
+def _create_log_formatter():
     """Create a logging.Formatter for the device server.
 
     Each device is served on its own process and each device has its
@@ -74,8 +74,9 @@ def _create_log_formatter(name: str):
         name (str): device name to be used on the log output.
 
     """
-    return logging.Formatter('%%(asctime)s:%s (%%(name)s):%%(levelname)s'
-                             ':PID %%(process)s: %%(message)s' % name)
+    return logging.Formatter('%(asctime)s:%(levelname)s:PID %(process)s:'
+                             '%(module)s:%(funcName)s:%(lineno)d:%(message)s')
+
 
 
 class Filter(logging.Filter):
@@ -170,7 +171,7 @@ class DeviceServer(multiprocessing.Process):
         # don't have UIDs available until after initialization, so
         # log to stderr until then.
         stderr_handler = StreamHandler(sys.stderr)
-        stderr_handler.setFormatter(_create_log_formatter(cls_name))
+        stderr_handler.setFormatter(_create_log_formatter())
         root_logger.addHandler(stderr_handler)
         root_logger.debug("Debugging messages on.")
 
@@ -248,7 +249,7 @@ def serve_devices(devices, exit_event=None):
     root_logger = logging.getLogger()
 
     log_handler = RotatingFileHandler("__MAIN__.log")
-    log_handler.setFormatter(_create_log_formatter('device-server'))
+    log_handler.setFormatter(_create_log_formatter())
     root_logger.addHandler(log_handler)
 
     root_logger.setLevel(logging.DEBUG)
@@ -429,7 +430,7 @@ def __console__():
         root_logger.setLevel(logging.INFO)
 
     stderr_handler = StreamHandler(sys.stderr)
-    stderr_handler.setFormatter(_create_log_formatter('device-server'))
+    stderr_handler.setFormatter(_create_log_formatter())
     root_logger.addHandler(stderr_handler)
 
     root_logger.addFilter(Filter())
