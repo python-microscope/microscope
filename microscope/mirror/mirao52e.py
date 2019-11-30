@@ -58,10 +58,6 @@ class Mirao52e(microscope.devices.DeformableMirror):
         if not mro.open(self._status):
             self._raise_status(mro.open)
 
-        ## super class needs this, but maybe it should be calling the
-        ## property directly?
-        self._n_actuators = mro.NB_COMMAND_VALUES # type: int
-
     @property
     def n_actuators(self) -> int:
         return mro.NB_COMMAND_VALUES

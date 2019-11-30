@@ -124,6 +124,10 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         self._trigger_type = TriggerType.SOFTWARE
         self._trigger_mode = TriggerMode.ONCE
 
+    @property
+    def n_actuators(self) -> int:
+        return self._n_actuators
+
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
         pattern = self._normalize_patterns(pattern)

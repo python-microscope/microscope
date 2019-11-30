@@ -941,14 +941,9 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
     def __init__(self, **kwargs) -> None:
         """Constructor.
 
-        Subclasses must define the following properties during
-        construction:
-
-            _n_actuators : int
-
-        In addition, the private properties `_patterns` and
-        `_pattern_idx` are initialized to None to support the queueing
-        of patterns and software triggering.
+        The private properties `_patterns` and `_pattern_idx` are
+        initialized to `None` to support the queueing of patterns and
+        software triggering.
         """
         super().__init__(**kwargs)
 
@@ -956,8 +951,9 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         self._pattern_idx = -1 # type: int
 
     @property
+    @abc.abstractmethod
     def n_actuators(self) -> int:
-        return self._n_actuators
+        raise NotImplementedError()
 
     def _validate_patterns(self, patterns: numpy.ndarray) -> None:
         """Validate the shape of a series of patterns.
@@ -971,10 +967,10 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         if patterns.ndim > 2:
             raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
                             % patterns.ndim)
-        elif patterns.shape[-1] != self._n_actuators:
+        elif patterns.shape[-1] != self.n_actuators:
             raise Exception(("PATTERNS length of second dimension '%d' differs"
                              " differs from number of actuators '%d'"
-                             % (patterns.shape[-1], self._n_actuators)))
+                             % (patterns.shape[-1], self.n_actuators)))
 
     @abc.abstractmethod
     def apply_pattern(self, pattern: numpy.ndarray) -> None:

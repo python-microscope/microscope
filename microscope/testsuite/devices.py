@@ -376,6 +376,10 @@ class TestDeformableMirror(devices.DeformableMirror):
         super().__init__(**kwargs)
         self._n_actuators = n_actuators
 
+    @property
+    def n_actuators(self) -> int:
+        return self._n_actuators
+
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
         self._current_pattern = pattern

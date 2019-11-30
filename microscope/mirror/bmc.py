@@ -42,7 +42,9 @@ class BMCDeformableMirror(DeformableMirror):
         if status:
             raise Exception(BMC.ErrorString(status))
 
-        self._n_actuators = self._dm.ActCount
+    @property
+    def n_actuators(self) -> int:
+        return self._dm.ActCount
 
     def apply_pattern(self, pattern):
         self._validate_patterns(pattern)
