@@ -1,0 +1,91 @@
+Microscope is available on the Python Package Index (PyPI) and can be
+`installed like any other Python package
+<https://packaging.python.org/tutorials/installing-packages/>`_.  The
+short version of it is use pip::
+
+  pip install microscope
+
+Note that you need to have Python and pip already installed on your
+system.
+
+
+Requirements
+============
+
+Microscope can run in any operating system with Python installed but
+individual devices and intended usage may add specific requirements:
+
+- **hardware performance**: control of devices at high speed, namely
+  image acquisition at very high rates, may require a fast connection
+  to the camera, high amount of memory, or a disk with fast write
+  speeds.  In such case, it may be advantageous to have a dedicated
+  machine for the camera.
+
+- **external libraries**: control of many devices is performed via
+  vendor provided external libraries which are often limited to
+  specific operating systems.  For example, Alpao does not provide a
+  library for Linux systems so control of Alpao deformable mirrors is
+  limited to Windows.  See the :ref:`Dependencies
+  <install-dependencies>` sections below.
+
+If there are multiple devices with high resources or incompatible
+requirements they can be distributed over multiple computers.  For
+example, two cameras acquiring images at a high frame rate or a camera
+that requires Windows paired with a deformable mirror that requires
+Linux.  See the :ref:`Examples <examples>` section.
+
+
+.. _install-dependencies:
+
+Dependencies
+============
+
+Microscope has very few dependencies.  All are Python packages
+available on PyPI and will be automatically resolved if Microscope is
+installed with pip.  However, the interface to many devices is done
+via an external library (or SDK, or driver) that is only provided by
+the device vendor.
+
+To identify if an external library is required, check the associated
+module documentation.  If an external library is required, contact the
+device vendor for install instructions.  Cameras, deformable mirrors,
+and spatial light modulators all require an external library.  Filter
+wheels, lasers, and stages typically do not but there are exceptions.
+
+
+Development sources
+===================
+
+Microscope development sources are available on github.  To install
+the current development version of Microscope::
+
+  git clone https://github.com/MicronOxford/microscope.git pip
+  pip install --no-index microscope/
+
+Also consider using editable mode if you plan to make changes to the
+project::
+
+  pip install --no-index --editable microscope/
+
+Multiple Microscope versions
+----------------------------
+
+Python package system will not by default handle multiple versions of
+a package.  If installing from development, beware to not overwrite a
+previous installation.  A typical approach to address this issue is to
+use `virtual environments
+<https://packaging.python.org/tutorials/installing-packages/#creating-and-using-virtual-environments>`_.
+
+Un-merged features
+------------------
+
+Many features are still in development and have not been merged in the
+master branch.  To try such features, you will need to know the branch
+name and the repository where such feature is being developed.  For
+example, to try Toshiki Kubo's implementation of the Mirao52e
+deformable mirror::
+
+  git remote add toshiki https://github.com/toshikikubo/microscope.git
+  git fetch toshiki
+  git checkout toshiki/mirao52e
+  pip install --no-index ./

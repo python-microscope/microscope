@@ -46,7 +46,7 @@ else:
 errorCodes = {}
 def errCode(name,value):
     errorCodes[value] = name
-    
+
 AT_INFINITE = 0xFFFFFFFF
 AT_CALLBACK_SUCCESS  = 0
 
@@ -99,10 +99,10 @@ class CameraError(Exception):
     def __init__(self, fcnName, errNo):
         self.errNo = errNo
         self.fcnName = fcnName
-        
+
     def __str__(self):
         return 'when calling %s - %s' % (self.fcnName, errorCodes[self.errNo])
-        
+
 
 #special case for buffer timeout
 AT_ERR_TIMEDOUT = 13
@@ -110,7 +110,7 @@ AT_ERR_NODATA = 11
 
 class TimeoutError(CameraError):
     pass
-        
+
 
 
 AT_HANDLE_UNINITIALISED  = -1
@@ -120,79 +120,82 @@ AT_HANDLE_SYSTEM  = 1
 STRING = POINTER(AT_WC)
 
 #classes so that we do some magic and automatically add byrefs etc ... can classify outputs
-class _meta(object):
+class _meta:
     pass
 
 class OUTPUT(_meta):
     def __init__(self, val):
         self.type = val
         self.val = POINTER(val)
-    
+
     def getVar(self, bufLen=0):
         v = self.type()
         return v, ctypes.byref(v)
-        
+
 class _OUTSTRING(OUTPUT):
     def __init__(self):
         self.val = STRING
-        
+
     def getVar(self, bufLen):
         v = ctypes.create_unicode_buffer(bufLen)
         return v, v
-        
+
 OUTSTRING = _OUTSTRING()
 
 class _OUTSTRLEN(_meta):
     def __init__(self):
         self.val = c_int
-        
+
 OUTSTRLEN = _OUTSTRLEN()
-        
+
 
 def stripMeta(val):
     if isinstance(val, _meta):
         return val.val
     else:
         return val
-        
-class dllFunction(object):
+
+class dllFunction:
     def __init__(self, name, args = [], argnames = [], lib='ATCORE'):
         self.f = getattr(_stdcall_libraries[lib], name)
         self.f.restype = c_int
         self.f.argtypes = [stripMeta(a) for a in args]
-        
+
         self.fargs = args
         self.fargnames = argnames
         self.name = name
-        
+
         self.inp = [not isinstance(a, OUTPUT) for a in args]
         self.in_args = [a for a in args if not isinstance(a, OUTPUT)]
         self.out_args = [a for a in args if isinstance(a, OUTPUT)]
-        
+
         self.buf_size_arg_pos = -1
         for i in range(len(self.in_args)):
             if isinstance(self.in_args[i], _OUTSTRLEN):
                 self.buf_size_arg_pos = i
-        
+
         ds = name + '\n\nArguments:\n===========\n'
         for i in range(len(args)):
             an = ''
             if i <len(argnames):
                 an = argnames[i]
             ds += '\t%s\t%s\n' % (args[i], an)
-        
+
         self.f.__doc__ = ds
-        
+
     def __call__(self, *args):
         ars = []
         i = 0
         ret = []
 
+        if len(args) < len(self.in_args):
+            raise Exception ("Not enough arguments passed to %s" % self.name)
+
         if self.buf_size_arg_pos >= 0:
             bs = args[self.buf_size_arg_pos]
         else:
             bs = 255
-        
+
         for j in range(len(self.inp)):
             if self.inp[j]: #an input
                 ars.append(args[i])
@@ -202,30 +205,30 @@ class dllFunction(object):
                 ars.append(ar)
                 ret.append(r)
                 #print r, r._type_
-            
+
         #print ars
         res = self.f(*ars)
         #print res
-        
+
         if not res == AT_SUCCESS:
             if res == AT_ERR_TIMEDOUT or res == AT_ERR_NODATA:
                 #handle timeouts as a special case, as we expect to get them
                 raise TimeoutError(self.name, res)
             else:
                 raise CameraError(self.name, res)
-        
+
         if len(ret) == 0:
             return None
         if len(ret) == 1:
             return ret[0]
         else:
             return ret
-        
-    
-        
-        
+
+
+
+
 def dllFunc(name, args = [], argnames = [], lib='ATCORE'):
-    f = dllFunction(name, args, argnames, lib)    
+    f = dllFunction(name, args, argnames, lib)
     globals()[name[3:]] = f
 
 dllFunc('AT_InitialiseLibrary')
