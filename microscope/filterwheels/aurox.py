@@ -33,11 +33,10 @@ Deconvolving data requires:
    + trigger the camera to generate an image
    + when the camera returns the image, calibration is complete
 """
-import functools
 import hid
 import logging
 import microscope.devices
-import typing
+from typing import Mapping
 from enum import IntEnum
 
 _logger = logging.getLogger(__name__)
@@ -116,32 +115,42 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
             del kwargs[key]
         super().__init__(**kwargs)
         from threading import Lock
+        # A comms lock.
         self._lock = Lock()
+        # The hid connection object
         self._hid = None
-        self._devices = {}
         if camera is None:
             self._cam = None
-            _logger.warn("No camera specified.")
+            _logger.warning("No camera specified.")
         else:
             self._cam = camera(**cam_kwargs)
             self._cam.pipeline.append(self._c_process_data)
-            self._devices['camera'] = self._cam
+        # Is processing available?
+        self._can_process = False
         try:
             from clarity_process import ClarityProcessor
+            self._can_process = True
         except:
-            _logger.warn("Could not import clarity_process module: no processing available.")
+            _logger.warning("Could not import clarity_process module: no processing available.")
+        # Data processor object, created after calibration
         self._processor = None
+        # Acquisition mode
         self._mode = Mode.raw
+        # Add device settings
         self.add_setting("sectioning", "enum",
                          self.get_slide_position,
                          lambda val: self.set_slide_position(val),
                          self._slide_to_sectioning)
         self.add_setting("mode", "enum",
-                         lambda: self._mode,
+                         lambda: self._mode.name,
                          self.set_mode,
                          Mode)
 
     def _c_process_data(self, data):
+        """A function to insert into the camera's processing pipeline.
+
+        Depending on the mode, this function will pass through, perform
+        calibration, or deconvolve the camera data."""
         if self._mode == Mode.raw:
             return data
         elif self._mode == Mode.difference:
@@ -157,11 +166,14 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
             raise Exception("Unrecognised mode: %s", self._mode)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
-        return self._devices
+    def devices(self) -> Mapping[str, microscope.devices.Device]:
+        """Devices property, required by ControllerDevice interface."""
+        return {'camera': self._cam}
 
     def set_mode(self, mode: Mode) -> None:
         """Set the operation mode"""
+        if mode in [Mode.calibrate, Mode.difference] and not self._can_process:
+            raise Exception ("Processing not available")
         if mode == Mode.calibrate:
             self._set_calibration(True)
         else:
@@ -171,7 +183,10 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
         """Send a command to the Clarity and return its response"""
         if not self._hid:
-            self.open()
+            try:
+                self.open()
+            except:
+                raise Exception("Connection error")
         with self._lock:
             # The device expects a list of 16 integers
             buffer = [0x00] * max_length # The 0th element must be 0.
@@ -225,8 +240,6 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         return self._send_command(__GETSERIAL)
 
     def _on_enable(self):
-        if not self.is_connected:
-            self.open()
         self._send_command(__SETONOFF, __RUN)
         return self._send_command(__GETONOFF) == __RUN
 
@@ -234,8 +247,6 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         self._send_command(__SETONOFF, __SLEEP)
 
     def _set_calibration(self, state):
-        # TODO: cockpit will need changes for new calibration method and to
-        # remove references to set_calibration, which is now a private method.
         if state:
             result = self._send_command(__SETCAL, __CALON)
         else:
@@ -262,12 +273,17 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         return (self._slide_to_sectioning)
 
     def get_status(self):
-        # Fetch 10 bytes VERSION[3],ONOFF,SHUTTER,SLIDE,FILT,CAL,??,??
-        result = self._send_command(__FULLSTAT)
-        if result is None:
-            return
         # A status dict to populate and return
-        status = {}
+        status = dict.fromkeys(['connected','on','door open','slide',
+                                'filter','calibration','busy', 'mode'])
+        status['mode'] = self._mode.name
+        # Fetch 10 bytes VERSION[3],ONOFF,SHUTTER,SLIDE,FILT,CAL,??,??
+        try:
+            result = self._send_command(__FULLSTAT)
+            status['connected'] = True
+        except:
+            status['connected'] = False
+            return status
         # A list to track states, any one of which mean the device is busy.
         busy = []
         # Disk running
