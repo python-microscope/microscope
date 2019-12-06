@@ -1134,7 +1134,7 @@ class ReadoutMode():
 from threading import Lock
 import functools
 from microscope import devices
-from microscope.devices import keep_acquiring, Setting, Binning, ROI
+from microscope.devices import keep_acquiring, Binning, ROI
 import time
 
 # A lock on the DLL used to ensure DLL calls act on the correct device.
@@ -1255,17 +1255,17 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         # Mode
         name = 'readout mode'
         if self._readout_modes:
-            self.settings[name] = Setting(name, 'enum',
-                                          None,
-                                          self._set_readout_mode,
-                                          lambda: [str(mode) for mode in self._readout_modes])
+            self.add_setting(name, 'enum',
+                             None,
+                             self._set_readout_mode,
+                             lambda: [str(mode) for mode in self._readout_modes])
             self.settings[name].set(0)
         # TriggerMode
         name = 'TriggerMode'
-        self.settings[name] = Setting(name, 'enum',
-                                      None,
-                                      self._bind(SetTriggerMode),
-                                      TriggerMode)
+        self.add_setting(name, 'enum',
+                         None,
+                         self._bind(SetTriggerMode),
+                         TriggerMode)
         if self._caps.ulTriggerModes & AC_TRIGGERMODE_EXTERNAL:
             self.settings[name].set(TriggerMode.EXTERNAL)
         elif self._caps.ulTriggerModes & AC_TRIGGERMODE_CONTINUOUS:
@@ -1284,9 +1284,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             setter = self._bind(SetMCPGain)
             vrange = self._bind(GetMCPGainRange)
         if getter or setter:
-            self.settings[name] = Setting(name, 'int',
-                                          getter, setter, vrange,
-                                          setter is None)
+            self.add_setting(name, 'int', getter, setter, vrange, setter is None)
         # Temperature
         name = 'TemperatureSetPoint'
         getter, setter, vrange = None, None, None
@@ -1295,77 +1293,73 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
             vrange = self._bind(GetTemperatureRange)
         if setter:
-            self.settings[name] = Setting(name, 'int',
-                                          None, setter, vrange,
-                                          setter is None)
+            self.add_setting(name, 'int', None, setter, vrange, setter is None)
         # Set a conservative default temperature set-point.
         self.settings[name].set(-20)
         # Fan control
         name = 'Temperature'
-        self.settings[name] = Setting(name, 'int',
-                                      self.get_sensor_temperature,
-                                      None, (None, None), True)
+        self.add_setting(name, 'int', self.get_sensor_temperature, None, (None, None), True)
         name = 'Fan mode'
-        self.settings[name] = Setting(name, 'enum',
-                                      None, # Can't query fan mode
-                                      self._bind(SetFanMode),
-                                      {0:'full', 1:'low', 2:'off'}
-                                      )
+        self.add_setting(name, 'enum',
+                         None, # Can't query fan mode
+                         self._bind(SetFanMode),
+                         {0:'full', 1:'low', 2:'off'}
+                         )
         # Cooler control
         name = 'Cooler Enabled'
-        self.settings[name] = Setting(name, 'bool',
-                                      None,
-                                      self._set_cooler_state,
-                                      None)
+        self.add_setting(name, 'bool',
+                         None,
+                         self._set_cooler_state,
+                         None)
         self.settings[name].set(True)
         # Binning
         name = 'Binning'
-        self.settings[name] = Setting(name, 'tuple',
-                                      self.get_binning,
-                                      self.set_binning,
-                                      None)
+        self.add_setting(name, 'tuple',
+                         self.get_binning,
+                         self.set_binning,
+                         None)
         # Roi
         name = 'Roi'
-        self.settings[name] = Setting(name, 'tuple',
-                                      self.get_roi,
-                                      lambda roi: self.set_roi(*roi),
-                                      None)
+        self.add_setting(name, 'tuple',
+                         self.get_roi,
+                         lambda roi: self.set_roi(*roi),
+                         None)
         # BaselineClamp
         name = 'BaselineClamp'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetBaselineClamp))
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetBaselineClamp))
             self.settings[name].set(False)
         # BaselineOffset
         nam = 'BaselineOffset'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
-            self.settings[name] = Setting(name, 'int',
-                                          None,
-                                          self._bind(SetBaselineOffset),
-                                          (-1000, 1000))
+            self.add_setting(name, 'int',
+                             None,
+                             self._bind(SetBaselineOffset),
+                             (-1000, 1000))
             self.settings[name].set(0)
         # EMAdvanced
         name = 'EMAdvanced'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetEMAdvanced))
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetEMAdvanced))
             self.settings[name].set(False)
         # GateMode
         name = 'GateMode'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
             vrange = range(0, [5,6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR])
-            self.setings[name] = Setting(name, 'int',
-                                         None,
-                                         self._bind(SetGateMode),
-                                         vrange)
+            self.add_setting(name, 'int',
+                             None,
+                             self._bind(SetGateMode),
+                             vrange)
         # HighCapacity
         name = 'HighCapacity'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetHighCapacity))
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetHighCapacity))
 
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.

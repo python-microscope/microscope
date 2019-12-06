@@ -75,7 +75,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-class Setting():
+class _Setting():
+    # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
+    # Settings classes should be private: devices should use a factory method
+    # rather than instantiate settings directly; most already use add_setting for this.
     def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
         """Create a setting.
 
@@ -265,8 +268,6 @@ class Device(metaclass=abc.ABCMeta):
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
-        Can also use self.settings[name] = Setting(name, dtype,...)
-
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
         :param get_func: a function to get the current value
@@ -290,7 +291,7 @@ class Device(metaclass=abc.ABCMeta):
             raise Exception("Invalid values type for %s '%s': expected function or %s" %
                             (dtype, name, DTYPES[dtype][1:]))
         else:
-            self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
+            self.settings[name] = _Setting(name, dtype, get_func, set_func, values, readonly)
 
     def get_setting(self, name):
         """Return the current value of a setting."""
