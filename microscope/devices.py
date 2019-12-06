@@ -75,7 +75,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-class Setting():
+class _Setting():
+    # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
+    # Settings classes should be private: devices should use a factory method
+    # rather than instantiate settings directly; most already use add_setting for this.
     def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
         """Create a setting.
 
@@ -202,7 +205,7 @@ class Device(metaclass=abc.ABCMeta):
     def __init__(self, index=None):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
-        self.settings = OrderedDict()
+        self._settings = OrderedDict()
         self._index = index
 
     def __del__(self):
@@ -265,8 +268,6 @@ class Device(metaclass=abc.ABCMeta):
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
 
-        Can also use self.settings[name] = Setting(name, dtype,...)
-
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
         :param get_func: a function to get the current value
@@ -290,12 +291,13 @@ class Device(metaclass=abc.ABCMeta):
             raise Exception("Invalid values type for %s '%s': expected function or %s" %
                             (dtype, name, DTYPES[dtype][1:]))
         else:
-            self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
+            self._settings[name] = _Setting(name, dtype, get_func, set_func,
+                                            values, readonly)
 
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
-            return self.settings[name].get()
+            return self._settings[name].get()
         except Exception as err:
             _logger.error("in get_setting(%s):" % (name), exc_info=err)
             raise
@@ -303,7 +305,7 @@ class Device(metaclass=abc.ABCMeta):
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v.get() for k, v in self.settings.items()}
+            return {k: v.get() for k, v in self._settings.items()}
         except Exception as err:
             _logger.error("in get_all_settings:", exc_info=err)
             raise
@@ -311,24 +313,24 @@ class Device(metaclass=abc.ABCMeta):
     def set_setting(self, name, value):
         """Set a setting."""
         try:
-            self.settings[name].set(value)
+            self._settings[name].set(value)
         except Exception as err:
             _logger.error("in set_setting(%s):" % (name), exc_info=err)
             raise
 
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
-        return self.settings[name].describe()
+        return self._settings[name].describe()
 
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, v.describe()) for (k, v) in self.settings.items()]
+        return [(k, v.describe()) for (k, v) in self._settings.items()]
 
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
             # Assume nothing about state: set everything.
-            my_keys = set(self.settings.keys())
+            my_keys = set(self._settings.keys())
             their_keys = set(incoming.keys())
             update_keys = my_keys & their_keys
             if update_keys != my_keys:
@@ -338,24 +340,24 @@ class Device(metaclass=abc.ABCMeta):
                 raise Exception(msg)
         else:
             # Only update changed values.
-            my_keys = set(self.settings.keys())
+            my_keys = set(self._settings.keys())
             their_keys = set(incoming.keys())
             update_keys = set(key for key in my_keys & their_keys
                               if self.get_setting(key) != incoming[key])
         results = {}
         # Update values.
         for key in update_keys:
-            if key not in my_keys or not self.settings[key].set:
+            if key not in my_keys or not self._settings[key].set:
                 # Setting not recognised or no set function implemented
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if _call_if_callable(self.settings[key].readonly):
+            if _call_if_callable(self._settings[key].readonly):
                 continue
-            self.settings[key].set(incoming[key])
+            self._settings[key].set(incoming[key])
         # Read back values in second loop.
         for key in update_keys:
-            results[key] = self.settings[key].get()
+            results[key] = self._settings[key].get()
         return results
 
 
