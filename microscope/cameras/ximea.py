@@ -133,7 +133,7 @@ class XimeaCamera(devices.CameraDevice):
         if (trigger == devices.TRIGGER_SOFT):
             self.handle.set_triger_source(XI_TG_SOURCE['XI_TRG_SOFTWARE'])
         elif (trigger == devices.TRIGGER_BEFORE):
-            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
+            self.handle.set_triger_source(XI_TG_SOURCE['XI_TRG_EDGE_RISING'])
             #define digial input mode of trigger
             self.handle.set_gpi_selector(1)
             self.handle.set_gpi_mode(XI_GPI_TRIGGER)
