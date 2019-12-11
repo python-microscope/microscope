@@ -354,4 +354,4 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         return result
 
     def initialize(self):
-        pass
+        super().initialize()
