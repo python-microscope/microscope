@@ -36,6 +36,15 @@ from enum import IntEnum
 
 _logger = logging.getLogger(__name__)
 
+from functools import wraps
+def must_be_initialized(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if hasattr(self, '_initialized') and self._initialized:
+            return f(self, *args, **kwargs)
+        else:
+            raise Exception("Device not initialized.")
+    return wrapper
 
 class CamEnum(IntEnum):
     A = 1
@@ -215,11 +224,13 @@ class TestCamera(devices.CameraDevice):
         """Purge buffers on both camera and PC."""
         _logger.info("Purging buffers.")
 
+    @must_be_initialized
     def _create_buffers(self):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
         _logger.info("Creating buffers.")
 
+    @must_be_initialized
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
@@ -249,6 +260,7 @@ class TestCamera(devices.CameraDevice):
         """
         _logger.info('Initializing.')
         time.sleep(0.5)
+        self._initialized = True
 
     def make_safe(self):
         if self._acquiring:
@@ -257,6 +269,7 @@ class TestCamera(devices.CameraDevice):
     def _on_disable(self):
         self.abort()
 
+    @must_be_initialized
     def _on_enable(self):
         _logger.info("Preparing for acquisition.")
         if self._acquiring:
@@ -282,6 +295,7 @@ class TestCamera(devices.CameraDevice):
     def get_trigger_type(self):
         return devices.TRIGGER_SOFT
 
+    @must_be_initialized
     def soft_trigger(self):
         _logger.info('Trigger received; self._acquiring is %s.',
                      self._acquiring)
