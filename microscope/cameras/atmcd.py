@@ -29,6 +29,8 @@
 
    Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
 """
+
+import logging
 import re, sys, functools, os, platform
 import ctypes
 from ctypes import Structure, POINTER
@@ -36,7 +38,10 @@ from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
 from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
 from ctypes import c_void_p
 from numpy.ctypeslib import ndpointer
-import Pyro4
+
+
+_logger = logging.getLogger(__name__)
+
 
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.
@@ -471,7 +476,7 @@ def lookup_status(code):
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
-class _meta(object):
+class _meta:
     pass
 
 STRING = c_char_p
@@ -555,7 +560,7 @@ class AtmcdException(Exception):
         self.status = status
 
 
-class dllFunction(object):
+class dllFunction:
     """A wrapper class for DLL functions to make them available in python."""
     def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
         # the library function
@@ -1192,7 +1197,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def abort(self):
         """Abort acquisition."""
-        self._logger.debug('Disabling acquisition.')
+        _logger.debug('Disabling acquisition.')
         try:
             with self:
                 AbortAcquisition()
@@ -1210,7 +1215,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def initialize(self):
         """Initialize the library and hardware and create Setting objects."""
-        self._logger.info('Initializing ...')
+        _logger.info('Initializing ...')
         num_cams = GetAvailableCameras()
         if self._index >= num_cams:
             msg = "Requested camera %d, but only found %d cameras" % (self._index, num_cams)
@@ -1245,7 +1250,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     for s in range(GetNumberHSSpeeds(ch, amp.value)):
                         speed = GetHSSpeed(ch, amp.value, s)
                         self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
-            self._logger.info("... initilized %s s/n %s" % (model, serial))
+            _logger.info("... initilized %s s/n %s" % (model, serial))
         ## Add settings. Some are write-only, so we set defaults here.
         # Mode
         name = 'readout mode'
@@ -1395,18 +1400,19 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             CoolerOFF()
 
-        self._logger.info("Waiting for temperature to rise above -20C before shutdown ...")
+        _logger.info('Waiting for temperature to rise above -20C'
+                     ' before shutdown ...')
 
         while True:
             # Check temperature then release lock.
             with self:
                 t = GetTemperature()[1]
-                self._logger.info("... T = %dC" % t)
+                _logger.info("... T = %dC" % t)
             if t > -20:
                 break
             time.sleep(10)
 
-        self._logger.info("Temperature is %dC: shutting down camera." % t)
+        _logger.info("Temperature is %dC: shutting down camera." % t)
 
         with self:
             ShutDown()
@@ -1479,7 +1485,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     def _set_readout_mode(self, mode_index):
         """Configure channel, amplifier and VS-speed."""
         mode = self._readout_modes[mode_index]
-        self._logger.info("Setting readout mode to %s" % mode)
+        _logger.info("Setting readout mode to %s" % mode)
         with self:
             SetADChannel(mode.channel)
             SetOutputAmplifier(mode.amp)

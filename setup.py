@@ -17,7 +17,7 @@ import setuptools.command.sdist
 
 
 project_name = 'microscope'
-project_version = '0.2.0+dev'
+project_version = '0.3.0+dev'
 
 
 ## setup.py is used for both maintainers actions (build documentation,
@@ -54,6 +54,8 @@ optional_c_libs = [
     ## Boston Micromachines Corporation (BMC) SDK
     'BMC',
     'libBMC.so.3',
+    # Mirao52e SDK (windows only)
+    'mirao52e',
     ## pvcam's SDK
     'pvcam.so',
     'pvcam32',
@@ -106,10 +108,16 @@ if has_sphinx:
                 "--module-first",
                 "--output-dir", "doc/api",
                 "microscope",
-                "microscope/win32.py"]) # skip win32 so docs will build on other platforms.
+                # exclude win32 so docs will build on other platforms
+                "microscope/win32.py",
+                # exclude the test unit modules
+                "microscope/testsuite/test_*"
+            ])
 
             with unittest.mock.patch('ctypes.CDLL', new=cdll_diversion):
-                super().run()
+                with unittest.mock.patch('ctypes.WinDLL', new=cdll_diversion,
+                                         create=True):
+                    super().run()
 
 else:
     class BuildDoc(distutils.cmd.Command):
@@ -157,8 +165,9 @@ setuptools.setup(
     python_requires = '>=3.5',
 
     install_requires = [
-        "numpy",
         "Pyro4",
+        "hidapi",
+        "numpy",
         "pyserial",
     ],
 

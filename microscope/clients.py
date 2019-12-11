@@ -28,12 +28,11 @@ import Pyro4
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
-Pyro4.config.PICKLE_PROTOCOL_VERSION = 2
 
 LISTENERS = {}
 
 
-class Client(object):
+class Client:
     """Base Client object that makes methods on proxy available locally."""
     def __init__(self, url):
         self._url = url
@@ -59,7 +58,7 @@ class Client(object):
 class DataClient(Client):
     """A client that can receive and buffer data."""
     def __init__(self, url):
-        super(DataClient, self).__init__(url)
+        super().__init__(url)
         self._buffer = queue.Queue()
         # Register self with a listener.
         if self._url.split('@')[1].split(':')[0] in ['127.0.0.1', 'localhost']:

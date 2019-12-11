@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8
-#
+
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
-# Copyright 2018 David Pinto <david.pinto@bioch.ox.ac.uk>
+# Copyright 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
 # Copyright 2018 Julio Mateos Langerak <julio.mateos-langerak@igh.cnrs.fr>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,19 +18,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import serial
+import logging
 
-import Pyro4
+import serial
 
 from microscope import devices
 
 
-@Pyro4.expose
+_logger = logging.getLogger(__name__)
+
+
 class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
-    def __init__(self, com, baud, timeout, *args, **kwargs):
-        super(ObisLaser, self).__init__(*args, **kwargs)
-        self.connection = serial.Serial(port=com,
-                                        baudrate=baud,
+    def __init__(self, com, baud=115200, timeout=0.5, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.connection = serial.Serial(port=com, baudrate=baud,
                                         timeout=timeout,
                                         stopbits=serial.STOPBITS_ONE,
                                         bytesize=serial.EIGHTBITS,
@@ -38,25 +39,25 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Start a logger.
         self._write(b'SYSTem:INFormation:MODel?')
         response = self._readline()
-        self._logger.info('OBIS laser model: [%s]' % response.decode())
+        _logger.info('OBIS laser model: [%s]' % response.decode())
         self._write(b'SYSTem:INFormation:SNUMber?')
         response = self._readline()
-        self._logger.info('OBIS laser serial number: [%s]' % response.decode())
+        _logger.info('OBIS laser serial number: [%s]' % response.decode())
         self._write(b'SYSTem:CDRH?')
         response = self._readline()
-        self._logger.info('CDRH safety: [%s]' % response.decode())
+        _logger.info('CDRH safety: [%s]' % response.decode())
         self._write(b'SOURce:TEMPerature:APRobe?')
         response = self._readline()
-        self._logger.info('TEC temperature control: [%s]' % response.decode())
+        _logger.info('TEC temperature control: [%s]' % response.decode())
         self._write(b'*TST?')
         response = self._readline()
-        self._logger.info('Self test procedure: [%s]' % response.decode())
+        _logger.info('Self test procedure: [%s]' % response.decode())
 
-        # We need to ensure that autostart is disabled so that we can switch emission
-        # on/off remotely.
+        # We need to ensure that autostart is disabled so that we can
+        # switch emission on/off remotely.
         self._write(b'SYSTem:AUTostart?')
         response = self._readline()
-        self._logger.info('Response to Autostart: [%s]' % response.decode())
+        _logger.info('Response to Autostart: [%s]' % response.decode())
 
     def _write(self, command):
         """Send a command."""
@@ -91,7 +92,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def enable(self):
         """Turn the laser ON. Return True if we succeeded, False otherwise."""
-        self._logger.info('Turning laser ON.')
+        _logger.info('Turning laser ON.')
         # Exiting Sleep Mode.
         self._write(b'SOURce:TEMPerature:APRobe ON')
         self._flush_handshake()
@@ -100,12 +101,12 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._flush_handshake()
         self._write(b'SOURce:AM:STATe?')
         response = self._readline()
-        self._logger.info("SOURce:AM:STATe? [%s]" % response.decode())
+        _logger.info("SOURce:AM:STATe? [%s]" % response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
-            self._logger.error("Failed to turn ON. Current status:\r\n")
-            self._logger.error(self.get_status())
+            _logger.error("Failed to turn ON. Current status:\r\n")
+            _logger.error(self.get_status())
             return False
         return True
 
@@ -123,7 +124,6 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     def initialize(self):
-        """Initialization to do when cockpit connects."""
         # self.flush_buffer()
         # We ensure that handshaking is off.
         self._write(b'SYSTem:COMMunicate:HANDshaking ON')
@@ -136,61 +136,56 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
         """Turn the laser OFF. Return True if we succeeded, False otherwise."""
-        self._logger.info('Turning laser OFF.')
+        _logger.info('Turning laser OFF.')
         # Turning LASER OFF
         self._write(b'SOURce:AM:STATe OFF')
         self._flush_handshake()
 
         if self.get_is_on():
-            # Something went wrong.
-            self._logger.error("Failed to turn OFF. Current status:\r\n")
-            self._logger.error(self.get_status())
+            _logger.error("Failed to turn OFF. Current status:\r\n")
+            _logger.error(self.get_status())
             return False
         return True
 
     @devices.SerialDeviceMixIn.lock_comms
-    def isAlive(self):
-        return self.get_is_on
+    def is_alive(self):
+        self._write(b'*IDN?')
+        reply = self._readline()
+        # 'Coherent, Inc-<model name>-<firmware version>-<firmware date>'
+        return reply.startswith(b'Coherent, Inc-')
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
         """Return True if the laser is currently able to produce light."""
         self._write(b'SOURce:AM:STATe?')
         response = self._readline()
-        self._logger.info("Are we on? [%s]", response.decode())
+        _logger.info("Are we on? [%s]", response.decode())
         return response == b'ON'
 
     @devices.SerialDeviceMixIn.lock_comms
-    def _set_power(self, power_w):
-        """Sets the power level in Watts"""
-        if power_w > (self.get_max_power_mw() / 1000):
-            return
-        self._logger.info("Setting laser power to %.7sW", power_w)
-        self._write(b'SOURce:POWer:LEVel:IMMediate:AMPLitude %.5f' % power_w)
-        self._flush_handshake()
-        curr_power = self._get_power()
-        self._logger.info("Power response [%s]", curr_power)
-        return curr_power
+    def get_min_power_mw(self):
+        self._write(b'SOURce:POWer:LIMit:LOW?')
+        power_w = self._readline()
+        return float(power_w.decode()) * 1000.0
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_max_power_mw(self):
         """Gets the maximum laser power in mW."""
-        self._write(b'SYSTem:INFormation:POWer?')
+        self._write(b'SOURce:POWer:LIMit:HIGH?')
         power_w = self._readline()
-        return int(float(power_w.decode()) * 1000)
+        return float(power_w.decode()) * 1000.0
 
     @devices.SerialDeviceMixIn.lock_comms
-    def _get_power(self):
+    def get_power_mw(self):
         if not self.get_is_on():
-            # Laser is not on.
-            return 0
+            return 0.0
         self._write(b'SOURce:POWer:LEVel?')
         response = self._readline()
-        return float(response.decode())
+        return float(response.decode()) * 1000.0
 
-    def get_power_mw(self):
-        return 1000 * self._get_power()
-
+    @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mw):
-        mw = min(mw, self.get_max_power_mw())
-        return self._set_power(mw / 1000)
+        power_w = mw / 1000.0
+        _logger.info("Setting laser power to %.7sW", power_w)
+        self._write(b'SOURce:POWer:LEVel:IMMediate:AMPLitude %.5f' % power_w)
+        self._flush_handshake()
