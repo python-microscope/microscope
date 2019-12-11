@@ -438,18 +438,6 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         Implement device-specific code in _on_enable .
         """
         _logger.debug("Enabling ...")
-        if self._using_callback:
-            if self._fetch_thread:
-                self._fetch_thread_run = False
-        else:
-            if not self._fetch_thread or not self._fetch_thread.is_alive():
-                self._fetch_thread = Thread(target=self._fetch_loop)
-                self._fetch_thread.daemon = True
-                self._fetch_thread.start()
-        if not self._dispatch_thread or not self._dispatch_thread.is_alive():
-            self._dispatch_thread = Thread(target=self._dispatch_loop)
-            self._dispatch_thread.daemon = True
-            self._dispatch_thread.start()
         # Call device-specific code.
         try:
             result = self._on_enable()
@@ -461,7 +449,20 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self.enabled = False
         else:
             self.enabled = True
-        _logger.debug("... enabled.")
+            # Set up data fetching
+            if self._using_callback:
+                if self._fetch_thread:
+                    self._fetch_thread_run = False
+            else:
+                if not self._fetch_thread or not self._fetch_thread.is_alive():
+                    self._fetch_thread = Thread(target=self._fetch_loop)
+                    self._fetch_thread.daemon = True
+                    self._fetch_thread.start()
+            if not self._dispatch_thread or not self._dispatch_thread.is_alive():
+                self._dispatch_thread = Thread(target=self._dispatch_loop)
+                self._dispatch_thread.daemon = True
+                self._dispatch_thread.start()
+            _logger.debug("... enabled.")
         return self.enabled
 
 
