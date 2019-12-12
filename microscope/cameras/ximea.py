@@ -77,9 +77,10 @@ class XimeaCamera(devices.CameraDevice):
 
     def initialize(self):
         """Initialise the camera.
-
         Open the connection, connect properties and populate settings dict.
         """
+        try:
+            self.handle = xiapi.Camera()
             self.handle.open_device()
         except:
             raise Exception("Problem opening camera.")
@@ -129,9 +130,9 @@ class XimeaCamera(devices.CameraDevice):
 
     def set_trigger_type(self, trigger):
         if (trigger == devices.TRIGGER_SOFT):
-            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
+            self.handle.set_trigger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
         elif (trigger == devices.TRIGGER_BEFORE):
-            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
+            self.handle.set_trigger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
             #define digial input mode of trigger
             self.handle.set_gpi_selector(1)
             self.handle.set_gpi_mode(XI_GPI_TRIGGER)
