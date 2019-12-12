@@ -6,10 +6,11 @@ Version 0.4.0 (upcoming)
 
 * New devices supported:
 
-  * Coherent Obis laser.
+  * Coherent Obis laser
   * Lumencor Spectra III light engine
   * Prior ProScan III controller
   * Prior filter wheels
+  * Toptica iBeam laser
 
 * Changes to device ABCs:
 
