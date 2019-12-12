@@ -149,7 +149,7 @@ class Setting():
             return [(v.value, v.name) for v in self._values]
         values = _call_if_callable(self._values)
         if values is not None:
-            if self.dtype is 'enum':
+            if self.dtype == 'enum':
                 if isinstance(values, dict):
                     return list(values.items())
                 else:
