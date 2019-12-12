@@ -17,10 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import io
-
-import Pyro4
-import serial
 import time
+
+import serial
 
 from microscope.devices import FilterWheelBase
 

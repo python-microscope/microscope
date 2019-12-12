@@ -16,7 +16,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-"""A microscope interface to Linkam stages. 
+"""A microscope interface to Linkam stages.
 
 This module requires the LinkamSDK library and a license file, available
 from Linkam Scientific Instruments.
@@ -79,7 +79,7 @@ class _CommsInfo(ctypes.Structure):
 class _SerialCommsInfo(ctypes.Structure):
     """SerialCommsInfo struct from C headers"""
     _fields_ = [("port", ctypes.c_char * 64),
-                ("baudrate", ctypes.c_uint32), 
+                ("baudrate", ctypes.c_uint32),
                 ("bytesize", ctypes.c_uint),
                 ("parity", ctypes.c_uint),
                 ("stopbits", ctypes.c_uint),
@@ -90,10 +90,10 @@ class _SerialCommsInfo(ctypes.Structure):
 
 class _USBCommsInfo(ctypes.Structure):
     """USBCommsInfo struct from C headers"""
-    _fields_ = [("vendorID", ctypes.c_uint16), 
+    _fields_ = [("vendorID", ctypes.c_uint16),
                 ("productID", ctypes.c_uint16),
                 ("serialNumber", ctypes.c_char * 17),
-                ("padding", ctypes.c_uint8 * 83)] 
+                ("padding", ctypes.c_uint8 * 83)]
 
 
 class _StageGroup(Enum):
@@ -193,7 +193,7 @@ class _StageConfig(ctypes.Union):
                 ("value", _uint64_t)]
 
 
-class _CMSStatusFlags(ctypes.Structure): 
+class _CMSStatusFlags(ctypes.Structure):
     """CMSStatus.flags struct from C headers"""
     _fields_ = [("on", ctypes.c_uint, 1),
                 ("onNoLN2", ctypes.c_uint, 1),
@@ -269,7 +269,7 @@ class _CMSErrorFlags(ctypes.Structure):
                 ("unused29", ctypes.c_uint, 1),
                 ("unused30", ctypes.c_uint, 1),
                 ("unused31", ctypes.c_uint, 1) ]
- 
+
 
 class _CMSError(ctypes.Union):
     """CMSError union from C headers"""
@@ -315,7 +315,7 @@ class _ConnectionStatusFlags(ctypes.Structure):
 
 class _ConnectionStatus(ctypes.Union):
     """ConnectionStatus union from C headers"""
-    _fields_ = [("flags", _ConnectionStatusFlags), 
+    _fields_ = [("flags", _ConnectionStatusFlags),
                 ("value", _uint32_t)]
 
 
@@ -385,11 +385,11 @@ class _ControllerStatusFlags(ctypes.Structure):
                 ("unused61", ctypes.c_uint, 1),
                 ("unused62", ctypes.c_uint, 1),
                 ("unused63", ctypes.c_uint, 1),]
-        
+
 
 class _ControllerStatus(ctypes.Union):
     """ControllerStatus union from C headers"""
-    _fields_ = [("flags", _ControllerStatusFlags), 
+    _fields_ = [("flags", _ControllerStatusFlags),
                 ("value", _uint64_t)]
 
 
@@ -900,10 +900,10 @@ _StageValueTypeToVariant = {
 }
 
 
-class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
+class _LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     """Base class for connecting to Linkam SDK devices.
-    
-    This class deals with SDK initialisation and setting callbacks to 
+
+    This class deals with SDK initialisation and setting callbacks to
     handle SDK events. It maintains a map of SDK handle to device instance
     so that SDK events result in updates to the correct instance.
     """
@@ -916,12 +916,12 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     _connectionMap = {}
     # We need to keep references to CFUNCTYPE callbacks.
     _callbacks = {}
-    
+
     @staticmethod
     def get_sdk_version():
         """Fetch the SDK version."""
         b = ctypes.create_string_buffer(_max_version_length)
-        self._lib.linkamGetVersion(b, _max_version_length)
+        __class__._lib.linkamGetVersion(b, _max_version_length)
         return b.value
 
     @staticmethod
@@ -939,8 +939,16 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         #    sdk_log = b''
         #else:
         import os
+        lpaths = ['', os.path.dirname(__file__), os.path.dirname(devices.__file__)]
         sdk_log = os.devnull
-        _lib.linkamInitialiseSDK(sdk_log, b'', True)
+        while True:
+            try:
+                p = lpaths.pop()
+            except IndexError:
+                raise Exception("Could not init SDK: no linkam license file (Linkam.lsk) found.")
+            lskpath = os.path.join(p, 'Linkam.lsk').encode()
+            if (_lib.linkamInitialiseSDK(sdk_log, lskpath, True)):
+                break
         # NewValue event callback
         cfunc = ctypes.CFUNCTYPE(_uint32_t, _CommsHandle, _ControllerStatus)(__class__._on_new_value)
         _lib.linkamSetCallbackNewValue(cfunc)
@@ -974,7 +982,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         stage = cls._connectionMap.get(h, None)
         if not stage:
             return
-        if err in (ErrorCode.USBCommsTxError, ErrorCode.USBCommsRxError, 
+        if err in (ErrorCode.USBCommsTxError, ErrorCode.USBCommsRxError,
                    ErrorCode.SerialCommsTxError, ErrorCode.SerialCommsRxError):
             # Try to re-establish comms.
             stage._reopen_comms()
@@ -996,7 +1004,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     def _on_disconnect(cls, h: _CommsHandle):
         """Disconnection event callback
 
-        Discconneciton event only seems to be generated by processing a 
+        Discconneciton event only seems to be generated by processing a
         CloseComms message."""
         stage = cls._connectionMap.get(h, None)
         if not stage:
@@ -1018,6 +1026,12 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
             self.init_sdk()
         self._reconnect_thread = None
 
+    def initialize(self):
+        pass
+
+    def _on_shutdown(self):
+        pass
+
     def __del__(self):
         """Close comms on object deletion"""
         self._process_msg(Msg.CloseComms)
@@ -1030,7 +1044,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         """As the SDK to process a message."""
         if result is None:
             result = _Variant()
-        if not self._lib.linkamProcessMessage(ctypes.c_uint(msg), 
+        if not self._lib.linkamProcessMessage(ctypes.c_uint(msg),
                                         self._h,
                                         byref(result),
                                         param1, param2, param3):
@@ -1124,8 +1138,8 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     def open_comms(self):
         """Open the comms link and store the comms handle."""
         self._process_msg(Msg.OpenComms,
-                             addressof(self._commsinfo),
-                             addressof(self._h),
+                             byref(self._commsinfo),
+                             byref(self._h),
                              result=self._connectionstatus)
         if self._h.value != 0:
             __class__._connectionMap[self._h.value] = self
@@ -1166,7 +1180,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
     def init_usb(self, uid):
         """Populate commsinfo struct with default USBCommsInfo"""
         # The uid is used to set serialNumber on the info object. The docs
-        # suggest that an OpenComms message should open a connection to the 
+        # suggest that an OpenComms message should open a connection to the
         # device with that serial number; with only one stage attached, it
         # appears that OpenComms ignores the value of serialNumber.
         if uid is None:
@@ -1185,7 +1199,7 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         """Called by a client to fetch status in a dict.
 
         Derived classes and mixins should implement this to add their own status.
-        
+
         status = super().get_status(*args, status_structure, ...) in derived classes.
         # then add any other values with
         status[key] = ...
@@ -1193,13 +1207,13 @@ class LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         structs = args + (self._status, self._connectionstatus)
         status = {}
         for s in structs:
-            names = filter(lambda n: not n.startswith('unused'), 
+            names = filter(lambda n: not n.startswith('unused'),
                            (f[0] for f in s.flags._fields_) )
             status.update(dict(map( lambda n: (n, bool(getattr(s.flags, n))), names)))
         return status
 
 
-class LinkamMDSMixin():
+class _LinkamMDSMixin():
     """A mixin for motor-driven stages"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1211,12 +1225,12 @@ class LinkamMDSMixin():
                                 ("Y_velocity", self._stageconfig.flags.motorY, _StageValueType.MotorVelY),
                                 ("Z_velocity", self._stageconfig.flags.motorZ, _StageValueType.MotorVelZ)):
             if flag:
-                # Motors don't move unless their velocities have been written to, 
-                # despite velocities having a non-zero power-on default. There's no 
+                # Motors don't move unless their velocities have been written to,
+                # despite velocities having a non-zero power-on default. There's no
                 # way to tell if they've been written to, so write them once here.
                 self.set_value(svt, self.get_value(svt))
                 # Also add a Setting that clients can use to modify the velocity.
-                self.add_setting(name, float, 
+                self.add_setting(name, float,
                                  lambda svt=svt: self.get_value(svt),
                                  lambda val, svt=svt, s=self: self.set_value(svt, val),
                                  lambda svt=svt: self.get_value_limits(svt))
@@ -1260,7 +1274,7 @@ class LinkamMDSMixin():
         return pos
 
 
-class LinkamCMS(LinkamMDSMixin, LinkamBase):
+class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
     """Linkam correlative-microscopy stage."""
     _refill_map = {'sample': 'sampleDewarFillSignal',
                    'external': 'mainDewarFillSignal'}
