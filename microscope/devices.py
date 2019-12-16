@@ -685,12 +685,15 @@ class CameraDevice(DataDevice):
         rot = self._transform[2]
 
         # Choose appropriate transform based on (flips, rot).
-        return {(0, 0): numpy.rot90(data, rot),
-                (0, 1): numpy.flipud(numpy.rot90(data, rot)),
-                (1, 0): numpy.fliplr(numpy.rot90(data, rot)),
-                (1, 1): numpy.fliplr(numpy.flipud(numpy.rot90(data, rot)))
-                }[flips]
-
+        # Do rotation
+        data = numpy.rot90(data, rot)
+        # Flip
+        data = {(0, 0): lambda d: d,
+                (0, 1): numpy.flipud,
+                (1, 0): numpy.fliplr,
+                (1, 1): lambda d: numpy.fliplr(numpy.flipud(d))
+                }[flips](data)
+        return super()._process_data(data)
 
     def set_readout_mode(self, description):
         """Set the readout mode and _readout_transform."""
