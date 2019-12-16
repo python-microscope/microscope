@@ -38,6 +38,9 @@ import logging
 import microscope.devices
 from typing import Mapping
 from enum import IntEnum
+
+_logger = logging.getLogger(__name__)
+
 try:
     # Currently, clarity_process is a module that is not packaged, so needs
     # to be put on the python path somewhere manually.
@@ -45,7 +48,6 @@ try:
 except:
     _logger.warning("Could not import clarity_process module: no processing available.")
 
-_logger = logging.getLogger(__name__)
 
 Mode = IntEnum("Mode", "difference, raw, calibrate")
 
