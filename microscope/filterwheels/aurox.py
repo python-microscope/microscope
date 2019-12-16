@@ -38,6 +38,12 @@ import logging
 import microscope.devices
 from typing import Mapping
 from enum import IntEnum
+try:
+    # Currently, clarity_process is a module that is not packaged, so needs
+    # to be put on the python path somewhere manually.
+    from clarity_process import ClarityProcessor
+except:
+    _logger.warning("Could not import clarity_process module: no processing available.")
 
 _logger = logging.getLogger(__name__)
 
@@ -126,12 +132,7 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
             self._cam = camera(**cam_kwargs)
             self._cam.pipeline.append(self._c_process_data)
         # Is processing available?
-        self._can_process = False
-        try:
-            from clarity_process import ClarityProcessor
-            self._can_process = True
-        except:
-            _logger.warning("Could not import clarity_process module: no processing available.")
+        self._can_process = 'ClarityProcessor' in globals()
         # Data processor object, created after calibration
         self._processor = None
         # Acquisition mode
@@ -156,11 +157,11 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
         elif self._mode == Mode.difference:
             if self._processor is None:
                 raise Exception("Not calibrated yet - can not process image")
-            return self._processor.process(data)
+            return self._processor.process(data).get() # get converts UMat to ndarray.
         elif self._mode == Mode.calibrate:
             # This will introduce a significant delay, but returning the
             # image indicates that the calibration step is complete.
-            self._processor = clarity_process.ClarityProcessor(data)
+            self._processor = ClarityProcessor(data)
             return data
         else:
             raise Exception("Unrecognised mode: %s", self._mode)
