@@ -1338,7 +1338,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                                           self._bind(SetBaselineClamp))
             self.settings[name].set(False)
         # BaselineOffset
-        nam = 'BaselineOffset'
+        name = 'BaselineOffset'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
             self.settings[name] = Setting(name, 'int',
                                           None,
