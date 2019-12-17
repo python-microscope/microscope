@@ -31,10 +31,9 @@ ctypes objects.
   * get_id returns an empty string, not the device serial number."""
 
 import ctypes
-from ctypes import addressof, byref, POINTER
+from ctypes import byref, POINTER
 from enum import Enum, IntEnum
 from microscope import devices
-from microscope.devices import Setting
 import datetime, time
 
 _max_version_length = 20
@@ -73,7 +72,7 @@ class _CommsInfo(ctypes.Structure):
             return self.info
         else:
             offset = getattr(_CommsInfo, 'info').offset
-            return _USBCommsInfo.from_buffer(self, getattr(_CommsInfo, 'info').offset)
+            return _USBCommsInfo.from_buffer(self, offset)
 
 
 class _SerialCommsInfo(ctypes.Structure):
@@ -1113,7 +1112,6 @@ class _LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         else:
             svt = _StageValueType(svt)
         vtype = _StageValueTypeToVariant.get(svt, "vFloat32")
-        v = _Variant(**{vtype: val})
         return self._process_msg(Msg.SetValue,
                                     _StageValueType(svt).value,
                                     _Variant(**{vtype: val})).vBoolean

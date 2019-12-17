@@ -768,7 +768,7 @@ class CameraDevice(DataDevice):
     @abc.abstractmethod
     def _get_roi(self):
         """Return the ROI as it is on hardware."""
-        return ROI(left, top, width, height)
+        raise NotImplementedError()
 
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).

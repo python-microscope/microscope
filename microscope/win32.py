@@ -13,9 +13,6 @@ except:
 
 import multiprocessing
 import servicemanager
-import win32api
-import win32event
-from win32process import DETACHED_PROCESS, CREATE_NEW_PROCESS_GROUP, CREATE_NEW_CONSOLE
 import win32serviceutil
 import win32service
 

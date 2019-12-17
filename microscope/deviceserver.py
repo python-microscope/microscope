@@ -335,7 +335,7 @@ def serve_devices(devices, exit_event=None):
                     try:
                         s.join(30)
                     except:
-                        _logger.error("... could not join PID %s." % (old_pid))
+                        _logger.error("... could not join PID %s." % (s.pid))
                     else:
                         old_pid = s.pid
                         del (s)

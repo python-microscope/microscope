@@ -24,7 +24,7 @@ import logging
 import numpy as np
 
 from microscope import devices
-from microscope.devices import keep_acquiring, Binning, ROI
+from microscope.devices import keep_acquiring, ROI
 
 #import ximea python module.
 from ximea import xiapi
