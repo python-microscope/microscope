@@ -1248,7 +1248,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     for s in range(GetNumberHSSpeeds(ch, amp.value)):
                         speed = GetHSSpeed(ch, amp.value, s)
                         self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
-            _logger.info("... initilized %s s/n %s" % (model, serial))
+            _logger.info("... initilized %s s/n %s", model, serial)
         ## Add settings. Some are write-only, so we set defaults here.
         # Mode
         name = 'readout mode'
@@ -1399,12 +1399,12 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Check temperature then release lock.
             with self:
                 t = GetTemperature()[1]
-                _logger.info("... T = %dC" % t)
+                _logger.info("... T = %dC", t)
             if t > -20:
                 break
             time.sleep(10)
 
-        _logger.info("Temperature is %dC: shutting down camera." % t)
+        _logger.info("Temperature is %dC: shutting down camera.", t)
 
         with self:
             ShutDown()
@@ -1477,7 +1477,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     def _set_readout_mode(self, mode_index):
         """Configure channel, amplifier and VS-speed."""
         mode = self._readout_modes[mode_index]
-        _logger.info("Setting readout mode to %s" % mode)
+        _logger.info("Setting readout mode to %s", mode)
         with self:
             SetADChannel(mode.channel)
             SetOutputAmplifier(mode.amp)
