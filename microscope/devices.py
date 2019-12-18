@@ -851,14 +851,14 @@ class TriggerTargetMixIn(metaclass=abc.ABCMeta):
 
     """
     @property
-    def trigger_mode(self):
+    def trigger_mode(self) -> TriggerMode:
         return self._trigger_mode
     @property
-    def trigger_type(self):
+    def trigger_type(self) -> TriggerType:
         return self._trigger_type
 
     @abc.abstractmethod
-    def set_trigger(self, ttype, tmode):
+    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
         """Set device for a specific trigger.
         """
         pass

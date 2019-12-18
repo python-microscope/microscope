@@ -52,7 +52,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
 
 
     @staticmethod
-    def _normalize_patterns(patterns):
+    def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
         """
         Alpao SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
@@ -60,7 +60,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         patterns = (patterns * 2) -1
         return patterns
 
-    def _find_error_str(self):
+    def _find_error_str(self) -> str:
         """Get an error string from the Alpao SDK error stack.
 
         Returns
@@ -87,14 +87,14 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         else:
             return ""
 
-    def _raise_if_error(self, status, exception_cls=Exception):
+    def _raise_if_error(self, status: int, exception_cls=Exception) -> None:
         if status != asdk.SUCCESS:
             msg = self._find_error_str()
             if msg:
                 raise exception_cls(msg)
 
 
-    def __init__(self, serial_number, **kwargs):
+    def __init__(self, serial_number: str, **kwargs) -> None:
         """
         Parameters
         ----------
@@ -128,7 +128,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     def n_actuators(self) -> int:
         return self._n_actuators
 
-    def apply_pattern(self, pattern):
+    def apply_pattern(self, pattern: numpy.ndarray) -> None:
         self._validate_patterns(pattern)
         pattern = self._normalize_patterns(pattern)
         data_pointer = pattern.ctypes.data_as(asdk.Scalar_p)
@@ -153,7 +153,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         self._raise_if_error(status)
         self._trigger_type = ttype
 
-    def queue_patterns(self, patterns):
+    def queue_patterns(self, patterns: numpy.ndarray) -> None:
         if self._trigger_type == TriggerType.SOFTWARE:
             super().queue_patterns(patterns)
             return
@@ -161,7 +161,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         self._validate_patterns(patterns)
         patterns = self._normalize_patterns(patterns)
         patterns = numpy.atleast_2d(patterns)
-        n_patterns = patterns.shape[0]
+        n_patterns = patterns.shape[0] # type: int
 
         ## The Alpao SDK seems to only support the trigger mode start.  It
         ## still has option called nRepeats that we can't really figure
@@ -183,7 +183,7 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
         self._raise_if_error(status)
 
-    def next_pattern(self):
+    def next_pattern(self) -> None:
         if self.trigger_type == TriggerType.SOFTWARE:
             super().next_pattern()
         else:
