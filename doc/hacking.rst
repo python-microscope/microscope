@@ -1,4 +1,4 @@
-.. Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+.. Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
 
    Permission is granted to copy, distribute and/or modify this
    document under the terms of the GNU Free Documentation License,
@@ -7,89 +7,165 @@
    no Back-Cover Texts.  A copy of the license is included in the
    section entitled "GNU Free Documentation License".
 
-Contributor instructions
-************************
+Contributing
+************
 
-Tests
-=====
+This documentation is for people who want to contribute code to the
+project, whether fixing a small bug, adding support for a new device,
+or even discussing a completely new device type.
 
-Microscope testsuite can be ran with setuptools, like so::
+
+In short
+========
+
+- Open new issues.  Do not create pull requests.
+- Open a new issue even if you already have a commit made.  Even if it
+  is about adding support for a new device.
+- Coding style is `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_
+- Development sources at
+  `<https://github.com/MicronOxford/microscope>`_
+- Bug tracker at `<https://github.com/MicronOxford/microscope/issues>`_
+
+
+Reporting issues
+================
+
+We use the github issue tracker at
+`<https://github.com/MicronOxford/microscope/issues>`_.  When
+reporting an issue, please include as much information as you can
+from:
+
+- Steps to reproduce issue
+    Include information so that we can try it ourselves.  Don't just
+    say "camera fails when setting exposure time".  Instead, include
+    the code to reproduce the issue and the error message.
+
+- Operating system
+    MacOS 10.15, Ubuntu 18.04, Windows 7, Windows 10, etc...
+
+- Python version
+    Also include the python minor version number, i.e, Python 3.7.3 or
+    3.6.2.  On command line, this is the output of `python --version`.
+
+- Device, SDK, and firmware information
+    Include the device model, revision number, and serial number.
+    Also include the firmware and the device SDK version number.
+
+- PyRO version
+    If the issue only happens in the network, please also include the
+    version of the PyRO package.
+
+
+Requesting support for new device
+=================================
+
+To request support for a new device, or even to support for a feature
+of an already supported device, open a new issue on the `issue tracker
+<https://github.com/MicronOxford/microscope/issues>`_.
+
+If there's already an open issue requesting the same, please leave a
+comment so that we know more people want it.
+
+
+Fixing an issue
+===============
+
+To fix an issue, including adding support for a new device, please do
+the following:
+
+- Open a new issue (if not already opened)
+- On the commit message, refer to the issue number
+- Comment on the issue what branch or commit to pull to fix it.
+
+Why the non-standard procedure?
+-------------------------------
+
+This procedure to fix an issue is not very standard on github
+projects.  However, it prevents spreading the discussion of the issue
+over multiple pages and enables one to find that discussion from the
+git history.
+
+
+Coding standards
+================
+
+Code style
+----------
+
+For code formatting use `PEP 8
+<https://www.python.org/dev/peps/pep-0008/>`_.
+
+Docstrings
+----------
+
+The whole API section of the documentation is generated from the
+inlined docstrings.  It requires the `Google Python docstrings format
+<https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`_.
+It looks like this::
+
+
+    def func(arg1, arg2):
+        """One-line summary.
+
+        Extended description of function.
+
+        Args:
+            arg1 (int): Description of arg1.  This can be a multi-line
+                description, no problem.
+            arg2 (str): Description of arg2.
+
+        Returns:
+            bool: Description of return value
+        """
+        return True
+
+Commit messages
+---------------
+
+The first line of the commit message have a one-line summary of the
+change.  This needs to mention the class, function, or module where
+relevant changes happen.  If there's an associated issue number, make
+reference to it.  If it is a "fixup" commit, make reference to it.
+Some examples for changes:
+
+- limited to a method function::
+
+    TheClassName.initialize: fix for firmware older than Y (issue #98)
+
+- effecting multiple methods in a class::
+
+    TheClassName: add support for very fancy feature (issue #99)
+
+- fixing a typo or obvious mistake on a previous commit::
+
+    AndorAtmcd: pass index to super (fixup a16bef042a41)
+
+- documentation only::
+
+    doc: add example for multiple cameras with hardware triggering
+
+
+Test suite
+----------
+
+Most of Python Microscope is about controlling very specific hardware
+and there are no realist mocks of such hardware.  Still, some parts
+can be tested with::
 
     python setup.py test
 
 All test units, as well as other tools for testing purposes, are part
 of the :py:mod:`microscope.testsuite` package.
 
-
-Documentation
-=============
-
-Documentation is inline within docstrings and must follow the `Google
-Python docstrings format
-<http://google.github.io/styleguide/pyguide.html?showone=Comments#Comments>`_.
-These will be parsed by `Sphinx's Napoleon extension
-<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_ so `its own
-examples
-<http://www.sphinx-doc.org/en/stable/ext/example_google.html>`_.  This
-can be generated like so::
-
-      python setup.py build_sphinx
+If your changes do not actually change a specific device, please also
+include a test unit.
 
 
-Versioning
-==========
+Copyright
+=========
 
-We use the style `major.minor.patch` for releases and haven't yet had
-to deal with rc.
-
-In between releases and snapshots, we use the `dev` as a local version
-identifiers as per `PEP 440
-<https://www.python.org/dev/peps/pep-0440/>`_ so a version string
-`0.0.1+dev` is the release `0.0.1` plus development changes on top of
-it (and not development release for an upcoming `0.0.1`).  With
-examples:
-
-* `0.0.1` - major version 0, minor version 0, patch version 1
-
-* `0.0.1+dev` - not a public release.  A development build, probably
-  from VCS sources, sometime *after* release `0.0.1`.  Note the use of
-  `+` which marks `dev` as a local version identifier.
-
-* `0.0.1.dev1` - we do not do this.  PEP 440 states this would be the
-  first development public release *before* `0.0.1`.  We use `+dev`
-  which are local version and not public releases.  This is only
-  mentioned here to avoid confusion for people used to that style.
-
-
-Steps to make a release
-=======================
-
-#. Change version number on `setup.py` and commit that change only.
-   Note that we use `release-N` for tag and not `v.N` to allow one day
-   for snapshot releases with tags such as `snapshot-N`::
-
-    VERSION=$(python setup.py --version)
-    COMMIT=$(git rev-parse HEAD | cut -c1-12)
-    git commit -m "maint: release $VERSION" setup.py
-    git tag -s -u $GPGKEY -m \
-      "Added tag release-$VERSION for commit $COMMIT" release-$VERSION
-
-#. Build a source distribution from an export (in case of any non
-   committed or ignored files)::
-
-    rm -rf target/
-    git archive --format=tar --prefix="target/" HEAD | tar -x
-    cd target/
-    python setup.py sdist --formats=gztar
-
-#. Upload and sign distribution::
-
-    twine upload -r pypi -s -i $GPGKEY target/dist/microscope-X.tar.gz
-
-#. Add `+dev` to version string::
-
-    sed -i "s,\(^project_version = '[^+]*\)',\1+dev'," setup.py
-    git commit setup.py -m \
-      "maint: set version to $VERSION+dev after $VERSION release."
-    git push upstream master
-    git push upstream release-$VERSION
+We do not request that copyright is assigned to us, you will remain
+the copyright holder of any contribution made.  However, please ensure
+that you are the copyright holder.  Depending on your contract, the
+copyright holder might be your employer or university, even if you are
+a student.  Ask your employer or PhD supervisor.

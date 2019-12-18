@@ -38,7 +38,7 @@ class Device(tkinter.Frame):
     def __init__(self, device, master=None, *args, **kwargs):
         tkinter.Frame.__init__(self, master, *args, **kwargs)
         self.device = device
-        seld.draw_table()
+        self.draw_table()
 
     def draw_table(self):
         row_idx = 0
