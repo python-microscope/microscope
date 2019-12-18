@@ -4,17 +4,20 @@
 import os
 import sys
 
+# These win32* modules both import win32api which is a pyd file.
+# Importing win32api can be problematic because of Windows things
+# specially when running as a Windows.  So if it fails, add the
+# executable path to the DLL search PATH.
 try:
-    import win32api
+    import win32serviceutil
+    import win32service
 except:
-    # Add executable path to DLL search PATH.
     os.environ['PATH'] += ';' + os.path.split(sys.executable)[0]
-    import win32api
+    import win32serviceutil
+    import win32service
 
 import multiprocessing
 import servicemanager
-import win32serviceutil
-import win32service
 
 class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
     """ Serves microscope devices via a Windows service.
