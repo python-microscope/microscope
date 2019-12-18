@@ -81,9 +81,9 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         if status == asdk.SUCCESS:
             msg = self._err_msg.value
             if len(msg) > self._err_msg_len:
-                msg = msg + "..."
-            msg += "(error %i)" % (err.contents.value)
-            return msg
+                msg = msg + b'...'
+            msg += b'(error %i)' % (err.contents.value)
+            return msg.decode()
         else:
             return ""
 
