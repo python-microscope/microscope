@@ -4,12 +4,18 @@ python-microscope releases.
 Version 0.4.0 (upcoming)
 ------------------------
 
+* Selected most important, backwards incompatible, changes:
+
+  * The `Setting` class is now private.  The only supported method to
+    add settings to a `Device` is via its `add_setting` method.
+
 * New devices supported:
 
-  * Coherent Obis laser.
+  * Coherent Obis laser
   * Lumencor Spectra III light engine
   * Prior ProScan III controller
   * Prior filter wheels
+  * Toptica iBeam laser
 
 * Changes to device ABCs:
 

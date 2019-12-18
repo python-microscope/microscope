@@ -1255,7 +1255,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             t_exp = int(self.exposure_time * 1e6)
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
-            t_exp = value = int(self.exposure_time * 1e3)
+            t_exp = int(self.exposure_time * 1e3)
         # Configure camera, allocate buffer, and register callback.
         if self._trigger == TRIG_SOFT:
             # Software triggering for single frames.

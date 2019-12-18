@@ -49,8 +49,8 @@ def create_enum_setting(default, with_getter=True, with_setter=True):
     thing = ThingWithSomething(EnumSetting(default))
     getter = thing.get_val if with_getter else None
     setter = thing.set_val if with_setter else None
-    setting = microscope.devices.Setting('foobar', 'enum', get_func=getter,
-                                         set_func=setter, values=EnumSetting)
+    setting = microscope.devices._Setting('foobar', 'enum', get_func=getter,
+                                          set_func=setter, values=EnumSetting)
     return setting, thing
 
 

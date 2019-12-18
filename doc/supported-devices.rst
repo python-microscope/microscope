@@ -37,9 +37,10 @@ Lasers
 ------
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
-- Coherent Sapphire (:class:`microscope.lasers.sapphire`)
 - Coherent Obis (:class:`microscope.lasers.obis`)
+- Coherent Sapphire (:class:`microscope.lasers.sapphire`)
 - Omicron Deepstar (:class:`microscope.lasers.deepstar`)
+- Toptica iBeam (:class:`microscope.lasers.toptica`)
 
 Controllers
 -----------

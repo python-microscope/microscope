@@ -233,7 +233,6 @@ class TestCamera(devices.CameraDevice):
             light = int(255 - 128 * np.random.rand())
             width = self._roi.width // self._binning.h
             height = self._roi.height // self._binning.v
-            size = (width, height)
             image = self._image_generator.get_image(width, height, dark, light, index=self._sent)
             self._sent += 1
             return image
