@@ -26,7 +26,7 @@ import numpy as np
 from microscope import devices
 from microscope.devices import keep_acquiring, ROI
 
-#import ximea python module.
+# import ximea python module.
 from ximea import xiapi
 
 
@@ -59,14 +59,14 @@ class XimeaCamera(devices.CameraDevice):
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
-        self.Roi=ROI(None,None,None,None)
+        self.Roi = ROI(None, None, None, None)
 
     def _fetch_data(self):
         if self._acquiring and self._triggered:
             self.handle.get_image(self.img)
             _logger.info('Sending image')
             self._triggered = False
-            data = np.array(list(self.img.get_image_data_raw()),dtype=np.uint16).reshape(self.img.width,self.img.height)
+            data = self.img.get_image_data_numpy()
             return data
 
     def abort(self):
@@ -85,10 +85,10 @@ class XimeaCamera(devices.CameraDevice):
             self.handle.open_device()
         except:
             raise Exception("Problem opening camera.")
-        if self.handle == None:
+        if not self.handle:
             raise Exception("No camera opened.")
         _logger.info('Initializing.')
-        self.img=xiapi.Image()
+        self.img = xiapi.Image()
 
     def make_safe(self):
         if self._acquiring:
@@ -102,39 +102,38 @@ class XimeaCamera(devices.CameraDevice):
         if self._acquiring:
             self.abort()
         self._acquiring = True
-        #actually start camera
+        # actually start camera
         self.handle.start_acquisition()
         _logger.info("Acquisition enabled.")
         return True
 
     def set_exposure_time(self, value):
-        #exposure times are set in us.
+        # exposure times are set in us.
         self.handle.set_exposure(int(value*1.0E6))
 
     def get_exposure_time(self):
-        #exposure times are in us, so multiple by 1E-6 to get seconds.
-        return (self.handle.get_exposure()*1.0E-6)
+        # exposure times are in us, so multiple by 1E-6 to get seconds.
+        return self.handle.get_exposure() * 1.0E-6
 
     def get_cycle_time(self):
-        return (1.0/self.handle.get_framerate())
+        return 1.0 / self.handle.get_framerate()
 
     def _get_sensor_shape(self):
-        return (self.img.width,self.img.height)
-
+        return self.handle.get_width(), self.handle.get_height()
 
     def get_trigger_type(self):
         trig=self.handle.get_trigger_source()
-        if trig==XI_TRG_SOFTWARE:
+        if trig == XI_TRG_SOFTWARE:
             return devices.TRIGGER_SOFT
-        elif trig==XI_TRG_EDGE_RISING:
+        elif trig == XI_TRG_EDGE_RISING:
             return devices.TRIGGER_BEFORE
 
     def set_trigger_type(self, trigger):
-        if (trigger == devices.TRIGGER_SOFT):
+        if trigger == devices.TRIGGER_SOFT:
             self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
-        elif (trigger == devices.TRIGGER_BEFORE):
+        elif trigger == devices.TRIGGER_BEFORE:
             self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
-            #define digial input mode of trigger
+            # define digial input mode of trigger
             self.handle.set_gpi_selector(1)
             self.handle.set_gpi_mode(XI_GPI_TRIGGER)
 
@@ -145,7 +144,7 @@ class XimeaCamera(devices.CameraDevice):
             self._triggered = True
 
     def _get_binning(self):
-         return (1,1)
+        return 1, 1
 
     @keep_acquiring
     def _set_binning(self, h, v):
