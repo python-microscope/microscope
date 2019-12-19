@@ -670,6 +670,8 @@ class CameraDevice(DataDevice):
         self._client_transform = (False, False, False)
         # Result of combining client and readout transforms
         self._transform = (False, False, False)
+        # Add _apply_transform to pipeline.
+        self.pipeline.insert(0, self._apply_transform)
         # A transform provided by the client.
         self.add_setting('transform', 'enum',
                          lambda: CameraDevice.ALLOWED_TRANSFORMS.index(self._transform),
@@ -688,7 +690,7 @@ class CameraDevice(DataDevice):
                          self.set_roi,
                          None)
 
-    def _process_data(self, data):
+    def _apply_transform(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
         rot = self._transform[2]
@@ -702,7 +704,7 @@ class CameraDevice(DataDevice):
                (1, 0): numpy.fliplr,
                (1, 1): lambda d: numpy.fliplr(numpy.flipud(d))
                }[flips](data)
-        return super()._process_data(data)
+        return data
 
     def set_readout_mode(self, description):
         """Set the readout mode and _readout_transform."""
