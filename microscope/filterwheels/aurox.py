@@ -171,7 +171,10 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
     @property
     def devices(self) -> Mapping[str, microscope.devices.Device]:
         """Devices property, required by ControllerDevice interface."""
-        return {'camera': self._cam}
+        if self._cam:
+            return {'camera': self._cam}
+        else:
+            return {}
 
     def set_mode(self, mode: Mode) -> None:
         """Set the operation mode"""
