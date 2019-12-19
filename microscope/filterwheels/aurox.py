@@ -100,6 +100,10 @@ _Clarity__SETSVCMODE1 = 0xe0 #1 byte for service mode. SLEEP activates service m
 
 
 class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWheelBase):
+    """Adds support for Aurox Clarity
+
+    Acts as a ControllerDevice providing the camera attached to the Clarity.
+    """
     _slide_to_sectioning = {__SLDPOS0: 'bypass',
                             __SLDPOS1: 'low',
                             __SLDPOS2: 'mid',
@@ -115,6 +119,14 @@ class Clarity(microscope.devices.ControllerDevice, microscope.devices.FilterWhee
 
 
     def __init__(self, camera=None, **kwargs) -> None:
+        """Create a Clarity instance controlling an optional Camera device.
+
+           :param camera: a class to control the connected camera
+           :param kwargs: Provide camera parameters as keyword arguments:
+                          'camera.some_parameter'
+                          The 'camera.' prefix will be stripped, and
+                          'some_parameter' passed to the camera's constructor.
+        """
         # Extract kwargs for camera device.
         cam_kw_keys = [k for k in kwargs if k.startswith("camera.")]
         cam_kwargs = {}
