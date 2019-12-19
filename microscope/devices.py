@@ -307,11 +307,15 @@ class Device(metaclass=abc.ABCMeta):
 
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
-        try:
-            return {k: v.get() for k, v in self._settings.items()}
-        except Exception as err:
-            _logger.error("in get_all_settings:", exc_info=err)
-            raise
+        # Fetching some settings may fail depending on device state.
+        # Report these values as 'None' and continue fetching other settings.
+        def catch(f):
+            try:
+                return f()
+            except Exception as err:
+                _logger.error("getting %s: %s" % (f.__self__.name, err))
+                return None
+        return {k: catch(v.get) for k, v in self._settings.items()}
 
     def set_setting(self, name, value):
         """Set a setting."""
