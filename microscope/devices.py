@@ -495,8 +495,10 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def _process_data(self, data):
         """Do any data processing and return data.
 
-        Subclasses should call super()._process_data(data) after doing their
-        own processing."""
+        Subclasses should add their processing to self.pipeline in preference
+        to overriding this method. Anything that overrides this method must
+        call super()_process_data(data) either before or after its own
+        processing."""
         import functools
         return functools.reduce(lambda x, f: f(x), self.pipeline, data)
 
