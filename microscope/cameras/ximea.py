@@ -50,36 +50,30 @@ class XimeaCamera(devices.CameraDevice):
         self.Roi=ROI(None,None,None,None)
 
     def _fetch_data(self):
+        if not self._acquiring:
+            return
+
         trigger_type = self.handle.get_trigger_source()
-        if trigger_type == 'XI_TRG_SOFTWARE':
-            if self._acquiring and self._triggered:
-                try:
-                    self.handle.get_image(self.img)
-                    data = self.img.get_image_data_numpy()
-                    _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                    _logger.info('Sending image')
-                    self._triggered = False
-                    return self.img.get_image_data_numpy()
-                except Exception as err:
-                    if getattr(err, 'status', None) == 10:
-                        # This is a Timeout error
-                        return None
-                    else:
-                        raise err
-        elif trigger_type == 'XI_TRG_EDGE_RISING':
-            if self._acquiring:
-                try:
-                    self.handle.get_image(self.img)
-                    data = self.img.get_image_data_numpy()
-                    _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                    _logger.info('Sending image')
-                    return self.img.get_image_data_numpy()
-                except Exception as err:
-                    if getattr(err, 'status', None) == 10:
-                        #This is a Timeout error
-                        return None
-                    else:
-                        raise err
+        if trigger_type == 'XI_TRG_SOFTWARE' and not self._triggered:
+            return
+        elif trigger_type != 'XI_TRG_EDGE_RISING':
+            raise Exception('unhandled trigger type %s' % trigger_type)
+
+        try:
+            self.handle.get_image(self.img)
+            data = self.img.get_image_data_numpy()
+            _logger.info("Fetched imaged with dims %s and size %s.",
+                         data.shape, data.size)
+            _logger.info('Sending image')
+            if trigger_type == 'XI_TRG_SOFTWARE':
+                self._triggered = False
+                return self.img.get_image_data_numpy()
+        except Exception as err:
+            if getattr(err, 'status', None) == 10:
+                # This is a Timeout error
+                return
+            else:
+                raise err
 
     def abort(self):
         _logger.info('Disabling acquisition.')
@@ -111,23 +105,6 @@ class XimeaCamera(devices.CameraDevice):
         # create img buffer to hold images.
 
         self.img = xiapi.Image()
-
-    def get_current_image(self):
-        _logger.info('In get_current_image')
-        try:
-            if self._acquiring and self._triggered:
-                self.handle.get_image(self.img)
-                data = self.img.get_image_data_numpy()
-                _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                _logger.info('Sending image')
-                self._triggered = False
-                return data
-        except Exception as err:
-            if getattr(err, 'status', None) == 10:
-                # This is a Timeout error
-                return None
-            else:
-                raise err
 
     def make_safe(self):
         if self._acquiring:
