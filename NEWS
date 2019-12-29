@@ -29,6 +29,13 @@ Version 0.4.0 (upcoming)
     * Concrete classes must implement the `n_actuators` public
       property instead of the private _n_actuators`.
 
+* Device specific changes:
+
+  * Ximea Camera:
+
+    * Support for the ximea cameras was completely rewritten to
+      support hardware triggers, as well as fix multiple minor issues.
+
 * The device server and clients no longer force pickle protocol
   version 2.  If the client and server are running different Python
   versions it may be necessary to specify a version number.  This
