@@ -1,4 +1,4 @@
-.. Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+.. Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
 
    Permission is granted to copy, distribute and/or modify this
    document under the terms of the GNU Free Documentation License,
@@ -7,27 +7,7 @@
    no Back-Cover Texts.  A copy of the license is included in the
    section entitled "GNU Free Documentation License".
 
-Python Microscope
-#################
+Installing
+**********
 
-.. include:: ../README
-
-.. toctree::
-   :maxdepth: 2
-
-   design
-   examples
-   supported-devices
-   API <api/modules>
-   installing
-   hacking
-   maintaining
-   news
-   contributors
-
-Indices and tables
-******************
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. include:: ../INSTALL

@@ -8,6 +8,7 @@
 ## notice and this notice are preserved.  This file is offered as-is,
 ## without any warranty.
 
+import datetime
 import sys
 
 sys.path.insert(0, '../microscope')
@@ -17,10 +18,11 @@ sys.path.insert(0, '../microscope')
 ## pkg_resources to avoid duplication?
 author = 'Micron Oxford'
 project = 'Microscope'
-copyright = '2017, Micron Oxford'
 
+copyright = '%s, %s' %(datetime.datetime.now().year, author)
 
 master_doc = 'index'
+nitpicky = True
 
 
 extensions = [
@@ -47,3 +49,9 @@ napoleon_include_special_with_doc = True
 
 html_theme = 'agogo'
 html_static_path = ['_static']
+html_title = 'Python Microscope documentation'
+html_short_title = 'import microscope'
+html_show_copyright = False
+html_show_sphinx = False
+html_copy_source = False
+html_show_sourcelink = False

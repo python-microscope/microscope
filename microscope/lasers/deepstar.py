@@ -17,15 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import serial
+import logging
 
-import Pyro4
+import serial
 
 from microscope import devices
 
+
+_logger = logging.getLogger(__name__)
+
+
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
-        super(DeepstarLaser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -34,7 +38,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # use 16-byte mode.
         self._write(b'S?')
         response = self._readline()
-        self._logger.info("Current laser state: [%s]", response.decode())
+        _logger.info("Current laser state: [%s]", response.decode())
 
         self._write(b'STAT0')
         model_code = self._readline()
@@ -51,8 +55,8 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         if option_codes[9:12] == b'AP1':
             self._has_apc = True
         else:
-            self._logger.info('Laser is missing APC option.  Will return set'
-                              ' power instead of actual power')
+            _logger.info('Laser is missing APC option.  Will return set'
+                         ' power instead of actual power')
             self._has_apc = False
 
     def _write(self, command):
@@ -79,7 +83,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
     def _on_enable(self):
-        self._logger.info("Turning laser ON.")
+        _logger.info("Turning laser ON.")
         # Turn on deepstar mode with internal voltage ref
         # Enable internal peak power
         # Set MF turns off internal digital and bias modulation
@@ -91,14 +95,14 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
                          (b'A2DF', 'A2DF response [%s]')]:
             self._write(cmd)
             response = self._readline()
-            self._logger.info(msg, response.decode())
+            _logger.info(msg, response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
             self._write(b'S?')
             response = self._readline()
-            self._logger.error("Failed to turn on. Current status: [%s]",
-                               response.decode())
+            _logger.error("Failed to turn on. Current status: [%s]",
+                          response.decode())
             return False
         return True
 
@@ -111,7 +115,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     ## Turn the laser OFF.
     @devices.SerialDeviceMixIn.lock_comms
     def _on_disable(self):
-        self._logger.info("Turning laser OFF.")
+        _logger.info("Turning laser OFF.")
         self._write(b'LF')
         return self._readline().decode()
 
@@ -129,7 +133,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def get_is_on(self):
         self._write(b'S?')
         response = self._readline()
-        self._logger.info("Are we on? [%s]", response.decode())
+        _logger.info("Are we on? [%s]", response.decode())
         return response == b'S2'
 
 
@@ -137,14 +141,14 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def _set_power(self, level):
         if (level > 1.0) :
             return
-        self._logger.info("level=%d", level)
+        _logger.info("level=%d", level)
         power=int (level*0xFFF)
-        self._logger.info("power=%d", power)
+        _logger.info("power=%d", power)
         strPower = "PP%03X" % power
-        self._logger.info("power level=%s", strPower)
+        _logger.info("power level=%s", strPower)
         self._write(strPower.encode())
         response = self._readline()
-        self._logger.info("Power response [%s]", response.decode())
+        _logger.info("Power response [%s]", response.decode())
         return response
 
     def get_min_power_mw(self):

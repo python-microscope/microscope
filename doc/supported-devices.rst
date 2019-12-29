@@ -13,23 +13,37 @@ List of supported devices
 Cameras
 -------
 
-- Andor (:class:`microscope.cameras.andorsdk3`)
-- Photometrics PVCAM (:class:`microscope.cameras.pvcam`)
+- Andor (:class:`microscope.cameras.andorsdk3` and
+  :class:`microscope.cameras.atmcd`)
+- Photometrics (:class:`microscope.cameras.pvcam`)
+- QImaging (:class:`microscope.cameras.pvcam`)
+- Ximea (:class:`microscope.cameras.ximea`)
 
 Deformable Mirrors
 ------------------
 
 - Alpao (:class:`microscope.mirror.alpao`)
 - Boston Micromachines Corporation (:class:`microscope.mirror.bmc`)
+- Imagine Optic Mirao 52e (:class:`microscope.mirror.mirao52e`)
 
 Filter Wheels
 -------------
 
+- Aurox Clarity (:class:`microscope.filterwheels.aurox`)
+- Prior (:class:`microscope.controllers.prior`)
 - Thorlabs (:class:`microscope.filterwheels.thorlabs`)
 
 Lasers
 ------
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
-- Coherent Sapphire (:class:`microscope.lasers.saphhire`)
+- Coherent Obis (:class:`microscope.lasers.obis`)
+- Coherent Sapphire (:class:`microscope.lasers.sapphire`)
 - Omicron Deepstar (:class:`microscope.lasers.deepstar`)
+- Toptica iBeam (:class:`microscope.lasers.toptica`)
+
+Controllers
+-----------
+
+- Prior ProScan III (:class:`microscope.controllers.prior`)
+- Lumencor Spectra III light engine (:class:`microscope.controllers.lumencor`)

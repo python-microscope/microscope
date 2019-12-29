@@ -19,16 +19,19 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
+import logging
 
-import Pyro4
 import numpy as np
 
 from microscope import devices
-from microscope.devices import keep_acquiring
+from microscope.devices import keep_acquiring, ROI
 
 # import ximea python module.
 from ximea import xiapi
+
+
+_logger = logging.getLogger(__name__)
+
 
 trigger_type_to_value = {
     0: 'XI_TRG_SOFTWARE',
@@ -36,31 +39,15 @@ trigger_type_to_value = {
 }
 
 
-@Pyro4.expose
-@Pyro4.behavior('single')
 class XimeaCamera(devices.CameraDevice):
-    def __init__(self, dev_id = 0, *args, **kwargs):
-        super(XimeaCamera, self).__init__(**kwargs)
-        # example parameter to allow setting.
-        #        self.add_setting('_error_percent', 'int',
-        #                         lambda: self._error_percent,
-        #                         self._set_error_percent,
-        #                         lambda: (0, 100))
+    def __init__(self, dev_id = 0, **kwargs):
+        super().__init__(**kwargs)
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
         self.handle = None
         self.dev_id = dev_id
-
-    def _purge_buffers(self):
-        """Purge buffers on both camera and PC."""
-        self._logger.info("Purging buffers.")
-
-    def _create_buffers(self):
-        """Create buffers and store values needed to remove padding later."""
-        self._purge_buffers()
-        self._logger.info("Creating buffers.")
-        # time.sleep(0.5)
+        self.Roi=ROI(None,None,None,None)
 
     def _fetch_data(self):
         trigger_type = self.handle.get_trigger_source()
@@ -69,8 +56,8 @@ class XimeaCamera(devices.CameraDevice):
                 try:
                     self.handle.get_image(self.img)
                     data = self.img.get_image_data_numpy()
-                    self._logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                    self._logger.info('Sending image')
+                    _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
+                    _logger.info('Sending image')
                     self._triggered = False
                     return self.img.get_image_data_numpy()
                 except Exception as err:
@@ -84,8 +71,8 @@ class XimeaCamera(devices.CameraDevice):
                 try:
                     self.handle.get_image(self.img)
                     data = self.img.get_image_data_numpy()
-                    self._logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                    self._logger.info('Sending image')
+                    _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
+                    _logger.info('Sending image')
                     return self.img.get_image_data_numpy()
                 except Exception as err:
                     if getattr(err, 'status', None) == 10:
@@ -95,7 +82,7 @@ class XimeaCamera(devices.CameraDevice):
                         raise err
 
     def abort(self):
-        self._logger.info('Disabling acquisition.')
+        _logger.info('Disabling acquisition.')
         if self._acquiring:
             self._acquiring = False
         self.handle.stop_acquisition()
@@ -105,7 +92,6 @@ class XimeaCamera(devices.CameraDevice):
 
         Open the connection, connect properties and populate settings dict.
         """
-
         try:
             self.handle = xiapi.Camera(self.dev_id)
             self.handle.open_device()
@@ -115,7 +101,7 @@ class XimeaCamera(devices.CameraDevice):
             raise Exception("No camera opened.")
 
         #        for name, var in sorted(self.__dict__.items()):
-        self._logger.info('Initializing.')
+        _logger.info('Initializing.')
         # Try set camera into rising-edge hardware trigger mode. If that can't be done
         # set it to software trigger mode
         try:
@@ -127,13 +113,13 @@ class XimeaCamera(devices.CameraDevice):
         self.img = xiapi.Image()
 
     def get_current_image(self):
-        self._logger.info('In get_current_image')
+        _logger.info('In get_current_image')
         try:
             if self._acquiring and self._triggered:
                 self.handle.get_image(self.img)
                 data = self.img.get_image_data_numpy()
-                self._logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
-                self._logger.info('Sending image')
+                _logger.info("Fetched imaged with dims %s and size %s." % (data.shape, data.size))
+                _logger.info('Sending image')
                 self._triggered = False
                 return data
         except Exception as err:
@@ -151,32 +137,28 @@ class XimeaCamera(devices.CameraDevice):
         self.abort()
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
+        _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
-        self._create_buffers()
         self._acquiring = True
         # actually start camera
         self.handle.start_acquisition()
-        self._logger.info("Acquisition enabled.")
+        _logger.info("Acquisition enabled.")
         return True
-
-    #    def enable(self):
-    #        self._on_enable()
 
     def set_exposure_time(self, value):
         # exposure times are set in us.
         try:
             self.handle.set_exposure(int(value * 1000000))
         except Exception as err:
-            self._logger.debug("set_exposure_time exception: %s" % err)
+            _logger.debug("set_exposure_time exception: %s" % err)
 
     def get_exposure_time(self):
         # exposure times are in us, so multiple by 1E-6 to get seconds.
         return (self.handle.get_exposure() * 1.0E-6)
 
     def get_cycle_time(self):
-        return (self.handle.get_exposure() * 1.0E-6)
+        return (1.0/self.handle.get_framerate())
 
     def _get_sensor_shape(self):
         return (self.handle.get_width(), self.handle.get_height())
@@ -186,26 +168,26 @@ class XimeaCamera(devices.CameraDevice):
 
     def get_trigger_type(self):
         trig = self.handle.get_trigger_source()
-        self._logger.info("called get trigger type %s" % trig)
+        _logger.info("called get trigger type %s" % trig)
         if trig == 'XI_TRG_SOFTWARE':
             return devices.TRIGGER_SOFT
         elif trig == 'XI_TRG_EDGE_RISING':
             return devices.TRIGGER_BEFORE
 
     def set_trigger_source(self, trig):
-        self._logger.info("Set trigger source %s" % (trig))
+        _logger.info("Set trigger source %s" % (trig))
         reenable = False
         if self._acquiring:
             self.abort()
             reenable = True
         result = self.handle.set_trigger_source(trig)
-        self._logger.info("Set trigger source result  %s" % (result))
+        _logger.info("Set trigger source result  %s" % (result))
         if reenable:
             self._on_enable()
         return
 
     def set_trigger_type(self, trig):
-        self._logger.info("Set trigger type %s" % (trig))
+        _logger.info("Set trigger type %s" % (trig))
         self.abort()
 
         if trig is 0:
@@ -221,16 +203,15 @@ class XimeaCamera(devices.CameraDevice):
         self._on_enable()
 
         result = self.handle.get_trigger_source()
-        self._logger.info("Trigger type %s" % result)
-        self._logger.info("GPI Selector %s" % self.handle.get_gpi_selector())
-        self._logger.info("GPI Mode %s" % self.handle.get_gpi_mode())
+        _logger.info("Trigger type %s" % result)
+        _logger.info("GPI Selector %s" % self.handle.get_gpi_selector())
+        _logger.info("GPI Mode %s" % self.handle.get_gpi_mode())
 
         return
-        # return(self.handle.set_trigger_source(TRIGGER_MODES[trig]))
 
     def soft_trigger(self):
-        self._logger.info('Soft trigger received; self._acquiring is %s.'
-                          % self._acquiring)
+        _logger.info('Soft trigger received; self._acquiring is %s.'
+                     % self._acquiring)
         if self._acquiring:
             self.handle.set_trigger_software(True)
             self._triggered = True
@@ -243,12 +224,11 @@ class XimeaCamera(devices.CameraDevice):
         return False
 
     def _get_roi(self):
-        size = self._get_sensor_shape()
-        return (0, 0, size[0], size[1])
+        return self.Roi
 
     @keep_acquiring
     def _set_roi(self, x, y, width, height):
-        return False
+        self.Roi = ROI(x, y, width, height)
 
     def _on_shutdown(self):
         if self._acquiring:

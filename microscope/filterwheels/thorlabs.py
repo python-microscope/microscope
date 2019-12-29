@@ -18,9 +18,7 @@
 
 import io
 
-import Pyro4
 import serial
-import time
 
 from microscope.devices import FilterWheelBase
 

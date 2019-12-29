@@ -31,9 +31,7 @@ interface.
 """
 
 import enum
-import functools
 import io
-
 
 import serial.serialutil
 
