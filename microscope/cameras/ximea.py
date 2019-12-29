@@ -81,7 +81,7 @@ class XimeaCamera(devices.CameraDevice):
             self._handle.open_device()
         except:
             raise Exception("Problem opening camera.")
-        if self._handle == None:
+        if self._handle is None:
             raise Exception("No camera opened.")
 
         _logger.info('Initializing.')
