@@ -44,8 +44,10 @@ class XimeaCamera(devices.CameraDevice):
             return
 
         trigger_type = self._handle.get_trigger_source()
-        if trigger_type == 'XI_TRG_SOFTWARE' and not self._triggered:
-            return
+        if trigger_type == 'XI_TRG_SOFTWARE':
+            if not self._triggered:
+                return
+            # else, continue to fetch an image
         elif trigger_type != 'XI_TRG_EDGE_RISING':
             raise Exception('unhandled trigger type %s' % trigger_type)
 
@@ -57,7 +59,7 @@ class XimeaCamera(devices.CameraDevice):
             _logger.info('Sending image')
             if trigger_type == 'XI_TRG_SOFTWARE':
                 self._triggered = False
-                return self.img.get_image_data_numpy()
+            return self.img.get_image_data_numpy()
         except Exception as err:
             if getattr(err, 'status', None) == 10:
                 # This is a Timeout error
