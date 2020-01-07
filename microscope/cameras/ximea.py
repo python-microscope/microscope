@@ -44,12 +44,13 @@ class XimeaCamera(devices.CameraDevice):
             return
 
         trigger_type = self._handle.get_trigger_source()
-        if trigger_type == 'XI_TRG_SOFTWARE':
-            if not self._triggered:
-                return
-            # else, continue to fetch an image
-        elif trigger_type != 'XI_TRG_EDGE_RISING':
-            raise Exception('unhandled trigger type %s' % trigger_type)
+        if trigger_type == 'XI_TRG_SOFTWARE' and not not self._triggered:
+            return
+        # else, we are either on 1) software trigger mode and have
+        # already triggered, in which case there should be an image
+        # waiting for us; or 2) any hardware trigger mode, in which
+        # case we try to fetch an image and either we get one or it
+        # times out if there is none.
 
         try:
             self._handle.get_image(self.img)
