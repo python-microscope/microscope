@@ -53,19 +53,20 @@ class XimeaCamera(devices.CameraDevice):
 
         try:
             self._handle.get_image(self.img)
-            data = self.img.get_image_data_numpy()
-            _logger.info("Fetched imaged with dims %s and size %s.",
-                         data.shape, data.size)
-            _logger.info('Sending image')
-            if trigger_type == 'XI_TRG_SOFTWARE':
-                self._triggered = False
-            return data
         except Exception as err:
             if getattr(err, 'status', None) == 10:
                 # This is a Timeout error
                 return
             else:
                 raise err
+
+        data = self.img.get_image_data_numpy()
+        _logger.info("Fetched imaged with dims %s and size %s.",
+                     data.shape, data.size)
+        _logger.info('Sending image')
+        if trigger_type == 'XI_TRG_SOFTWARE':
+            self._triggered = False
+        return data
 
     def abort(self):
         _logger.info('Disabling acquisition.')
