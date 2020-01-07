@@ -91,6 +91,11 @@ class XimeaCamera(devices.CameraDevice):
         _logger.info('Initializing.')
         # Try set camera into rising-edge hardware trigger mode.  If
         # that can't be done set it to software trigger mode.
+        # TODO: even if the trigger source is set to edge rising, the
+        # camera can still be triggered by software.  For now, this
+        # lets us work with hardware and software triggers without
+        # having a setting for that (but we will need to change this
+        # one day). See issue #131.
         try:
             self._handle.set_trigger_source('XI_TRG_EDGE_RISING')
         except:
