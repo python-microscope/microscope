@@ -44,26 +44,30 @@ class XimeaCamera(devices.CameraDevice):
             return
 
         trigger_type = self._handle.get_trigger_source()
-        if trigger_type == 'XI_TRG_SOFTWARE' and not self._triggered:
+        if trigger_type == 'XI_TRG_SOFTWARE' and not not self._triggered:
             return
-        elif trigger_type != 'XI_TRG_EDGE_RISING':
-            raise Exception('unhandled trigger type %s' % trigger_type)
+        # else, we are either on 1) software trigger mode and have
+        # already triggered, in which case there should be an image
+        # waiting for us; or 2) any hardware trigger mode, in which
+        # case we try to fetch an image and either we get one or it
+        # times out if there is none.
 
         try:
             self._handle.get_image(self.img)
-            data = self.img.get_image_data_numpy()
-            _logger.info("Fetched imaged with dims %s and size %s.",
-                         data.shape, data.size)
-            _logger.info('Sending image')
-            if trigger_type == 'XI_TRG_SOFTWARE':
-                self._triggered = False
-            return self.img.get_image_data_numpy()
         except Exception as err:
             if getattr(err, 'status', None) == 10:
                 # This is a Timeout error
                 return
             else:
                 raise err
+
+        data = self.img.get_image_data_numpy()
+        _logger.info("Fetched imaged with dims %s and size %s.",
+                     data.shape, data.size)
+        _logger.info('Sending image')
+        if trigger_type == 'XI_TRG_SOFTWARE':
+            self._triggered = False
+        return data
 
     def abort(self):
         _logger.info('Disabling acquisition.')
@@ -87,6 +91,11 @@ class XimeaCamera(devices.CameraDevice):
         _logger.info('Initializing.')
         # Try set camera into rising-edge hardware trigger mode.  If
         # that can't be done set it to software trigger mode.
+        # TODO: even if the trigger source is set to edge rising, the
+        # camera can still be triggered by software.  For now, this
+        # lets us work with hardware and software triggers without
+        # having a setting for that (but we will need to change this
+        # one day). See issue #131.
         try:
             self._handle.set_trigger_source('XI_TRG_EDGE_RISING')
         except:

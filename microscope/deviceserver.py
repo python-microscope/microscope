@@ -225,10 +225,10 @@ class DeviceServer(multiprocessing.Process):
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
-        _logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        _logger.info('Serving %s', pyro_daemon.uriFor(self._device))
         if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
-            _logger.info('Device UID on port %s is %s'
-                         % (port, self._device.get_id()))
+            _logger.info('Device UID on port %s is %s',
+                         port, self._device.get_id())
 
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
@@ -327,21 +327,21 @@ def serve_devices(devices, exit_event=None):
                     continue
                 else:
                     _logger.info("DeviceServer Failure. Process %s is dead with"
-                                 " exitcode %s. Restarting..."
-                                 % (s.pid, s.exitcode))
+                                 " exitcode %s. Restarting...",
+                                 s.pid, s.exitcode)
                     servers.remove(s)
                     servers.append(s.clone())
 
                     try:
                         s.join(30)
                     except:
-                        _logger.error("... could not join PID %s." % (s.pid))
+                        _logger.error("... could not join PID %s.", s.pid)
                     else:
                         old_pid = s.pid
                         del (s)
                         servers[-1].start()
                         _logger.info("... DeviceServer with PID %s restarted"
-                                     " as PID %s." % (old_pid, servers[-1].pid))
+                                     " as PID %s.", old_pid, servers[-1].pid)
             if len(servers) == 0:
                 # Log and exit if no servers running. May want to change this
                 # if we add some interface to interactively restart servers.

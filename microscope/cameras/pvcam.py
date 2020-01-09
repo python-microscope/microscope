@@ -1086,8 +1086,8 @@ class PVParam():
                 result = ctypes.POINTER(self._ctype)(result).contents.value
         # Test on err.args prevents indexing into empty tuple.
         if err and err.args and err.args[0].startswith('pvcam error 49'):
-            _logger.warn("Parameter %s not available due to camera state."
-                         % self.name)
+            _logger.warn("Parameter %s not available due to camera state.",
+                         self.name)
             result = None
         elif err:
             raise e
@@ -1406,16 +1406,16 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             _pvcam_uninit()
             raise Exception ('No cameras detected.')
         # Connect to the camera.
-        _logger.info("DLL version: %s" % _pvcam_get_ver().value)
+        _logger.info("DLL version: %s", _pvcam_get_ver().value)
         self._pv_name = _cam_get_name(self._index).value
-        _logger.info('Initializing %s' % self._pv_name)
+        _logger.info('Initializing %s', self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
         PVCamera.open_cameras.append(self.handle)
         # Set up event callbacks. Tried to use the resume callback to reinit camera
         # after power loss, but any attempt to close/reopen the camera or deinit the
         # DLL throws a Windows Error 0xE06D7363.
         def _cb(event):
-            _logger.info("Received %s event." % event)
+            _logger.info("Received %s event.", event)
             if event == 'removed':
                 _logger.critical("Can not re-init hardware. Exiting.")
                 exit(-1)
@@ -1432,7 +1432,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             try:
                 p = PVParam.factory(self, param_id)
             except:
-                _logger.warn("Skipping unsupported parameter %s." % name)
+                _logger.warn("Skipping unsupported parameter %s.", name)
                 continue
             if not p.dtype or not p.available:
                 continue
@@ -1448,7 +1448,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                 # Test on err.args prevents indexing into empty tuple.
                 if err.args and not err.args[0].startswith('pvcam error 49'):
                     _logger.warn('Skipping parameter %s: not supported'
-                                 ' in python.' % (p.name))
+                                 ' in python.', p.name)
                     continue
             self.add_setting(p.name,
                              p.dtype,
@@ -1569,8 +1569,8 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
             _logger.debug('Status checks\n'
                           'check_cont:   %s \t bytes: %d\tframes: %d\n'
-                          'check_status: %s \t bytes: %d\t'
-                          % (STATUS_STRINGS[cstatus.value], cbytes.value,
-                             cframes.value, STATUS_STRINGS[status.value],
-                             bytes.value))
+                          'check_status: %s \t bytes: %d\t',
+                          STATUS_STRINGS[cstatus.value], cbytes.value,
+                          cframes.value, STATUS_STRINGS[status.value],
+                          bytes.value)
         return

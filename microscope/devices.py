@@ -299,7 +299,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             return self._settings[name].get()
         except Exception as err:
-            _logger.error("in get_setting(%s):" % (name), exc_info=err)
+            _logger.error("in get_setting(%s):", name, exc_info=err)
             raise
 
     def get_all_settings(self):
@@ -315,7 +315,7 @@ class Device(metaclass=abc.ABCMeta):
         try:
             self._settings[name].set(value)
         except Exception as err:
-            _logger.error("in set_setting(%s):" % (name), exc_info=err)
+            _logger.error("in set_setting(%s):", name, exc_info=err)
             raise
 
     def describe_setting(self, name):
@@ -495,8 +495,8 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             client.receiveData(data, timestamp)
         except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
             # Client not listening
-            _logger.info("Removing %s from client stack: disconnected."
-                         % client._pyroUri)
+            _logger.info("Removing %s from client stack: disconnected.",
+                         client._pyroUri)
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
         except:
@@ -592,7 +592,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         if self._client is None:
             _logger.info("Current client is None.")
         else:
-            _logger.info("Current client is %s." % str(self._client))
+            _logger.info("Current client is %s.", str(self._client))
 
 
     @keep_acquiring
