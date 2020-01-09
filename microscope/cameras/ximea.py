@@ -57,7 +57,7 @@ class XimeaCamera(devices.CameraDevice):
             _logger.info('Sending image')
             if trigger_type == 'XI_TRG_SOFTWARE':
                 self._triggered = False
-                return self.img.get_image_data_numpy()
+            return self.img.get_image_data_numpy()
         except Exception as err:
             if getattr(err, 'status', None) == 10:
                 # This is a Timeout error
