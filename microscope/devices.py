@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
-## Copyright (C) 2016 Mick Phillips <mick.phillips@gmail.com>
-##
-## Microscope is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## Microscope is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright (C) 2017-2020 David Pinto <david.pinto@bioch.ox.ac.uk>
+# Copyright (C) 2016-2020 Mick Phillips <mick.phillips@gmail.com>
+#
+# Microscope is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Microscope is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """Classes for control of microscope components.
 
@@ -55,9 +55,9 @@ Binning = namedtuple('Binning', ['h', 'v'])
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
 # Mapping of setting data types to descriptors allowed-value description types.
-# For python 2 and 3 compatibility, we convert the type into a descriptor string.
-# This avoids problems with, say a python 2 client recognising a python 3
-# <class 'int'> as a python 2 <type 'int'>.
+# For python 2 and 3 compatibility, we convert the type into a descriptor
+# string. This avoids problems with, say a python 2 client recognising a
+# python 3 <class 'int'> as a python 2 <type 'int'>.
 DTYPES = {'int': ('int', tuple),
           'float': ('float', tuple),
           'bool': ('bool', type(None)),
@@ -70,16 +70,19 @@ DTYPES = {'int': ('int', tuple),
           str: ('str', int),
           tuple: ('tuple', type(None))}
 
-# A utility function to call callables or return value of non-callables.
-# noinspection PyPep8
-_call_if_callable = lambda f: f() if callable(f) else f
+
+def _call_if_callable(f):
+    """Call callables, or return value of non-callables."""
+    return f() if callable(f) else f
 
 
 class _Setting():
     # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
     # Settings classes should be private: devices should use a factory method
-    # rather than instantiate settings directly; most already use add_setting for this.
-    def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
+    # rather than instantiate settings directly; most already use add_setting
+    # for this.
+    def __init__(self, name, dtype, get_func, set_func=None, values=None,
+                 readonly=False):
         """Create a setting.
 
         :param name: the setting's name
@@ -102,8 +105,9 @@ class _Setting():
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception("Invalid values type for %s '%s': expected function or %s" %
-                            (dtype, name, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s':"
+                            " expected function or %s"
+                            % (dtype, name, DTYPES[dtype][1:]))
         self.dtype = DTYPES[dtype][0]
         self._get = get_func
         self._values = values
@@ -211,10 +215,8 @@ class Device(metaclass=abc.ABCMeta):
     def __del__(self):
         self.shutdown()
 
-
     def get_is_enabled(self):
         return self.enabled
-
 
     def _on_disable(self):
         """Do any device-specific work on disable.
@@ -268,7 +270,8 @@ class Device(metaclass=abc.ABCMeta):
         """Put the device into a safe state."""
         pass
 
-    def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
+    def add_setting(self, name, dtype, get_func, set_func, values,
+                    readonly=False):
         """Add a setting definition.
 
         :param name: the setting's name
@@ -291,8 +294,9 @@ class Device(metaclass=abc.ABCMeta):
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
         elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
-            raise Exception("Invalid values type for %s '%s': expected function or %s" %
-                            (dtype, name, DTYPES[dtype][1:]))
+            raise Exception("Invalid values type for %s '%s':"
+                            " expected function or %s"
+                            % (dtype, name, DTYPES[dtype][1:]))
         else:
             self._settings[name] = _Setting(name, dtype, get_func, set_func,
                                             values, readonly)
@@ -465,7 +469,6 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             _logger.debug("... enabled.")
         return self.enabled
 
-
     def disable(self):
         """Disable the data capture device.
 
@@ -501,13 +504,14 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             # this function name as an argument to set_client, but
             # not sure how to subsequently resolve this over Pyro.
             client.receiveData(data, timestamp)
-        except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
+        except (Pyro4.errors.ConnectionClosedError,
+                Pyro4.errors.CommunicationError):
             # Client not listening
             _logger.info("Removing %s from client stack: disconnected.",
                          client._pyroUri)
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
-        except:
+        except Exception:
             raise
 
     def _dispatch_loop(self):
@@ -525,12 +529,13 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                     err = e
             else:
                 try:
-                    self._send_data(client, self._process_data(data), timestamp)
+                    self._send_data(client, self._process_data(data),
+                                    timestamp)
                 except Exception as e:
                     err = e
             if err:
-                # Raising an exception will kill the dispatch loop. We need another
-                # way to notify the client that there was a problem.
+                # Raising an exception will kill the dispatch loop. We need
+                # another way to notify the client that there was a problem.
                 _logger.error("in _dispatch_loop:", exc_info=err)
             self._dispatch_buffer.task_done()
 
@@ -543,13 +548,13 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 data = self._fetch_data()
             except Exception as e:
                 _logger.error("in _fetch_loop:", exc_info=e)
-                # Raising an exception will kill the fetch loop. We need another
-                # way to notify the client that there was a problem.
+                # Raising an exception will kill the fetch loop. We need
+                # another way to notify the client that there was a problem.
                 timestamp = time.time()
                 self._put(e, timestamp)
                 data = None
             if data is not None:
-                # ***TODO*** Add support for timestamp from hardware.
+                # TODO Add support for timestamp from hardware.
                 timestamp = time.time()
                 self._put(data, timestamp)
             else:
@@ -601,7 +606,6 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             _logger.info("Current client is None.")
         else:
             _logger.info("Current client is %s.", str(self._client))
-
 
     @keep_acquiring
     def update_settings(self, settings, init=False):
@@ -679,6 +683,7 @@ class CameraDevice(DataDevice):
                          self.get_roi,
                          self.set_roi,
                          None)
+
     def _process_data(self, data):
         """Apply self._transform to data."""
         flips = (self._transform[0], self._transform[1])
@@ -708,7 +713,8 @@ class CameraDevice(DataDevice):
         if isinstance(transform, str):
             transform = literal_eval(transform)
         self._client_transform = transform
-        lr, ud, rot = (self._readout_transform[i] ^ transform[i] for i in range(3))
+        lr, ud, rot = (self._readout_transform[i] ^ transform[i]
+                       for i in range(3))
         if self._readout_transform[2] and self._client_transform[2]:
             lr = not lr
             ud = not ud
@@ -758,7 +764,7 @@ class CameraDevice(DataDevice):
         pass
 
     def get_binning(self):
-        """Return a tuple of (horizontal, vertical), corrected for transform."""
+        """Return a tuple of (horizontal, vertical) corrected for transform."""
         binning = self._get_binning()
         if self._transform[2]:
             # 90 degree rotation
@@ -808,9 +814,9 @@ class CameraDevice(DataDevice):
         maxw, maxh = self.get_sensor_shape()
         binning = self.get_binning()
         left, top, width, height = roi
-        if not width: # 0 or None
+        if not width:  # 0 or None
             width = maxw // binning.h
-        if not height: # 0 o rNone
+        if not height:  # 0 or None
             height = maxh // binning.v
         if self._transform[2]:
             roi = ROI(left, top, height, width)
@@ -843,6 +849,7 @@ class TriggerType(Enum):
     FALLING_EDGE = 2
     PULSE = 3
 
+
 class TriggerMode(Enum):
     ONCE = 1
     BULB = 2
@@ -866,6 +873,7 @@ class TriggerTargetMixIn(metaclass=abc.ABCMeta):
     @property
     def trigger_mode(self) -> TriggerMode:
         return self._trigger_mode
+
     @property
     def trigger_type(self) -> TriggerType:
         return self._trigger_type
@@ -889,11 +897,11 @@ class SerialDeviceMixIn(metaclass=abc.ABCMeta):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        ## TODO: We should probably construct the connection here but
-        ##       the Serial constructor takes a lot of arguments, and
-        ##       it becomes tricky to separate those from arguments to
-        ##       the constructor of other parent classes.
-        self.connection = None # serial.Serial (to be constructed by child)
+        # TODO: We should probably construct the connection here but
+        #       the Serial constructor takes a lot of arguments, and
+        #       it becomes tricky to separate those from arguments to
+        #       the constructor of other parent classes.
+        self.connection = None  # serial.Serial (to be constructed by child)
         self._comms_lock = threading.RLock()
 
     def _readline(self):
@@ -962,8 +970,8 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         """
         super().__init__(**kwargs)
 
-        self._patterns = None # type: typing.Optional[numpy.ndarray]
-        self._pattern_idx = -1 # type: int
+        self._patterns = None  # type: typing.Optional[numpy.ndarray]
+        self._pattern_idx = -1  # type: int
 
     @property
     @abc.abstractmethod
@@ -1008,7 +1016,7 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         """
         self._validate_patterns(patterns)
         self._patterns = patterns
-        self._pattern_idx = -1 # none is applied yet
+        self._pattern_idx = -1  # none is applied yet
 
     def next_pattern(self) -> None:
         """Apply the next pattern in the queue.
@@ -1018,7 +1026,7 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
         if self._patterns is None:
             raise Exception("no pattern queued to apply")
         self._pattern_idx += 1
-        self.apply_pattern(self._patterns[self._pattern_idx,:])
+        self.apply_pattern(self._patterns[self._pattern_idx, :])
 
     def initialize(self) -> None:
         pass
@@ -1087,16 +1095,17 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
-    def __init__(self, filters: typing.Union[typing.Mapping[int, str], typing.Iterable] = [],
+    def __init__(self, filters: typing.Union[typing.Mapping[int, str],
+                                             typing.Iterable] = [],
                  positions: int = 0, **kwargs) -> None:
         super().__init__(**kwargs)
         if isinstance(filters, dict):
             self._filters = filters
         else:
-            self._filters = {i:f for (i, f) in enumerate(filters)}
+            self._filters = {i: f for (i, f) in enumerate(filters)}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         if not hasattr(self, '_positions'):
-            self._positions = positions # type: int
+            self._positions = positions  # type: int
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
@@ -1104,12 +1113,11 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
                          'int',
                          self.get_position,
                          self.set_position,
-                         lambda: (0, self.get_num_positions()) )
-
+                         lambda: (0, self.get_num_positions()))
 
     def get_num_positions(self) -> int:
         """Returns the number of wheel positions."""
-        return(max( self._positions, len(self._filters)))
+        return(max(self._positions, len(self._filters)))
 
     @abc.abstractmethod
     def get_position(self) -> int:
@@ -1122,7 +1130,7 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
         pass
 
     def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
-        return [(k,v) for k,v in self._filters.items()]
+        return [(k, v) for k, v in self._filters.items()]
 
 
 class ControllerDevice(Device, metaclass=abc.ABCMeta):
@@ -1143,7 +1151,6 @@ class ControllerDevice(Device, metaclass=abc.ABCMeta):
     their shutdown and initialisation.
 
     """
-
     def initialize(self) -> None:
         super().initialize()
         for d in self.devices.values():
