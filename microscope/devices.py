@@ -860,9 +860,6 @@ class TriggerMode(Enum):
 class TriggerTargetMixIn(metaclass=abc.ABCMeta):
     """MixIn for Device that may be the target of a hardware trigger.
 
-    Subclasses must set a `_trigger_type` and `_trigger_mode` property
-    with the current trigger during object construction.
-
     TODO: need some way to retrieve the supported trigger types and
         modes.  We could require subclasses to define `_trigger_types`
         and `_trigger_modes` listing what is supported but would still
@@ -871,12 +868,14 @@ class TriggerTargetMixIn(metaclass=abc.ABCMeta):
 
     """
     @property
+    @abc.abstractmethod
     def trigger_mode(self) -> TriggerMode:
-        return self._trigger_mode
+        raise NotImplementedError()
 
     @property
+    @abc.abstractmethod
     def trigger_type(self) -> TriggerType:
-        return self._trigger_type
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
