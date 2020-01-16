@@ -12,6 +12,11 @@ Version 0.5.0 (upcoming)
       the camera serial number.  This is required only if there are
       multiple Xime cameras on the system.
 
+    * Support for hardware triggers was completely rewritten.  It now
+      defaults to software triggering only and now implements the
+      `TriggerTargetMixIn` interface.  The trigger type can also be
+      set via the new 'trigger source' setting.
+
 
 Version 0.4.0 (2019/01/07)
 --------------------------
