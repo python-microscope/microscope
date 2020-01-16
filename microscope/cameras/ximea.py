@@ -3,6 +3,7 @@
 
 ## Copyright (C) 2016-2017 Mick Phillips <mick.phillips@gmail.com>
 ## Copyright (C) 2017 Ian Dobbie <ian.dobbie@bioch.ox.ac.uk>
+## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
 ##
 ## This file is part of Microscope.
 ##
@@ -20,6 +21,7 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import typing
 
 from ximea import xiapi
 
@@ -30,13 +32,21 @@ _logger = logging.getLogger(__name__)
 
 
 class XimeaCamera(devices.CameraDevice):
-    def __init__(self, dev_id=0, **kwargs):
+    """Ximea cameras
+
+    Args:
+        serial_number (str): the serial number of the camera to
+            connect to.  It can be set to `None` if there is only
+            camera on the system.
+    """
+    def __init__(self, serial_number: typing.Optional[str] = None,
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
-        self._handle = None
-        self._dev_id = dev_id
+        self._handle = xiapi.Camera()
+        self._serial_number = serial_number
         self._roi = devices.ROI(None,None,None,None)
 
     def _fetch_data(self):
@@ -75,20 +85,41 @@ class XimeaCamera(devices.CameraDevice):
             self._acquiring = False
         self._handle.stop_acquisition()
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialise the camera.
 
         Open the connection, connect properties and populate settings dict.
         """
-        try:
-            self._handle = xiapi.Camera(self._dev_id)
-            self._handle.open_device()
-        except:
-            raise Exception("Problem opening camera.")
-        if self._handle is None:
-            raise Exception("No camera opened.")
+        n_cameras = self._handle.get_number_devices()
 
-        _logger.info('Initializing.')
+        if self._serial_number is None:
+            if n_cameras > 1:
+                raise Exception('more than one Ximea camera found but the'
+                                ' serial_number argument was not specified')
+            _logger.info('serial_number is not specified but there is only one'
+                         ' camera on the system')
+            self._handle.open_device()
+        else:
+            _logger.info('opening camera with serial number \'%s\'',
+                         self._serial_number)
+            self._handle.open_device_by_SN(self._serial_number)
+            # Camera.dev_id defaults to zero.  However, after opening
+            # the device by serial number is is not updated (see
+            # https://github.com/python-microscope/vendor-issues/issues/1).
+            # So we manually iterate over each possible device ID and
+            # modify dev_id until it behaves as it should.  If we
+            # don't fix this and there are multiple cameras connected,
+            # some of the handle methods will return info from another
+            # camera.
+            for dev_id in range(n_cameras):
+                self._handle.dev_id = dev_id
+                if (self._serial_number.encode()
+                    == self._handle.get_device_info_string('device_sn')):
+                    break
+            else:
+                raise Exception('failed to get DevId for device with SN %s'
+                                % self._serial_number)
+
         # Try set camera into rising-edge hardware trigger mode.  If
         # that can't be done set it to software trigger mode.
         # TODO: even if the trigger source is set to edge rising, the
@@ -204,7 +235,7 @@ class XimeaCamera(devices.CameraDevice):
     def _set_roi(self, x, y, width, height):
         self._roi = devices.ROI(x, y, width, height)
 
-    def _on_shutdown(self):
+    def _on_shutdown(self) -> None:
         if self._acquiring:
             self._handle.stop_acquisition()
         self._handle.close_device()
