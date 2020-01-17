@@ -71,8 +71,8 @@ class XimeaCamera(devices.CameraDevice):
     def abort(self):
         _logger.info('Disabling acquisition.')
         if self._acquiring:
+            self._handle.stop_acquisition()
             self._acquiring = False
-        self._handle.stop_acquisition()
 
     def initialize(self) -> None:
         """Initialise the camera.
@@ -226,4 +226,11 @@ class XimeaCamera(devices.CameraDevice):
     def _on_shutdown(self) -> None:
         if self._acquiring:
             self._handle.stop_acquisition()
-        self._handle.close_device()
+        if self._handle.CAM_OPEN:
+            # We check CAM_OPEN instead of try/catch an exception
+            # because if the camera failed initialisation, XiApi fails
+            # hard with error code -1009 (unknown) since the internal
+            # device handler is NULL.
+            self._handle.close_device()
+        else:
+            _logger.warning('shutdown() called but camera was already closed')
