@@ -31,6 +31,14 @@ from microscope import devices
 
 _logger = logging.getLogger(__name__)
 
+# During acquisition, we rely on catching timeout errors which then
+# get discarded.  However, with debug level set to warning (XiApi
+# default log level), we get XiApi messages on stderr for each timeout
+# making logging impossible.  So change this to error.
+#
+# Debug level is a xiapi global setting but we need a Camera instance.
+xiapi.Camera().set_debug_level('XI_DL_ERROR')
+
 
 class XimeaCamera(devices.CameraDevice):
     """Ximea cameras
