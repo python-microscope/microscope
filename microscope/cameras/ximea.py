@@ -23,6 +23,7 @@
 import logging
 import typing
 
+import numpy as np
 from ximea import xiapi
 
 from microscope import devices
@@ -44,39 +45,27 @@ class XimeaCamera(devices.CameraDevice):
         super().__init__(**kwargs)
         self._acquiring = False
         self._exposure_time = 0.1
-        self._triggered = False
         self._handle = xiapi.Camera()
         self._serial_number = serial_number
         self._roi = devices.ROI(None,None,None,None)
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> typing.Optional[np.ndarray]:
         if not self._acquiring:
-            return
-
-        trigger_type = self._handle.get_trigger_source()
-        if trigger_type == 'XI_TRG_SOFTWARE' and not not self._triggered:
-            return
-        # else, we are either on 1) software trigger mode and have
-        # already triggered, in which case there should be an image
-        # waiting for us; or 2) any hardware trigger mode, in which
-        # case we try to fetch an image and either we get one or it
-        # times out if there is none.
+            return None
 
         try:
-            self._handle.get_image(self.img)
+            self._handle.get_image(self.img, timeout=1)
         except Exception as err:
-            if getattr(err, 'status', None) == 10:
-                # This is a Timeout error
-                return
+            # err.status may not exist so use getattr (see
+            # https://github.com/python-microscope/vendor-issues/issues/2)
+            if getattr(err, 'status', None) == 10: # Timeout
+                return None
             else:
                 raise err
 
-        data = self.img.get_image_data_numpy()
+        data = self.img.get_image_data_numpy() # type: np.ndarray
         _logger.info("Fetched imaged with dims %s and size %s.",
                      data.shape, data.size)
-        _logger.info('Sending image')
-        if trigger_type == 'XI_TRG_SOFTWARE':
-            self._triggered = False
         return data
 
     def abort(self):
@@ -219,7 +208,6 @@ class XimeaCamera(devices.CameraDevice):
                      self._acquiring)
         if self._acquiring:
             self._handle.set_trigger_software(True)
-            self._triggered = True
 
     def _get_binning(self):
         return (1, 1)
