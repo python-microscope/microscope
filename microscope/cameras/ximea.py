@@ -22,13 +22,22 @@
 
 """Ximea cameras.
 
-Camera Triggers
----------------
+Changing settings flushes the buffer
+------------------------------------
 
-Changing the trigger type, named trigger source in the Ximea
-documentation, requires restarting image acquisition.  While this
-restart is done automatically, it will discard any images that are in
-the camera memory but have not yet been read.
+It is not possible to set some parameters during image acquisition.
+In such cases, acquisition is stopped (camera is disabled) and the
+restarted (camera is enabled).  However, stopping acquisition discards
+any image in the camera memory that have not yet been read.
+
+Modifying the following settings require acquisition to be stopped:
+
+- ROIs
+- binning
+- exposure time
+- trigger type (trigger source)
+
+For more details, see the [XiAPI manual](https://www.ximea.com/support/wiki/apis/XiAPI_Manual#Flushing-the-queue).
 
 """
 
@@ -151,6 +160,7 @@ class XimeaCamera(devices.CameraDevice):
         self._handle = xiapi.Camera()
         self._img = xiapi.Image()
         self._serial_number = serial_number
+        self._sensor_shape = (0, 0)
         self._roi = devices.ROI(None,None,None,None)
 
         # When using the Settings system, enums are not really enums
@@ -239,6 +249,15 @@ class XimeaCamera(devices.CameraDevice):
                 raise Exception('failed to get DevId for device with SN %s'
                                 % self._serial_number)
 
+        self._sensor_shape = (self._handle.get_width_maximum()
+                              + self._handle.get_offsetX_maximum(),
+                              self._handle.get_height_maximum()
+                              + self._handle.get_offsetY_maximum())
+        self._roi = devices.ROI(left=0, top=0,
+                                width=self._sensor_shape[0],
+                                height=self._sensor_shape[1])
+        self.set_roi(self._roi)
+
         self.set_trigger(devices.TriggerType.SOFTWARE,
                          devices.TriggerMode.ONCE)
 
@@ -273,8 +292,8 @@ class XimeaCamera(devices.CameraDevice):
     def get_cycle_time(self):
         return (1.0/self._handle.get_framerate())
 
-    def _get_sensor_shape(self):
-        return (self._handle.get_width(), self._handle.get_height())
+    def _get_sensor_shape(self) -> typing.Tuple[int, int]:
+        return self._sensor_shape
 
     def soft_trigger(self) -> None:
         # We need to check this ourselves because, despite what the
@@ -295,12 +314,39 @@ class XimeaCamera(devices.CameraDevice):
     def _set_binning(self, h, v):
         return False
 
-    def _get_roi(self):
+    def _get_roi(self) -> devices.ROI:
+        assert self._roi == devices.ROI(self._handle.get_offsetX(),
+                                        self._handle.get_offsetY(),
+                                        self._handle.get_width(),
+                                        self._handle.get_height()), \
+            "ROI attribute is out of sync with internal camera setting"
         return self._roi
 
-    @devices.keep_acquiring
-    def _set_roi(self, x, y, width, height):
-        self._roi = devices.ROI(x, y, width, height)
+    def _set_roi(self, roi: devices.ROI) -> bool:
+        if (roi.width + roi.left > self._sensor_shape[0]
+            or roi.height + roi.top > self._sensor_shape[1]):
+            raise ValueError('ROI %s does not fit in sensor shape %s'
+                             % (roi, self._sensor_shape))
+        try:
+            # These methods will fail if the width/height plus their
+            # corresponding offsets are higher than the sensor size.
+            # So we start by setting the offset to zero.  Cases to
+            # think off: 1) shrinking ROI size, 2) increasing ROI
+            # size, 3) resetting ROI and so can't trust self._roi as
+            # the current state (see this exception handling).
+            with _disabled_camera(self):
+                self._handle.set_offsetX(0)
+                self._handle.set_offsetY(0)
+                self._handle.set_width(roi.width)
+                self._handle.set_height(roi.height)
+                self._handle.set_offsetX(roi.left)
+                self._handle.set_offsetY(roi.top)
+        except:
+            self._set_roi(self._roi) # set it back to whatever was before
+            raise
+        self._roi = roi
+        return True
+
 
     def _on_shutdown(self) -> None:
         if self._acquiring:
