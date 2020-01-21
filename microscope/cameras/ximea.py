@@ -162,6 +162,7 @@ class XimeaCamera(devices.CameraDevice):
         self._serial_number = serial_number
         self._sensor_shape = (0, 0)
         self._roi = devices.ROI(None,None,None,None)
+        self._binning = devices.Binning(1, 1)
 
         # When using the Settings system, enums are not really enums
         # and even when using lists we get indices sent back and forth
@@ -307,12 +308,19 @@ class XimeaCamera(devices.CameraDevice):
             _logger.debug('sending software trigger')
             self._handle.set_trigger_software(1)
 
-    def _get_binning(self):
-        return (1, 1)
 
-    @devices.keep_acquiring
-    def _set_binning(self, h, v):
-        return False
+    def _get_binning(self) -> devices.Binning:
+        return self._binning
+
+    def _set_binning(self, binning: devices.Binning) -> bool:
+        if binning == self._binning:
+            return True
+        # We don't have a ximea camera that supports binning so we
+        # can't write support for this (a camera without this feature
+        # will raise error 100).  When writing this, careful and check
+        # what XiAPI does when mixing ROI and binning.
+        raise NotImplementedError()
+
 
     def _get_roi(self) -> devices.ROI:
         assert self._roi == devices.ROI(self._handle.get_offsetX(),
