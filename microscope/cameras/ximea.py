@@ -262,6 +262,33 @@ class XimeaCamera(devices.CameraDevice):
         self.set_trigger(devices.TriggerType.SOFTWARE,
                          devices.TriggerMode.ONCE)
 
+        # When we return the sensor temperature we want to return the
+        # temperature that's closest to the chip since that's the one
+        # that has the biggest impact on image noise.  We don't know
+        # what temperature sensors each camera has so we try one at a
+        # time, by order of preference, until it works.
+        for temperature_selector in ('XI_TEMP_IMAGE_SENSOR_DIE',
+                                     'XI_TEMP_IMAGE_SENSOR_DIE_RAW',
+                                     'XI_TEMP_SENSOR_BOARD',
+                                     'XI_TEMP_INTERFACE_BOARD',
+                                     'XI_TEMP_FRONT_HOUSING',
+                                     'XI_TEMP_REAR_HOUSING',
+                                     'XI_TEMP_TEC1_COLD',
+                                     'XI_TEMP_TEC1_HOT'):
+            try:
+                self._handle.set_temp_selector(temperature_selector)
+            except xiapi.Xi_error as err:
+                if getattr(err, 'status', None) == 12: # Not supported
+                    _logger.info('no hardware support for %s temperature'
+                                 ' readings', temperature_selector)
+                else:
+                    raise
+            else:
+                _logger.info('temperature reading set to %s',
+                             temperature_selector)
+                break
+
+
     def make_safe(self):
         if self._acquiring:
             self.abort()
@@ -295,6 +322,11 @@ class XimeaCamera(devices.CameraDevice):
 
     def _get_sensor_shape(self) -> typing.Tuple[int, int]:
         return self._sensor_shape
+
+
+    def get_sensor_temperature(self) -> float:
+        return self._handle.get_temp()
+
 
     def soft_trigger(self) -> None:
         # We need to check this ourselves because, despite what the
