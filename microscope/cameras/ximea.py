@@ -34,7 +34,6 @@ Modifying the following settings require acquisition to be stopped:
 
 - ROIs
 - binning
-- exposure time
 - trigger type (trigger source)
 
 For more details, see the [XiAPI manual](https://www.ximea.com/support/wiki/apis/XiAPI_Manual#Flushing-the-queue).
@@ -156,7 +155,6 @@ class XimeaCamera(devices.CameraDevice):
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self._acquiring = False
-        self._exposure_time = 0.1
         self._handle = xiapi.Camera()
         self._img = xiapi.Image()
         self._serial_number = serial_number
@@ -306,14 +304,14 @@ class XimeaCamera(devices.CameraDevice):
         _logger.info("Acquisition enabled.")
         return True
 
-    def set_exposure_time(self, value):
+    def set_exposure_time(self, value: float) -> None:
         # exposure times are set in us.
         try:
-            self._handle.set_exposure(int(value * 1000000))
+            self._handle.set_exposure_direct(int(value * 1000000))
         except Exception as err:
             _logger.debug("set_exposure_time exception: %s", err)
 
-    def get_exposure_time(self):
+    def get_exposure_time(self) -> float:
         # exposure times are in us, so multiple by 1E-6 to get seconds.
         return (self._handle.get_exposure() * 1.0E-6)
 
