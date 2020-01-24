@@ -1165,3 +1165,218 @@ class ControllerDevice(Device, metaclass=abc.ABCMeta):
         for d in self.devices.values():
             d.shutdown()
         super()._on_shutdown()
+
+
+# XXX: once python>=3.6 is required, subclass from typing.NamedTuple
+# instead.
+AxisLimits = typing.NamedTuple('AxisLimits',[('lower', float),
+                                             ('upper', float)])
+
+class StageAxis(metaclass=abc.ABCMeta):
+    """A single dimension axis for a :class:`StageDevice`.
+
+    A `StageAxis` represents a single axis of a stage and is not a
+    :class:`Device` instance on itself.  Even stages with a single
+    axis, such as Z-axis piezos, are implemented as a `StageDevice`
+    composed of a single `StageAxis` instance.
+
+    The interface for `StageAxis` maps to that of `StageDevice` so
+    refer to its documentation.
+
+    """
+    @abc.abstractmethod
+    def move_by(self, delta: float) -> None:
+        """Move axis by given amount."""
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def move_to(self, pos: float) -> None:
+        """Move axis to specified position."""
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def position(self) -> float:
+        """Current axis position."""
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def limits(self) -> AxisLimits:
+        """Upper and lower limits values for position."""
+        raise NotImplementedError()
+
+
+class StageDevice(Device, metaclass=abc.ABCMeta):
+    """A stage device, composed of :class:`StageAxis` instances.
+
+    A stage device can have any number of axes and dimensions.  For a
+    single `StageDevice` instance each axis has a name that uniquely
+    identifies it.  The names of the individual axes are hardware
+    dependent and will be part of the concrete class documentation.
+    They are typically strings such as `"x"` or `"y"`.
+
+    .. code-block:: python
+
+        stage = SomeStageDevice()
+        stage.initialize()
+        stage.enable() # may trigger a stage move
+
+        # move operations
+        stage.move_to({'x': 42.0, 'y': -5.1})
+        stage.move_by({'x': -5.3, 'y': 14.6})
+
+        # Individual StageAxis can be controlled directly.
+        x_axis = stage.axes['x']
+        y_axis = stage.axes['y']
+        x_axis.move_to(42.0)
+        y_axis.move_by(-5.3)
+
+    Not all stage devices support simultaneous move of multiple axes.
+    Because of this, there is no guarantee that move operations with
+    multiple axes are done simultaneously.  Refer to the concrete
+    class documentation for hardware specific details.
+
+    If a move operation involves multiple axes and there is no support
+    for simultaneous move, the order of the moves is undefined.  If a
+    specific order is required, one can either call the move functions
+    multiple times in the expected order, or do so via the individual
+    axes, like so:
+
+    .. code-block:: python
+
+        # Move the x axis first, then mvoe the y axis:
+        stage.move_by({'x': 10})
+        stage.move_by({'y': 4})
+
+        # The same thing but via the individual axes:
+        stage.axes['x'].move_by(10)
+        stage.axes['y'].move_by(4)
+
+    Move operations will not attempt to move a stage beyond its
+    limits.  If a call to the move functions would require the stage
+    to move beyond its limits the move operation is clipped to the
+    axes limits.  No exception is raised.
+
+    .. code-block:: python
+
+        # Moves x axis to the its upper limit:
+        x_axis.move_to(x_axis.limits.upper)
+
+        # The same as above since the move operations are clipped to
+        # the axes limits automatically.
+        import math
+        x_axis.move_to(math.inf)
+        x_axis.move_by(math.inf)
+
+    Some stages need to find a reference position, home, before being
+    able to be moved.  If required, this happens automatically during
+    :func:`enable`.
+
+    """
+
+    @property
+    @abc.abstractmethod
+    def axes(self) -> typing.Mapping[str, StageAxis]:
+        """Map of axis names to the corresponding :class:`StageAxis`.
+
+        .. code-block:: python
+
+            for name, axis in stage.axes.items():
+                print(f'moving axis named {name}')
+                axis.move_by(1)
+
+        If an axis is not available then it is not included, i.e.,
+        given a stage with optional axes the missing axes will *not*
+        appear on the returned dict with a value of `None` or some
+        other special `StageAxis` instance.
+
+        """
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def position(self) -> typing.Mapping[str, float]:
+        """Map of axis name to their current position.
+
+        .. code-block:: python
+
+            for name, position in stage.position.items():
+                print(f'{name} axis is at position {position}')
+
+        The units of the position is the same as the ones being
+        currently used for the absolute move (:func:`move_to`)
+        operations.
+
+        """
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def limits(self) -> typing.Mapping[str, AxisLimits]:
+        """Map of axis name to its upper and lower limits.
+
+        .. code-block:: python
+
+            for name, limits in stage.limits.items():
+                print(f'{name} axis lower limit is {limits.lower}')
+                print(f'{name} axis upper limit is {limits.upper}')
+
+        These are the limits currently imposed by the device or
+        underlying software and may change over the time of the
+        `StageDevice` object.
+
+        The units of the limits is the same as the ones being
+        currently used for the move operations.
+
+        """
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+        """Move axes by the corresponding amounts.
+
+        Args:
+            delta: map of axis name to the amount to be moved.
+
+        .. code-block:: python
+
+            # Move 'x' axis by 10.2 units and the y axis by -5 units:
+            stage.move_by({'x': 10.2, 'y': -5})
+
+            # The above is equivalent, but possibly faster than:
+            stage.axes['x'].move_by(10.2)
+            stage.axes['y'].move_by(-5)
+
+        The axes will not move beyond :func:`limits`.  If `delta`
+        would move an axis beyond it limit, no exception is raised.
+        Instead, the stage will move until the axis limit.
+
+        """
+        # TODO: implement a software fallback that moves the
+        # individual axis, for stages that don't have provide
+        # simultaneous move of multiple axes.
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def move_to(self, position: typing.Mapping[str, float]) -> None:
+        """Move axes to the corresponding positions.
+
+        Args:
+            position: map of axis name to the positions to move to.
+
+        .. code-block:: python
+
+            # Move 'x' axis to position 8 and the y axis to position -5.3
+            stage.move_to({'x': 8, 'y': -5.3})
+
+            # The above is equivalent to
+            stage.axes['x'].move_to(8)
+            stage.axes['y'].move_to(-5.3)
+
+        The axes will not move beyond :func:`limits`.  If `positions`
+        is beyond the limits, no exception is raised.  Instead, the
+        stage will move until the axes limit.
+
+        """
+        raise NotImplementedError()

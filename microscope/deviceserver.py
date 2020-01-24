@@ -142,6 +142,11 @@ def _register_device(pyro_daemon, device, obj_id=None) -> None:
         for sub_device in device.devices.values():
             _register_device(pyro_daemon, sub_device, obj_id=None)
 
+    if isinstance(device, microscope.devices.StageDevice):
+        _check_autoproxy_feature()
+        for axis in device.axes.values():
+            _register_device(pyro_daemon, axis, obj_id=None)
+
     return None
 
 

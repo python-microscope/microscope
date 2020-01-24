@@ -4,6 +4,22 @@ python-microscope releases.
 Version 0.5.0 (upcoming)
 ------------------------
 
+* Changes to device ABCs:
+
+  * New ABCs `StageDevice` and `StageAxis`.
+
+* Changes to ABCs:
+
+  * Device:
+
+    * The `Device._logger` attribute has been removed.  It is
+      recommended to use a logger for the module.
+
+  * DeformableMirror:
+
+    * Concrete classes must implement the `n_actuators` public
+      property instead of the private _n_actuators`.
+
 * Device specific changes:
 
   * Ximea Camera:
