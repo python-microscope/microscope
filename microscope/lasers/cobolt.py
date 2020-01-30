@@ -134,7 +134,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         try:
             return float(response)
         except:
-            _logger.info("Bad response to gmlp?\n    %s" % response.decode())
+            _logger.info("Bad response to gmlp?\n    %s", response.decode())
 
 
     @devices.SerialDeviceMixIn.lock_comms

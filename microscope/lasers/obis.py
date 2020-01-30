@@ -39,25 +39,25 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Start a logger.
         self._write(b'SYSTem:INFormation:MODel?')
         response = self._readline()
-        _logger.info('OBIS laser model: [%s]' % response.decode())
+        _logger.info('OBIS laser model: [%s]', response.decode())
         self._write(b'SYSTem:INFormation:SNUMber?')
         response = self._readline()
-        _logger.info('OBIS laser serial number: [%s]' % response.decode())
+        _logger.info('OBIS laser serial number: [%s]', response.decode())
         self._write(b'SYSTem:CDRH?')
         response = self._readline()
-        _logger.info('CDRH safety: [%s]' % response.decode())
+        _logger.info('CDRH safety: [%s]', response.decode())
         self._write(b'SOURce:TEMPerature:APRobe?')
         response = self._readline()
-        _logger.info('TEC temperature control: [%s]' % response.decode())
+        _logger.info('TEC temperature control: [%s]', response.decode())
         self._write(b'*TST?')
         response = self._readline()
-        _logger.info('Self test procedure: [%s]' % response.decode())
+        _logger.info('Self test procedure: [%s]', response.decode())
 
         # We need to ensure that autostart is disabled so that we can
         # switch emission on/off remotely.
         self._write(b'SYSTem:AUTostart?')
         response = self._readline()
-        _logger.info('Response to Autostart: [%s]' % response.decode())
+        _logger.info('Response to Autostart: [%s]', response.decode())
 
     def _write(self, command):
         """Send a command."""
@@ -101,7 +101,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._flush_handshake()
         self._write(b'SOURce:AM:STATe?')
         response = self._readline()
-        _logger.info("SOURce:AM:STATe? [%s]" % response.decode())
+        _logger.info("SOURce:AM:STATe? [%s]", response.decode())
 
         if not self.get_is_on():
             # Something went wrong.

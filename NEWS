@@ -1,14 +1,56 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
-Version 0.4.0 (upcoming)
+Version 0.5.0 (upcoming)
 ------------------------
+
+* Changes to device ABCs:
+
+  * New ABCs `StageDevice` and `StageAxis`.
+
+* Changes to ABCs:
+
+  * Device:
+
+    * The `Device._logger` attribute has been removed.  It is
+      recommended to use a logger for the module.
+
+  * DeformableMirror:
+
+    * Concrete classes must implement the `n_actuators` public
+      property instead of the private _n_actuators`.
+
+* Device specific changes:
+
+  * Ximea Camera:
+
+    * Instead of device id (`dev_id`), the constructor now requires
+      the camera serial number.  This is required only if there are
+      multiple Xime cameras on the system.
+
+    * Support for hardware triggers was completely rewritten.  It now
+      defaults to software triggering only and now implements the
+      `TriggerTargetMixIn` interface.  The trigger type can also be
+      set via the new 'trigger source' setting.
+
+    * Added support for ROIs and temperature readings.
+
+
+Version 0.4.0 (2019/01/07)
+--------------------------
+
+* Selected most important, backwards incompatible, changes:
+
+  * The `Setting` class is now private.  The only supported method to
+    add settings to a `Device` is via its `add_setting` method.
 
 * New devices supported:
 
-  * Coherent Obis laser.
+  * Coherent Obis laser
+  * Lumencor Spectra III light engine
   * Prior ProScan III controller
   * Prior filter wheels
+  * Toptica iBeam laser
 
 * Changes to device ABCs:
 
@@ -21,6 +63,13 @@ Version 0.4.0 (upcoming)
 
     * Concrete classes must implement the `n_actuators` public
       property instead of the private _n_actuators`.
+
+* Device specific changes:
+
+  * Ximea Camera:
+
+    * Support for the ximea cameras was completely rewritten to
+      support hardware triggers, as well as fix multiple minor issues.
 
 * The device server and clients no longer force pickle protocol
   version 2.  If the client and server are running different Python

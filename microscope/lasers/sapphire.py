@@ -58,7 +58,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Head ID value is a float point value,
         # but only the integer part is significant
         headID = int(float(self.send(b'?hid')))
-        _logger.info("Sapphire laser serial number: [%s]" % headID)
+        _logger.info("Sapphire laser serial number: [%s]", headID)
 
     def _write(self, command):
         count = super()._write(command)
@@ -132,7 +132,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         _logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l=1')
-        _logger.info("l=1: [%s]" % response.decode())
+        _logger.info("l=1: [%s]", response.decode())
 
         # Enabling laser might take more than 500ms (default timeout)
         prevTimeout = self.connection.timeout
@@ -177,7 +177,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
         mW_str = '%.3f' % mW
-        _logger.info("Setting laser power to %s mW." % mW_str)
+        _logger.info("Setting laser power to %s mW.", mW_str)
         # using send instead of _write, because
         # if laser is not on, warning is returned
         return self.send(b'p=%s' % mW_str.encode())

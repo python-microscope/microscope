@@ -115,6 +115,41 @@ class Filter(logging.Filter):
             return False
 
 
+def _check_autoproxy_feature() -> None:
+    # AUTOPROXY is enabled by default.  If it is disabled there must
+    # be a reason so raise an error instead of silently enabling it.
+    if not Pyro4.config.AUTOPROXY:
+        raise RuntimeError('serving of a ControllerDevice requires'
+                           ' Pyro4 AUTOPROXY option enabled')
+
+    # AUTOPROXY does not work with the marshal serializer.  marshal is
+    # not the default serializer so if it is the current serializer
+    # there must be a reason so we don't just change it.
+    if Pyro4.config.SERIALIZER == 'marshal':
+        raise RuntimeError('Pyro\'s AUTOPROXY feature is required but the'
+                           ' \'marshal\' serializer is currently selected')
+    if 'marshal' in Pyro4.config.SERIALIZERS_ACCEPTED:
+        Pyro4.config.SERIALIZERS_ACCEPTED.remove('marshal')
+        _logger.info('marshal was removed from accepted serializers')
+    return None
+
+
+def _register_device(pyro_daemon, device, obj_id=None) -> None:
+    pyro_daemon.register(device, obj_id)
+
+    if isinstance(device, microscope.devices.ControllerDevice):
+        _check_autoproxy_feature()
+        for sub_device in device.devices.values():
+            _register_device(pyro_daemon, sub_device, obj_id=None)
+
+    if isinstance(device, microscope.devices.StageDevice):
+        _check_autoproxy_feature()
+        for axis in device.axes.values():
+            _register_device(pyro_daemon, axis, obj_id=None)
+
+    return None
+
+
 class DeviceServer(multiprocessing.Process):
     def __init__(self, device_def, id_to_host, id_to_port, exit_event=None):
         """Initialise a device and serve at host/port according to its id.
@@ -204,31 +239,17 @@ class DeviceServer(multiprocessing.Process):
         root_logger.addHandler(log_handler)
 
         _logger.info('Device initialized; starting daemon.')
-
-        pyro_daemon.register(self._device, cls_name)
-        if isinstance(self._device, microscope.devices.ControllerDevice):
-            # AUTOPROXY should be enabled by default.  If we find it
-            # disabled, there must be a reason why, so raise an error
-            # instead of silently enabling it.
-            if not Pyro4.config.AUTOPROXY:
-                raise RuntimeError('serving of a ControllerDevice requires'
-                                   ' Pyro4 AUTOPROXY option enabled')
-
-            # Autoproxy does not work with marshal serializer.
-            Pyro4.config.SERIALIZERS_ACCEPTED.discard('marshal')
-
-            for sub_device in self._device.devices.values():
-                pyro_daemon.register(sub_device)
+        _register_device(pyro_daemon, self._device, obj_id=cls_name)
 
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
-        _logger.info('Serving %s' % pyro_daemon.uriFor(self._device))
+        _logger.info('Serving %s', pyro_daemon.uriFor(self._device))
         if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
-            _logger.info('Device UID on port %s is %s'
-                         % (port, self._device.get_id()))
+            _logger.info('Device UID on port %s is %s',
+                         port, self._device.get_id())
 
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
@@ -327,21 +348,21 @@ def serve_devices(devices, exit_event=None):
                     continue
                 else:
                     _logger.info("DeviceServer Failure. Process %s is dead with"
-                                 " exitcode %s. Restarting..."
-                                 % (s.pid, s.exitcode))
+                                 " exitcode %s. Restarting...",
+                                 s.pid, s.exitcode)
                     servers.remove(s)
                     servers.append(s.clone())
 
                     try:
                         s.join(30)
                     except:
-                        _logger.error("... could not join PID %s." % (old_pid))
+                        _logger.error("... could not join PID %s.", s.pid)
                     else:
                         old_pid = s.pid
                         del (s)
                         servers[-1].start()
                         _logger.info("... DeviceServer with PID %s restarted"
-                                     " as PID %s." % (old_pid, servers[-1].pid))
+                                     " as PID %s.", old_pid, servers[-1].pid)
             if len(servers) == 0:
                 # Log and exit if no servers running. May want to change this
                 # if we add some interface to interactively restart servers.

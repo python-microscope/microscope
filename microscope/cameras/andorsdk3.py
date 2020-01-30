@@ -344,7 +344,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         if num is None:
             num = self.num_buffers
         self._purge_buffers()
-        _logger.debug("Creating %d buffers." % num)
+        _logger.debug("Creating %d buffers.", num)
         self._img_stride = self._aoi_stride.get_value()
         self._img_width = self._aoi_width.get_value()
         self._img_height = self._aoi_height.get_value()
@@ -497,7 +497,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             self._acquisition_start()
         except Exception as e:
             raise Exception(str(e))
-        _logger.debug("Acquisition enabled: %s." % self._acquiring)
+        _logger.debug("Acquisition enabled: %s.", self._acquiring)
         return True
 
     @keep_acquiring
@@ -507,8 +507,8 @@ class AndorSDK3(devices.FloatingDeviceMixin,
                       value))[1]
         self._exposure_time.set_value(bounded_value)
         self._frame_rate.set_value(self._frame_rate.max())
-        _logger.debug("Set exposure time to %f, resulting framerate %f."
-                          % (bounded_value, self._frame_rate.get_value()))
+        _logger.debug("Set exposure time to %f, resulting framerate %f.",
+                      bounded_value, self._frame_rate.get_value())
 
     def get_exposure_time(self):
         return self._exposure_time.get_value()

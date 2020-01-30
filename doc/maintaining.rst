@@ -38,9 +38,9 @@ should be no need to check it.
    with tags such as `snapshot-N`::
 
     VERSION=$(python setup.py --version)
-    COMMIT=$(git rev-parse HEAD | cut -c1-12)
-    sed -i "s,yyyy/mm/dd,$(date +%Y/%m/%d)," NEWS
+    sed -i "s,(upcoming),($(date +%Y/%m/%d))," NEWS
     git commit -m "maint: release $VERSION" setup.py NEWS
+    COMMIT=$(git rev-parse HEAD | cut -c1-12)
     git tag -s -u $GPGKEY \
       -m "Added tag release-$VERSION for commit $COMMIT" release-$VERSION
 

@@ -23,13 +23,15 @@ import ctypes
 import os
 import warnings
 
+import numpy
+
 from microscope.devices import DeformableMirror
 
 import microscope._wrappers.BMC as BMC
 
 
 class BMCDeformableMirror(DeformableMirror):
-    def __init__(self, serial_number, **kwargs):
+    def __init__(self, serial_number: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._dm = BMC.DM()
 
@@ -46,14 +48,14 @@ class BMCDeformableMirror(DeformableMirror):
     def n_actuators(self) -> int:
         return self._dm.ActCount
 
-    def apply_pattern(self, pattern):
+    def apply_pattern(self, pattern: numpy.ndarray) -> None:
         self._validate_patterns(pattern)
         data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
         status = BMC.SetArray(self._dm, data_pointer, None)
         if status:
             raise Exception(BMC.ErrorString(status))
 
-    def __del__(self):
+    def __del__(self) -> None:
         status = BMC.Close(self._dm)
         if status:
             warnings.warn(BMC.ErrorString(status), RuntimeWarning)
