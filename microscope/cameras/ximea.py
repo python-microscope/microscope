@@ -327,15 +327,17 @@ class XimeaCamera(devices.CameraDevice):
 
 
     def soft_trigger(self) -> None:
-        # We need to check this ourselves because, despite what the
-        # documentation says, the camera will accept software triggers
-        # even if its trigger source is not set for software.  See
+        # Cameras in the MQ family have the "feature" of accepting
+        # software triggers even when set for hardware triggering.
+        # Because of this, so we need to check this ourselves.  See
         # https://github.com/python-microscope/vendor-issues/issues/3
         if self.trigger_type is not devices.TriggerType.SOFTWARE:
             _logger.warning('ignoring soft_trigger() because camera is not'
                             ' in software trigger type')
         else:
             _logger.debug('sending software trigger')
+            # Value for set_trigger_software() has no meaning.  See
+            # https://github.com/python-microscope/vendor-issues/issues/3
             self._handle.set_trigger_software(1)
 
 
