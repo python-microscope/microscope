@@ -1295,7 +1295,6 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @property
-    @abc.abstractmethod
     def position(self) -> typing.Mapping[str, float]:
         """Map of axis name to their current position.
 
@@ -1309,10 +1308,9 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         operations.
 
         """
-        raise NotImplementedError()
+        return {name: axis.position for name, axis in self.axes.items()}
 
     @property
-    @abc.abstractmethod
     def limits(self) -> typing.Mapping[str, AxisLimits]:
         """Map of axis name to its upper and lower limits.
 
@@ -1330,7 +1328,7 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         currently used for the move operations.
 
         """
-        raise NotImplementedError()
+        return {name: axis.limits for name, axis in self.axes.items()}
 
     @abc.abstractmethod
     def move_by(self, delta: typing.Mapping[str, float]) -> None:
