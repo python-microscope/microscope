@@ -166,12 +166,12 @@ ATEnum.set_string = writable_wrapper(ATEnum.setString)
 ATEnum.get_available_values = readable_wrapper(ATEnum.getAvailableValueMap)
 ATProperty.is_readonly = lambda self: not SDK3.IsWritable(self.handle, self.propertyName)
 
-# Mapping of AT type to python type.
+# Mapping of AT type to microscope Setting type.
 PROPERTY_TYPES = {
-    ATInt: int,
-    ATBool: bool,
-    ATFloat: float,
-    ATString: str,
+    ATInt: 'int',
+    ATBool: 'bool',
+    ATFloat: 'float',
+    ATString: 'str',
     ATEnum: 'enum'
 }
 
