@@ -123,8 +123,8 @@ class _Setting():
             self._set = w
 
     def describe(self):
-        return {  # wrap type in str since can't serialize types
-            'type': str(self.dtype),
+        return {
+            'type': self.dtype,
             'values': self.values(),
             'readonly': self.readonly(),
             'cached': self._last_written is not None}
