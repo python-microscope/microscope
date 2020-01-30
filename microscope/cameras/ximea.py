@@ -215,7 +215,6 @@ class XimeaCamera(devices.CameraDevice):
 
     def initialize(self) -> None:
         """Initialise the camera.
-
         Open the connection, connect properties and populate settings dict.
         """
         n_cameras = self._handle.get_number_devices()
