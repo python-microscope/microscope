@@ -54,21 +54,18 @@ Binning = namedtuple('Binning', ['h', 'v'])
 # Trigger types.
 (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
 
-# Mapping of setting data types to descriptors allowed-value description types.
-# For python 2 and 3 compatibility, we convert the type into a descriptor
-# string. This avoids problems with, say a python 2 client recognising a
-# python 3 <class 'int'> as a python 2 <type 'int'>.
-DTYPES = {'int': ('int', tuple),
-          'float': ('float', tuple),
-          'bool': ('bool', type(None)),
-          'enum': ('enum', list, EnumMeta, dict, tuple),
-          'str': ('str', int),
-          'tuple': ('tuple', type(None)),
-          int: ('int', tuple),
-          float: ('float', tuple),
-          bool: ('bool', type(None)),
-          str: ('str', int),
-          tuple: ('tuple', type(None))}
+# Mapping of setting data types descriptors to allowed-value types.
+#
+# We use a descriptor for the type instead of the actual type because
+# there may not be a unique proper type as for example in enum.
+DTYPES = {
+    'int': (tuple,),
+    'float': (tuple,),
+    'bool': (type(None),),
+    'enum': (list, EnumMeta, dict, tuple),
+    'str': (int,),
+    'tuple': (type(None),),
+}
 
 
 def _call_if_callable(f):
@@ -104,11 +101,11 @@ class _Setting():
         self.name = name
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
+        elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
             raise Exception("Invalid values type for %s '%s':"
                             " expected function or %s"
-                            % (dtype, name, DTYPES[dtype][1:]))
-        self.dtype = DTYPES[dtype][0]
+                            % (dtype, name, DTYPES[dtype]))
+        self.dtype = dtype
         self._get = get_func
         self._values = values
         self._readonly = readonly
@@ -123,8 +120,8 @@ class _Setting():
             self._set = w
 
     def describe(self):
-        return {  # wrap type in str since can't serialize types
-            'type': str(self.dtype),
+        return {
+            'type': self.dtype,
             'values': self.values(),
             'readonly': self.readonly(),
             'cached': self._last_written is not None}
@@ -293,10 +290,10 @@ class Device(metaclass=abc.ABCMeta):
         """
         if dtype not in DTYPES:
             raise Exception('Unsupported dtype.')
-        elif not (isinstance(values, DTYPES[dtype][1:]) or callable(values)):
+        elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
             raise Exception("Invalid values type for %s '%s':"
                             " expected function or %s"
-                            % (dtype, name, DTYPES[dtype][1:]))
+                            % (dtype, name, DTYPES[dtype]))
         else:
             self._settings[name] = _Setting(name, dtype, get_func, set_func,
                                             values, readonly)
@@ -1295,7 +1292,6 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @property
-    @abc.abstractmethod
     def position(self) -> typing.Mapping[str, float]:
         """Map of axis name to their current position.
 
@@ -1309,10 +1305,9 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         operations.
 
         """
-        raise NotImplementedError()
+        return {name: axis.position for name, axis in self.axes.items()}
 
     @property
-    @abc.abstractmethod
     def limits(self) -> typing.Mapping[str, AxisLimits]:
         """Map of axis name to its upper and lower limits.
 
@@ -1330,7 +1325,7 @@ class StageDevice(Device, metaclass=abc.ABCMeta):
         currently used for the move operations.
 
         """
-        raise NotImplementedError()
+        return {name: axis.limits for name, axis in self.axes.items()}
 
     @abc.abstractmethod
     def move_by(self, delta: typing.Mapping[str, float]) -> None:

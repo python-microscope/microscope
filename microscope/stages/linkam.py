@@ -1228,7 +1228,7 @@ class _LinkamMDSMixin():
                 # way to tell if they've been written to, so write them once here.
                 self.set_value(svt, self.get_value(svt))
                 # Also add a Setting that clients can use to modify the velocity.
-                self.add_setting(name, float,
+                self.add_setting(name, 'float',
                                  lambda svt=svt: self.get_value(svt),
                                  lambda val, svt=svt, s=self: self.set_value(svt, val),
                                  lambda svt=svt: self.get_value_limits(svt))
@@ -1319,7 +1319,7 @@ class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
         self._refills = dict({k:self.RefillTracker() for k in self._refill_map})
         # Condensor LED level when on
         self._condensor_level = 100
-        self.add_setting("condensor", float,
+        self.add_setting("condensor", 'float',
                          self.get_condensor_level,
                          self.set_condensor_level,
                          (0, 100))
