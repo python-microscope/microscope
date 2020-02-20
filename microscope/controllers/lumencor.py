@@ -50,6 +50,10 @@ class _SyncSerial:
         with self._lock:
             return self._serial.readline()
 
+    def readlines(self, hint: int = -1) -> typing.List[bytes]:
+        with self._lock:
+            return self._serial.readlines(hint)
+
     def write(self, data: bytes) -> int:
         with self._lock:
             return self._serial.write(data)
