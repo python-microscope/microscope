@@ -116,6 +116,10 @@ class _CoolLEDChannelConnection:
         css = self._get_css()
         self._conn.set_css(css[0:2] + state.encode() + css[3:])
 
+    def get_selected_state(self) -> str:
+        "S (Selected) or X (Unselected)"""
+        return self._get_css()[1:2].decode()
+
 
 class _CoolLEDChannel(microscope.devices.LaserDevice):
     """Individual light devices that compose a CoolLED controller."""
@@ -123,6 +127,12 @@ class _CoolLEDChannel(microscope.devices.LaserDevice):
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self._conn = _CoolLEDChannelConnection(connection, name)
+        selected_state = self._conn.get_selected_state()
+        if selected_state != 'S':
+            _logger.warning('CoolLED channel \'%s\' is not "selected".  It'
+                            ' will not not emit light until it is "selected"'
+                            ' on the control pod.'
+                            % (name))
 
     def initialize(self) -> None:
         pass
@@ -183,6 +193,13 @@ class CoolLED(microscope.devices.ControllerDevice):
 
        # Turn on the violet channel.
        violet.enable()
+
+    CoolLED controllers are often also used with a control pod.  The
+    control pod can turn on and off individual channels but it can
+    also select/unselect those channels.  If a channel is "unselected"
+    a channel can only be off.  Calling `enable()` on the individual
+    channels will not "select" them, the user should do it himself via
+    the control pod.
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
