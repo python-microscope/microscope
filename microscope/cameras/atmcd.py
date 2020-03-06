@@ -1327,7 +1327,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
             self.add_setting(name, 'bool',
                              None,
-                             self._bind(SetBaselineClamp))
+                             self._bind(SetBaselineClamp),
+                             None)
             self.set_setting(name, False)
         # BaselineOffset
         name = 'BaselineOffset'
@@ -1342,7 +1343,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
             self.add_setting(name, 'bool',
                              None,
-                             self._bind(SetEMAdvanced))
+                             self._bind(SetEMAdvanced),
+                             None)
             self.set_setting(name, False)
         # GateMode
         name = 'GateMode'
@@ -1357,7 +1359,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
             self.add_setting(name, 'bool',
                              None,
-                             self._bind(SetHighCapacity))
+                             self._bind(SetHighCapacity),
+                             None)
 
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.

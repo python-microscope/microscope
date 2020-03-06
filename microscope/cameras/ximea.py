@@ -305,7 +305,7 @@ class XimeaCamera(devices.CameraDevice):
     def set_exposure_time(self, value: float) -> None:
         # exposure times are set in us.
         try:
-            self._handle.set_exposure_direct(int(value * 1000000))
+            self._handle.set_exposure(int(value * 1000000))
         except Exception as err:
             _logger.debug("set_exposure_time exception: %s", err)
 

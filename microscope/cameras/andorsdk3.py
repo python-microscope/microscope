@@ -384,7 +384,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         width = self._img_width
         height = self._img_height
         data = raw#.reshape((-1, bytes_per_row))[:, 0:width].copy()
-        data = np.empty((width, height), dtype='uint16')
+        data = np.empty((height, width), dtype='uint16')
         SDK3.ConvertBuffer(ptr, data.ctypes.data_as(DPTR_TYPE),
                            width, height,
                            self._img_stride, self._img_encoding, 'Mono16')

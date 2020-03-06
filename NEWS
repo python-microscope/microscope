@@ -4,6 +4,10 @@ python-microscope releases.
 Version 0.5.0 (upcoming)
 ------------------------
 
+* New devices supported:
+
+  * CoolLED pE-300 series.
+
 * Changes to device ABCs:
 
   * New ABCs `StageDevice` and `StageAxis`.
