@@ -18,14 +18,26 @@ Version 0.5.0 (upcoming)
 
     * Instead of device id (`dev_id`), the constructor now requires
       the camera serial number.  This is required only if there are
-      multiple Xime cameras on the system.
+      multiple Ximea cameras on the system.
 
-    * Support for hardware triggers was completely rewritten.  It now
-      defaults to software triggering only and now implements the
-      `TriggerTargetMixIn` interface.  The trigger type can also be
-      set via the new 'trigger source' setting.
+    * Support for hardware triggers was completely rewritten and now
+      implements the `TriggerTargetMixIn` interface.  The default
+      trigger type is now software only; previously it would default
+      to trigger on rising edge while simultaneously accepting
+      software trigers.  In addition to the `TriggerTargetMixIn`
+      interface, the trigger type can also be set via the 'trigger
+      source' setting.
 
     * Added support for ROIs and temperature readings.
+
+  * AndorSDK3 (Andor CMOS cameras):
+
+    * Fixed acquisition of non-square images.
+
+  * AndorAtmcd (Andor (EM)CCD cameras):
+
+    * Fixed 0.4.0 regression on its settings that caused
+      initialization to always fail.
 
 
 Version 0.4.0 (2019/01/07)
