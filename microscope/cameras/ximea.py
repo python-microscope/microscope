@@ -143,7 +143,7 @@ class TrgSelectorMap(enum.Enum):
     #   first frame.
 
 
-class XimeaCamera(devices.CameraDevice):
+class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
     """Ximea cameras
 
     Args:
