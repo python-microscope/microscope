@@ -434,3 +434,12 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
             # Changing trigger source requires stopping acquisition.
             with _disabled_camera(self):
                 self._handle.set_trigger_source(trg_source.name)
+
+
+    def get_trigger_type(self) -> int:
+        ttype_microscope_to_cockpit = {
+            devices.TriggerType.SOFTWARE : devices.TRIGGER_SOFT,
+            devices.TriggerType.RISING_EDGE : devices.TRIGGER_BEFORE,
+            devices.TriggerType.FALLING_EDGE : devices.TRIGGER_AFTER,
+        }
+        return ttype_microscope_to_cockpit[self.trigger_type]
