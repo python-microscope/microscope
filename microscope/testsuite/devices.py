@@ -22,6 +22,7 @@
 import logging
 import random
 import time
+import typing
 
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
@@ -519,3 +520,77 @@ class DummyDSP(devices.Device):
     def set_client(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
         return devices.DataDevice.set_client(self, *args, **kwargs)
+
+
+class TestStageAxis(devices.StageAxis):
+    def __init__(self, limits: devices.AxisLimits) -> None:
+        super().__init__()
+        self._limits = limits
+        # Start axis in the middle of its range.
+        self._position = self._limits.lower + ((self._limits.upper
+                                                - self._limits.lower) /2.0)
+
+    @property
+    def position(self) -> float:
+        return self._position
+
+    @property
+    def limits(self) -> devices.AxisLimits:
+        return self._limits
+
+    def move_by(self, delta: float)-> None:
+        self.move_to(self._position + delta)
+
+    def move_to(self, pos: float) -> None:
+        if pos < self._limits.lower:
+            self._position = self._limits.lower
+        elif pos > self._limits.upper:
+            self._position = self._limits.upper
+        else:
+            self._position = pos
+
+
+class TestStage(devices.StageDevice):
+    """A test stage with any number of axis.
+
+    Args:
+        limits: map of test axis to be created and their limits.
+
+    .. code-block:: python
+
+        # Test XY motorized stage of square shape:
+        xy_stage = TestStage({
+            'X' : AxisLimits(0, 5000),
+            'Y' : AxisLimits(0, 5000),
+        })
+
+        # XYZ stage, on rectangular shape and negative coordinates:
+        xyz_stage = TestStage({
+            'X' : AxisLimits(-5000, 5000),
+            'Y' : AxisLimits(-10000, 12000),
+            'Z' : AxisLimits(0, 1000),
+        })
+
+    """
+    def __init__(self, limits: typing.Mapping[str, devices.AxisLimits],
+                 **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._axes = {name: TestStageAxis(lim) for name, lim in limits.items()}
+
+    def initialize(self) -> None:
+        pass
+
+    def _on_shutdown(self) -> None:
+        pass
+
+    @property
+    def axes(self) -> typing.Mapping[str, devices.StageAxis]:
+        return self._axes
+
+    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+        for name, rpos in delta.items():
+            self.axes[name].move_by(rpos)
+
+    def move_to(self, position: typing.Mapping[str, float]) -> None:
+        for name, pos in position.items():
+            self.axes[name].move_to(pos)

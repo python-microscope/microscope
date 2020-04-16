@@ -4,6 +4,8 @@ python-microscope releases.
 Version 0.6.0 (upcoming)
 ------------------------
 
+* New `TestStage` and `TestStageAxis` classes.
+
 
 Version 0.5.0 (2020/03/10)
 --------------------------
