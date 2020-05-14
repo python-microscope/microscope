@@ -260,7 +260,6 @@ class TestCamera(devices.CameraDevice):
         Open the connection, connect properties and populate settings dict.
         """
         _logger.info('Initializing.')
-        time.sleep(0.5)
         self._initialized = True
 
     def make_safe(self):
@@ -330,7 +329,6 @@ class TestFilterWheel(FilterWheelBase):
         return self._position
 
     def set_position(self, position):
-        time.sleep(1)
         _logger.info("Setting position to %s", position)
         self._position = position
 
