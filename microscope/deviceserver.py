@@ -24,6 +24,7 @@ defined in a specified config file.
 """
 
 from collections.abc import Iterable
+import importlib.machinery
 import importlib.util
 import logging
 import multiprocessing
@@ -425,7 +426,8 @@ def __main__():
 
 
 def _load_source(filepath):
-    spec = importlib.util.spec_from_file_location('config', filepath)
+    loader = importlib.machinery.SourceFileLoader('config', filepath)
+    spec = importlib.util.spec_from_loader('config', loader)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

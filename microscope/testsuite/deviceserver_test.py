@@ -20,6 +20,8 @@
 
 import logging
 import multiprocessing
+import os.path
+import tempfile
 import time
 import unittest
 import unittest.mock
@@ -128,6 +130,33 @@ class TestClashingArguments(BaseTestServeDevices):
         time.sleep(2)
         client = microscope.clients.Client('PYRO:DeviceWithPort@127.0.0.1:8000')
         self.assertEqual(client.port, 7000)
+
+
+class TestConfigLoader(unittest.TestCase):
+    def _test_load_source(self, filename):
+        file_contents = 'DEVICES = [1,2,3]'
+        with tempfile.TemporaryDirectory() as dirpath:
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, 'w') as fh:
+                fh.write(file_contents)
+
+            module = microscope.deviceserver._load_source(filepath)
+            self.assertEqual(module.DEVICES, [1, 2, 3])
+
+    def test_py_file_extension(self):
+        """Reading of config file module-like works"""
+        self._test_load_source('foobar.py')
+
+    def test_cfg_file_extension(self):
+        """Reading of config file does not require .py file extension"""
+        # Test for issue #151.  Many importlib functions assume that
+        # the file has importlib.machinery.SOURCE_SUFFIXES extension
+        # so we need a bit of extra work to work with none or .cfg.
+        self._test_load_source('foobar.cfg')
+
+    def test_no_file_extension(self):
+        """Reading of config file does not require file extension"""
+        self._test_load_source('foobar')
 
 
 if __name__ == '__main__':
