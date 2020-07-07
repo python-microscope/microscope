@@ -35,9 +35,6 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     The Alpao mirrors have support for hardware triggering.  By default,
     it will be configured for software triggering, and trigger once.
     """
-    ## The length of the buffer given to Alpao SDK to write error
-    ## messages.
-    _err_msg_len = 64
 
     _TriggerType_to_asdkTriggerIn = {
         TriggerType.SOFTWARE : 0,
@@ -67,22 +64,16 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         -------
         A string.  Will be empty if there was no error on the stack.
         """
-        ## asdkGetLastError should write a null-terminated string but
-        ## doesn't seem like it (at least CannotOpenCfg does not ends in
-        ## null) so we empty the buffer ourselves before using it.  Note
-        ## that even when there are no errors, we need to empty the buffer
-        ## because the buffer has the message 'No error in stack'.
-        ##
-        ## TODO: report this upstream to Alpao and clean our code.
-        self._err_msg[0:self._err_msg_len] = b'\x00' * self._err_msg_len
+        err_msg_buffer_len = 64
+        err_msg_buffer = ctypes.create_string_buffer(err_msg_buffer_len)
 
         err = ctypes.pointer(asdk.UInt(0))
-        status = asdk.GetLastError(err, self._err_msg, self._err_msg_len)
+        status = asdk.GetLastError(err, err_msg_buffer, err_msg_buffer_len)
         if status == asdk.SUCCESS:
-            msg = self._err_msg.value
-            if len(msg) > self._err_msg_len:
+            msg = err_msg_buffer.value
+            if len(msg) > err_msg_buffer_len:
                 msg = msg + b'...'
-            msg += b'(error %i)' % (err.contents.value)
+            msg += b' (error code %i)' % (err.contents.value)
             return msg.decode()
         else:
             return ""
@@ -102,12 +93,6 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         The serial number of the deformable mirror, something like "BIL103".
         """
         super().__init__(**kwargs)
-
-        ## We need to constantly check for errors and need a buffer to
-        ## have the message written to.  To avoid creating a new buffer
-        ## each time, have a buffer per instance.
-        self._err_msg = ctypes.create_string_buffer(self._err_msg_len)
-
         self._dm = asdk.Init(serial_number.encode())
         if not self._dm:
             raise Exception("Failed to initialise connection: don't know why")
@@ -127,6 +112,14 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
     @property
     def n_actuators(self) -> int:
         return self._n_actuators
+
+    @property
+    def trigger_mode(self) -> TriggerMode:
+        return self._trigger_mode
+
+    @property
+    def trigger_type(self) -> TriggerType:
+        return self._trigger_type
 
     def apply_pattern(self, pattern: numpy.ndarray) -> None:
         self._validate_patterns(pattern)

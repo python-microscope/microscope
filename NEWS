@@ -1,11 +1,52 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
-Version 0.5.0 (upcoming)
+Version 0.6.0 (upcoming)
 ------------------------
 
+* New `TestStage` and `TestStageAxis` classes.
 
-Version 0.4.0 (2019/01/07)
+
+Version 0.5.0 (2020/03/10)
+--------------------------
+
+* New devices supported:
+
+  * CoolLED pE-300 series.
+
+* Changes to device ABCs:
+
+  * New ABCs `StageDevice` and `StageAxis`.
+
+* Device specific changes:
+
+  * Ximea Camera:
+
+    * Instead of device id (`dev_id`), the constructor now requires
+      the camera serial number.  This is required only if there are
+      multiple Ximea cameras on the system.
+
+    * Support for hardware triggers was completely rewritten and now
+      implements the `TriggerTargetMixIn` interface.  The default
+      trigger type is now software only; previously it would default
+      to trigger on rising edge while simultaneously accepting
+      software trigers.  In addition to the `TriggerTargetMixIn`
+      interface, the trigger type can also be set via the 'trigger
+      source' setting.
+
+    * Added support for ROIs and temperature readings.
+
+  * AndorSDK3 (Andor CMOS cameras):
+
+    * Fixed acquisition of non-square images.
+
+  * AndorAtmcd (Andor (EM)CCD cameras):
+
+    * Fixed 0.4.0 regression on its settings that caused
+      initialization to always fail.
+
+
+Version 0.4.0 (2020/01/07)
 --------------------------
 
 * Selected most important, backwards incompatible, changes:

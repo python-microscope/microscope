@@ -22,6 +22,7 @@
 import logging
 import random
 import time
+import typing
 
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
@@ -36,6 +37,15 @@ from enum import IntEnum
 
 _logger = logging.getLogger(__name__)
 
+from functools import wraps
+def must_be_initialized(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if hasattr(self, '_initialized') and self._initialized:
+            return f(self, *args, **kwargs)
+        else:
+            raise Exception("Device not initialized.")
+    return wrapper
 
 class CamEnum(IntEnum):
     A = 1
@@ -215,11 +225,13 @@ class TestCamera(devices.CameraDevice):
         """Purge buffers on both camera and PC."""
         _logger.info("Purging buffers.")
 
+    @must_be_initialized
     def _create_buffers(self):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
         _logger.info("Creating buffers.")
 
+    @must_be_initialized
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
@@ -248,7 +260,7 @@ class TestCamera(devices.CameraDevice):
         Open the connection, connect properties and populate settings dict.
         """
         _logger.info('Initializing.')
-        time.sleep(0.5)
+        self._initialized = True
 
     def make_safe(self):
         if self._acquiring:
@@ -257,6 +269,7 @@ class TestCamera(devices.CameraDevice):
     def _on_disable(self):
         self.abort()
 
+    @must_be_initialized
     def _on_enable(self):
         _logger.info("Preparing for acquisition.")
         if self._acquiring:
@@ -282,6 +295,7 @@ class TestCamera(devices.CameraDevice):
     def get_trigger_type(self):
         return devices.TRIGGER_SOFT
 
+    @must_be_initialized
     def soft_trigger(self):
         _logger.info('Trigger received; self._acquiring is %s.',
                      self._acquiring)
@@ -315,7 +329,6 @@ class TestFilterWheel(FilterWheelBase):
         return self._position
 
     def set_position(self, position):
-        time.sleep(1)
         _logger.info("Setting position to %s", position)
         self._position = position
 
@@ -505,3 +518,77 @@ class DummyDSP(devices.Device):
     def set_client(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
         return devices.DataDevice.set_client(self, *args, **kwargs)
+
+
+class TestStageAxis(devices.StageAxis):
+    def __init__(self, limits: devices.AxisLimits) -> None:
+        super().__init__()
+        self._limits = limits
+        # Start axis in the middle of its range.
+        self._position = self._limits.lower + ((self._limits.upper
+                                                - self._limits.lower) /2.0)
+
+    @property
+    def position(self) -> float:
+        return self._position
+
+    @property
+    def limits(self) -> devices.AxisLimits:
+        return self._limits
+
+    def move_by(self, delta: float)-> None:
+        self.move_to(self._position + delta)
+
+    def move_to(self, pos: float) -> None:
+        if pos < self._limits.lower:
+            self._position = self._limits.lower
+        elif pos > self._limits.upper:
+            self._position = self._limits.upper
+        else:
+            self._position = pos
+
+
+class TestStage(devices.StageDevice):
+    """A test stage with any number of axis.
+
+    Args:
+        limits: map of test axis to be created and their limits.
+
+    .. code-block:: python
+
+        # Test XY motorized stage of square shape:
+        xy_stage = TestStage({
+            'X' : AxisLimits(0, 5000),
+            'Y' : AxisLimits(0, 5000),
+        })
+
+        # XYZ stage, on rectangular shape and negative coordinates:
+        xyz_stage = TestStage({
+            'X' : AxisLimits(-5000, 5000),
+            'Y' : AxisLimits(-10000, 12000),
+            'Z' : AxisLimits(0, 1000),
+        })
+
+    """
+    def __init__(self, limits: typing.Mapping[str, devices.AxisLimits],
+                 **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._axes = {name: TestStageAxis(lim) for name, lim in limits.items()}
+
+    def initialize(self) -> None:
+        pass
+
+    def _on_shutdown(self) -> None:
+        pass
+
+    @property
+    def axes(self) -> typing.Mapping[str, devices.StageAxis]:
+        return self._axes
+
+    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+        for name, rpos in delta.items():
+            self.axes[name].move_by(rpos)
+
+    def move_to(self, position: typing.Mapping[str, float]) -> None:
+        for name, pos in position.items():
+            self.axes[name].move_to(pos)
