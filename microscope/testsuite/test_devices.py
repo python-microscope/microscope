@@ -40,9 +40,7 @@ import unittest
 import unittest.mock
 
 import numpy
-import serial
 
-import microscope.devices
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 

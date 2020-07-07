@@ -17,11 +17,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import logging
+
 import serial
 
-import Pyro4
-
 from microscope import devices
+
+
+_logger = logging.getLogger(__name__)
 
 
 class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
@@ -39,7 +43,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # laser controller must run at 19200 baud, 8+1 bits,
         # no parity or flow control
         # timeout is recomended to be over 0.5
-        super(SapphireLaser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
             baudrate = baud, timeout = timeout,
             stopbits = serial.STOPBITS_ONE,
@@ -54,10 +58,10 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # Head ID value is a float point value,
         # but only the integer part is significant
         headID = int(float(self.send(b'?hid')))
-        self._logger.info("Sapphire laser serial number: [%s]" % headID)
+        _logger.info("Sapphire laser serial number: [%s]", headID)
 
     def _write(self, command):
-        count = super(SapphireLaser, self)._write(command)
+        count = super()._write(command)
         ## This device always writes backs something.  If echo is on,
         ## it's the whole command, otherwise just an empty line.  Read
         ## it and throw it away.
@@ -125,10 +129,10 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
     @devices.SerialDeviceMixIn.lock_comms
     def _on_enable(self):
-        self._logger.info("Turning laser ON.")
+        _logger.info("Turning laser ON.")
         # Turn on emission.
         response = self.send(b'l=1')
-        self._logger.info("l=1: [%s]" % response.decode())
+        _logger.info("l=1: [%s]", response.decode())
 
         # Enabling laser might take more than 500ms (default timeout)
         prevTimeout = self.connection.timeout
@@ -138,15 +142,15 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
         if not isON:
             # Something went wrong.
-            self._logger.error("Failed to turn on. Current status:\r\n")
-            self._logger.error(self.get_status())
+            _logger.error("Failed to turn on. Current status:\r\n")
+            _logger.error(self.get_status())
         return isON
 
 
     ## Turn the laser OFF.
     @devices.SerialDeviceMixIn.lock_comms
     def disable(self):
-        self._logger.info("Turning laser OFF.")
+        _logger.info("Turning laser OFF.")
         return self._write(b'l=0')
 
 
@@ -173,7 +177,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     @devices.SerialDeviceMixIn.lock_comms
     def _set_power_mw(self, mW):
         mW_str = '%.3f' % mW
-        self._logger.info("Setting laser power to %s mW." % mW_str)
+        _logger.info("Setting laser power to %s mW.", mW_str)
         # using send instead of _write, because
         # if laser is not on, warning is returned
         return self.send(b'p=%s' % mW_str.encode())

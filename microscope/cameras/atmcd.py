@@ -29,14 +29,18 @@
 
    Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
 """
-import re, sys, functools, os, platform
+
+import logging
+import sys, functools, os, platform
 import ctypes
 from ctypes import Structure, POINTER
 from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
 from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
-from ctypes import c_void_p
 from numpy.ctypeslib import ndpointer
-import Pyro4
+
+
+_logger = logging.getLogger(__name__)
+
 
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.
@@ -471,7 +475,7 @@ def lookup_status(code):
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
-class _meta(object):
+class _meta:
     pass
 
 STRING = c_char_p
@@ -555,7 +559,7 @@ class AtmcdException(Exception):
         self.status = status
 
 
-class dllFunction(object):
+class dllFunction:
     """A wrapper class for DLL functions to make them available in python."""
     def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
         # the library function
@@ -1127,9 +1131,8 @@ class ReadoutMode():
 
 
 from threading import Lock
-import functools
 from microscope import devices
-from microscope.devices import keep_acquiring, Setting, Binning, ROI
+from microscope.devices import keep_acquiring, Binning, ROI
 import time
 
 # A lock on the DLL used to ensure DLL calls act on the correct device.
@@ -1192,7 +1195,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def abort(self):
         """Abort acquisition."""
-        self._logger.debug('Disabling acquisition.')
+        _logger.debug('Disabling acquisition.')
         try:
             with self:
                 AbortAcquisition()
@@ -1210,7 +1213,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def initialize(self):
         """Initialize the library and hardware and create Setting objects."""
-        self._logger.info('Initializing ...')
+        _logger.info('Initializing ...')
         num_cams = GetAvailableCameras()
         if self._index >= num_cams:
             msg = "Requested camera %d, but only found %d cameras" % (self._index, num_cams)
@@ -1245,26 +1248,26 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                     for s in range(GetNumberHSSpeeds(ch, amp.value)):
                         speed = GetHSSpeed(ch, amp.value, s)
                         self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
-            self._logger.info("... initilized %s s/n %s" % (model, serial))
+            _logger.info("... initilized %s s/n %s", model, serial)
         ## Add settings. Some are write-only, so we set defaults here.
         # Mode
         name = 'readout mode'
         if self._readout_modes:
-            self.settings[name] = Setting(name, 'enum',
-                                          None,
-                                          self._set_readout_mode,
-                                          lambda: [str(mode) for mode in self._readout_modes])
-            self.settings[name].set(0)
+            self.add_setting(name, 'enum',
+                             None,
+                             self._set_readout_mode,
+                             lambda: [str(mode) for mode in self._readout_modes])
+            self.set_setting(name, 0)
         # TriggerMode
         name = 'TriggerMode'
-        self.settings[name] = Setting(name, 'enum',
-                                      None,
-                                      self._bind(SetTriggerMode),
-                                      TriggerMode)
+        self.add_setting(name, 'enum',
+                         None,
+                         self._bind(SetTriggerMode),
+                         TriggerMode)
         if self._caps.ulTriggerModes & AC_TRIGGERMODE_EXTERNAL:
-            self.settings[name].set(TriggerMode.EXTERNAL)
+            self.set_setting(name, TriggerMode.EXTERNAL)
         elif self._caps.ulTriggerModes & AC_TRIGGERMODE_CONTINUOUS:
-            self.settings[name].set(TriggerMode.SOFTWARE)
+            self.set_setting(name, TriggerMode.SOFTWARE)
         # Gain - device will use either EMGain or MCPGain
         name = 'gain'
         getter, setter, vrange = None, None, None
@@ -1279,9 +1282,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             setter = self._bind(SetMCPGain)
             vrange = self._bind(GetMCPGainRange)
         if getter or setter:
-            self.settings[name] = Setting(name, 'int',
-                                          getter, setter, vrange,
-                                          setter is None)
+            self.add_setting(name, 'int', getter, setter, vrange, setter is None)
         # Temperature
         name = 'TemperatureSetPoint'
         getter, setter, vrange = None, None, None
@@ -1290,77 +1291,73 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
             vrange = self._bind(GetTemperatureRange)
         if setter:
-            self.settings[name] = Setting(name, 'int',
-                                          None, setter, vrange,
-                                          setter is None)
+            self.add_setting(name, 'int', None, setter, vrange, setter is None)
         # Set a conservative default temperature set-point.
-        self.settings[name].set(-20)
+        self.set_setting(name, -20)
         # Fan control
         name = 'Temperature'
-        self.settings[name] = Setting(name, 'int',
-                                      self.get_sensor_temperature,
-                                      None, (None, None), True)
+        self.add_setting(name, 'int', self.get_sensor_temperature, None, (None, None), True)
         name = 'Fan mode'
-        self.settings[name] = Setting(name, 'enum',
-                                      None, # Can't query fan mode
-                                      self._bind(SetFanMode),
-                                      {0:'full', 1:'low', 2:'off'}
-                                      )
+        self.add_setting(name, 'enum',
+                         None, # Can't query fan mode
+                         self._bind(SetFanMode),
+                         {0:'full', 1:'low', 2:'off'}
+                         )
         # Cooler control
         name = 'Cooler Enabled'
-        self.settings[name] = Setting(name, 'bool',
-                                      None,
-                                      self._set_cooler_state,
-                                      None)
-        self.settings[name].set(True)
+        self.add_setting(name, 'bool',
+                         None,
+                         self._set_cooler_state,
+                         None)
+        self.set_setting(name, True)
         # Binning
         name = 'Binning'
-        self.settings[name] = Setting(name, 'tuple',
-                                      self.get_binning,
-                                      self.set_binning,
-                                      None)
+        self.add_setting(name, 'tuple',
+                         self.get_binning,
+                         self.set_binning,
+                         None)
         # Roi
         name = 'Roi'
-        self.settings[name] = Setting(name, 'tuple',
-                                      self.get_roi,
-                                      lambda roi: self.set_roi(*roi),
-                                      None)
+        self.add_setting(name, 'tuple',
+                         self.get_roi,
+                         lambda roi: self.set_roi(*roi),
+                         None)
         # BaselineClamp
         name = 'BaselineClamp'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetBaselineClamp))
-            self.settings[name].set(False)
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetBaselineClamp))
+            self.set_setting(name, False)
         # BaselineOffset
-        nam = 'BaselineOffset'
+        name = 'BaselineOffset'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
-            self.settings[name] = Setting(name, 'int',
-                                          None,
-                                          self._bind(SetBaselineOffset),
-                                          (-1000, 1000))
-            self.settings[name].set(0)
+            self.add_setting(name, 'int',
+                             None,
+                             self._bind(SetBaselineOffset),
+                             (-1000, 1000))
+            self.set_setting(name, 0)
         # EMAdvanced
         name = 'EMAdvanced'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetEMAdvanced))
-            self.settings[name].set(False)
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetEMAdvanced))
+            self.set_setting(name, False)
         # GateMode
         name = 'GateMode'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
             vrange = range(0, [5,6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR])
-            self.setings[name] = Setting(name, 'int',
-                                         None,
-                                         self._bind(SetGateMode),
-                                         vrange)
+            self.add_setting(name, 'int',
+                             None,
+                             self._bind(SetGateMode),
+                             vrange)
         # HighCapacity
         name = 'HighCapacity'
         if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
-            self.settings[name] = Setting(name, 'bool',
-                                          None,
-                                          self._bind(SetHighCapacity))
+            self.add_setting(name, 'bool',
+                             None,
+                             self._bind(SetHighCapacity))
 
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.
@@ -1395,18 +1392,19 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             CoolerOFF()
 
-        self._logger.info("Waiting for temperature to rise above -20C before shutdown ...")
+        _logger.info('Waiting for temperature to rise above -20C'
+                     ' before shutdown ...')
 
         while True:
             # Check temperature then release lock.
             with self:
                 t = GetTemperature()[1]
-                self._logger.info("... T = %dC" % t)
+                _logger.info("... T = %dC", t)
             if t > -20:
                 break
             time.sleep(10)
 
-        self._logger.info("Temperature is %dC: shutting down camera." % t)
+        _logger.info("Temperature is %dC: shutting down camera.", t)
 
         with self:
             ShutDown()
@@ -1425,7 +1423,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             SetReadMode(ReadMode.IMAGE)
             x, y = GetDetector()
             self._set_image()
-            if not IsTriggerModeAvailable(self.settings['TriggerMode'].get()):
+            if not IsTriggerModeAvailable(self.get_setting('TriggerMode')):
                 raise AtmcdException("Trigger mode is not valid.")
             StartAcquisition()
         return True
@@ -1479,7 +1477,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
     def _set_readout_mode(self, mode_index):
         """Configure channel, amplifier and VS-speed."""
         mode = self._readout_modes[mode_index]
-        self._logger.info("Setting readout mode to %s" % mode)
+        _logger.info("Setting readout mode to %s", mode)
         with self:
             SetADChannel(mode.channel)
             SetOutputAmplifier(mode.amp)
@@ -1502,7 +1500,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def get_trigger_type(self):
         """Return the microscope.devices trigger type."""
-        trig = self.settings['TriggerMode'].get()
+        trig = self.get_setting('TriggerMode')
         if trig == TriggerMode.BULB:
             return devices.TRIGGER_DURATION
         elif trig == TriggerMode.SOFTWARE:

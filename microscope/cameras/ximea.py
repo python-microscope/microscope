@@ -19,59 +19,61 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-import Pyro4
-import numpy as np
+import logging
 
-from microscope import devices
-from microscope.devices import keep_acquiring, Binning, ROI
-
-#import ximea python module.
 from ximea import xiapi
 
-
-# Trigger mode to type.
-TRIGGER_MODES = {
-    'internal': None,
-    'external': devices.TRIGGER_BEFORE,
-    'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
-    'software': devices.TRIGGER_SOFT,
-}
-
-#trig types from define file....
-# XI_TRG_SOURCE = {
-#     "XI_TRG_OFF": c_uint(0),    #Camera works in free run mode.
-#     "XI_TRG_EDGE_RISING": c_uint(1),    #External trigger (rising edge).
-#     "XI_TRG_EDGE_FALLING": c_uint(2),    #External trigger (falling edge).
-#     "XI_TRG_SOFTWARE": c_uint(3),    #Software(manual) trigger.
-#     "XI_TRG_LEVEL_HIGH": c_uint(4),    #Specifies that the trigger is considered valid as long as the level of the source signal is high.
-#     "XI_TRG_LEVEL_LOW": c_uint(5),    #Specifies that the trigger is considered valid as long as the level of the source signal is low.
-#    }
+from microscope import devices
 
 
+_logger = logging.getLogger(__name__)
 
-@Pyro4.behavior('single')
+
 class XimeaCamera(devices.CameraDevice):
-    def __init__(self, **kwargs):
-        super(XimeaCamera, self).__init__(**kwargs)
+    def __init__(self, dev_id=0, **kwargs):
+        super().__init__(**kwargs)
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = False
-        self.Roi=ROI(None,None,None,None)
+        self._handle = None
+        self._dev_id = dev_id
+        self._roi = devices.ROI(None,None,None,None)
 
     def _fetch_data(self):
-        if self._acquiring and self._triggered:
-            self.handle.get_image(self.img)
-            self._logger.info('Sending image')
+        if not self._acquiring:
+            return
+
+        trigger_type = self._handle.get_trigger_source()
+        if trigger_type == 'XI_TRG_SOFTWARE' and not not self._triggered:
+            return
+        # else, we are either on 1) software trigger mode and have
+        # already triggered, in which case there should be an image
+        # waiting for us; or 2) any hardware trigger mode, in which
+        # case we try to fetch an image and either we get one or it
+        # times out if there is none.
+
+        try:
+            self._handle.get_image(self.img)
+        except Exception as err:
+            if getattr(err, 'status', None) == 10:
+                # This is a Timeout error
+                return
+            else:
+                raise err
+
+        data = self.img.get_image_data_numpy()
+        _logger.info("Fetched imaged with dims %s and size %s.",
+                     data.shape, data.size)
+        _logger.info('Sending image')
+        if trigger_type == 'XI_TRG_SOFTWARE':
             self._triggered = False
-            data = np.array(list(self.img.get_image_data_raw()),dtype=np.uint16).reshape(self.img.width,self.img.height)
-            return data
+        return data
 
     def abort(self):
-        self._logger.info('Disabling acquisition.')
+        _logger.info('Disabling acquisition.')
         if self._acquiring:
             self._acquiring = False
-        self.handle.stop_acquisition()
+        self._handle.stop_acquisition()
 
     def initialize(self):
         """Initialise the camera.
@@ -79,14 +81,27 @@ class XimeaCamera(devices.CameraDevice):
         Open the connection, connect properties and populate settings dict.
         """
         try:
-            self.handle = xiapi.Camera()
-            self.handle.open_device()
+            self._handle = xiapi.Camera(self._dev_id)
+            self._handle.open_device()
         except:
             raise Exception("Problem opening camera.")
-        if self.handle == None:
+        if self._handle is None:
             raise Exception("No camera opened.")
-        self._logger.info('Initializing.')
-        self.img=xiapi.Image()
+
+        _logger.info('Initializing.')
+        # Try set camera into rising-edge hardware trigger mode.  If
+        # that can't be done set it to software trigger mode.
+        # TODO: even if the trigger source is set to edge rising, the
+        # camera can still be triggered by software.  For now, this
+        # lets us work with hardware and software triggers without
+        # having a setting for that (but we will need to change this
+        # one day). See issue #131.
+        try:
+            self._handle.set_trigger_source('XI_TRG_EDGE_RISING')
+        except:
+            self._handle.set_trigger_source('XI_TRG_SOFTWARE')
+        # create img buffer to hold images.
+        self.img = xiapi.Image()
 
     def make_safe(self):
         if self._acquiring:
@@ -96,68 +111,100 @@ class XimeaCamera(devices.CameraDevice):
         self.abort()
 
     def _on_enable(self):
-        self._logger.info("Preparing for acquisition.")
+        _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
         self._acquiring = True
-        #actually start camera
-        self.handle.start_acquisition()
-        self._logger.info("Acquisition enabled.")
+        # actually start camera
+        self._handle.start_acquisition()
+        _logger.info("Acquisition enabled.")
         return True
 
     def set_exposure_time(self, value):
-        #exposure times are set in us.
-        self.handle.set_exposure(int(value*1.0E6))
+        # exposure times are set in us.
+        try:
+            self._handle.set_exposure(int(value * 1000000))
+        except Exception as err:
+            _logger.debug("set_exposure_time exception: %s", err)
 
     def get_exposure_time(self):
-        #exposure times are in us, so multiple by 1E-6 to get seconds.
-        return (self.handle.get_exposure()*1.0E-6) 
+        # exposure times are in us, so multiple by 1E-6 to get seconds.
+        return (self._handle.get_exposure() * 1.0E-6)
 
     def get_cycle_time(self):
-        return (1.0/self.handle.get_framerate())
+        return (1.0/self._handle.get_framerate())
 
     def _get_sensor_shape(self):
-        return (self.img.width,self.image.height)
+        return (self._handle.get_width(), self._handle.get_height())
 
+    def get_trigger_source(self):
+        return (self._handle.get_trigger_source())
 
     def get_trigger_type(self):
-        trig=self.handle.get_trigger_source()
-        if trig==XI_TRG_SOFTWARE:
+        trig = self._handle.get_trigger_source()
+        _logger.info("called get trigger type %s", trig)
+        if trig == 'XI_TRG_SOFTWARE':
             return devices.TRIGGER_SOFT
-        elif trig==XI_TRG_EDGE_RISING:
+        elif trig == 'XI_TRG_EDGE_RISING':
             return devices.TRIGGER_BEFORE
-            
-    def set_trigger_type(self, trigger):
-        if (trigger == devices.TRIGGER_SOFT):
-            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_SOFTWARE'])
-        elif (trigger == devices.TRIGGER_BEFORE):
-            self.handle.set_triger_source(XI_TG_SOURCE['Xi_TRG_EDGE_RISING'])
-            #define digial input mode of trigger
-            self.handle.set_gpi_selector(1)
-            self.handle.set_gpi_mode(XI_GPI_TRIGGER)
+
+    def set_trigger_source(self, trig):
+        _logger.info("Set trigger source %s", trig)
+        reenable = False
+        if self._acquiring:
+            self.abort()
+            reenable = True
+        result = self._handle.set_trigger_source(trig)
+        _logger.info("Set trigger source result  %s", result)
+        if reenable:
+            self._on_enable()
+        return
+
+    def set_trigger_type(self, trig):
+        _logger.info("Set trigger type %s", trig)
+        self.abort()
+
+        if trig is 0:
+            self._handle.set_trigger_source('XI_TRG_SOFTWARE')
+        elif trig is 1:
+            self._handle.set_trigger_source('XI_TRG_EDGE_RISING')
+            # define digial input mode of trigger
+            self._handle.set_gpi_selector('XI_GPI_PORT1')
+            self._handle.set_gpi_mode('XI_GPI_TRIGGER')
+            self._handle.set_gpo_selector('XI_GPO_PORT1')
+            self._handle.set_gpo_mode('XI_GPO_EXPOSURE_ACTIVE')
+
+        self._on_enable()
+
+        result = self._handle.get_trigger_source()
+        _logger.info("Trigger type %s", result)
+        _logger.info("GPI Selector %s", self._handle.get_gpi_selector())
+        _logger.info("GPI Mode %s", self._handle.get_gpi_mode())
+
+        return
 
     def soft_trigger(self):
-        self._logger.info('Trigger received; self._acquiring is %s.'
-                          % self._acquiring)
+        _logger.info('Soft trigger received; self._acquiring is %s.',
+                     self._acquiring)
         if self._acquiring:
+            self._handle.set_trigger_software(True)
             self._triggered = True
 
     def _get_binning(self):
-         return (1,1)
+        return (1, 1)
 
-    @keep_acquiring
+    @devices.keep_acquiring
     def _set_binning(self, h, v):
         return False
 
     def _get_roi(self):
-        return self.Roi
+        return self._roi
 
-    @keep_acquiring
+    @devices.keep_acquiring
     def _set_roi(self, x, y, width, height):
-        self.Roi = ROI(x, y, width, height)
+        self._roi = devices.ROI(x, y, width, height)
 
     def _on_shutdown(self):
         if self._acquiring:
-            self.handle.stop_acquisition()
-        self.handle.close_device()
-
+            self._handle.stop_acquisition()
+        self._handle.close_device()

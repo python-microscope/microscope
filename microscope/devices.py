@@ -28,20 +28,23 @@ import abc
 import functools
 import itertools
 import logging
-import time
-from ast import literal_eval
-from collections import OrderedDict
-from threading import Thread
-import threading
-import Pyro4
-import numpy
 import queue
+import threading
+import time
+import typing
 
+from ast import literal_eval
+from collections import OrderedDict, namedtuple
+from threading import Thread
 from enum import Enum, EnumMeta
 
 import numpy
+import Pyro4
 
-from collections import namedtuple
+
+_logger = logging.getLogger(__name__)
+
+
 # A tuple that defines a region of interest.
 ROI = namedtuple('ROI', ['left', 'top', 'width', 'height'])
 # A tuple containing parameters for horizontal and vertical binning.
@@ -72,7 +75,10 @@ DTYPES = {'int': ('int', tuple),
 _call_if_callable = lambda f: f() if callable(f) else f
 
 
-class Setting():
+class _Setting():
+    # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
+    # Settings classes should be private: devices should use a factory method
+    # rather than instantiate settings directly; most already use add_setting for this.
     def __init__(self, name, dtype, get_func, set_func=None, values=None, readonly=False):
         """Create a setting.
 
@@ -146,7 +152,7 @@ class Setting():
             return [(v.value, v.name) for v in self._values]
         values = _call_if_callable(self._values)
         if values is not None:
-            if self.dtype is 'enum':
+            if self.dtype == 'enum':
                 if isinstance(values, dict):
                     return list(values.items())
                 else:
@@ -173,7 +179,7 @@ def device(cls, host, port, conf={}, uid=None):
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
-class FloatingDeviceMixin(object):
+class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
@@ -182,30 +188,24 @@ class FloatingDeviceMixin(object):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
-    __metaclass__ = abc.ABCMeta
-
     @abc.abstractmethod
     def get_id(self):
         """Return a unique hardware identifier, such as a serial number."""
         pass
 
 
-class Device(object):
+class Device(metaclass=abc.ABCMeta):
     """A base device class. All devices should subclass this class.
 
     Args:
         index (int): the index of the device on a shared library.
             This argument is added by the deviceserver.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, index=None):
         self.enabled = None
         # A list of settings. (Can't serialize OrderedDict, so use {}.)
-        self.settings = OrderedDict()
-        # We fetch a logger here, but it can't log anything until
-        # a handler is attached after we've identified this device.
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._settings = OrderedDict()
         self._index = index
 
     def __del__(self):
@@ -242,7 +242,7 @@ class Device(object):
         try:
             self.enabled = self._on_enable()
         except Exception as err:
-            self._logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _on_enable:", exc_info=err)
 
     @abc.abstractmethod
     def _on_shutdown(self):
@@ -257,9 +257,9 @@ class Device(object):
     def shutdown(self):
         """Shutdown the device for a prolonged period of inactivity."""
         self.disable()
-        self._logger.info("Shutting down ... ... ...")
+        _logger.info("Shutting down ... ... ...")
         self._on_shutdown()
-        self._logger.info("... ... ... ... shut down completed.")
+        _logger.info("... ... ... ... shut down completed.")
 
     def make_safe(self):
         """Put the device into a safe state."""
@@ -267,8 +267,6 @@ class Device(object):
 
     def add_setting(self, name, dtype, get_func, set_func, values, readonly=False):
         """Add a setting definition.
-
-        Can also use self.settings[name] = Setting(name, dtype,...)
 
         :param name: the setting's name
         :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
@@ -293,72 +291,73 @@ class Device(object):
             raise Exception("Invalid values type for %s '%s': expected function or %s" %
                             (dtype, name, DTYPES[dtype][1:]))
         else:
-            self.settings[name] = Setting(name, dtype, get_func, set_func, values, readonly)
+            self._settings[name] = _Setting(name, dtype, get_func, set_func,
+                                            values, readonly)
 
     def get_setting(self, name):
         """Return the current value of a setting."""
         try:
-            return self.settings[name].get()
+            return self._settings[name].get()
         except Exception as err:
-            self._logger.error("in get_setting(%s):" % (name), exc_info=err)
+            _logger.error("in get_setting(%s):", name, exc_info=err)
             raise
 
     def get_all_settings(self):
         """Return ordered settings as a list of dicts."""
         try:
-            return {k: v.get() for k, v in self.settings.items()}
+            return {k: v.get() for k, v in self._settings.items()}
         except Exception as err:
-            self._logger.error("in get_all_settings:", exc_info=err)
+            _logger.error("in get_all_settings:", exc_info=err)
             raise
 
     def set_setting(self, name, value):
         """Set a setting."""
         try:
-            self.settings[name].set(value)
+            self._settings[name].set(value)
         except Exception as err:
-            self._logger.error("in set_setting(%s):" % (name), exc_info=err)
+            _logger.error("in set_setting(%s):", name, exc_info=err)
             raise
 
     def describe_setting(self, name):
         """Return ordered setting descriptions as a list of dicts."""
-        return self.settings[name].describe()
+        return self._settings[name].describe()
 
     def describe_settings(self):
         """Return ordered setting descriptions as a list of dicts."""
-        return [(k, v.describe()) for (k, v) in self.settings.items()]
+        return [(k, v.describe()) for (k, v) in self._settings.items()]
 
     def update_settings(self, incoming, init=False):
         """Update settings based on dict of settings and values."""
         if init:
             # Assume nothing about state: set everything.
-            my_keys = set(self.settings.keys())
+            my_keys = set(self._settings.keys())
             their_keys = set(incoming.keys())
             update_keys = my_keys & their_keys
             if update_keys != my_keys:
                 missing = ', '.join([k for k in my_keys - their_keys])
                 msg = 'update_settings init=True but missing keys: %s.' % missing
-                self._logger.debug(msg)
+                _logger.debug(msg)
                 raise Exception(msg)
         else:
             # Only update changed values.
-            my_keys = set(self.settings.keys())
+            my_keys = set(self._settings.keys())
             their_keys = set(incoming.keys())
             update_keys = set(key for key in my_keys & their_keys
                               if self.get_setting(key) != incoming[key])
         results = {}
         # Update values.
         for key in update_keys:
-            if key not in my_keys or not self.settings[key].set:
+            if key not in my_keys or not self._settings[key].set:
                 # Setting not recognised or no set function implemented
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if _call_if_callable(self.settings[key].readonly):
+            if _call_if_callable(self._settings[key].readonly):
                 continue
-            self.settings[key].set(incoming[key])
+            self._settings[key].set(incoming[key])
         # Read back values in second loop.
         for key in update_keys:
-            results[key] = self.settings[key].get()
+            results[key] = self._settings[key].get()
         return results
 
 
@@ -376,7 +375,7 @@ def keep_acquiring(func):
     return wrapper
 
 
-class DataDevice(Device):
+class DataDevice(Device, metaclass=abc.ABCMeta):
     """A data capture device.
 
     This class handles a thread to fetch data from a device and dispatch
@@ -391,11 +390,9 @@ class DataDevice(Device):
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
-        super(DataDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # A thread to fetch and dispatch data.
         self._fetch_thread = None
         # A flag to control the _fetch_thread.
@@ -433,7 +430,7 @@ class DataDevice(Device):
         Ensures that a data handling threads are running.
         Implement device-specific code in _on_enable .
         """
-        self._logger.debug("Enabling ...")
+        _logger.debug("Enabling ...")
         if self._using_callback:
             if self._fetch_thread:
                 self._fetch_thread_run = False
@@ -450,14 +447,14 @@ class DataDevice(Device):
         try:
             result = self._on_enable()
         except Exception as err:
-            self._logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _on_enable:", exc_info=err)
             self.enabled = False
             raise err
         if not result:
             self.enabled = False
         else:
             self.enabled = True
-        self._logger.debug("... enabled.")
+        _logger.debug("... enabled.")
         return self.enabled
 
 
@@ -470,7 +467,7 @@ class DataDevice(Device):
             if self._fetch_thread.is_alive():
                 self._fetch_thread_run = False
                 self._fetch_thread.join()
-        super(DataDevice, self).disable()
+        super().disable()
 
     @abc.abstractmethod
     def _fetch_data(self):
@@ -498,7 +495,8 @@ class DataDevice(Device):
             client.receiveData(data, timestamp)
         except (Pyro4.errors.ConnectionClosedError, Pyro4.errors.CommunicationError):
             # Client not listening
-            self._logger.info("Removing %s from client stack: disconnected." % client._pyroUri)
+            _logger.info("Removing %s from client stack: disconnected.",
+                         client._pyroUri)
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
         except:
@@ -525,7 +523,7 @@ class DataDevice(Device):
             if err:
                 # Raising an exception will kill the dispatch loop. We need another
                 # way to notify the client that there was a problem.
-                self._logger.error("in _dispatch_loop:", exc_info=err)
+                _logger.error("in _dispatch_loop:", exc_info=err)
             self._dispatch_buffer.task_done()
 
     def _fetch_loop(self):
@@ -536,7 +534,7 @@ class DataDevice(Device):
             try:
                 data = self._fetch_data()
             except Exception as e:
-                self._logger.error("in _fetch_loop:", exc_info=e)
+                _logger.error("in _fetch_loop:", exc_info=e)
                 # Raising an exception will kill the fetch loop. We need another
                 # way to notify the client that there was a problem.
                 timestamp = time.time()
@@ -592,15 +590,15 @@ class DataDevice(Device):
             self._client = None
         # _client uses a setter. Log the result of assignment.
         if self._client is None:
-            self._logger.info("Current client is None.")
+            _logger.info("Current client is None.")
         else:
-            self._logger.info("Current client is %s." % str(self._client))
+            _logger.info("Current client is %s.", str(self._client))
 
 
     @keep_acquiring
     def update_settings(self, settings, init=False):
         """Update settings, toggling acquisition if necessary."""
-        super(DataDevice, self).update_settings(settings, init)
+        super().update_settings(settings, init)
 
     # noinspection PyPep8Naming
     def receiveClient(self, client_uri):
@@ -642,7 +640,7 @@ class CameraDevice(DataDevice):
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
     def __init__(self, **kwargs):
-        super(CameraDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ['default']
         # The index of the current readout mode.
@@ -772,7 +770,7 @@ class CameraDevice(DataDevice):
     @abc.abstractmethod
     def _get_roi(self):
         """Return the ROI as it is on hardware."""
-        return ROI(left, top, width, height)
+        raise NotImplementedError()
 
     def get_roi(self):
         """Return ROI as a rectangle (left, top, width, height).
@@ -839,7 +837,7 @@ class TriggerMode(Enum):
     START = 4
 
 
-class TriggerTargetMixIn(object):
+class TriggerTargetMixIn(metaclass=abc.ABCMeta):
     """MixIn for Device that may be the target of a hardware trigger.
 
     Subclasses must set a `_trigger_type` and `_trigger_mode` property
@@ -852,8 +850,6 @@ class TriggerTargetMixIn(object):
         supported.
 
     """
-    __metaclass__ = abc.ABCMeta
-
     @property
     def trigger_mode(self):
         return self._trigger_mode
@@ -868,7 +864,7 @@ class TriggerTargetMixIn(object):
         pass
 
 
-class SerialDeviceMixIn(object):
+class SerialDeviceMixIn(metaclass=abc.ABCMeta):
     """MixIn for devices that are controlled via serial.
 
     Currently handles the flushing and locking of the comms channel
@@ -878,10 +874,8 @@ class SerialDeviceMixIn(object):
     TODO: add more logic to handle the code duplication of serial
     devices.
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, **kwargs):
-        super(SerialDeviceMixIn, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         ## TODO: We should probably construct the connection here but
         ##       the Serial constructor takes a lot of arguments, and
         ##       it becomes tricky to separate those from arguments to
@@ -927,7 +921,7 @@ class SerialDeviceMixIn(object):
         return wrapper
 
 
-class DeformableMirror(Device):
+class DeformableMirror(Device, metaclass=abc.ABCMeta):
     """Base class for Deformable Mirrors.
 
     There is no method to reset or clear a deformable mirror.  While
@@ -945,31 +939,25 @@ class DeformableMirror(Device):
     destroying and re-constructing the DeformableMirror object
     provides the most obvious solution.
     """
-    __metaclass__ = abc.ABCMeta
-
     @abc.abstractmethod
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Constructor.
 
-        Subclasses must define the following properties during
-        construction:
-
-            _n_actuators : int
-
-        In addition, the private properties `_patterns` and
-        `_pattern_idx` are initialized to None to support the queueing
-        of patterns and software triggering.
+        The private properties `_patterns` and `_pattern_idx` are
+        initialized to `None` to support the queueing of patterns and
+        software triggering.
         """
-        super(DeformableMirror, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
-        self._patterns = None
-        self._patterns_idx = None
+        self._patterns = None # type: typing.Optional[numpy.ndarray]
+        self._pattern_idx = -1 # type: int
 
     @property
-    def n_actuators(self):
-        return self._n_actuators
+    @abc.abstractmethod
+    def n_actuators(self) -> int:
+        raise NotImplementedError()
 
-    def _validate_patterns(self, patterns):
+    def _validate_patterns(self, patterns: numpy.ndarray) -> None:
         """Validate the shape of a series of patterns.
 
         Only validates the shape of the patterns, not if the values
@@ -981,18 +969,18 @@ class DeformableMirror(Device):
         if patterns.ndim > 2:
             raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
                             % patterns.ndim)
-        elif patterns.shape[-1] != self._n_actuators:
+        elif patterns.shape[-1] != self.n_actuators:
             raise Exception(("PATTERNS length of second dimension '%d' differs"
                              " differs from number of actuators '%d'"
-                             % (patterns.shape[-1], self._n_actuators)))
+                             % (patterns.shape[-1], self.n_actuators)))
 
     @abc.abstractmethod
-    def apply_pattern(self, pattern):
+    def apply_pattern(self, pattern: numpy.ndarray) -> None:
         """Apply this pattern.
         """
         pass
 
-    def queue_patterns(self, patterns):
+    def queue_patterns(self, patterns: numpy.ndarray) -> None:
         """Send values to the mirror.
 
         Parameters
@@ -1009,7 +997,7 @@ class DeformableMirror(Device):
         self._patterns = patterns
         self._pattern_idx = -1 # none is applied yet
 
-    def next_pattern(self):
+    def next_pattern(self) -> None:
         """Apply the next pattern in the queue.
 
         A convenience fallback is provided.
@@ -1019,19 +1007,17 @@ class DeformableMirror(Device):
         self._pattern_idx += 1
         self.apply_pattern(self._patterns[self._pattern_idx,:])
 
-    def initialize(self):
+    def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self):
+    def _on_shutdown(self) -> None:
         pass
 
 
-class LaserDevice(Device):
-    __metaclass__ = abc.ABCMeta
-
+class LaserDevice(Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs):
-        super(LaserDevice, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._set_point = None
 
     @abc.abstractmethod
@@ -1087,18 +1073,17 @@ class LaserDevice(Device):
         self._set_power_mw(mw)
 
 
-class FilterWheelBase(Device):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, filters=[], positions=0, **kwargs):
-        super(FilterWheelBase, self).__init__(**kwargs)
+class FilterWheelBase(Device, metaclass=abc.ABCMeta):
+    def __init__(self, filters: typing.Union[typing.Mapping[int, str], typing.Iterable] = [],
+                 positions: int = 0, **kwargs) -> None:
+        super().__init__(**kwargs)
         if isinstance(filters, dict):
             self._filters = filters
         else:
             self._filters = {i:f for (i, f) in enumerate(filters)}
         self._inv_filters = {val: key for key, val in self._filters.items()}
         if not hasattr(self, '_positions'):
-            self._positions = positions
+            self._positions = positions # type: int
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
@@ -1109,19 +1094,55 @@ class FilterWheelBase(Device):
                          lambda: (0, self.get_num_positions()) )
 
 
-    def get_num_positions(self):
+    def get_num_positions(self) -> int:
         """Returns the number of wheel positions."""
         return(max( self._positions, len(self._filters)))
 
     @abc.abstractmethod
-    def get_position(self):
+    def get_position(self) -> int:
         """Return the wheel's current position"""
         return 0
 
     @abc.abstractmethod
-    def set_position(self, position):
+    def set_position(self, position: int) -> None:
         """Set the wheel position."""
         pass
 
-    def get_filters(self):
+    def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
         return [(k,v) for k,v in self._filters.items()]
+
+
+class ControllerDevice(Device, metaclass=abc.ABCMeta):
+    """Device that controls multiple devices.
+
+    Controller devices usually control multiple stage devices,
+    typically a XY and Z stage, a filterwheel, and a light source.
+    Controller devices also include multi light source engines.
+
+    Each of the controlled devices requires a name.  The choice of
+    name and its documentation is left to the concrete class.
+
+    Initialising and shutting down a controller device must initialise
+    and shutdown the controlled devices.  Concrete classes should be
+    careful to prevent that the shutdown of a controlled device does
+    not shutdown the controller and the other controlled devices.
+    This might require that controlled devices do nothing as part of
+    their shutdown and initialisation.
+
+    """
+
+    def initialize(self) -> None:
+        super().initialize()
+        for d in self.devices.values():
+            d.initialize()
+
+    @property
+    @abc.abstractmethod
+    def devices(self) -> typing.Mapping[str, Device]:
+        """Map of names to the controlled devices."""
+        raise NotImplementedError()
+
+    def _on_shutdown(self) -> None:
+        for d in self.devices.values():
+            d.shutdown()
+        super()._on_shutdown()
