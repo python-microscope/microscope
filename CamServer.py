@@ -1,0 +1,29 @@
+"""Config file for devicebase.
+
+Import device classes, then define entries in DEVICES as:
+ devices(CLASS, HOST, PORT, other_args)
+"""
+## Function to create record for each device.
+from microscope.devices import device
+## Import device modules/classes here.
+## from microscope.testsuite.devices import TestCamera
+## from microscope.testsuite.devices import TestLaser
+## from microscope.testsuite.devices import TestFilterWheel
+from microscope.cameras.andorsdk3 import AndorSDK3
+
+
+DEVICES = [
+device(AndorSDK3, '10.6.19.30', 8001,)  # {'transform': (0, 1, 1)}),  # timeout=1, buffer_length=, index=0,
+# device(TestCamera, '10.6.19.30', 8005, otherargs=1,),
+# device(TestCamera, '10.6.19.30', 8006, otherargs=1,),
+]
+
+'''
+#DEVICES = [
+#device(TestCamera, '10.6.19.30', 8005, otherargs=1,),
+#device(TestCamera, '10.6.19.30', 8006, otherargs=1,),
+#device(TestLaser, '10.6.19.30', 8006),
+#device(TestFilterWheel, '10.6.19.30', 8007,
+#       filters=[(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]),
+#]
+'''
