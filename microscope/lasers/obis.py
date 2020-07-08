@@ -127,7 +127,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
                          ]:
             self._write(cmd)
             response = self._readline()
-            self._logger.info(msg, response.decode())
+            _logger.info(msg, response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
@@ -166,6 +166,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     @devices.SerialDeviceMixIn.lock_comms
     def get_is_on(self):
+        """Return True if the laser is currently able to produce light."""
         self._write(b'SOURce:AM:STATe?')
         response = self._readline()
         _logger.info("Are we on? [%s]", response.decode())
@@ -185,7 +186,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         return float(power_w.decode()) * 1000.0
 
     @devices.SerialDeviceMixIn.lock_comms
-    def get_power_mw(self):
+    def _get_power_mw(self):
         if not self.get_is_on():
             return 0.0
         self._write(b'SOURce:POWer:LEVel?')
