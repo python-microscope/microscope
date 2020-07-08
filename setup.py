@@ -17,7 +17,7 @@ import setuptools.command.sdist
 
 
 project_name = 'microscope'
-project_version = '0.4.0+dev'
+project_version = '0.5.0+dev'
 
 
 ## setup.py is used for both maintainers actions (build documentation,
@@ -165,6 +165,7 @@ setuptools.setup(
     python_requires = '>=3.5',
 
     install_requires = [
+        "Pillow",
         "Pyro4",
         "hidapi",
         "numpy",

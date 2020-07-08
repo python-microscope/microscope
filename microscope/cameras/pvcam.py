@@ -1215,7 +1215,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
 
         # Add common settings.
         self.add_setting('exposure time',
-                         float,
+                         'float',
                          lambda: self.exposure_time,
                          self.set_exposure_time,
                          lambda: (1e-6, 1) )
@@ -1225,7 +1225,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                          lambda value: setattr(self, '_trigger', value),
                          {k: v.label for k,v in TRIGGER_MODES.items()} )
         self.add_setting('circular buffer length',
-                         int,
+                         'int',
                          lambda: self._circ_buffer_length,
                          lambda value: setattr(self, '_circ_buffer_length', value),
                          (2, 100))
