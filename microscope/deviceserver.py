@@ -322,6 +322,14 @@ def serve_devices(devices, exit_event=None):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
+        # Floating devices are devices that can only be identified
+        # after having been initialized, so the constructor will
+        # return any device that it supports.  To work around this we
+        # map all device uid to host/port first.  After the
+        # DeviceServer constructs the device, it can check on the map
+        # where to serve it.  For non floating devices that
+        # information is part of the device definition, no map is
+        # needed.
         uid_to_host = {}
         uid_to_port = {}
         if issubclass(cls, microscope.devices.FloatingDeviceMixin):
