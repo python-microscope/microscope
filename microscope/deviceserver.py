@@ -31,6 +31,7 @@ import multiprocessing
 import signal
 import sys
 import time
+import typing
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from threading import Thread
@@ -152,7 +153,9 @@ def _register_device(pyro_daemon, device, obj_id=None) -> None:
 
 
 class DeviceServer(multiprocessing.Process):
-    def __init__(self, device_def, id_to_host, id_to_port, exit_event=None):
+    def __init__(self, device_def, id_to_host: typing.Mapping[str, str],
+                 id_to_port: typing.Mapping[str, int],
+                 exit_event: typing.Optional[multiprocessing.Event] = None):
         """Initialise a device and serve at host/port according to its id.
 
         :param device_def: definition of the device
@@ -319,17 +322,14 @@ def serve_devices(devices, exit_event=None):
         # Keep track of how many of these classes we have set up.
         # Some SDKs need this information to index devices.
         count = 0
+        uid_to_host = {}
+        uid_to_port = {}
         if issubclass(cls, microscope.devices.FloatingDeviceMixin):
             # Need to provide maps of uid to host and port.
-            uid_to_host = {}
-            uid_to_port = {}
             for dev in devs:
                 uid = dev['uid']
                 uid_to_host[uid] = dev['host']
                 uid_to_port[uid] = dev['port']
-        else:
-            uid_to_host = None
-            uid_to_port = None
 
         for dev in devs:
             dev['conf']['index'] = count
