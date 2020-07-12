@@ -225,8 +225,7 @@ class DeviceServer(multiprocessing.Process):
                 time.sleep(5)
             else:
                 break
-        if (isinstance(self._device, microscope.devices.FloatingDeviceMixin)
-            and len(self._id_to_host) > 1):
+        if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
             uid = str(self._device.get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))

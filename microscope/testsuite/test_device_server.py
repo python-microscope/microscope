@@ -33,6 +33,27 @@ import microscope.deviceserver
 from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
+from microscope.testsuite.devices import TestFloatingDevice
+
+
+class DeviceServerExceptionQueue(microscope.deviceserver.DeviceServer):
+    """`DeviceServer` that queues an exception during `run`.
+
+    A `DeviceServer` instance runs on another process so if it fails
+    we can't easily check why.  This subclass will put any exception
+    that happens during `run()` into the given queue so that the
+    parent process can check it.
+
+    """
+    def __init__(self, queue: multiprocessing.Queue, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._queue = queue
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as ex:
+            self._queue.put(ex)
 
 
 def _patch_out_device_server_logs(func):
@@ -74,6 +95,28 @@ class BaseTestServeDevices(unittest.TestCase):
         self.p.terminate()
         self.p.join(self.TIMEOUT)
         self.assertFalse(self.p.is_alive(),
+                         "deviceserver not dead after SIGTERM")
+
+
+class BaseTestDeviceServer(unittest.TestCase):
+    """TestCase that starts DeviceServer on separate process.
+
+    Subclasses should define the class attribute `args`, which is used
+    to start the `DeviceServer` and implement `test_*` methods.
+
+    """
+    args = [] # args to construct DeviceServer
+    TIMEOUT = 5 # time to wait after join() during tearDown
+    @_patch_out_device_server_logs
+    def setUp(self):
+        self.queue = multiprocessing.Queue()
+        self.process = DeviceServerExceptionQueue(self.queue, *self.args)
+        self.process.start()
+
+    def tearDown(self):
+        self.process.terminate()
+        self.process.join(self.TIMEOUT)
+        self.assertFalse(self.process.is_alive(),
                          "deviceserver not dead after SIGTERM")
 
 
@@ -154,6 +197,28 @@ class TestConfigLoader(unittest.TestCase):
     def test_no_file_extension(self):
         """Reading of config file does not require file extension"""
         self._test_load_source('foobar')
+
+
+class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
+    # This test will create a floating device with a UID different
+    # (foo) than what appears on the config (bar).  This is what
+    # happens if there are two floating devices on the system (foo and
+    # bar) but the config lists only one of them (bar) but the other
+    # one is served instead (foo).  See issue #153.
+    args = [
+        device(TestFloatingDevice, '127.0.01', 8001, {'uid' : 'foo'},
+               uid='bar'),
+        {'bar' : '127.0.0.1'},
+        {'bar' : 8001},
+        multiprocessing.Event(),
+    ]
+    def test_fail_with_wrong_uid(self):
+        """DeviceServer fails if it gets a FloatingDevice with another UID """
+        time.sleep(1)
+        self.assertFalse(self.process.is_alive(),
+                         'expected DeviceServer to have errored and be dead')
+        self.assertRegex(str(self.queue.get_nowait()),
+                         'Host or port not found for device foo')
 
 
 if __name__ == '__main__':
