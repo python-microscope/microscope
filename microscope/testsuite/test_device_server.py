@@ -34,25 +34,21 @@ from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
 
-def _serve_without_logs(*args, **kwargs):
-    """Run serve_devices without noise from the logs.
+
+def _patch_out_device_server_logs(func):
+    """Decorator to run device server without noise from logs.
 
     The device server redirects the logger to stderr *and* creates
     files on the current directory.  There is no options to control
-    this behaviour so we patch the logger first.
+    this behaviour so this patches the loggers.
     """
     def null_logs(*args, **kwargs):
         return logging.NullHandler()
-
-    ## This patches out the logger handler that creates the file.
-    with unittest.mock.patch('microscope.deviceserver.RotatingFileHandler',
-                             null_logs):
-        ## This patches out the logger handler that redirects the logs
-        ## to the stderr.  Because it's going to stderr instead of
-        ## stdout, it's polluting the testsuite output.
-        with unittest.mock.patch('microscope.deviceserver.StreamHandler',
-                                 null_logs):
-            microscope.deviceserver.serve_devices(*args, **kwargs)
+    no_file = unittest.mock.patch('microscope.deviceserver.RotatingFileHandler',
+                                  null_logs)
+    no_stream = unittest.mock.patch('microscope.deviceserver.StreamHandler',
+                                    null_logs)
+    return no_file(no_stream(func))
 
 
 class BaseTestServeDevices(unittest.TestCase):
@@ -68,8 +64,9 @@ class BaseTestServeDevices(unittest.TestCase):
     """
     DEVICES = []
     TIMEOUT = 5
+    @_patch_out_device_server_logs
     def setUp(self):
-        self.p = multiprocessing.Process(target=_serve_without_logs,
+        self.p = multiprocessing.Process(target=microscope.deviceserver.serve_devices,
                                          args=(self.DEVICES,))
         self.p.start()
 
