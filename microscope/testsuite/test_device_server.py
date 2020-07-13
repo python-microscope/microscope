@@ -26,6 +26,8 @@ import time
 import unittest
 import unittest.mock
 
+import Pyro4
+
 import microscope.clients
 import microscope.devices
 import microscope.deviceserver
@@ -34,6 +36,7 @@ from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
 from microscope.testsuite.devices import TestFloatingDevice
+from microscope.testsuite.devices import TestDeformableMirror
 
 
 class DeviceServerExceptionQueue(microscope.deviceserver.DeviceServer):
@@ -219,6 +222,27 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
                          'expected DeviceServer to have errored and be dead')
         self.assertRegex(str(self.queue.get_nowait()),
                          'Host or port not found for device foo')
+
+
+class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
+    # Test that with a function we can specify multiple devices and
+    # they get the expected Pyro URI.
+    args = [
+        device(lambda **kwargs: {'dm1' : TestDeformableMirror(10),
+                                 'dm2' : TestDeformableMirror(20)},
+               'localhost', 8001),
+        {},
+        {},
+        multiprocessing.Event(),
+    ]
+    def test_function_in_device_definition(self):
+        """Function that constructs multiple devices in device definition"""
+        time.sleep(1)
+        self.assertTrue(self.process.is_alive())
+        dm1 = Pyro4.Proxy('PYRO:dm1@127.0.0.1:8001')
+        dm2 = Pyro4.Proxy('PYRO:dm2@127.0.0.1:8001')
+        self.assertEqual(dm1.n_actuators, 10)
+        self.assertEqual(dm2.n_actuators, 20)
 
 
 if __name__ == '__main__':

@@ -163,27 +163,33 @@ class _Setting():
                 return values
 
 
-def device(cls, host: str, port: int, conf={},
+def device(cls: typing.Callable, host: str, port: int,
+           conf: typing.Mapping[str, typing.Any] = {},
            uid: typing.Optional[str] = None):
-    """Define a device and where to serve it.
+    """Define devices and where to serve them.
 
     A device definition for use in deviceserver config files.
 
     Args:
-        cls (type): type/class of device to serve.
-        host (str): hostname or ip address serving the device.
-        port (int): port number used to serve the device.
-        conf (dict): keyword arguments to construct the device.  The
-            device is effectively constructed with `cls(**conf)`.
-        uid (str): used to identify "floating" devices (see
-            documentation for :class:`FloatingDeviceMixin`).  This is
-            must be specified only useful if ``cls`` is a floating
-            device.
+        cls: :class:`Device` class of device to serve or function that
+            returns a map of `Device` instances to wanted Pyro ID.
+            The device class will be constructed, or the function will
+            be called, with the arguments in ``conf``.
+        host: hostname or ip address serving the devices.
+        port: port number used to serve the devices.
+        conf: keyword arguments for ``cls``.  The device or function
+            are effectively constructed or called with `cls(**conf)`.
+        uid: used to identify "floating" devices (see documentation
+            for :class:`FloatingDeviceMixin`).  This must be specified
+            if ``cls`` is a floating device.
     """
-    if issubclass(cls, FloatingDeviceMixin) and uid is None:
-        raise Exception('uid must be specified for floating devices')
-    elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
-        raise Exception('uid must not be specified for non floating devices')
+    if not callable(cls):
+        raise Exception('cls must be a callable')
+    elif isinstance(cls, type):
+        if issubclass(cls, FloatingDeviceMixin) and uid is None:
+            raise Exception('uid must be specified for floating devices')
+        elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
+            raise Exception('uid must not be given for non floating devices')
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 

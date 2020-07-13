@@ -166,7 +166,7 @@ class DeviceServer(multiprocessing.Process):
         """
         # The device to serve.
         self._device_def = device_def
-        self._device = None
+        self._devices = {} # type: typing.Dict[str, microscope.devices.Device]
         # Where to serve it.
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port
@@ -184,7 +184,8 @@ class DeviceServer(multiprocessing.Process):
                             self._id_to_port, exit_event=self.exit_event)
 
     def run(self):
-        cls_name = self._device_def['cls'].__name__
+        cls = self._device_def['cls']
+        cls_name = cls.__name__
 
         # If the multiprocessing start method is fork, the child
         # process gets a copy of the root logger.  The copy is
@@ -215,18 +216,28 @@ class DeviceServer(multiprocessing.Process):
 
         root_logger.addFilter(Filter())
 
-        self._device = self._device_def['cls'](**self._device_def['conf'])
-        while not self.exit_event.is_set():
-            try:
-                self._device.initialize()
-            except Exception as e:
-                _logger.info("Failed to start device. Retrying in 5s.",
-                             exc_info=e)
-                time.sleep(5)
-            else:
-                break
-        if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
-            uid = str(self._device.get_id())
+        # The cls argument can either be a Device subclass, or it can
+        # be a function that returns a map of names to devices.
+        cls_is_type = isinstance(cls, type)
+
+        if cls_is_type:
+            self._devices = {cls_name: cls(**self._device_def['conf'])}
+        else:
+            self._devices = cls(**self._device_def['conf'])
+
+        for device in self._devices.values():
+            while not self.exit_event.is_set():
+                try:
+                    device.initialize()
+                except Exception as e:
+                    _logger.info("Failed to start device. Retrying in 5s.",
+                                 exc_info=e)
+                    time.sleep(5)
+                else:
+                    break
+
+        if cls_is_type and issubclass(cls, microscope.devices.FloatingDeviceMixin):
+            uid = str(list(self._devices.values())[0].get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
                 raise Exception("Host or port not found for device %s" % (uid,))
             host = self._id_to_host[uid]
@@ -234,6 +245,7 @@ class DeviceServer(multiprocessing.Process):
         else:
             host = self._device_def['host']
             port = self._device_def['port']
+
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
 
         log_handler = RotatingFileHandler('%s_%s_%s.log'
@@ -242,17 +254,19 @@ class DeviceServer(multiprocessing.Process):
         root_logger.addHandler(log_handler)
 
         _logger.info('Device initialized; starting daemon.')
-        _register_device(pyro_daemon, self._device, obj_id=cls_name)
+        for obj_id, device in self._devices.items():
+            _register_device(pyro_daemon, device, obj_id=obj_id)
 
         # Run the Pyro daemon in a separate thread so that we can do
         # clean shutdown under Windows.
         pyro_thread = Thread(target = pyro_daemon.requestLoop)
         pyro_thread.daemon = True
         pyro_thread.start()
-        _logger.info('Serving %s', pyro_daemon.uriFor(self._device))
-        if isinstance(self._device, microscope.devices.FloatingDeviceMixin):
-            _logger.info('Device UID on port %s is %s',
-                         port, self._device.get_id())
+        for device in self._devices.values():
+            _logger.info('Serving %s', pyro_daemon.uriFor(device))
+            if isinstance(device, microscope.devices.FloatingDeviceMixin):
+                _logger.info('Device UID on port %s is %s',
+                             port, device.get_id())
 
         # Wait for termination event. We should just be able to call
         # wait() on the exit_event, but this causes issues with locks
@@ -265,7 +279,14 @@ class DeviceServer(multiprocessing.Process):
                 pass
         pyro_daemon.shutdown()
         pyro_thread.join()
-        self._device.shutdown()
+        for device in self._devices.values():
+            try:
+                device.shutdown()
+            except Exception as ex:
+                # Catch errors so we get a chance of shutting down the
+                # other devices.
+                _logger.error('Failure to shutdown device %s',
+                              device, ex)
 
 
 def serve_devices(devices, exit_event=None):
@@ -331,7 +352,8 @@ def serve_devices(devices, exit_event=None):
         # needed.
         uid_to_host = {}
         uid_to_port = {}
-        if issubclass(cls, microscope.devices.FloatingDeviceMixin):
+        if (isinstance(cls, type)
+            and issubclass(cls, microscope.devices.FloatingDeviceMixin)):
             # Need to provide maps of uid to host and port.
             for dev in devs:
                 uid = dev['uid']
