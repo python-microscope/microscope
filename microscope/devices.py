@@ -163,7 +163,8 @@ class _Setting():
                 return values
 
 
-def device(cls, host, port, conf={}, uid=None):
+def device(cls, host: str, port: int, conf={},
+           uid: typing.Optional[str] = None):
     """Define a device and where to serve it.
 
     A device definition for use in deviceserver config files.
@@ -175,8 +176,14 @@ def device(cls, host, port, conf={}, uid=None):
         conf (dict): keyword arguments to construct the device.  The
             device is effectively constructed with `cls(**conf)`.
         uid (str): used to identify "floating" devices (see
-            documentation for :class:`FloatingDeviceMixin`)
+            documentation for :class:`FloatingDeviceMixin`).  This is
+            must be specified only useful if ``cls`` is a floating
+            device.
     """
+    if issubclass(cls, FloatingDeviceMixin) and uid is None:
+        raise Exception('uid must be specified for floating devices')
+    elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
+        raise Exception('uid must not be specified for non floating devices')
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
