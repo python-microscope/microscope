@@ -172,9 +172,14 @@ setuptools.setup(
         "pyserial",
     ],
 
+    extras_require = {
+        'GUI' : ['PySide2'],
+    },
+
     entry_points = {
         'console_scripts' : [
             'deviceserver = microscope.deviceserver:__main__',
+            'microscope-gui = microscope.gui:main [GUI]',
         ]
     },
 
