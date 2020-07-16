@@ -30,7 +30,10 @@ installed with ``pip install microscope[GUI]``.
 """
 
 import argparse
+import logging
+import queue
 import sys
+import threading
 import typing
 
 import numpy
@@ -38,6 +41,9 @@ import Pyro4
 from qtpy import QtCore, QtGui, QtWidgets
 
 import microscope.devices
+
+
+_logger = logging.getLogger(__name__)
 
 
 # We use pickle so we can serialize numpy arrays for camera images and
@@ -63,6 +69,118 @@ class DeviceSettingsWidget(QtWidgets.QWidget):
         for key, value in sorted(self._device.get_all_settings().items()):
             layout.addRow(key, QtWidgets.QLabel(parent=self, text=str(value)))
         self.setLayout(layout)
+
+
+class _DataQueue(queue.Queue):
+    # FIXME: DataDevice should be able to use a normal Queue, we
+    # shouldn't need to have a class with receiveData method.
+    @Pyro4.expose
+    def receiveData(self, *args):
+        self.put(args)
+
+class _Imager(QtCore.QObject):
+    """Helper for CameraWidget handling the internals of the camera trigger."""
+    imageAcquired = QtCore.Signal(numpy.ndarray)
+
+    def __init__(self, camera: microscope.devices.CameraDevice) -> None:
+        super().__init__()
+        self._camera = camera
+        self._data_queue = _DataQueue()
+        if isinstance(self._camera, Pyro4.Proxy):
+            pyro_daemon = Pyro4.Daemon()
+            queue_uri = pyro_daemon.register(self._data_queue)
+            self._camera.set_client(queue_uri)
+            data_thread = threading.Thread(target=pyro_daemon.requestLoop,
+                                           daemon=True)
+            data_thread.start()
+        else:
+            self._device.set_client(self._data_queue)
+        fetch_thread = threading.Thread(target=self.fetchLoop, daemon=True)
+        fetch_thread.start()
+
+        # Depending on the Qt backend this might not get called (seems
+        # to work on PySide2 but not with PyQt5).  The device itself
+        # should be removing clients that no longer work anyway.
+        self.destroyed.connect(lambda: self._camera.set_client(None))
+
+    def snap(self) -> None:
+        # CameraDevice have a soft_trigger method but it may do
+        # nothing.  If the camera is a TriggerTargetMixIn, then it
+        # will have a trigger method that does work.
+        getattr(self._camera, 'trigger', self._camera.soft_trigger)()
+
+    def fetchLoop(self) -> None:
+        while True:
+            # We may be getting images faster than we can display so
+            # only get the last image in the queue and discard the
+            # rest (we could do with a class that only has one item
+            # and putting a new item will discard the previous instead
+            # of blocking/queue).
+            data = self._data_queue.get()[0]
+            while not self._data_queue.empty():
+                data = self._data_queue.get()[0]
+            self.imageAcquired.emit(data)
+
+
+class CameraWidget(QtWidgets.QWidget):
+    """Display camera"""
+    def __init__(self, device: microscope.devices.CameraDevice,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._device = device
+        self._imager = _Imager(self._device)
+        self._imager.imageAcquired.connect(self.displayData)
+
+        self._view = QtWidgets.QLabel(parent=self)
+        self.displayData(numpy.zeros(self._device.get_sensor_shape(),
+                                     dtype=numpy.uint8))
+
+        self._enable_check = QtWidgets.QCheckBox('Enabled', parent=self)
+        self._enable_check.stateChanged.connect(self.updateEnableState)
+
+        self._exposure_box = QtWidgets.QDoubleSpinBox(parent=self)
+        self._exposure_box.setSuffix(' sec')
+        self._exposure_box.setSingleStep(0.1)
+        self._exposure_box.valueChanged.connect(self._device.set_exposure_time)
+
+        self._snap_button = QtWidgets.QPushButton('Snap', parent=self)
+        self._snap_button.clicked.connect(self._imager.snap)
+
+        self.updateEnableState()
+
+        layout = QtWidgets.QVBoxLayout()
+        controls_row = QtWidgets.QHBoxLayout()
+        for widget in [self._enable_check, self._exposure_box,
+                       self._snap_button]:
+            controls_row.addWidget(widget)
+        layout.addLayout(controls_row)
+        layout.addWidget(self._view)
+        self.setLayout(layout)
+
+
+    def updateEnableState(self) -> None:
+        """Update UI and camera state after enable check box"""
+        if self._enable_check.isChecked():
+            self._device.enable()
+        else:
+            self._device.disable()
+
+        if self._enable_check.isChecked() != self._device.get_is_enabled():
+            self._enable_check.setChecked(self._device.get_is_enabled())
+            _logger.error('failed to %s camera',
+                          'enable' if check_state else 'disable')
+
+        self._snap_button.setEnabled(self._device.get_is_enabled())
+        self._exposure_box.setEnabled(self._device.get_is_enabled())
+
+
+    def displayData(self, data: numpy.ndarray) -> None:
+        np_to_qt = {
+            numpy.dtype('uint8') : QtGui.QImage.Format_Grayscale8,
+            numpy.dtype('uint16') : QtGui.QImage.Format_Grayscale16,
+        }
+        qt_img = QtGui.QImage(data.tobytes(), *data.shape, np_to_qt[data.dtype])
+        self._view.setPixmap(QtGui.QPixmap.fromImage(qt_img))
 
 
 class DeformableMirrorWidget(QtWidgets.QWidget):
@@ -211,6 +329,7 @@ def main(argv=sys.argv) -> int:
     app.setOrganizationDomain('python-microscope.org')
 
     type_to_widget = {
+        'Camera' : CameraWidget,
         'DeformableMirror' : DeformableMirrorWidget,
         'DeviceSettings' : DeviceSettingsWidget,
         'FilterWheel' : FilterWheelWidget,
