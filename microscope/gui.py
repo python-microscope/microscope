@@ -123,6 +123,39 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
             actuator.blockSignals(False)
 
 
+class FilterWheelWidget(QtWidgets.QWidget):
+    """Group of toggle push buttons to change filter position.
+
+    This widget shows a table of toggle buttons with the filterwheel
+    position numbers.
+    """
+    def __init__(self, device: microscope.devices.FilterWheelBase,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._device = device
+
+        self._button_grp = QtWidgets.QButtonGroup(self)
+        for i in range(self._device.get_num_positions()):
+            button = QtWidgets.QPushButton(str(i+1), parent=self)
+            button.setCheckable(True)
+            self._button_grp.addButton(button, i)
+        self._button_grp.button(self._device.get_position()).setChecked(True)
+
+        # We use buttonClicked instead of idClicked because that
+        # requires Qt 5.15 which is too recent.  Once we can use
+        # idClicked, then the slot will automatically get the wanted
+        # position.
+        self._button_grp.buttonClicked.connect(self.setFilterWheelPosition)
+
+        layout = QtWidgets.QVBoxLayout()
+        for button in self._button_grp.buttons():
+            layout.addWidget(button)
+        self.setLayout(layout)
+
+    def setFilterWheelPosition(self) -> None:
+        self._device.set_position(self._button_grp.checkedId())
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, widget: QtWidgets.QWidget) -> None:
         super().__init__()
@@ -146,6 +179,7 @@ def main(argv=sys.argv) -> int:
     type_to_widget = {
         'DeformableMirror' : DeformableMirrorWidget,
         'DeviceSettings' : DeviceSettingsWidget,
+        'FilterWheel' : FilterWheelWidget,
     }
 
     parser = argparse.ArgumentParser(prog='microscope-gui')
