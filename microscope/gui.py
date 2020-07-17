@@ -156,6 +156,40 @@ class FilterWheelWidget(QtWidgets.QWidget):
         self._device.set_position(self._button_grp.checkedId())
 
 
+class StageWidget(QtWidgets.QWidget):
+    """Stage widget displaying each of the axis position.
+
+    This widget shows each of the axis, their limits, and a spin box
+    to change the axis position.  This requires the stage to be
+    enabled since otherwise it is not able to move it or query the
+    limits.
+    """
+    def __init__(self, device: microscope.devices.StageDevice,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._device = device
+
+        layout = QtWidgets.QFormLayout(self)
+        for name, axis in self._device.axes.items():
+            label = ('%s (%s : %s)'
+                     % (name, axis.limits.lower, axis.limits.upper))
+
+            position_box = QtWidgets.QDoubleSpinBox(parent=self)
+            position_box.setMinimum(axis.limits.lower)
+            position_box.setMaximum(axis.limits.upper)
+            position_box.setValue(axis.position)
+            position_box.setSingleStep(1.0)
+            def setPositionSlot(position: float, name: str = name):
+                return self.setPosition(name, position)
+            position_box.valueChanged.connect(setPositionSlot)
+
+            layout.addRow(label, position_box)
+        self.setLayout(layout)
+
+    def setPosition(self, name: str, position: float) -> None:
+        self._device.axes[name].move_to(position)
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, widget: QtWidgets.QWidget) -> None:
         super().__init__()
@@ -180,6 +214,7 @@ def main(argv=sys.argv) -> int:
         'DeformableMirror' : DeformableMirrorWidget,
         'DeviceSettings' : DeviceSettingsWidget,
         'FilterWheel' : FilterWheelWidget,
+        'Stage' : StageWidget,
     }
 
     parser = argparse.ArgumentParser(prog='microscope-gui')
