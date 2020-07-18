@@ -28,6 +28,14 @@ _logger = logging.getLogger(__name__)
 
 
 class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+    """Omicron DeepStar laser.
+
+    Omicron LDM lasers can be bought with and without the LDM.APC
+    power monitoring option (light pick-off).  If this option is not
+    available, the `power` attribute will return the set power value
+    instead of the actual power value.
+
+    """
     def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
         super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
@@ -39,13 +47,6 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._write(b'S?')
         response = self._readline()
         _logger.info("Current laser state: [%s]", response.decode())
-
-        self._write(b'STAT0')
-        model_code = self._readline()
-        if not model_code.startswith(b'MC '):
-            raise RuntimeError("Failed to get model code '%s'"
-                               % model_code.decode())
-        self._max_power = float(model_code[8:11])
 
         self._write(b'STAT3')
         option_codes = self._readline()
@@ -138,34 +139,21 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     @devices.SerialDeviceMixIn.lock_comms
-    def _set_power(self, level):
-        if (level > 1.0) :
-            return
-        _logger.info("level=%d", level)
-        power=int (level*0xFFF)
-        _logger.info("power=%d", power)
-        strPower = "PP%03X" % power
+    def _do_set_power(self, power: float) -> None:
+        _logger.info("level=%d", power)
+        power_int = int (power*0xFFF)
+        _logger.info("power=%d", power_int)
+        strPower = "PP%03X" % power_int
         _logger.info("power level=%s", strPower)
         self._write(strPower.encode())
         response = self._readline()
         _logger.info("Power response [%s]", response.decode())
-        return response
 
-    def get_min_power_mw(self):
-        return 0.0
 
-    def get_max_power_mw(self):
-        return self._max_power
-
-    @devices.SerialDeviceMixIn.lock_comms
-    def _get_power_mw(self, get_actual=True):
-        ## The code to get the current laser or the peak laser power
-        ## is very similar so this function handles both cases.
-        ##
-        ## Args:
-        ##     get_actual (bool): whether it should return the set
-        ##         power (peak power), or the current laser power.
-        if get_actual:
+    def _do_get_power(self) -> float:
+        if not self.get_is_on():
+            return 0.0
+        if self._has_apc:
             query = b'P'
             scale = 0xCCC
         else:
@@ -178,22 +166,4 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             raise RuntimeError('failed to read power ""' % answer.decode())
 
         level = int(answer[len(query):], 16)
-        return (float(level) / float(scale)) * self._max_power
-
-    def get_set_power_mw(self):
-        return self._get_power_mw(get_actual=False)
-
-    def get_power_mw(self):
-        """Current laser power.
-
-        Omicron LDM lasers can be bought with and without the LDM.APC
-        power monitoring option (light pick-off).  If this option is
-        not available, it returns the set power instead.
-        """
-        if not self.get_is_on():
-            return 0.0
-        return self._get_power_mw(get_actual=self._has_apc)
-
-    def _set_power_mw(self, mW):
-        level = float(mW) / self._max_power
-        self._set_power(level)
+        return (float(level) / float(scale))

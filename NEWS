@@ -4,6 +4,21 @@ python-microscope releases.
 Version 0.6.0 (upcoming)
 ------------------------
 
+* Selected most important, backwards incompatible, changes:
+
+  * The `LaserDevice` has changed the methods to set laser power to
+    use fractional values in the [0 1] range instead of milliwatts.
+    Effectively, the following methods have been removed:
+
+    * `LaserDevice.get_max_power_mw`
+    * `LaserDevice.get_min_power_mw`
+    * `LaserDevice.get_power_mw`
+    * `LaserDevice.get_set_power_mw`
+    * `LaserDevice.set_power_mw`
+
+    And have been replaced with a `LaserDevice.power` property and
+    `LaserDevice.get_set_power` method.
+
 * Changes to device ABCs:
 
   * FilterWheelBase:

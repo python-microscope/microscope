@@ -42,6 +42,8 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         response = self.send(b'@cobas 0')
         _logger.info("Response to @cobas 0 [%s]", response.decode())
 
+        self._max_power_mw = float(self.send(b'gmlp?'))
+
     def send(self, command):
         """Send command and retrieve response."""
         success = False
@@ -124,21 +126,9 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         response = self.send(b'l?')
         return response == b'1'
 
-    def get_min_power_mw(self):
-        return 0.0
 
     @devices.SerialDeviceMixIn.lock_comms
-    def get_max_power_mw(self):
-        # 'gmlp?' gets the maximum laser power in mW.
-        response = self.send(b'gmlp?')
-        try:
-            return float(response)
-        except:
-            _logger.info("Bad response to gmlp?\n    %s", response.decode())
-
-
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_power_mw(self):
+    def _get_power_mw(self) -> float:
         if not self.get_is_on():
             return 0.0
         success = False
@@ -149,9 +139,8 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
                 success = True
         return 1000 * float(response)
 
-
     @devices.SerialDeviceMixIn.lock_comms
-    def _set_power_mw(self, mW):
+    def _set_power_mw(self, mW: float) -> None:
         ## There is no minimum power in cobolt lasers.  Any
         ## non-negative number is accepted.
         W_str = '%.4f' % (mW / 1000.0)
@@ -159,7 +148,8 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         return self.send(b'@cobasp ' + W_str.encode())
 
 
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_set_power_mw(self):
-        response = self.send(b'p?')
-        return 1000 * float(response)
+    def _do_set_power(self, power: float) -> None:
+        self._set_power_mw(power * self._max_power_mw)
+
+    def _do_get_power(self) -> float:
+        return self._get_power_mw() / self._max_power_mw

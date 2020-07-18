@@ -155,18 +155,11 @@ class _CoolLEDChannel(microscope.devices.LaserDevice):
         else:
             return False
 
-    # FIXME: we need to fix the ABC to use [0 1] values instead of mw.
-    # While we don't do that, this is already set to take values in
-    # that range (argument is not mw and the channels are not even
-    # lasers).
-    def get_min_power_mw(self) -> float:
-        return 0.0
-    def get_max_power_mw(self) -> float:
-        return 1.0
-    def get_power_mw(self) -> float:
+    def _do_get_power(self) -> float:
         return self._conn.get_intensity() / 100.0
-    def _set_power_mw(self, mw: float) -> None:
-        self._conn.set_intensity(int(mw * 100.0))
+
+    def _do_set_power(self, power: float) -> None:
+        self._conn.set_intensity(int(power * 100.0))
 
 
 class CoolLED(microscope.devices.ControllerDevice):

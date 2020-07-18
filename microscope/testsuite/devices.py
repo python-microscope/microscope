@@ -342,7 +342,6 @@ class TestFilterWheel(FilterWheelBase):
 class TestLaser(devices.LaserDevice):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._set_point = 0.0
         self._power = 0.0
         self._emission = False
 
@@ -366,17 +365,11 @@ class TestLaser(devices.LaserDevice):
     def get_is_on(self):
         return self._emission
 
-    def _set_power_mw(self, level):
-        _logger.info("Power set to %s.", level)
-        self._power = level
+    def _do_set_power(self, power: float) -> None:
+        _logger.info("Power set to %s.", power)
+        self._power = power
 
-    def get_max_power_mw(self):
-        return 100.0
-
-    def get_min_power_mw(self):
-        return 0.0
-
-    def get_power_mw(self):
+    def _do_get_power(self) -> float:
         if self._emission:
             return self._power
         else:

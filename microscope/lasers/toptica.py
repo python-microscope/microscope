@@ -200,17 +200,6 @@ class _iBeamConnection:
             raise RuntimeError('failed to parse power from %s' % key)
         return float(key[:-3])
 
-    def show_bias_power(self) -> float:
-        """Return power level for the bias (channel 1) in mW."""
-        # We seem to only need this command to get the bias power
-        # level.  If we ever need to use it to get the other channels,
-        # we should be returning the list of levels.
-        table = self.command(b'show level power')
-        key = _get_table_value(table, b'CH1, PWR')
-        if not key.endswith(b' mW'):
-            raise RuntimeError('failed to parse power from %s' % key)
-        return float(key[:-3])
-
 
 class TopticaiBeam(microscope.devices.LaserDevice):
     """Toptica iBeam smart laser.
@@ -233,7 +222,6 @@ class TopticaiBeam(microscope.devices.LaserDevice):
         # We haven't come across a laser with a channel 3 so we are
         # ignoring it until then.  So we just leave the bias channel
         # (1) alone and control power via the normal channel (2).
-        self._bias_power = self._conn.show_bias_power()
         self._max_power = self._conn.show_max_power()
 
     def initialize(self) -> None:
@@ -261,14 +249,19 @@ class TopticaiBeam(microscope.devices.LaserDevice):
         else:
             raise RuntimeError('Unexpected laser status: %s' % state.decode())
 
-    def get_min_power_mw(self) -> float:
-        return self._bias_power
 
-    def get_max_power_mw(self) -> float:
+    def _get_max_power_mw(self) -> float:
         return self._max_power
 
-    def get_power_mw(self) -> float:
+    def _get_power_mw(self) -> float:
         return (self._conn.show_power_uW() * (10**-3))
 
     def _set_power_mw(self, mw: float) -> None:
         self._conn.set_normal_channel_power(mw)
+
+
+    def _do_set_power(self, power: float) -> None:
+        self._set_power_mw(power * self._get_max_power_mw())
+
+    def _do_get_power(self) -> float:
+        return self._get_power_mw() / self._get_max_power_mw()

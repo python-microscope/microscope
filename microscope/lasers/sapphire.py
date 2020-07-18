@@ -60,6 +60,9 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         headID = int(float(self.send(b'?hid')))
         _logger.info("Sapphire laser serial number: [%s]", headID)
 
+        self._max_power_mw = float(self.send(b'?maxlp'))
+        self._min_power = float(self.send(b'?minlp')) / self._max_power_mw
+
     def _write(self, command):
         count = super()._write(command)
         ## This device always writes backs something.  If echo is on,
@@ -161,17 +164,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     @devices.SerialDeviceMixIn.lock_comms
-    def get_max_power_mw(self):
-        # '?maxlp' gets the maximum laser power in mW.
-        return float(self.send(b'?maxlp'))
-
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_min_power_mw(self):
-        # '?minlp' gets the minimum laser power in mW.
-        return float(self.send(b'?minlp'))
-
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_power_mw(self):
+    def _get_power_mw(self):
         return float(self.send(b'?p'))
 
     @devices.SerialDeviceMixIn.lock_comms
@@ -182,6 +175,13 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         # if laser is not on, warning is returned
         return self.send(b'p=%s' % mW_str.encode())
 
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_set_power_mw(self):
-        return float(self.send(b'?sp'))
+
+    def _do_set_power(self, power: float) -> None:
+        # power is already clipped to the [0 1] range but we need to
+        # clip it again since the min power we actually can do is 0.2
+        # and we get an error from the laser if we set it to lower.
+        power = max(self._min_power, power)
+        self._set_power_mw(power * self._max_power_mw)
+
+    def _do_get_power(self) -> float:
+        return self._get_power_mw() / self._max_power_mw

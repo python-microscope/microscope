@@ -59,6 +59,12 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         response = self._readline()
         _logger.info('Response to Autostart: [%s]', response.decode())
 
+        self._write(b'SOURce:POWer:LIMit:HIGH?')
+        response = self._readline()
+        _logger.info('Max intensity in watts: [%s]', response.decode())
+        self._max_power_mw = float(response) * 1000.0
+
+
     def _write(self, command):
         """Send a command."""
         response = self.connection.write(command + b'\r\n')
@@ -162,21 +168,9 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         _logger.info("Are we on? [%s]", response.decode())
         return response == b'ON'
 
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_min_power_mw(self):
-        self._write(b'SOURce:POWer:LIMit:LOW?')
-        power_w = self._readline()
-        return float(power_w.decode()) * 1000.0
 
     @devices.SerialDeviceMixIn.lock_comms
-    def get_max_power_mw(self):
-        """Gets the maximum laser power in mW."""
-        self._write(b'SOURce:POWer:LIMit:HIGH?')
-        power_w = self._readline()
-        return float(power_w.decode()) * 1000.0
-
-    @devices.SerialDeviceMixIn.lock_comms
-    def get_power_mw(self):
+    def _get_power_mw(self):
         if not self.get_is_on():
             return 0.0
         self._write(b'SOURce:POWer:LEVel?')
@@ -189,3 +183,10 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         _logger.info("Setting laser power to %.7sW", power_w)
         self._write(b'SOURce:POWer:LEVel:IMMediate:AMPLitude %.5f' % power_w)
         self._flush_handshake()
+
+
+    def _do_set_power(self, power: float) -> None:
+        self._set_power_mw(power * self._max_power_mw)
+
+    def _do_get_power(self) -> float:
+        return self._get_power_mw() / self._max_power_mw

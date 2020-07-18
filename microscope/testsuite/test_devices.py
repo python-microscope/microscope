@@ -230,45 +230,34 @@ class LaserTests(DeviceTests):
         self.device.disable()
         self.device.shutdown()
 
-    def test_query_power_range(self):
-        min_mw = self.device.get_min_power_mw()
-        max_mw = self.device.get_max_power_mw()
-        self.assertIsInstance(min_mw, float)
-        self.assertIsInstance(max_mw, float)
-        self.assertEqualMW(min_mw, self.fake.min_power)
-        self.assertEqualMW(max_mw, self.fake.max_power)
-
     def test_power_when_off(self):
         self.device.disable()
-        power = self.device.get_power_mw()
-        self.assertIsInstance(power, float)
-        self.assertEqual(power, 0.0)
+        self.assertIsInstance(self.device.power, float)
+        self.assertEqual(self.device.power, 0.0)
 
     def test_setting_power(self):
         self.device.enable()
-        power = self.device.get_power_mw()
-        self.assertIsInstance(power, float)
-        self.assertEqualMW(power, self.fake.default_power)
-        self.assertEqualMW(power, self.device.get_set_power_mw())
+        self.assertIsInstance(self.device.power, float)
+        power_mw = self.device.power * self.fake.max_power
+        self.assertEqualMW(power_mw, self.fake.default_power)
+        self.assertEqualMW(self.device.power, self.device.get_set_power())
 
-        new_power = (self.fake.min_power
-                     + ((self.fake.max_power - self.fake.min_power) /2.0))
-        self.device.set_power_mw(new_power)
-        self.assertEqualMW(self.device.get_power_mw(), new_power)
-        self.assertEqualMW(new_power, self.device.get_set_power_mw())
+        new_power = 0.5
+        new_power_mw = new_power * self.fake.max_power
+        self.device.power = new_power
+        self.assertEqualMW(self.device.power * self.fake.max_power,
+                           new_power_mw)
+        self.assertEqualMW(new_power, self.device.get_set_power())
 
     def test_setting_power_outside_limit(self):
         self.device.enable()
-        below_limit = self.fake.min_power - 10.0
-        above_limit = self.fake.max_power + 10.0
-        self.device.set_power_mw(below_limit)
-        self.assertEqualMW(self.device.get_power_mw(),
-                           self.device.get_min_power_mw(),
-                           'clip setting power to the valid range')
-        self.device.set_power_mw(above_limit)
-        self.assertEqualMW(self.device.get_power_mw(),
-                           self.device.get_max_power_mw(),
-                           'clip setting power to the valid range')
+        self.device.power = -0.1
+        self.assertEqual(self.device.power,
+                         self.fake.min_power / self.fake.max_power,
+                         'clip setting power below 0')
+        self.device.power = 1.1
+        self.assertEqual(self.device.power, 1.0,
+                         'clip setting power above 1')
 
     def test_status(self):
         status = self.device.get_status()

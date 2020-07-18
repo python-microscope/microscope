@@ -140,27 +140,9 @@ class _LightChannelConnection:
         """Maximum valid intensity that can be applied to a light channel."""
         return int(self._conn.get_command(b'MAXINT', self._index_bytes))
 
-    def get_power_output(self) -> float:
-        """Estimated power output for a given channel (in mW).
-
-        Power estimation is based on the power output calibration
-        factor, power sensor reading, power sensor exposure, power
-        sensor gain and crosstalk level.  Estimation model assumes
-        linear dependency.
-        """
-        return float(self._conn.get_command(b'CHPWRWATTS', self._index_bytes))
-
-    def get_power_reference(self) -> float:
-        """Light power reference (in mW).
-
-        This gives an indication of the power output when the channel
-        is set to its maximum intensity.  However, its dependent on
-        being manually set and kept adjusted over time.
-
-        A value of -1 is returned if the power reference hasn't been
-        defined yet.
-        """
-        return float(self._conn.get_command(b'PWRREF', self._index_bytes))
+    def get_intensity(self) -> int:
+        """Current intensity setting between 0 and maximum intensity."""
+        return int(self._conn.get_command(b'CHINT', self._index_bytes))
 
     def set_intensity(self, intensity: int) -> None:
         """Set light intensity between 0 and maximum intensity."""
@@ -186,16 +168,6 @@ class SpectraIIILightEngine(microscope.devices.ControllerDevice):
     are already on, or by turning on additional sources, commands will
     be rejected. To clear the error condition, reduce intensities of
     sources that are on or turn off additional sources.
-
-    .. note::
-
-       This relies on having power reference values set for each
-       channel.  The Spectra light engines do not provide a method to
-       obtain the maximum power output or to set the power ouput.  As
-       such, this relies on the internal power reference value.  This
-       should be set manually on the device to obtain reasonable
-       results when setting the power output.
-
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -230,19 +202,10 @@ class _SpectraIIILightChannel(microscope.devices.LaserDevice):
         super().__init__()
         self._conn = _LightChannelConnection(connection, index)
         # The lumencor only allows to set the power via intensity
-        # levels (values between 0 and MAXINT) .  There is no method
-        # to query the maximum power output, that information is on
-        # the device certificate of conformance and may changes over
-        # time.
-        #
-        # Power Reference is close to the max possible power (mw).  It
-        # seems to do nothing other than providing a estimate of what
-        # power will be emitted when the intensity is at its maximum.
-        # It needs to be set manually and kept up to date.
-        self._power_ref = self._conn.get_power_reference() # type: float
-        if self._power_ref == -1:
-            raise RuntimeError('Power reference value is not set')
-        self._max_intensity = self._conn.get_max_intensity() # type: int
+        # levels (values between 0 and MAXINT).  We keep the max
+        # intensity internal as float for the multiply/divide
+        # operations.
+        self._max_intensity = float(self._conn.get_max_intensity())
 
     def initialize(self) -> None:
         pass
@@ -266,17 +229,9 @@ class _SpectraIIILightChannel(microscope.devices.LaserDevice):
     def get_is_on(self) -> bool:
         return self._conn.get_light_state()
 
-    def get_min_power_mw(self) -> float:
-        return 0.0
 
-    def get_max_power_mw(self) -> float:
-        return self._power_ref
+    def _do_set_power(self, power: float) -> None:
+        self._conn.set_intensity(int(power * self._max_intensity))
 
-    def get_power_mw(self) -> float:
-        return self._conn.get_power_output()
-
-    def _set_power_mw(self, mw: float) -> None:
-        # The mw argument should have already been clipped by
-        # `LaserDevice.set_power_mw()` so no need to do so again.
-        intensity = int((mw / self._power_ref) * self._max_intensity)
-        self._conn.set_intensity(intensity)
+    def _do_get_power(self) -> float:
+        return self._conn.get_intensity() / self._max_intensity

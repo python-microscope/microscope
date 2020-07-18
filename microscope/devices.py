@@ -1048,7 +1048,7 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._set_point = None
+        self._set_point = 0.0
 
     @abc.abstractmethod
     def get_status(self):
@@ -1063,44 +1063,38 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_min_power_mw(self):
-        """Return the min power in mW."""
-        pass
+    def _do_get_power(self) -> float:
+        """Internal function that actually returns the laser power."""
+        raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_max_power_mw(self):
-        """Return the max. power in mW."""
-        pass
+    def _do_set_power(self, power: float) -> None:
+        """Internal function that actually sets the laser power.
 
-    @abc.abstractmethod
-    def get_power_mw(self):
-        """"" Return the current power in mW."""
-        pass
+        This function will be called by the `power` attribute setter
+        after clipping the argument to the [0, 1] interval.
+        """
+        raise NotImplementedError()
 
-    def get_set_power_mw(self):
+    @property
+    def power(self) -> float:
+        """Laser power in the [0, 1] interval."""
+        return self._do_get_power()
+
+    @power.setter
+    def power(self, power: float) -> None:
+        """Power laser in the [0, 1] interval.
+
+        The power value will be clipped to [0, 1] interval.
+        """
+        clipped_power = max(min(power, 1.0), 0.0)
+        self._do_set_power(clipped_power)
+        self._set_point = clipped_power
+
+
+    def get_set_power(self) -> float:
         """Return the power set point."""
         return self._set_point
-
-    @abc.abstractmethod
-    def _set_power_mw(self, mw):
-        """Set the power on the device in mW."""
-        pass
-
-    def set_power_mw(self, mw):
-        """Set the power from an argument in mW and save the set point.
-
-        Args:
-            mw (float): Power in mW.  Value will be clipped to the
-                valid range for the laser.  See the methods
-                :func:`get_max_power_mw` and :func:`get_min_power_mw`
-                to retrieve the valid range.
-
-        Returns:
-            void
-        """
-        mw = max(min(mw, self.get_max_power_mw()), self.get_min_power_mw())
-        self._set_point = mw
-        self._set_power_mw(mw)
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
