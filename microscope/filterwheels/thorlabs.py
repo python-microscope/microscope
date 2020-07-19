@@ -60,13 +60,10 @@ class ThorlabsFilterWheel(FilterWheelBase):
     def _on_shutdown(self):
         pass
 
-    def set_position(self, n):
-        """Public method to move to position n."""
-        command = 'pos=%d' % n
-        self._send_command(command)
+    def _do_set_position(self, new_position: int) -> None:
+        self._send_command('pos=%d' % n)
 
-    def get_position(self):
-        """Public method to query the current position"""
+    def _do_get_position(self):
         return int(self._send_command('pos?'))
 
     def _readline(self):

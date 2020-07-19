@@ -222,10 +222,10 @@ class _ProScanIIIFilterWheel(microscope.devices.FilterWheelBase):
         self._conn = connection
         self._number = number
 
-    def get_position(self) -> int:
+    def _do_get_position(self) -> int:
         return self._conn.get_filter_position(self._number)
 
-    def set_position(self, position: int) -> None:
+    def _do_set_position(self, position: int) -> None:
         self._conn.set_filter_position(self._number, position)
 
     def _on_shutdown(self) -> None:

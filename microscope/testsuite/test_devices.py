@@ -282,7 +282,19 @@ class CameraTests(DeviceTests):
 
 
 class FilterWheelTests(DeviceTests):
-    pass
+    def test_get_and_set_position(self):
+        self.assertEqual(self.device.position, 0)
+        max_pos = self.device.n_positions -1
+        self.device.position = max_pos
+        self.assertEqual(self.device.position, max_pos)
+
+    def test_set_position_to_negative(self):
+        with self.assertRaisesRegex(Exception, 'can\'t move to position'):
+            self.device.position = -1
+
+    def test_set_position_above_limit(self):
+        with self.assertRaisesRegex(Exception, 'can\'t move to position'):
+            self.device.position = self.device.n_positions
 
 
 class DeformableMirrorTests(DeviceTests):

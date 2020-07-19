@@ -135,11 +135,11 @@ class FilterWheelWidget(QtWidgets.QWidget):
         self._device = device
 
         self._button_grp = QtWidgets.QButtonGroup(self)
-        for i in range(self._device.get_num_positions()):
+        for i in range(self._device.n_positions):
             button = QtWidgets.QPushButton(str(i+1), parent=self)
             button.setCheckable(True)
             self._button_grp.addButton(button, i)
-        self._button_grp.button(self._device.get_position()).setChecked(True)
+        self._button_grp.button(self._device.position).setChecked(True)
 
         # We use buttonClicked instead of idClicked because that
         # requires Qt 5.15 which is too recent.  Once we can use
@@ -153,7 +153,7 @@ class FilterWheelWidget(QtWidgets.QWidget):
         self.setLayout(layout)
 
     def setFilterWheelPosition(self) -> None:
-        self._device.set_position(self._button_grp.checkedId())
+        self._device.position = self._button_grp.checkedId()
 
 
 class StageWidget(QtWidgets.QWidget):

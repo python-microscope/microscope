@@ -1119,19 +1119,41 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
                          self.set_position,
                          lambda: (0, self.get_num_positions()))
 
-    def get_num_positions(self) -> int:
-        """Returns the number of wheel positions."""
+    @property
+    def n_positions(self) -> int:
+        """Number of wheel positions."""
         return self._positions
 
-    @abc.abstractmethod
-    def get_position(self) -> int:
-        """Return the wheel's current position (zero-based)."""
-        return 0
+    @property
+    def position(self) -> int:
+        """Number of wheel positions (zero-based)."""
+        return self._do_get_position()
+
+    @position.setter
+    def position(self, new_position: int) -> None:
+        if 0 <= new_position < self.n_positions:
+            return self._do_set_position(new_position)
+        else:
+            raise Exception('can\'t move to position %d, limits are [0 %d]'
+                            % (new_position, self.n_positions-1))
+
 
     @abc.abstractmethod
+    def _do_get_position(self) -> int:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _do_set_position(self, position: int) -> None:
+        raise NotImplementedError()
+
+
+    # Deprecated and kept for backwards compatibility.
+    def get_num_positions(self) -> int:
+        return self.n_positions
+    def get_position(self) -> int:
+        return self.position
     def set_position(self, position: int) -> None:
-        """Set the wheel position (zero-based)."""
-        pass
+        self.position = position
 
 
 class ControllerDevice(Device, metaclass=abc.ABCMeta):

@@ -325,10 +325,10 @@ class TestFilterWheel(FilterWheelBase):
         super().__init__(**kwargs)
         self._position = 0
 
-    def get_position(self):
+    def _do_get_position(self):
         return self._position
 
-    def set_position(self, position):
+    def _do_set_position(self, position):
         _logger.info("Setting position to %s", position)
         self._position = position
 

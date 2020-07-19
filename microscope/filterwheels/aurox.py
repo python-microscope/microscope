@@ -247,14 +247,14 @@ class Clarity(microscope.devices.FilterWheelBase):
             time.sleep(0.01)
         return moving
 
-    def get_position(self):
+    def _do_get_position(self):
         """Return the current filter position"""
         result = self._send_command(__GETFILT)
         if result ==  __FLTERR:
             raise Exception("Filter position error.")
         return result
 
-    def set_position(self, pos, blocking=True):
+    def _do_set_position(self, pos, blocking=True):
         """Set the filter position"""
         result = self._send_command(__SETFILT, pos)
         if result is None:

@@ -11,6 +11,9 @@ Version 0.6.0 (upcoming)
     * The `get_filters` method and the constructor `filters` argument
       have been removed.
 
+    * New `position` and `n_positions` properties added to replace
+      `get_position`, `set_position`, and `get_num_positions` methods.
+
 * New program `microscope-gui` to display simple GUIs given a Pyro URI
   for a microscope device.
 
