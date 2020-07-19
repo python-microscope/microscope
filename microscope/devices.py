@@ -1130,12 +1130,12 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_position(self) -> int:
-        """Return the wheel's current position"""
+        """Return the wheel's current position (zero-based)."""
         return 0
 
     @abc.abstractmethod
     def set_position(self, position: int) -> None:
-        """Set the wheel position."""
+        """Set the wheel position (zero-based)."""
         pass
 
     def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
