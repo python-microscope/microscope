@@ -4,6 +4,13 @@ python-microscope releases.
 Version 0.6.0 (upcoming)
 ------------------------
 
+* Changes to device ABCs:
+
+  * FilterWheelBase:
+
+    * The `get_filters` method and the constructor `filters` argument
+      have been removed.
+
 * New program `microscope-gui` to display simple GUIs given a Pyro URI
   for a microscope device.
 

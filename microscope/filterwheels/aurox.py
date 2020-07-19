@@ -221,7 +221,7 @@ class Clarity(microscope.devices.FilterWheelBase):
             status['filter'] = (None, 'moving')
             busy.append(True)
         else:
-            status['filter'] = (result[6], self._filters.get(result[6], None))
+            status['filter'] = result[6]
         # Calibration LED on
         status['calibration'] = result[7] == __CALON
         # Slide or filter moving

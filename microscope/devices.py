@@ -1104,17 +1104,9 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
-    def __init__(self, filters: typing.Union[typing.Mapping[int, str],
-                                             typing.Iterable] = [],
-                 positions: int = 0, **kwargs) -> None:
+    def __init__(self, positions: int = 0, **kwargs) -> None:
         super().__init__(**kwargs)
-        if isinstance(filters, dict):
-            self._filters = filters
-        else:
-            self._filters = {i: f for (i, f) in enumerate(filters)}
-        self._inv_filters = {val: key for key, val in self._filters.items()}
-        if not hasattr(self, '_positions'):
-            self._positions = positions  # type: int
+        self._positions = positions
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
@@ -1126,7 +1118,7 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
 
     def get_num_positions(self) -> int:
         """Returns the number of wheel positions."""
-        return(max(self._positions, len(self._filters)))
+        return self._positions
 
     @abc.abstractmethod
     def get_position(self) -> int:
@@ -1137,9 +1129,6 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
     def set_position(self, position: int) -> None:
         """Set the wheel position (zero-based)."""
         pass
-
-    def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
-        return [(k, v) for k, v in self._filters.items()]
 
 
 class ControllerDevice(Device, metaclass=abc.ABCMeta):

@@ -126,8 +126,7 @@ class BaseTestDeviceServer(unittest.TestCase):
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
         device(TestCamera, '127.0.0.1', 8001, {'buffer_length' : 0}),
-        device(TestFilterWheel, '127.0.0.1', 8003,
-               {'filters' : [(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]}),
+        device(TestFilterWheel, '127.0.0.1', 8003, {'positions' : 3}),
     ]
 
     def test_standard(self):

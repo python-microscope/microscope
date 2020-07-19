@@ -34,7 +34,6 @@ class ThorlabsFilterWheel(FilterWheelBase):
         :param com: COM port
         :param baud: baud rate
         :param timeout: serial timeout
-        :keyword filters: optional list of filters
         """
         super().__init__(**kwargs)
         self.eol = '\r'
@@ -91,11 +90,16 @@ class ThorlabsFilterWheel(FilterWheelBase):
         return result
 
 
+# TODO: we should be able to read the model and number of positions
+# from the device itself, we shouldn't need a separate class for each
+# model.
 class ThorlabsFW102C(ThorlabsFilterWheel):
     # Thorlabs 6-position filterwheel.
-    _positions = 6
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, positions=6, **kwargs)
 
 
 class ThorlabsFW212C(ThorlabsFilterWheel):
     # Thorlabs 12-position filterwheel.
-    _positions = 12
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, positions=12, **kwargs)

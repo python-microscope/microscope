@@ -452,21 +452,11 @@ class TestImageGenerator(unittest.TestCase):
                 self.assertEqual(array.shape, (height, width))
 
 
-class TestEmptyDummyFilterWheel(unittest.TestCase, FilterWheelTests):
+class TestOnePositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel()
+        self.device = dummies.TestFilterWheel(positions=1)
 
-
-class TestOneFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
-    def setUp(self):
-        self.device = dummies.TestFilterWheel(filters=[(0, 'DAPI', '430')])
-
-class TestMultiFilterDummyFilterWheel(unittest.TestCase, FilterWheelTests):
-    def setUp(self):
-        self.device = dummies.TestFilterWheel(filters=[(0, 'DAPI', '430'),
-                                                       (1, 'GFP', '580'),])
-
-class TestEmptySixPositionFilterWheel(unittest.TestCase, FilterWheelTests):
+class TestSixPositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel(positions=6)
 
@@ -492,17 +482,19 @@ class TestBaseDevice(unittest.TestCase):
         """Unexpected kwargs on constructor raise exception.
 
         Test first that we can construct the device.  Then test that
-        it fails if there's a typo on the argument.  See issue #84.
+        it fails if there are unused kwargs.  This is an issue when
+        there are default arguments, there's a typo on the argument
+        name, and the class uses the default instead of an error.  See
+        issue #84.
         """
-        filters = [(0, 'DAPI', '430')]
-        dummies.TestFilterWheel(filters=filters)
+        dummies.TestLaser()
         ## XXX: Device.__del__ calls shutdown().  However, if __init__
         ## failed the device is not complete and shutdown() fails
         ## because the logger has not been created.  See comments on
         ## issue #69.  patch __del__ to workaround this issue.
         with unittest.mock.patch('microscope.devices.Device.__del__'):
-            with self.assertRaisesRegex(TypeError, "argument 'filteres'"):
-                dummies.TestFilterWheel(filteres=filters)
+            with self.assertRaisesRegex(TypeError, "argument 'power'"):
+                dummies.TestLaser(power=2)
 
 
 if __name__ == '__main__':
