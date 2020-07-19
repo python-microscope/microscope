@@ -452,6 +452,13 @@ class TestImageGenerator(unittest.TestCase):
                 self.assertEqual(array.shape, (height, width))
 
 
+class TestEmptyDummyFilterWheel(unittest.TestCase):
+    def test_zero_positions(self):
+        with self.assertRaisesRegex(ValueError,
+                                    'positions must be a positive number'):
+            device = dummies.TestFilterWheel(positions=0)
+
+
 class TestOnePositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel(positions=1)

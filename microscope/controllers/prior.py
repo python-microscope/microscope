@@ -218,10 +218,9 @@ class ProScanIII(microscope.devices.ControllerDevice):
 
 class _ProScanIIIFilterWheel(microscope.devices.FilterWheelBase):
     def __init__(self, connection: _ProScanIIIConnection, number: int) -> None:
-        super().__init__()
+        super().__init__(positions=connection.get_n_filter_positions(number))
         self._conn = connection
         self._number = number
-        self._positions = self._conn.get_n_filter_positions(self._number)
 
     def get_position(self) -> int:
         return self._conn.get_filter_position(self._number)

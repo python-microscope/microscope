@@ -1104,8 +1104,11 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
-    def __init__(self, positions: int = 0, **kwargs) -> None:
+    def __init__(self, positions: int, **kwargs) -> None:
         super().__init__(**kwargs)
+        if positions < 1:
+            raise ValueError('positions must be a positive number (was %d)'
+                             % positions)
         self._positions = positions
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
