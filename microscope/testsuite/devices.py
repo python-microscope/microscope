@@ -325,10 +325,10 @@ class TestFilterWheel(FilterWheelBase):
         super().__init__(**kwargs)
         self._position = 0
 
-    def get_position(self):
+    def _do_get_position(self):
         return self._position
 
-    def set_position(self, position):
+    def _do_set_position(self, position):
         _logger.info("Setting position to %s", position)
         self._position = position
 
@@ -592,3 +592,29 @@ class TestStage(devices.StageDevice):
     def move_to(self, position: typing.Mapping[str, float]) -> None:
         for name, pos in position.items():
             self.axes[name].move_to(pos)
+
+
+class TestFloatingDevice(devices.FloatingDeviceMixin, devices.Device):
+    """Simple device with a UID after having been initialized.
+
+    Floating devices are devices where we can't specify which one to
+    get, we can only construct it and after initialisation check its
+    UID.  In this class for test units we can check which UID to get.
+
+    """
+    def __init__(self, uid: str, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._initialized = False
+        self._uid = uid
+
+    def initialize(self) -> None:
+        self._initialized = True
+
+    def get_id(self) -> str:
+        if self._initialized:
+            return self._uid
+        else:
+            raise Exception('uid is not available until after initialisation')
+
+    def _on_shutdown(self) -> None:
+        pass

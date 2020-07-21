@@ -87,7 +87,7 @@ class Clarity(microscope.devices.FilterWheelBase):
                   __FULLSTAT: 10}
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(positions=Clarity._positions, **kwargs)
         from threading import Lock
         self._lock = Lock()
         self._hid = None
@@ -221,7 +221,7 @@ class Clarity(microscope.devices.FilterWheelBase):
             status['filter'] = (None, 'moving')
             busy.append(True)
         else:
-            status['filter'] = (result[6], self._filters.get(result[6], None))
+            status['filter'] = result[6]
         # Calibration LED on
         status['calibration'] = result[7] == __CALON
         # Slide or filter moving
@@ -247,14 +247,14 @@ class Clarity(microscope.devices.FilterWheelBase):
             time.sleep(0.01)
         return moving
 
-    def get_position(self):
+    def _do_get_position(self):
         """Return the current filter position"""
         result = self._send_command(__GETFILT)
         if result ==  __FLTERR:
             raise Exception("Filter position error.")
         return result
 
-    def set_position(self, pos, blocking=True):
+    def _do_set_position(self, pos, blocking=True):
         """Set the filter position"""
         result = self._send_command(__SETFILT, pos)
         if result is None:

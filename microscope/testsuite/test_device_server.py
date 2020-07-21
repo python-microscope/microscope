@@ -26,6 +26,8 @@ import time
 import unittest
 import unittest.mock
 
+import Pyro4
+
 import microscope.clients
 import microscope.devices
 import microscope.deviceserver
@@ -33,26 +35,44 @@ import microscope.deviceserver
 from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
+from microscope.testsuite.devices import TestFloatingDevice
+from microscope.testsuite.devices import TestDeformableMirror
 
-def _serve_without_logs(*args, **kwargs):
-    """Run serve_devices without noise from the logs.
+
+class DeviceServerExceptionQueue(microscope.deviceserver.DeviceServer):
+    """`DeviceServer` that queues an exception during `run`.
+
+    A `DeviceServer` instance runs on another process so if it fails
+    we can't easily check why.  This subclass will put any exception
+    that happens during `run()` into the given queue so that the
+    parent process can check it.
+
+    """
+    def __init__(self, queue: multiprocessing.Queue, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._queue = queue
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as ex:
+            self._queue.put(ex)
+
+
+def _patch_out_device_server_logs(func):
+    """Decorator to run device server without noise from logs.
 
     The device server redirects the logger to stderr *and* creates
     files on the current directory.  There is no options to control
-    this behaviour so we patch the logger first.
+    this behaviour so this patches the loggers.
     """
     def null_logs(*args, **kwargs):
         return logging.NullHandler()
-
-    ## This patches out the logger handler that creates the file.
-    with unittest.mock.patch('microscope.deviceserver.RotatingFileHandler',
-                             null_logs):
-        ## This patches out the logger handler that redirects the logs
-        ## to the stderr.  Because it's going to stderr instead of
-        ## stdout, it's polluting the testsuite output.
-        with unittest.mock.patch('microscope.deviceserver.StreamHandler',
-                                 null_logs):
-            microscope.deviceserver.serve_devices(*args, **kwargs)
+    no_file = unittest.mock.patch('microscope.deviceserver.RotatingFileHandler',
+                                  null_logs)
+    no_stream = unittest.mock.patch('microscope.deviceserver.StreamHandler',
+                                    null_logs)
+    return no_file(no_stream(func))
 
 
 class BaseTestServeDevices(unittest.TestCase):
@@ -68,8 +88,9 @@ class BaseTestServeDevices(unittest.TestCase):
     """
     DEVICES = []
     TIMEOUT = 5
+    @_patch_out_device_server_logs
     def setUp(self):
-        self.p = multiprocessing.Process(target=_serve_without_logs,
+        self.p = multiprocessing.Process(target=microscope.deviceserver.serve_devices,
                                          args=(self.DEVICES,))
         self.p.start()
 
@@ -80,11 +101,32 @@ class BaseTestServeDevices(unittest.TestCase):
                          "deviceserver not dead after SIGTERM")
 
 
+class BaseTestDeviceServer(unittest.TestCase):
+    """TestCase that starts DeviceServer on separate process.
+
+    Subclasses should define the class attribute `args`, which is used
+    to start the `DeviceServer` and implement `test_*` methods.
+
+    """
+    args = [] # args to construct DeviceServer
+    TIMEOUT = 5 # time to wait after join() during tearDown
+    @_patch_out_device_server_logs
+    def setUp(self):
+        self.queue = multiprocessing.Queue()
+        self.process = DeviceServerExceptionQueue(self.queue, *self.args)
+        self.process.start()
+
+    def tearDown(self):
+        self.process.terminate()
+        self.process.join(self.TIMEOUT)
+        self.assertFalse(self.process.is_alive(),
+                         "deviceserver not dead after SIGTERM")
+
+
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
         device(TestCamera, '127.0.0.1', 8001, {'buffer_length' : 0}),
-        device(TestFilterWheel, '127.0.0.1', 8003,
-               {'filters' : [(0, 'GFP', 525), (1, 'RFP'), (2, 'Cy5')]}),
+        device(TestFilterWheel, '127.0.0.1', 8003, {'positions' : 3}),
     ]
 
     def test_standard(self):
@@ -157,6 +199,49 @@ class TestConfigLoader(unittest.TestCase):
     def test_no_file_extension(self):
         """Reading of config file does not require file extension"""
         self._test_load_source('foobar')
+
+
+class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
+    # This test will create a floating device with a UID different
+    # (foo) than what appears on the config (bar).  This is what
+    # happens if there are two floating devices on the system (foo and
+    # bar) but the config lists only one of them (bar) but the other
+    # one is served instead (foo).  See issue #153.
+    args = [
+        device(TestFloatingDevice, '127.0.01', 8001, {'uid' : 'foo'},
+               uid='bar'),
+        {'bar' : '127.0.0.1'},
+        {'bar' : 8001},
+        multiprocessing.Event(),
+    ]
+    def test_fail_with_wrong_uid(self):
+        """DeviceServer fails if it gets a FloatingDevice with another UID """
+        time.sleep(1)
+        self.assertFalse(self.process.is_alive(),
+                         'expected DeviceServer to have errored and be dead')
+        self.assertRegex(str(self.queue.get_nowait()),
+                         'Host or port not found for device foo')
+
+
+class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
+    # Test that with a function we can specify multiple devices and
+    # they get the expected Pyro URI.
+    args = [
+        device(lambda **kwargs: {'dm1' : TestDeformableMirror(10),
+                                 'dm2' : TestDeformableMirror(20)},
+               'localhost', 8001),
+        {},
+        {},
+        multiprocessing.Event(),
+    ]
+    def test_function_in_device_definition(self):
+        """Function that constructs multiple devices in device definition"""
+        time.sleep(1)
+        self.assertTrue(self.process.is_alive())
+        dm1 = Pyro4.Proxy('PYRO:dm1@127.0.0.1:8001')
+        dm2 = Pyro4.Proxy('PYRO:dm2@127.0.0.1:8001')
+        self.assertEqual(dm1.n_actuators, 10)
+        self.assertEqual(dm2.n_actuators, 20)
 
 
 if __name__ == '__main__':

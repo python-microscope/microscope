@@ -163,20 +163,33 @@ class _Setting():
                 return values
 
 
-def device(cls, host, port, conf={}, uid=None):
-    """Define a device and where to serve it.
+def device(cls: typing.Callable, host: str, port: int,
+           conf: typing.Mapping[str, typing.Any] = {},
+           uid: typing.Optional[str] = None):
+    """Define devices and where to serve them.
 
     A device definition for use in deviceserver config files.
 
     Args:
-        cls (type): type/class of device to serve.
-        host (str): hostname or ip address serving the device.
-        port (int): port number used to serve the device.
-        conf (dict): keyword arguments to construct the device.  The
-            device is effectively constructed with `cls(**conf)`.
-        uid (str): used to identify "floating" devices (see
-            documentation for :class:`FloatingDeviceMixin`)
+        cls: :class:`Device` class of device to serve or function that
+            returns a map of `Device` instances to wanted Pyro ID.
+            The device class will be constructed, or the function will
+            be called, with the arguments in ``conf``.
+        host: hostname or ip address serving the devices.
+        port: port number used to serve the devices.
+        conf: keyword arguments for ``cls``.  The device or function
+            are effectively constructed or called with `cls(**conf)`.
+        uid: used to identify "floating" devices (see documentation
+            for :class:`FloatingDeviceMixin`).  This must be specified
+            if ``cls`` is a floating device.
     """
+    if not callable(cls):
+        raise Exception('cls must be a callable')
+    elif isinstance(cls, type):
+        if issubclass(cls, FloatingDeviceMixin) and uid is None:
+            raise Exception('uid must be specified for floating devices')
+        elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
+            raise Exception('uid must not be given for non floating devices')
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 
@@ -1091,17 +1104,12 @@ class LaserDevice(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheelBase(Device, metaclass=abc.ABCMeta):
-    def __init__(self, filters: typing.Union[typing.Mapping[int, str],
-                                             typing.Iterable] = [],
-                 positions: int = 0, **kwargs) -> None:
+    def __init__(self, positions: int, **kwargs) -> None:
         super().__init__(**kwargs)
-        if isinstance(filters, dict):
-            self._filters = filters
-        else:
-            self._filters = {i: f for (i, f) in enumerate(filters)}
-        self._inv_filters = {val: key for key, val in self._filters.items()}
-        if not hasattr(self, '_positions'):
-            self._positions = positions  # type: int
+        if positions < 1:
+            raise ValueError('positions must be a positive number (was %d)'
+                             % positions)
+        self._positions = positions
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
@@ -1111,22 +1119,41 @@ class FilterWheelBase(Device, metaclass=abc.ABCMeta):
                          self.set_position,
                          lambda: (0, self.get_num_positions()))
 
+    @property
+    def n_positions(self) -> int:
+        """Number of wheel positions."""
+        return self._positions
+
+    @property
+    def position(self) -> int:
+        """Number of wheel positions (zero-based)."""
+        return self._do_get_position()
+
+    @position.setter
+    def position(self, new_position: int) -> None:
+        if 0 <= new_position < self.n_positions:
+            return self._do_set_position(new_position)
+        else:
+            raise Exception('can\'t move to position %d, limits are [0 %d]'
+                            % (new_position, self.n_positions-1))
+
+
+    @abc.abstractmethod
+    def _do_get_position(self) -> int:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _do_set_position(self, position: int) -> None:
+        raise NotImplementedError()
+
+
+    # Deprecated and kept for backwards compatibility.
     def get_num_positions(self) -> int:
-        """Returns the number of wheel positions."""
-        return(max(self._positions, len(self._filters)))
-
-    @abc.abstractmethod
+        return self.n_positions
     def get_position(self) -> int:
-        """Return the wheel's current position"""
-        return 0
-
-    @abc.abstractmethod
+        return self.position
     def set_position(self, position: int) -> None:
-        """Set the wheel position."""
-        pass
-
-    def get_filters(self) -> typing.List[typing.Tuple[int, str]]:
-        return [(k, v) for k, v in self._filters.items()]
+        self.position = position
 
 
 class ControllerDevice(Device, metaclass=abc.ABCMeta):

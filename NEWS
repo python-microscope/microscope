@@ -4,6 +4,26 @@ python-microscope releases.
 Version 0.6.0 (upcoming)
 ------------------------
 
+* Changes to device ABCs:
+
+  * FilterWheelBase:
+
+    * The `get_filters` method and the constructor `filters` argument
+      have been removed.
+
+    * New `position` and `n_positions` properties added to replace
+      `get_position`, `set_position`, and `get_num_positions` methods.
+
+* New program `microscope-gui` to display simple GUIs given a Pyro URI
+  for a microscope device.
+
+* New optional requirement on QtPy for the GUI extra.  This
+  effectively adds a dependency on one of the Qt interfaces such as
+  PySide2 or PyQt5.
+
+* The `microscope.gui` module was completely rewritten to provide Qt
+  widgets instead of Tkinter.
+
 * New `TestStage` and `TestStageAxis` classes.
 
 
