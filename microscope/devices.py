@@ -52,7 +52,10 @@ Binning = namedtuple('Binning', ['h', 'v'])
 
 
 # Trigger types.
-(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT, TRIGGER_DURATION_PSEUDOGLOBAL) = range(5)
+(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
+
+# Electronic shuttering modes.
+(SHUTTERING_GLOBAL, SHUTTERING_ROLLING) = range(2)
 
 # Mapping of setting data types descriptors to allowed-value types.
 #
@@ -745,6 +748,10 @@ class CameraDevice(DataDevice):
 
     def get_exposure_time(self):
         """Return the current exposure time, in seconds."""
+        pass
+
+    def get_shuttering_mode(self):
+        """Return the electronic shuttering mode."""
         pass
 
     def get_cycle_time(self):

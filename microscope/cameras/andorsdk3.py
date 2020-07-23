@@ -46,8 +46,14 @@ TRIGGER_MODES = {
     'internal': None,
     'external': devices.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': devices.TRIGGER_DURATION_PSEUDOGLOBAL,
+    'external exposure': devices.TRIGGER_DURATION,
     'software': devices.TRIGGER_SOFT,
+}
+
+# Electronic shuttering modes.
+SHUTTERING_MODES = {
+    'global': devices.SHUTTERING_GLOBAL,
+    'rolling': devices.SHUTTERING_ROLLING,
 }
 
 SDK_NAMES = {
@@ -512,6 +518,9 @@ class AndorSDK3(devices.FloatingDeviceMixin,
 
     def get_exposure_time(self):
         return self._exposure_time.get_value()
+
+    def get_shuttering_mode(self):
+        return SHUTTERING_MODES[self._electronic_shuttering_mode.get_string().lower()]
 
     def get_cycle_time(self):
         return 1. / self._frame_rate.get_value()
