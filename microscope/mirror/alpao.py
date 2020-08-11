@@ -173,6 +173,12 @@ class AlpaoDeformableMirror(DeformableMirror):
                                self._trigger_mode.name))
 
         data_pointer = patterns.ctypes.data_as(asdk.Scalar_p)
+
+        # We don't know if the previous queue of pattern ran until the
+        # end, so we need to clear it before sending (see issue #50)
+        status = asdk.Stop(self._dm)
+        self._raise_if_error(status)
+
         status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
         self._raise_if_error(status)
 

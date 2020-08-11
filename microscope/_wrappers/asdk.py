@@ -72,3 +72,5 @@ Send = make_prototype("asdkSend", [pDM, Scalar_p])
 SendPattern = make_prototype("asdkSendPattern", [pDM, Scalar_p, UInt, UInt])
 
 Set = make_prototype("asdkSet", [pDM, CStr, Scalar])
+
+Stop = make_prototype("asdkStop", [pDM])
