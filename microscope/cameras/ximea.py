@@ -57,7 +57,8 @@ import typing
 import numpy as np
 from ximea import xiapi
 
-from microscope import devices
+import microscope
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
@@ -101,9 +102,9 @@ class TrgSourceMap(enum.Enum):
     # The complete list is the XI_TRG_SOURCE enum (C code) or in the
     # xidefs module (Python code).
 
-    XI_TRG_SOFTWARE = devices.TriggerType.SOFTWARE
-    XI_TRG_EDGE_RISING = devices.TriggerType.RISING_EDGE
-    XI_TRG_EDGE_FALLING = devices.TriggerType.FALLING_EDGE
+    XI_TRG_SOFTWARE = microscope.TriggerType.SOFTWARE
+    XI_TRG_EDGE_RISING = microscope.TriggerType.RISING_EDGE
+    XI_TRG_EDGE_FALLING = microscope.TriggerType.FALLING_EDGE
 
     # Not all XI_TRG_SOURCE values are defined:
     #
@@ -123,7 +124,7 @@ class TrgSelectorMap(enum.Enum):
     # xidefs module (Python code).
 
     # Trigger starts the capture of one frame.
-    XI_TRG_SEL_FRAME_START = devices.TriggerMode.ONCE
+    XI_TRG_SEL_FRAME_START = microscope.TriggerMode.ONCE
 
     # There are other modes/selector which look like they have matches
     # on TriggerMode but we never got to test them:
@@ -152,7 +153,7 @@ class TrgSelectorMap(enum.Enum):
     #   first frame.
 
 
-class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
+class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
     """Ximea cameras
 
     Args:
@@ -168,14 +169,14 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
         self._img = xiapi.Image()
         self._serial_number = serial_number
         self._sensor_shape = (0, 0)
-        self._roi = devices.ROI(None,None,None,None)
-        self._binning = devices.Binning(1, 1)
+        self._roi = microscope.ROI(None,None,None,None)
+        self._binning = microscope.Binning(1, 1)
 
         # When using the Settings system, enums are not really enums
         # and even when using lists we get indices sent back and forth
         # (works fine only when using EnumInt.  The gymnastic here
         # makes it work with the rest of enums which are there to make
-        # it work with TriggerTypeMixIn.
+        # it work with TriggerTargetMixin.
         trg_source_names = [x.name for x in TrgSourceMap]
         def _trigger_source_setter(index: int) -> None:
             trigger_mode = TrgSourceMap[trg_source_names[index]].value
@@ -261,13 +262,13 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
                               + self._handle.get_offsetX_maximum(),
                               self._handle.get_height_maximum()
                               + self._handle.get_offsetY_maximum())
-        self._roi = devices.ROI(left=0, top=0,
-                                width=self._sensor_shape[0],
-                                height=self._sensor_shape[1])
+        self._roi = microscope.ROI(left=0, top=0,
+                                   width=self._sensor_shape[0],
+                                   height=self._sensor_shape[1])
         self.set_roi(self._roi)
 
-        self.set_trigger(devices.TriggerType.SOFTWARE,
-                         devices.TriggerMode.ONCE)
+        self.set_trigger(microscope.TriggerType.SOFTWARE,
+                         microscope.TriggerMode.ONCE)
 
         # When we return the sensor temperature we want to return the
         # temperature that's closest to the chip since that's the one
@@ -344,10 +345,10 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
         self._handle.set_trigger_software(1)
 
 
-    def _get_binning(self) -> devices.Binning:
+    def _get_binning(self) -> microscope.Binning:
         return self._binning
 
-    def _set_binning(self, binning: devices.Binning) -> bool:
+    def _set_binning(self, binning: microscope.Binning) -> bool:
         if binning == self._binning:
             return True
         # We don't have a ximea camera that supports binning so we
@@ -357,15 +358,15 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
         raise NotImplementedError()
 
 
-    def _get_roi(self) -> devices.ROI:
-        assert self._roi == devices.ROI(self._handle.get_offsetX(),
-                                        self._handle.get_offsetY(),
-                                        self._handle.get_width(),
-                                        self._handle.get_height()), \
+    def _get_roi(self) -> microscope.ROI:
+        assert self._roi == microscope.ROI(self._handle.get_offsetX(),
+                                           self._handle.get_offsetY(),
+                                           self._handle.get_width(),
+                                           self._handle.get_height()), \
             "ROI attribute is out of sync with internal camera setting"
         return self._roi
 
-    def _set_roi(self, roi: devices.ROI) -> bool:
+    def _set_roi(self, roi: microscope.ROI) -> bool:
         if (roi.width + roi.left > self._sensor_shape[0]
             or roi.height + roi.top > self._sensor_shape[1]):
             raise ValueError('ROI %s does not fit in sensor shape %s'
@@ -404,7 +405,7 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
             _logger.warning('shutdown() called but camera was already closed')
 
     @property
-    def trigger_mode(self) -> devices.TriggerMode:
+    def trigger_mode(self) -> microscope.TriggerMode:
         trg_selector = self._handle.get_trigger_selector()
         try:
             tmode = TrgSelectorMap[trg_selector]
@@ -414,7 +415,7 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
         return tmode.value
 
     @property
-    def trigger_type(self) -> devices.TriggerType:
+    def trigger_type(self) -> microscope.TriggerType:
         trg_source = self._handle.get_trigger_source()
         try:
             ttype = TrgSourceMap[trg_source]
@@ -423,9 +424,9 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
                             % trg_source)
         return ttype.value
 
-    def set_trigger(self, ttype: devices.TriggerType,
-                    tmode: devices.TriggerMode) -> None:
-        if tmode is not devices.TriggerMode.ONCE:
+    def set_trigger(self, ttype: microscope.TriggerType,
+                    tmode: microscope.TriggerMode) -> None:
+        if tmode is not microscope.TriggerMode.ONCE:
             raise Exception('%s not supported (only TriggerMode.ONCE)' % tmode)
 
         try:
@@ -441,8 +442,8 @@ class XimeaCamera(devices.TriggerTargetMixIn, devices.CameraDevice):
 
     def get_trigger_type(self) -> int:
         ttype_microscope_to_cockpit = {
-            devices.TriggerType.SOFTWARE : devices.TRIGGER_SOFT,
-            devices.TriggerType.RISING_EDGE : devices.TRIGGER_BEFORE,
-            devices.TriggerType.FALLING_EDGE : devices.TRIGGER_AFTER,
+            microscope.TriggerType.SOFTWARE : microscope.abc.TRIGGER_SOFT,
+            microscope.TriggerType.RISING_EDGE : microscope.abc.TRIGGER_BEFORE,
+            microscope.TriggerType.FALLING_EDGE : microscope.abc.TRIGGER_AFTER,
         }
         return ttype_microscope_to_cockpit[self.trigger_type]

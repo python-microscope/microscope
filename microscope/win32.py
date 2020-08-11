@@ -64,7 +64,7 @@ class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
         self.log("Logging at %s." % os.getcwd())
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
 
-        from microscope.deviceserver import serve_devices, validate_devices
+        from microscope.device_server import serve_devices, validate_devices
         try:
             devices = validate_devices(configfile)
             serve_devices(devices, self.stop_event)

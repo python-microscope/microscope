@@ -33,8 +33,9 @@ ctypes objects.
 import ctypes
 from ctypes import byref, POINTER
 from enum import Enum, IntEnum
-from microscope import devices
 import datetime, time
+
+import microscope.abc
 
 _max_version_length = 20
 
@@ -899,7 +900,7 @@ _StageValueTypeToVariant = {
 }
 
 
-class _LinkamBase(devices.FloatingDeviceMixin, devices.Device):
+class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
     """Base class for connecting to Linkam SDK devices.
 
     This class deals with SDK initialisation and setting callbacks to
@@ -938,7 +939,7 @@ class _LinkamBase(devices.FloatingDeviceMixin, devices.Device):
         #    sdk_log = b''
         #else:
         import os
-        lpaths = ['', os.path.dirname(__file__), os.path.dirname(devices.__file__)]
+        lpaths = ['', os.path.dirname(__file__), os.path.dirname(microscope.abc.__file__)]
         sdk_log = os.devnull
         while True:
             try:

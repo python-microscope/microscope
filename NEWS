@@ -21,7 +21,7 @@ Version 0.6.0 (upcoming)
 
 * Changes to device ABCs:
 
-  * FilterWheelBase:
+  * FilterWheel:
 
     * The `get_filters` method and the constructor `filters` argument
       have been removed.
@@ -44,6 +44,13 @@ Version 0.6.0 (upcoming)
   widgets instead of Tkinter.
 
 * New `TestStage` and `TestStageAxis` classes.
+
+* The `microscope.devices.device` function, used to define a device
+  for the device server, is now part of the `microscope.device_server`
+  module.
+
+* The `AxisLimits, `Binning`, `ROI`, `TriggerMode`, and `TriggerType`
+  classes are now available on the `microscope` module.
 
 
 Version 0.5.0 (2020/03/10)

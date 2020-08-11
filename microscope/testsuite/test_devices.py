@@ -362,7 +362,7 @@ class TestDummyLaser(unittest.TestCase, LaserTests):
 
     def test_being(self):
         ## TODO: this test uses is_alive but that's actually a method
-        ## of SerialDeviceMixIn and not specific to lasers.  It is not
+        ## of SerialDeviceMixin and not specific to lasers.  It is not
         ## implemented on our dummy laser.  We need to decide what to
         ## do about it.  Is this general enough that should go to all
         ## devices?

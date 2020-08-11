@@ -29,7 +29,7 @@ import typing
 
 import serial
 
-import microscope.devices
+import microscope.abc
 
 # TODO: move this into its own module.
 from microscope.controllers.lumencor import _SyncSerial
@@ -121,7 +121,7 @@ class _CoolLEDChannelConnection:
         return self._get_css()[1:2].decode()
 
 
-class _CoolLEDChannel(microscope.devices.LaserDevice):
+class _CoolLEDChannel(microscope.abc.Laser):
     """Individual light devices that compose a CoolLED controller."""
     def __init__(self, connection: _CoolLEDConnection, name: str,
                  **kwargs) -> None:
@@ -162,7 +162,7 @@ class _CoolLEDChannel(microscope.devices.LaserDevice):
         self._conn.set_intensity(int(power * 100.0))
 
 
-class CoolLED(microscope.devices.ControllerDevice):
+class CoolLED(microscope.abc.Controller):
     """CoolLED controller for the individual light devices.
 
     Args:
@@ -196,7 +196,7 @@ class CoolLED(microscope.devices.ControllerDevice):
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._channels = {} # type: typing.Mapping[str, microscope.devices.LaserDevice]
+        self._channels = {} # type: typing.Mapping[str, microscope.abc.Laser]
 
         # CoolLED manual only has the baudrate, we guessed the rest.
         serial_conn = serial.Serial(port=port, baudrate=57600, timeout=1,
@@ -209,5 +209,5 @@ class CoolLED(microscope.devices.ControllerDevice):
             self._channels[name] = _CoolLEDChannel(connection, name)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
+    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
         return self._channels

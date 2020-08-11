@@ -67,7 +67,7 @@ Device server
 The device server requires a configuration file defining the different
 devices to be initialised.  It can be started with::
 
-  python -m microscope.deviceserver PATH-TO-CONFIG-FILE
+  python -m microscope.device_server PATH-TO-CONFIG-FILE
 
 The device server configuration file is a Python script that defines a
 ``DEVICES`` list.  Each element in the list corresponds to one
@@ -78,7 +78,7 @@ device.  For example:
   """Configuration file for deviceserver.
   """
   # The 'device' function creates device definitions.
-  from microscope.devices import device
+  from microscope.device_server import device
 
   # Import required device classes
   from microscope.lasers.cobolt import CoboltLaser
@@ -121,7 +121,7 @@ development by providing a fake device for testing purposes.
 
 .. code:: python
 
-  from microscope.devices import device
+  from microscope.device_server import device
 
   from microscope.testsuite.devices import TestCamera
   from microscope.testsuite.devices import TestLaser

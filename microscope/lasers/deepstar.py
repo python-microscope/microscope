@@ -21,13 +21,13 @@ import logging
 
 import serial
 
-from microscope import devices
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
 
 
-class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     """Omicron DeepStar laser.
 
     Omicron LDM lasers can be bought with and without the LDM.APC
@@ -72,7 +72,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Get the status of the laser, by sending the
     # STAT0, STAT1, STAT2, and STAT3 commands.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
         for i in range(4):
@@ -82,7 +82,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
         # Turn on deepstar mode with internal voltage ref
@@ -114,14 +114,14 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         pass
 
     ## Turn the laser OFF.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_disable(self):
         _logger.info("Turning laser OFF.")
         self._write(b'LF')
         return self._readline().decode()
 
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def is_alive(self):
         self._write(b'S?')
         response = self._readline()
@@ -130,7 +130,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     ## Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         self._write(b'S?')
         response = self._readline()
@@ -138,7 +138,7 @@ class DeepstarLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         return response == b'S2'
 
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _do_set_power(self, power: float) -> None:
         _logger.info("level=%d", power)
         power_int = int (power*0xFFF)

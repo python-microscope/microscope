@@ -40,7 +40,7 @@ import numpy
 import Pyro4
 from qtpy import QtCore, QtGui, QtWidgets
 
-import microscope.devices
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class DeviceSettingsWidget(QtWidgets.QWidget):
     modify them.
 
     """
-    def __init__(self, device: microscope.devices.Device,
+    def __init__(self, device: microscope.abc.Device,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
@@ -82,7 +82,7 @@ class _Imager(QtCore.QObject):
     """Helper for CameraWidget handling the internals of the camera trigger."""
     imageAcquired = QtCore.Signal(numpy.ndarray)
 
-    def __init__(self, camera: microscope.devices.CameraDevice) -> None:
+    def __init__(self, camera: microscope.abc.Camera) -> None:
         super().__init__()
         self._camera = camera
         self._data_queue = _DataQueue()
@@ -105,7 +105,7 @@ class _Imager(QtCore.QObject):
 
     def snap(self) -> None:
         # CameraDevice have a soft_trigger method but it may do
-        # nothing.  If the camera is a TriggerTargetMixIn, then it
+        # nothing.  If the camera is a TriggerTargetMixin, then it
         # will have a trigger method that does work.
         getattr(self._camera, 'trigger', self._camera.soft_trigger)()
 
@@ -124,7 +124,7 @@ class _Imager(QtCore.QObject):
 
 class CameraWidget(QtWidgets.QWidget):
     """Display camera"""
-    def __init__(self, device: microscope.devices.CameraDevice,
+    def __init__(self, device: microscope.abc.Camera,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
@@ -190,7 +190,7 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
     since the actuators position are not queryable..  The reset button
     does this too, i.e., it sets all actuators to their mid-point.
     """
-    def __init__(self, device: microscope.devices.DeformableMirror,
+    def __init__(self, device: microscope.abc.DeformableMirror,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
@@ -247,7 +247,7 @@ class FilterWheelWidget(QtWidgets.QWidget):
     This widget shows a table of toggle buttons with the filterwheel
     position numbers.
     """
-    def __init__(self, device: microscope.devices.FilterWheelBase,
+    def __init__(self, device: microscope.abc.FilterWheel,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
@@ -282,8 +282,8 @@ class StageWidget(QtWidgets.QWidget):
     enabled since otherwise it is not able to move it or query the
     limits.
     """
-    def __init__(self, device: microscope.devices.StageDevice,
-                 *args, **kwargs):
+    def __init__(self, device: microscope.abc.Stage,
+                 *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
 

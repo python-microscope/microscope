@@ -29,17 +29,15 @@ import unittest.mock
 import Pyro4
 
 import microscope.clients
-import microscope.devices
-import microscope.deviceserver
+import microscope.device_server
 
-from microscope.devices import device
 from microscope.testsuite.devices import TestCamera
 from microscope.testsuite.devices import TestFilterWheel
 from microscope.testsuite.devices import TestFloatingDevice
 from microscope.testsuite.devices import TestDeformableMirror
 
 
-class DeviceServerExceptionQueue(microscope.deviceserver.DeviceServer):
+class DeviceServerExceptionQueue(microscope.device_server.DeviceServer):
     """`DeviceServer` that queues an exception during `run`.
 
     A `DeviceServer` instance runs on another process so if it fails
@@ -68,9 +66,9 @@ def _patch_out_device_server_logs(func):
     """
     def null_logs(*args, **kwargs):
         return logging.NullHandler()
-    no_file = unittest.mock.patch('microscope.deviceserver.RotatingFileHandler',
+    no_file = unittest.mock.patch('microscope.device_server.RotatingFileHandler',
                                   null_logs)
-    no_stream = unittest.mock.patch('microscope.deviceserver.StreamHandler',
+    no_stream = unittest.mock.patch('microscope.device_server.StreamHandler',
                                     null_logs)
     return no_file(no_stream(func))
 
@@ -90,7 +88,7 @@ class BaseTestServeDevices(unittest.TestCase):
     TIMEOUT = 5
     @_patch_out_device_server_logs
     def setUp(self):
-        self.p = multiprocessing.Process(target=microscope.deviceserver.serve_devices,
+        self.p = multiprocessing.Process(target=microscope.device_server.serve_devices,
                                          args=(self.DEVICES,))
         self.p.start()
 
@@ -125,8 +123,10 @@ class BaseTestDeviceServer(unittest.TestCase):
 
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
-        device(TestCamera, '127.0.0.1', 8001, {'buffer_length' : 0}),
-        device(TestFilterWheel, '127.0.0.1', 8003, {'positions' : 3}),
+        microscope.device_server.device(TestCamera, '127.0.0.1', 8001,
+                                        {'buffer_length' : 0}),
+        microscope.device_server.device(TestFilterWheel, '127.0.0.1', 8003,
+                                        {'positions' : 3}),
     ]
 
     def test_standard(self):
@@ -147,7 +147,7 @@ class TestInputCheck(BaseTestServeDevices):
                         "not dying for empty list of devices")
 
 
-class DeviceWithPort(microscope.devices.Device):
+class DeviceWithPort(microscope.abc.Device):
     def __init__(self, port, **kwargs):
         super().__init__(**kwargs)
         self._port = port
@@ -166,7 +166,8 @@ class DeviceWithPort(microscope.devices.Device):
 class TestClashingArguments(BaseTestServeDevices):
     """Device server and device constructor arguments do not clash"""
     DEVICES = [
-        device(DeviceWithPort, '127.0.0.1', 8000, {'port' : 7000}),
+        microscope.device_server.device(DeviceWithPort, '127.0.0.1', 8000,
+                                        {'port' : 7000}),
     ]
     def test_port_conflict(self):
         time.sleep(2)
@@ -182,7 +183,7 @@ class TestConfigLoader(unittest.TestCase):
             with open(filepath, 'w') as fh:
                 fh.write(file_contents)
 
-            module = microscope.deviceserver._load_source(filepath)
+            module = microscope.device_server._load_source(filepath)
             self.assertEqual(module.DEVICES, [1, 2, 3])
 
     def test_py_file_extension(self):
@@ -208,8 +209,8 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
     # bar) but the config lists only one of them (bar) but the other
     # one is served instead (foo).  See issue #153.
     args = [
-        device(TestFloatingDevice, '127.0.01', 8001, {'uid' : 'foo'},
-               uid='bar'),
+        microscope.device_server.device(TestFloatingDevice, '127.0.01', 8001,
+                                        {'uid' : 'foo'}, uid='bar'),
         {'bar' : '127.0.0.1'},
         {'bar' : 8001},
         multiprocessing.Event(),
@@ -227,9 +228,9 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
     # Test that with a function we can specify multiple devices and
     # they get the expected Pyro URI.
     args = [
-        device(lambda **kwargs: {'dm1' : TestDeformableMirror(10),
-                                 'dm2' : TestDeformableMirror(20)},
-               'localhost', 8001),
+        microscope.device_server.device(lambda **kwargs: {'dm1' : TestDeformableMirror(10),
+                                                          'dm2' : TestDeformableMirror(20)},
+                                        'localhost', 8001),
         {},
         {},
         multiprocessing.Event(),

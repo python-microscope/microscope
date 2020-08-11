@@ -136,9 +136,8 @@ import time
 import Pyro4
 import numpy as np
 
-from microscope import devices
-from microscope.devices import ROI, Binning
-from microscope.devices import keep_acquiring
+import microscope
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
@@ -999,12 +998,12 @@ class TriggerMode:
 
 # Trigger mode definitions.
 TRIGGER_MODES = {
-    TRIG_SOFT: TriggerMode(TRIG_SOFT, 'software', TIMED_MODE, devices.TRIGGER_SOFT),
+    TRIG_SOFT: TriggerMode(TRIG_SOFT, 'software', TIMED_MODE, microscope.abc.TRIGGER_SOFT),
     TRIG_TIMED: TriggerMode(TRIG_TIMED, 'timed', TIMED_MODE, -1),
     TRIG_VARIABLE: TriggerMode(TRIG_VARIABLE, 'variable timed', VARIABLE_TIMED_MODE, -1),
-    TRIG_FIRST: TriggerMode(TRIG_FIRST, 'trig. first', TRIGGER_FIRST_MODE, devices.TRIGGER_BEFORE),
-    TRIG_STROBED: TriggerMode(TRIG_STROBED, 'strobed', STROBED_MODE, devices.TRIGGER_BEFORE),
-    TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, devices.TRIGGER_DURATION),
+    TRIG_FIRST: TriggerMode(TRIG_FIRST, 'trig. first', TRIGGER_FIRST_MODE, microscope.abc.TRIGGER_BEFORE),
+    TRIG_STROBED: TriggerMode(TRIG_STROBED, 'strobed', STROBED_MODE, microscope.abc.TRIGGER_BEFORE),
+    TRIG_BULB: TriggerMode(TRIG_BULB, 'bulb', BULB_MODE, microscope.abc.TRIGGER_DURATION),
 }
 
 class PVParam():
@@ -1184,7 +1183,7 @@ class PVStringParam(PVParam):
         return values
 
 
-class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
+class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
     """Implements the CameraDevice interface for the pvcam library."""
     # Keep track of open cameras.
     open_cameras = []
@@ -1201,7 +1200,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         # Region of interest.
         self.roi = (None, None, None, None)
         # Binning setting.
-        self.binning = Binning(1, 1)
+        self.binning = microscope.Binning(1, 1)
         self._trigger = TRIG_STROBED
         self.exposure_time = 0.001 # in seconds
         # Cycle time
@@ -1354,17 +1353,17 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         """Return the current binning (horizontal, vertical)."""
         return self.binning
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         """Set binning to (h, v)."""
         #  The keep_acquiring decorator will cause recreation of buffers.
-        self.binning = Binning(binning.h, binning.v)
+        self.binning = microscope.Binning(binning.h, binning.v)
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
         return self.roi
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
         right = roi.left + roi.width
@@ -1471,7 +1470,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
                              self._params[PARAM_PMODE].values)
 
         self.shape = (self._params[PARAM_PAR_SIZE].current, self._params[PARAM_SER_SIZE].current)
-        self.roi = ROI(0, 0, self.shape[0], self.shape[1])
+        self.roi = microscope.ROI(0, 0, self.shape[0], self.shape[1])
 
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
@@ -1501,7 +1500,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def set_readout_mode(self, index):
         """Set the readout mode and transform."""
         params = self._readout_mode_parameters[index]
@@ -1527,7 +1526,7 @@ class PVCamera(devices.FloatingDeviceMixin, devices.CameraDevice):
             self.abort()
 
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
         self.exposure_time = value

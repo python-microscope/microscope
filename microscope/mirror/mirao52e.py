@@ -43,13 +43,12 @@ import typing
 
 import numpy
 
-import microscope.devices
+import microscope
+import microscope.abc
 import microscope._wrappers.mirao52e as mro
 
-from microscope.devices import TriggerMode, TriggerType
 
-
-class Mirao52e(microscope.devices.DeformableMirror):
+class Mirao52e(microscope.abc.DeformableMirror):
     """Imagine Optic Mirao 52e deformable mirror.
 
     The Mirao 52e deformable mirrors only support software trigger.
@@ -71,17 +70,18 @@ class Mirao52e(microscope.devices.DeformableMirror):
 
 
     @property
-    def trigger_type(self) -> TriggerType:
-        return TriggerType.SOFTWARE
+    def trigger_type(self) -> microscope.TriggerType:
+        return microscope.TriggerType.SOFTWARE
 
     @property
-    def trigger_mode(self) -> TriggerMode:
-        return TriggerMode.ONCE
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.ONCE
 
-    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
-        if ttype is not TriggerType.SOFTWARE:
+    def set_trigger(self, ttype: microscope.TriggerType,
+                    tmode: microscope.TriggerMode) -> None:
+        if ttype is not microscope.TriggerType.SOFTWARE:
             raise Exception('the only trigger type supported is software')
-        if tmode is not TriggerMode.ONCE:
+        if tmode is not microscope.TriggerMode.ONCE:
             raise Exception('the only trigger mode supported is \'once\'')
 
 

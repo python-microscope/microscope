@@ -22,13 +22,13 @@ import logging
 
 import serial
 
-from microscope import devices
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
 
 
-class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
 
     laser_status = {
         b'1': 'Start up',
@@ -76,7 +76,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._write(command)
         return self._readline()
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def clearFault(self):
         self.flush_buffer()
         return self.get_status()
@@ -86,11 +86,11 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         while len(line) > 0:
             line = self._readline()
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def is_alive(self):
         return self.send(b'?l') in b'01'
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
 
@@ -116,7 +116,7 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         result.append(faults.decode())
         return result
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_shutdown(self):
         # Disable laser.
         self._write(b'l=0')
@@ -124,13 +124,13 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ##  Initialization to do when cockpit connects.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def initialize(self):
         self.flush_buffer()
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
         # Turn on emission.
@@ -151,23 +151,23 @@ class SapphireLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ## Turn the laser OFF.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def disable(self):
         _logger.info("Turning laser OFF.")
         return self._write(b'l=0')
 
 
     ## Return True if the laser is currently able to produce light.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         return self.send(b'?l') == b'1'
 
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _get_power_mw(self):
         return float(self.send(b'?p'))
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _set_power_mw(self, mW):
         mW_str = '%.3f' % mW
         _logger.info("Setting laser power to %s mW.", mW_str)

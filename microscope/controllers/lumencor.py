@@ -33,7 +33,7 @@ import typing
 
 import serial
 
-import microscope.devices
+import microscope.abc
 
 
 class _SyncSerial:
@@ -149,7 +149,7 @@ class _LightChannelConnection:
         self._conn.set_command(b'CHINT', self._index_bytes, b'%d' % intensity)
 
 
-class SpectraIIILightEngine(microscope.devices.ControllerDevice):
+class SpectraIIILightEngine(microscope.abc.Controller):
     """Spectra III Light Engine.
 
     Args:
@@ -171,7 +171,7 @@ class SpectraIIILightEngine(microscope.devices.ControllerDevice):
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._lights = {} # type: typing.Mapping[str, microscope.devices.Device]
+        self._lights = {} # type: typing.Mapping[str, microscope.abc.Device]
 
         # We use standard (not legacy) mode communication so 115200,8,N,1
         serial_conn = serial.Serial(port=port, baudrate=115200, timeout=1,
@@ -187,11 +187,11 @@ class SpectraIIILightEngine(microscope.devices.ControllerDevice):
             self._lights[name] = _SpectraIIILightChannel(connection, index)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
+    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
         return self._lights
 
 
-class _SpectraIIILightChannel(microscope.devices.LaserDevice):
+class _SpectraIIILightChannel(microscope.abc.Laser):
     """A single light channel from a light engine.
 
     A channel is not necessarily a lasers although it subclasses from

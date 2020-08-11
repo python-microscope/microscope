@@ -21,13 +21,13 @@ import logging
 
 import serial
 
-from microscope import devices
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
 
 
-class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     def __init__(self, com=None, baud=115200, timeout=0.01, **kwargs):
         super().__init__(**kwargs)
         self.connection = serial.Serial(port = com,
@@ -57,17 +57,17 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
                 success = True
         return response
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def clearFault(self):
         self.send(b'cf')
         return self.get_status()
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def is_alive(self):
         response = self.send(b'l?')
         return response in b'01'
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
         for cmd, stat in [(b'l?', 'Emission on?'),
@@ -79,7 +79,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             result.append(stat + " " + response.decode())
         return result
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_shutdown(self):
         # Disable laser.
         self.disable()
@@ -88,7 +88,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ##  Initialization to do when cockpit connects.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def initialize(self):
         self.connection.flushInput()
         #We don't want 'direct control' mode.
@@ -98,7 +98,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ## Turn the laser ON. Return True if we succeeded, False otherwise.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
         # Turn on emission.
@@ -114,20 +114,20 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
 
     ## Turn the laser OFF.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def disable(self):
         _logger.info("Turning laser OFF.")
         return self.send(b'l0').decode()
 
 
     ## Return True if the laser is currently able to produce light.
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         response = self.send(b'l?')
         return response == b'1'
 
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _get_power_mw(self) -> float:
         if not self.get_is_on():
             return 0.0
@@ -139,7 +139,7 @@ class CoboltLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
                 success = True
         return 1000 * float(response)
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _set_power_mw(self, mW: float) -> None:
         ## There is no minimum power in cobolt lasers.  Any
         ## non-negative number is accepted.

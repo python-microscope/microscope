@@ -30,13 +30,20 @@
    Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
 """
 
+import ctypes
 import logging
 import sys, functools, os, platform
-import ctypes
+import time
+
 from ctypes import Structure, POINTER
 from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
 from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
+from threading import Lock
+
 from numpy.ctypeslib import ndpointer
+
+import microscope
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
@@ -1130,17 +1137,11 @@ class ReadoutMode():
         return "{} {} CH{:.0f}".format(self.amp.name, speedstr, self.channel)
 
 
-from threading import Lock
-from microscope import devices
-from microscope.devices import keep_acquiring, Binning, ROI
-import time
-
 # A lock on the DLL used to ensure DLL calls act on the correct device.
 _dll_lock = Lock()
 
 
-class AndorAtmcd(devices.FloatingDeviceMixin,
-                 devices.CameraDevice):
+class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
     """ Implements CameraDevice interface for Andor ATMCD library."""
     def __init__(self, index=0, **kwargs):
         super().__init__(index=index, **kwargs)
@@ -1224,8 +1225,8 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             # Initialize the library and connect to camera.
             Initialize(b'')
             # Initialise ROI to full sensor area and binning to single-pixel.
-            self._set_roi(ROI(0,0,0,0))
-            self._set_binning(Binning(1,1))
+            self._set_roi(microscope.ROI(0,0,0,0))
+            self._set_binning(microscope.Binning(1,1))
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1<<2:
@@ -1458,7 +1459,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
                 # Just raise the descriptive exception, not the chain.
                 raise out_e from None
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
         """Set exposure time."""
         with self:
@@ -1505,11 +1506,11 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Return the microscope.devices trigger type."""
         trig = self.get_setting('TriggerMode')
         if trig == TriggerMode.BULB:
-            return devices.TRIGGER_DURATION
+            return microscope.abc.TRIGGER_DURATION
         elif trig == TriggerMode.SOFTWARE:
-            return devices.TRIGGER_SOFT
+            return microscope.abc.TRIGGER_SOFT
         else:
-            return devices.TRIGGER_BEFORE
+            return microscope.abc.TRIGGER_BEFORE
 
     def soft_trigger(self):
         """Send a software trigger signal."""
@@ -1520,7 +1521,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Return the binning setting."""
         return self._binning
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         """Set horizontal and vertical binning. Default to single pixel."""
         self._binning = binning
@@ -1530,7 +1531,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Return the current ROI setting."""
         return self._roi
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         """Set the ROI, defaulting to full sensor area."""
         with self:
@@ -1541,5 +1542,5 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         height = roi.height or y
         if any([left < 1, top < 1, left+width-1 > x, top+height-1 > y]):
             return False
-        self._roi = ROI(left, top, width, height)
+        self._roi = microscope.ROI(left, top, width, height)
         return True

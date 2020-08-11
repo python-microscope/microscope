@@ -16,22 +16,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Test camera device. """
-from microscope import devices
-from microscope.devices import keep_acquiring
-from microscope.devices import ROI, Binning
+
+import microscope
+import microscope.abc
 
 
 # Trigger mode to type.
 TRIGGER_MODES = {
     'internal': None,
-    'external': devices.TRIGGER_BEFORE,
+    'external': microscope.abc.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
-    'software': devices.TRIGGER_SOFT,
+    'external exposure': microscope.abc.TRIGGER_DURATION,
+    'software': microscope.abc.TRIGGER_SOFT,
 }
 
 
-class TemplateCamera(devices.CameraDevice):
+class TemplateCamera(microscope.abc.Camera):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
         # Software buffers and parameters for data conversion.
@@ -70,18 +70,18 @@ class TemplateCamera(devices.CameraDevice):
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-        return Binning(1,1)
+        return microscope.Binning(1,1)
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         """Set binning to (h, v)."""
         return False
 
     def _get_roi(self):
         """Return the current ROI (left, top, width, height)."""
-        return ROI(0, 0, 512, 512)
+        return microscope.ROI(0, 0, 512, 512)
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         """Set the ROI to (left, tip, width, height)."""
         return False

@@ -27,11 +27,8 @@ import typing
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
 
-from microscope import devices
-from microscope.devices import keep_acquiring
-from microscope.devices import FilterWheelBase
-from microscope.devices import ROI, Binning
-from microscope.devices import TriggerMode, TriggerType
+import microscope
+import microscope.abc
 
 from enum import IntEnum
 
@@ -152,12 +149,12 @@ class _ImageGenerator():
         return dark + light * ((np.sin(th)*xx + np.cos(th)*yy) % wrap) / (wrap)
 
 
-class TestCamera(devices.CameraDevice):
+class TestCamera(microscope.abc.Camera):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI
-        self._roi = ROI(0,0,512,512)
-        self._binning = Binning(1,1)
+        self._roi = microscope.ROI(0,0,512,512)
+        self._binning = microscope.Binning(1,1)
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
         self.add_setting('image pattern', 'enum',
@@ -294,7 +291,7 @@ class TestCamera(devices.CameraDevice):
         return (512,512)
 
     def get_trigger_type(self):
-        return devices.TRIGGER_SOFT
+        return microscope.abc.TRIGGER_SOFT
 
     @must_be_initialized
     def soft_trigger(self):
@@ -306,14 +303,14 @@ class TestCamera(devices.CameraDevice):
     def _get_binning(self):
         return self._binning
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         self._binning = binning
 
     def _get_roi(self):
         return self._roi
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         self._roi = roi
 
@@ -321,7 +318,7 @@ class TestCamera(devices.CameraDevice):
         pass
 
 
-class TestFilterWheel(FilterWheelBase):
+class TestFilterWheel(microscope.abc.FilterWheel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._position = 0
@@ -340,7 +337,7 @@ class TestFilterWheel(FilterWheelBase):
         pass
 
 
-class TestLaser(devices.LaserDevice):
+class TestLaser(microscope.abc.Laser):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._power = 0.0
@@ -377,7 +374,7 @@ class TestLaser(devices.LaserDevice):
             return 0.0
 
 
-class TestDeformableMirror(devices.DeformableMirror):
+class TestDeformableMirror(microscope.abc.DeformableMirror):
     def __init__(self, n_actuators, **kwargs):
         super().__init__(**kwargs)
         self._n_actuators = n_actuators
@@ -390,17 +387,18 @@ class TestDeformableMirror(devices.DeformableMirror):
         self._current_pattern = pattern
 
     @property
-    def trigger_type(self) -> TriggerType:
-        return TriggerType.SOFTWARE
+    def trigger_type(self) -> microscope.TriggerType:
+        return microscope.TriggerType.SOFTWARE
 
     @property
-    def trigger_mode(self) -> TriggerMode:
-        return TriggerMode.ONCE
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.ONCE
 
-    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
-        if ttype is not TriggerType.SOFTWARE:
+    def set_trigger(self, ttype: microscope.TriggerType,
+                    tmode: microscope.TriggerMode) -> None:
+        if ttype is not microscope.TriggerType.SOFTWARE:
             raise Exception('the only trigger type supported is software')
-        if tmode is not TriggerMode.ONCE:
+        if tmode is not microscope.TriggerMode.ONCE:
             raise Exception('the only trigger mode supported is \'once\'')
 
     def get_current_pattern(self):
@@ -412,7 +410,7 @@ class TestDeformableMirror(devices.DeformableMirror):
         return self._current_pattern
 
 
-class DummySLM(devices.Device):
+class DummySLM(microscope.abc.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sim_diffraction_angle = 0.
@@ -454,7 +452,7 @@ class DummySLM(devices.Device):
         return self.sequence_index
 
 
-class DummyDSP(devices.Device):
+class DummyDSP(microscope.abc.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._digi = 0
@@ -525,15 +523,15 @@ class DummyDSP(devices.Device):
 
     def receiveClient(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
-        return devices.DataDevice.receiveClient(self, *args, **kwargs)
+        return microscope.abc.DataDevice.receiveClient(self, *args, **kwargs)
 
     def set_client(self, *args, **kwargs):
         ## XXX: maybe this should be on its own mixin instead of on DataDevice
-        return devices.DataDevice.set_client(self, *args, **kwargs)
+        return microscope.abc.DataDevice.set_client(self, *args, **kwargs)
 
 
-class TestStageAxis(devices.StageAxis):
-    def __init__(self, limits: devices.AxisLimits) -> None:
+class TestStageAxis(microscope.abc.StageAxis):
+    def __init__(self, limits: microscope.AxisLimits) -> None:
         super().__init__()
         self._limits = limits
         # Start axis in the middle of its range.
@@ -545,7 +543,7 @@ class TestStageAxis(devices.StageAxis):
         return self._position
 
     @property
-    def limits(self) -> devices.AxisLimits:
+    def limits(self) -> microscope.AxisLimits:
         return self._limits
 
     def move_by(self, delta: float)-> None:
@@ -560,7 +558,7 @@ class TestStageAxis(devices.StageAxis):
             self._position = pos
 
 
-class TestStage(devices.StageDevice):
+class TestStage(microscope.abc.Stage):
     """A test stage with any number of axis.
 
     Args:
@@ -582,7 +580,7 @@ class TestStage(devices.StageDevice):
         })
 
     """
-    def __init__(self, limits: typing.Mapping[str, devices.AxisLimits],
+    def __init__(self, limits: typing.Mapping[str, microscope.AxisLimits],
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self._axes = {name: TestStageAxis(lim) for name, lim in limits.items()}
@@ -594,7 +592,7 @@ class TestStage(devices.StageDevice):
         pass
 
     @property
-    def axes(self) -> typing.Mapping[str, devices.StageAxis]:
+    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
     def move_by(self, delta: typing.Mapping[str, float]) -> None:
@@ -606,7 +604,8 @@ class TestStage(devices.StageDevice):
             self.axes[name].move_to(pos)
 
 
-class TestFloatingDevice(devices.FloatingDeviceMixin, devices.Device):
+class TestFloatingDevice(microscope.abc.FloatingDeviceMixin,
+                         microscope.abc.Device):
     """Simple device with a UID after having been initialized.
 
     Floating devices are devices where we can't specify which one to

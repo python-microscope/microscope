@@ -20,10 +20,10 @@ import io
 
 import serial
 
-from microscope.devices import FilterWheelBase
+import microscope.abc
 
 
-class ThorlabsFilterWheel(FilterWheelBase):
+class ThorlabsFilterWheel(microscope.abc.FilterWheel):
     """Implements FilterServer wheel interface for Thorlabs FW102C.
 
     Note that the FW102C also has manual controls on the device, so clients

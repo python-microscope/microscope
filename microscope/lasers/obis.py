@@ -22,13 +22,13 @@ import logging
 
 import serial
 
-from microscope import devices
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
 
 
-class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
+class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     def __init__(self, com, baud=115200, timeout=0.5, **kwargs) -> None:
         super().__init__(**kwargs)
         self.connection = serial.Serial(port=com, baudrate=baud,
@@ -72,7 +72,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
 
     def _readline(self):
         """Read a line from connection without leading and trailing whitespace.
-        We override from serialDeviceMixIn
+        We override from SerialDeviceMixin
         """
         response = self.connection.readline().strip()
         if self.connection.readline().strip() != b'OK':
@@ -82,7 +82,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
     def _flush_handshake(self):
         self.connection.readline()
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
         for cmd, stat in [(b'SOURce:AM:STATe?', 'Emission on?'),
@@ -95,7 +95,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             result.append(stat + ' ' + self._readline().decode())
         return result
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def enable(self):
         """Turn the laser ON. Return True if we succeeded, False otherwise."""
         _logger.info('Turning laser ON.')
@@ -139,7 +139,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         self._write(b'SOURce:AM:EXTernal DIGital')
         self._flush_handshake()
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def disable(self):
         """Turn the laser OFF. Return True if we succeeded, False otherwise."""
         _logger.info('Turning laser OFF.')
@@ -153,14 +153,14 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
             return False
         return True
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def is_alive(self):
         self._write(b'*IDN?')
         reply = self._readline()
         # 'Coherent, Inc-<model name>-<firmware version>-<firmware date>'
         return reply.startswith(b'Coherent, Inc-')
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         """Return True if the laser is currently able to produce light."""
         self._write(b'SOURce:AM:STATe?')
@@ -169,7 +169,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         return response == b'ON'
 
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _get_power_mw(self):
         if not self.get_is_on():
             return 0.0
@@ -177,7 +177,7 @@ class ObisLaser(devices.SerialDeviceMixIn, devices.LaserDevice):
         response = self._readline()
         return float(response.decode()) * 1000.0
 
-    @devices.SerialDeviceMixIn.lock_comms
+    @microscope.abc.SerialDeviceMixin.lock_comms
     def _set_power_mw(self, mw):
         power_w = mw / 1000.0
         _logger.info("Setting laser power to %.7sW", power_w)

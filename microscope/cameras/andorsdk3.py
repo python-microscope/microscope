@@ -28,9 +28,8 @@ import time
 
 import numpy as np
 
-from microscope import devices
-from microscope.devices import keep_acquiring
-from microscope.devices import ROI
+import microscope
+import microscope.abc
 
 from .SDK3Cam import *
 
@@ -44,10 +43,10 @@ DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
 # Trigger mode to type.
 TRIGGER_MODES = {
     'internal': None,
-    'external': devices.TRIGGER_BEFORE,
+    'external': microscope.abc.TRIGGER_BEFORE,
     'external start': None,
-    'external exposure': devices.TRIGGER_DURATION,
-    'software': devices.TRIGGER_SOFT,
+    'external exposure': microscope.abc.TRIGGER_DURATION,
+    'software': microscope.abc.TRIGGER_SOFT,
 }
 
 SDK_NAMES = {
@@ -180,8 +179,7 @@ INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
                        '_aoi_width', '_aoi_height', ]
 
 
-class AndorSDK3(devices.FloatingDeviceMixin,
-                devices.CameraDevice):
+class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
     SDK_INITIALIZED = False
     def __init__(self, index=0, **kwargs):
         super().__init__(index=index, **kwargs)
@@ -295,7 +293,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
     def _acquiring(self):
         return self._camera_acquiring.get_value()
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _enable_callback(self, use=False):
         self.disable()
         if use:
@@ -500,7 +498,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         _logger.debug("Acquisition enabled: %s.", self._acquiring)
         return True
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
         bounded_value = sorted((self._exposure_time.min(),
                       self._exposure_time.max(),
@@ -530,7 +528,7 @@ class AndorSDK3(devices.FloatingDeviceMixin,
         as_text = self._aoi_binning.get_string().split('x')
         return tuple(int(t) for t in as_text)
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         modes = self._aoi_binning.get_available_values()
         as_text = '%dx%d' % (binning.h, binning.v)
@@ -542,12 +540,12 @@ class AndorSDK3(devices.FloatingDeviceMixin,
             return False
 
     def _get_roi(self):
-        return ROI(self._aoi_left.get_value(),
-                   self._aoi_top.get_value(),
-                   self._aoi_width.get_value(),
-                   self._aoi_height.get_value())
+        return microscope.ROI(self._aoi_left.get_value(),
+                              self._aoi_top.get_value(),
+                              self._aoi_width.get_value(),
+                              self._aoi_height.get_value())
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         current = self.get_roi()
         if self._acquiring:

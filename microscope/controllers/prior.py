@@ -25,7 +25,7 @@ import typing
 
 import serial
 
-import microscope.devices
+import microscope.abc
 
 
 class _ProScanIIIConnection:
@@ -177,7 +177,7 @@ class _ProScanIIIConnection:
         self.move_command(b'7 %d %d' % (number, pos))
 
 
-class ProScanIII(microscope.devices.ControllerDevice):
+class ProScanIII(microscope.abc.Controller):
     """Prior ProScanIII controller.
 
     The controlled devices have the following labels:
@@ -203,7 +203,7 @@ class ProScanIII(microscope.devices.ControllerDevice):
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self._conn = _ProScanIIIConnection(port, baudrate, timeout)
-        self._devices = {} # type: typing.Mapping[str, microscope.devices.Device]
+        self._devices = {} # type: typing.Mapping[str, microscope.abc.Device]
 
         # Can have up to three filter wheels, numbered 1 to 3.
         for number in range(1, 4):
@@ -212,11 +212,11 @@ class ProScanIII(microscope.devices.ControllerDevice):
                 self._devices[key] = _ProScanIIIFilterWheel(self._conn, number)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.devices.Device]:
+    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
         return self._devices
 
 
-class _ProScanIIIFilterWheel(microscope.devices.FilterWheelBase):
+class _ProScanIIIFilterWheel(microscope.abc.FilterWheel):
     def __init__(self, connection: _ProScanIIIConnection, number: int) -> None:
         super().__init__(positions=connection.get_n_filter_positions(number))
         self._conn = connection

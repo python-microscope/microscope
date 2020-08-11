@@ -21,14 +21,12 @@ import warnings
 
 import numpy
 
-from microscope.devices import DeformableMirror
-from microscope.devices import TriggerMode
-from microscope.devices import TriggerType
-
+import microscope
+import microscope.abc
 import microscope._wrappers.asdk as asdk
 
 
-class AlpaoDeformableMirror(DeformableMirror):
+class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     """Alpao deformable mirror.
 
     The Alpao mirrors support hardware triggers modes
@@ -37,14 +35,14 @@ class AlpaoDeformableMirror(DeformableMirror):
     """
 
     _TriggerType_to_asdkTriggerIn = {
-        TriggerType.SOFTWARE : 0,
-        TriggerType.RISING_EDGE : 1,
-        TriggerType.FALLING_EDGE : 2,
+        microscope.TriggerType.SOFTWARE : 0,
+        microscope.TriggerType.RISING_EDGE : 1,
+        microscope.TriggerType.FALLING_EDGE : 2,
     }
 
     _supported_TriggerModes = [
-        TriggerMode.ONCE,
-        TriggerMode.START,
+        microscope.TriggerMode.ONCE,
+        microscope.TriggerMode.START,
     ]
 
 
@@ -106,19 +104,19 @@ class AlpaoDeformableMirror(DeformableMirror):
         status = asdk.Get(self._dm, b'NbOfActuator', value)
         self._raise_if_error(status)
         self._n_actuators = int(value.contents.value)
-        self._trigger_type = TriggerType.SOFTWARE
-        self._trigger_mode = TriggerMode.ONCE
+        self._trigger_type = microscope.TriggerType.SOFTWARE
+        self._trigger_mode = microscope.TriggerMode.ONCE
 
     @property
     def n_actuators(self) -> int:
         return self._n_actuators
 
     @property
-    def trigger_mode(self) -> TriggerMode:
+    def trigger_mode(self) -> microscope.TriggerMode:
         return self._trigger_mode
 
     @property
-    def trigger_type(self) -> TriggerType:
+    def trigger_type(self) -> microscope.TriggerType:
         return self._trigger_type
 
     def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
@@ -131,7 +129,8 @@ class AlpaoDeformableMirror(DeformableMirror):
         if tmode not in self._supported_TriggerModes:
             raise Exception("unsupported trigger of mode '%s' for Alpao Mirrors"
                             % tmode.name)
-        elif ttype == TriggerType.SOFTWARE and tmode != TriggerMode.ONCE:
+        elif (ttype == microscope.TriggerType.SOFTWARE
+              and tmode != microscope.TriggerMode.ONCE):
             raise Exception("trigger mode '%s' only supports trigger type ONCE"
                             % tmode.name)
         self._trigger_mode = tmode
@@ -146,7 +145,7 @@ class AlpaoDeformableMirror(DeformableMirror):
         self._trigger_type = ttype
 
     def queue_patterns(self, patterns: numpy.ndarray) -> None:
-        if self._trigger_type == TriggerType.SOFTWARE:
+        if self._trigger_type == microscope.TriggerType.SOFTWARE:
             super().queue_patterns(patterns)
             return
 
@@ -162,9 +161,9 @@ class AlpaoDeformableMirror(DeformableMirror):
         ## supported.  We have received a modified version where if
         ## nRepeats is set to same number of patterns, does trigger mode
         ## once (not documented on Alpao SDK).
-        if self._trigger_mode == TriggerMode.ONCE:
+        if self._trigger_mode == microscope.TriggerMode.ONCE:
             n_repeats = n_patterns
-        elif self._trigger_mode == TriggerMode.START:
+        elif self._trigger_mode == microscope.TriggerMode.START:
             n_repeats = 1
         else:
             raise Exception("trigger type '%s' and trigger mode '%s'"

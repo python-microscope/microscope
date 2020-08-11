@@ -111,7 +111,11 @@ if has_sphinx:
                 # exclude win32 so docs will build on other platforms
                 "microscope/win32.py",
                 # exclude the test unit modules
-                "microscope/testsuite/test_*"
+                "microscope/testsuite/test_*",
+                # exclude the deprecated devices and deviceserver that
+                # are kept for backwards compatibility only.
+                "microscope/devices.py",
+                "microscope/deviceserver.py"
             ])
 
             with unittest.mock.patch('ctypes.CDLL', new=cdll_diversion):
@@ -178,7 +182,8 @@ setuptools.setup(
 
     entry_points = {
         'console_scripts' : [
-            'deviceserver = microscope.deviceserver:__main__',
+            'device-server = microscope.device_server:__main__',
+            'deviceserver = microscope.device_server:__main__',
             'microscope-gui = microscope.gui:main [GUI]',
         ]
     },
