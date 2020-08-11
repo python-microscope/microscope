@@ -38,6 +38,15 @@ Modifying the following settings require acquisition to be stopped:
 
 For more details, see the [XiAPI manual](https://www.ximea.com/support/wiki/apis/XiAPI_Manual#Flushing-the-queue).
 
+Hardware trigger
+----------------
+
+Ximea cameras in the MQ family accept software triggers even if set
+for hardware triggers (see `vendor issues
+#3`<https://github.com/python-microscope/vendor-issues/issues/3>).
+However, `XimeaCamera.soft_trigger()` checks the trigger type and will
+raise an exception unless the camera is set for software triggers.
+
 """
 
 import contextlib
