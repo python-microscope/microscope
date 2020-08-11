@@ -31,6 +31,7 @@ from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import FilterWheelBase
 from microscope.devices import ROI, Binning
+from microscope.devices import TriggerMode, TriggerType
 
 from enum import IntEnum
 
@@ -389,7 +390,26 @@ class TestDeformableMirror(devices.DeformableMirror):
         self._validate_patterns(pattern)
         self._current_pattern = pattern
 
+    @property
+    def trigger_type(self) -> TriggerType:
+        return TriggerType.SOFTWARE
+
+    @property
+    def trigger_mode(self) -> TriggerMode:
+        return TriggerMode.ONCE
+
+    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
+        if ttype is not TriggerType.SOFTWARE:
+            raise Exception('the only trigger type supported is software')
+        if tmode is not TriggerMode.ONCE:
+            raise Exception('the only trigger mode supported is \'once\'')
+
     def get_current_pattern(self):
+        """Method for debug purposes only.
+
+        This method is not part of the DeformableMirror ABC, it only
+        exists on this test device to help during development.
+        """
         return self._current_pattern
 
 

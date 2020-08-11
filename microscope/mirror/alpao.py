@@ -23,17 +23,17 @@ import numpy
 
 from microscope.devices import DeformableMirror
 from microscope.devices import TriggerMode
-from microscope.devices import TriggerTargetMixIn
 from microscope.devices import TriggerType
 
 import microscope._wrappers.asdk as asdk
 
 
-class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
-    """Class for Alpao deformable mirror.
+class AlpaoDeformableMirror(DeformableMirror):
+    """Alpao deformable mirror.
 
-    The Alpao mirrors have support for hardware triggering.  By default,
-    it will be configured for software triggering, and trigger once.
+    The Alpao mirrors support hardware triggers modes
+    `TriggerMode.ONCE` and `TriggerMode.START`.  By default, they will
+    be set for software triggering, and trigger once.
     """
 
     _TriggerType_to_asdkTriggerIn = {
@@ -175,12 +175,6 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         data_pointer = patterns.ctypes.data_as(asdk.Scalar_p)
         status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
         self._raise_if_error(status)
-
-    def next_pattern(self) -> None:
-        self.trigger()
-
-    def _do_trigger(self) -> None:
-        super().next_pattern()
 
     def __del__(self):
         status = asdk.Release(self._dm)

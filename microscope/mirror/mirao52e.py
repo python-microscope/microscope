@@ -46,8 +46,15 @@ import numpy
 import microscope.devices
 import microscope._wrappers.mirao52e as mro
 
+from microscope.devices import TriggerMode, TriggerType
+
 
 class Mirao52e(microscope.devices.DeformableMirror):
+    """Imagine Optic Mirao 52e deformable mirror.
+
+    The Mirao 52e deformable mirrors only support software trigger.
+
+    """
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         ## Status is not the return code of the function calls.
@@ -61,6 +68,22 @@ class Mirao52e(microscope.devices.DeformableMirror):
     @property
     def n_actuators(self) -> int:
         return mro.NB_COMMAND_VALUES
+
+
+    @property
+    def trigger_type(self) -> TriggerType:
+        return TriggerType.SOFTWARE
+
+    @property
+    def trigger_mode(self) -> TriggerMode:
+        return TriggerMode.ONCE
+
+    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
+        if ttype is not TriggerType.SOFTWARE:
+            raise Exception('the only trigger type supported is software')
+        if tmode is not TriggerMode.ONCE:
+            raise Exception('the only trigger mode supported is \'once\'')
+
 
     @staticmethod
     def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:

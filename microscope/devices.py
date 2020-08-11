@@ -979,7 +979,7 @@ class SerialDeviceMixIn(metaclass=abc.ABCMeta):
         return wrapper
 
 
-class DeformableMirror(Device, metaclass=abc.ABCMeta):
+class DeformableMirror(TriggerTargetMixIn, Device, metaclass=abc.ABCMeta):
     """Base class for Deformable Mirrors.
 
     There is no method to reset or clear a deformable mirror.  While
@@ -1058,18 +1058,40 @@ class DeformableMirror(Device, metaclass=abc.ABCMeta):
     def next_pattern(self) -> None:
         """Apply the next pattern in the queue.
 
-        A convenience fallback is provided.
+        DEPRECATED: this is the same as calling :meth:`trigger`.
         """
-        if self._patterns is None:
-            raise Exception("no pattern queued to apply")
-        self._pattern_idx += 1
-        self.apply_pattern(self._patterns[self._pattern_idx, :])
+        self.trigger()
 
     def initialize(self) -> None:
         pass
 
     def _on_shutdown(self) -> None:
         pass
+
+    def _do_trigger(self) -> None:
+        """Convenience fallback.
+
+        This only provides a convenience fallback for devices that
+        don't support queuing multiple patterns and software trigger,
+        i.e., devices that take only one pattern at a time.  This is
+        not the case of most devices.
+
+        Devices that support queuing patterns, should override this
+        method.
+
+        .. todo:: instead of a convenience fallback, we should have a
+           separate mixin for this.
+        """
+        if self._patterns is None:
+            raise Exception("no pattern queued to apply")
+        self._pattern_idx += 1
+        self.apply_pattern(self._patterns[self._pattern_idx, :])
+
+    def trigger(self) -> None:
+        """Apply the next pattern in the queue."""
+        # This is just a passthrough to the TriggerTargetMixIn class
+        # and only exists for the docstring.
+        return super().trigger()
 
 
 class LaserDevice(Device, metaclass=abc.ABCMeta):

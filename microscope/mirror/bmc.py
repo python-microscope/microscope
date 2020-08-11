@@ -25,12 +25,16 @@ import warnings
 
 import numpy
 
-from microscope.devices import DeformableMirror
+from microscope.devices import DeformableMirror, TriggerMode, TriggerType
 
 import microscope._wrappers.BMC as BMC
 
 
 class BMCDeformableMirror(DeformableMirror):
+    """Boston MicroMachines (BMC) deformable mirror.
+
+    BMC deformable mirrors only support software trigger.
+    """
     def __init__(self, serial_number: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._dm = BMC.DM()
@@ -47,6 +51,22 @@ class BMCDeformableMirror(DeformableMirror):
     @property
     def n_actuators(self) -> int:
         return self._dm.ActCount
+
+
+    @property
+    def trigger_type(self) -> TriggerType:
+        return TriggerType.SOFTWARE
+
+    @property
+    def trigger_mode(self) -> TriggerMode:
+        return TriggerMode.ONCE
+
+    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
+        if ttype is not TriggerType.SOFTWARE:
+            raise Exception('the only trigger type supported is software')
+        if tmode is not TriggerMode.ONCE:
+            raise Exception('the only trigger mode supported is \'once\'')
+
 
     def apply_pattern(self, pattern: numpy.ndarray) -> None:
         self._validate_patterns(pattern)
