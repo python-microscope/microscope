@@ -868,13 +868,12 @@ class TriggerMode(Enum):
 
 
 class TriggerTargetMixIn(metaclass=abc.ABCMeta):
-    """MixIn for Device that may be the target of a hardware trigger.
+    """MixIn for a device that may be the target of a hardware trigger.
 
     TODO: need some way to retrieve the supported trigger types and
-        modes.  We could require subclasses to define `_trigger_types`
-        and `_trigger_modes` listing what is supported but would still
-        not be enough since often not all trigger type and mode are
-        supported.
+        modes.  This is not just two lists, one for types and another
+        for modes, because some modes can only be used with certain
+        types and vice-versa.
 
     """
     @property
@@ -891,7 +890,36 @@ class TriggerTargetMixIn(metaclass=abc.ABCMeta):
     def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
         """Set device for a specific trigger.
         """
-        pass
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _do_trigger(self) -> None:
+        """Actual trigger of the device.
+
+        Classes implementing this interface should implement this
+        method instead of `trigger`.
+
+        """
+        raise NotImplementedError()
+
+    def trigger(self) -> None:
+        """Trigger device.
+
+        The actual effect is device type dependent.  For example, on a
+        `Camera` it triggers image acquisition while on a
+        `DeformableMirror` it applies a queued pattern.  See
+        documentation for the devices implementing this interface for
+        details.
+
+        Raises:
+            Exception: if trigger type is not set to
+                `TriggerType.SOFTWARE`.
+
+        """
+        if self.trigger_type is not TriggerType.SOFTWARE:
+            raise Exception('trigger type is not software')
+        _logger.debug('trigger by software')
+        self._do_trigger()
 
 
 class SerialDeviceMixIn(metaclass=abc.ABCMeta):

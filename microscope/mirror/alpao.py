@@ -177,11 +177,10 @@ class AlpaoDeformableMirror(TriggerTargetMixIn, DeformableMirror):
         self._raise_if_error(status)
 
     def next_pattern(self) -> None:
-        if self.trigger_type == TriggerType.SOFTWARE:
-            super().next_pattern()
-        else:
-            raise Exception("software trigger received when set for"
-                            " hardware trigger")
+        self.trigger()
+
+    def _do_trigger(self) -> None:
+        super().next_pattern()
 
     def __del__(self):
         status = asdk.Release(self._dm)
