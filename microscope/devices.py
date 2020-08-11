@@ -1038,7 +1038,16 @@ class DeformableMirror(TriggerTargetMixIn, Device, metaclass=abc.ABCMeta):
 
     def apply_pattern(self, pattern: numpy.ndarray) -> None:
         """Apply this pattern.
+
+        Raises:
+            Exception: if device trigger type is not set to software.
         """
+        if self.trigger_type is not TriggerType.SOFTWARE:
+            # An alternative to error is to change the trigger type,
+            # apply the pattern, then restore the trigger type, but
+            # that would clear the queue on the device.  It's better
+            # to have the user specifically do it.  See issue #61.
+            raise Exception("apply_pattern requires software trigger type")
         self._validate_patterns(pattern)
         self._do_apply_pattern(pattern)
 
