@@ -121,8 +121,7 @@ class AlpaoDeformableMirror(DeformableMirror):
     def trigger_type(self) -> TriggerType:
         return self._trigger_type
 
-    def apply_pattern(self, pattern: numpy.ndarray) -> None:
-        self._validate_patterns(pattern)
+    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
         pattern = self._normalize_patterns(pattern)
         data_pointer = pattern.ctypes.data_as(asdk.Scalar_p)
         status = asdk.Send(self._dm, data_pointer)

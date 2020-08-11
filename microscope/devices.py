@@ -1033,10 +1033,15 @@ class DeformableMirror(TriggerTargetMixIn, Device, metaclass=abc.ABCMeta):
                              % (patterns.shape[-1], self.n_actuators)))
 
     @abc.abstractmethod
+    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
+        raise NotImplementedError()
+
     def apply_pattern(self, pattern: numpy.ndarray) -> None:
         """Apply this pattern.
         """
-        pass
+        self._validate_patterns(pattern)
+        self._do_apply_pattern(pattern)
+
 
     def queue_patterns(self, patterns: numpy.ndarray) -> None:
         """Send values to the mirror.

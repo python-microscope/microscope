@@ -94,8 +94,7 @@ class Mirao52e(microscope.devices.DeformableMirror):
         patterns = (patterns * 2) -1
         return patterns
 
-    def apply_pattern(self, pattern: numpy.ndarray) -> None:
-        self._validate_patterns(pattern)
+    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
         pattern = self._normalize_patterns(pattern)
         command = pattern.ctypes.data_as(mro.Command)
         if not mro.applyCommand(command, mro.FALSE, self._status):

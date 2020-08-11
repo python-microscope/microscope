@@ -386,8 +386,7 @@ class TestDeformableMirror(devices.DeformableMirror):
     def n_actuators(self) -> int:
         return self._n_actuators
 
-    def apply_pattern(self, pattern):
-        self._validate_patterns(pattern)
+    def _do_apply_pattern(self, pattern):
         self._current_pattern = pattern
 
     @property

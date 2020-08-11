@@ -68,8 +68,7 @@ class BMCDeformableMirror(DeformableMirror):
             raise Exception('the only trigger mode supported is \'once\'')
 
 
-    def apply_pattern(self, pattern: numpy.ndarray) -> None:
-        self._validate_patterns(pattern)
+    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
         data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
         status = BMC.SetArray(self._dm, data_pointer, None)
         if status:
