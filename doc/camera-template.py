@@ -19,7 +19,7 @@
 from microscope import devices
 from microscope.devices import keep_acquiring
 from microscope.devices import ROI, Binning
-import Pyro4
+
 
 # Trigger mode to type.
 TRIGGER_MODES = {
@@ -30,7 +30,7 @@ TRIGGER_MODES = {
     'software': devices.TRIGGER_SOFT,
 }
 
-@Pyro4.behavior('single')
+
 class TemplateCamera(devices.CameraDevice):
     def __init__(self, *args, **kwargs):
         super(TestCamera, self).__init__(**kwargs)
@@ -87,7 +87,6 @@ class TemplateCamera(devices.CameraDevice):
         return False
 
     """Public methods, callable from client."""
-    @Pyro4.expose
     def abort(self):
         """Abort acquisition.
 
@@ -95,7 +94,6 @@ class TemplateCamera(devices.CameraDevice):
         be modified."""
         self._acquiring = False
 
-    @Pyro4.expose
     def initialize(self):
         """Initialise the camera.
 
@@ -103,7 +101,6 @@ class TemplateCamera(devices.CameraDevice):
         """
         self._logger.info('Initializing.')
 
-    @Pyro4.expose
     def make_safe(self):
         """Put the camera into a safe state.
 
@@ -112,17 +109,14 @@ class TemplateCamera(devices.CameraDevice):
         if self._acquiring:
             self.abort()
 
-    @Pyro4.expose
     def set_exposure_time(self, value):
         """Set the exposure time to value."""
         pass
 
-    @Pyro4.expose
     def get_exposure_time(self):
         """Return the current exposure time."""
         return 0.1
 
-    @Pyro4.expose
     def get_cycle_time(self):
         """Return the cycle time.
 
@@ -130,12 +124,10 @@ class TemplateCamera(devices.CameraDevice):
         typically exposure time plus readout time."""
         return 0.15
 
-    @Pyro4.expose
     def get_trigger_type(self):
         """Return the current trigger type."""
         return camera.TRIGGER_SOFT
 
-    @Pyro4.expose
     def soft_trigger(self):
         """Send a software trigger to the camera."""
         pass
