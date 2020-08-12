@@ -35,14 +35,18 @@ from enum import IntEnum
 _logger = logging.getLogger(__name__)
 
 from functools import wraps
+
+
 def must_be_initialized(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
-        if hasattr(self, '_initialized') and self._initialized:
+        if hasattr(self, "_initialized") and self._initialized:
             return f(self, *args, **kwargs)
         else:
             raise Exception("Device not initialized.")
+
     return wrapper
+
 
 class CamEnum(IntEnum):
     A = 1
@@ -50,19 +54,28 @@ class CamEnum(IntEnum):
     C = 3
     D = 4
 
+
 def _theta_generator():
     """A generator that yields values between 0 and 2*pi"""
     TWOPI = 2 * np.pi
     th = 0
     while True:
         yield th
-        th = (th + 0.01*TWOPI) % TWOPI
+        th = (th + 0.01 * TWOPI) % TWOPI
 
-class _ImageGenerator():
+
+class _ImageGenerator:
     """Generates test images, with methods for configuration via a Setting."""
+
     def __init__(self):
-        self._methods = (self.noise, self.gradient, self.sawtooth,
-                         self.one_gaussian, self.black, self.white)
+        self._methods = (
+            self.noise,
+            self.gradient,
+            self.sawtooth,
+            self.one_gaussian,
+            self.black,
+            self.white,
+        )
         self._method_index = 0
         self._datatypes = (np.uint8, np.uint16, np.float)
         self._datatype_index = 0
@@ -75,7 +88,7 @@ class _ImageGenerator():
         self.numbering = enab
 
     def get_data_types(self):
-        return(t.__name__ for t in self._datatypes)
+        return (t.__name__ for t in self._datatypes)
 
     def data_type(self):
         return self._datatype_index
@@ -99,15 +112,15 @@ class _ImageGenerator():
         """Return an image using the currently selected method."""
         m = self._methods[self._method_index]
         d = self._datatypes[self._datatype_index]
-        #return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
+        # return Image.fromarray(m(width, height, dark, light).astype(d), 'L')
         data = m(width, height, dark, light).astype(d)
         if self.numbering and index is not None:
             text = "%d" % index
-            size = tuple(d+2 for d in self._font.getsize(text))
-            img = Image.new('L', size)
+            size = tuple(d + 2 for d in self._font.getsize(text))
+            img = Image.new("L", size)
             ctx = ImageDraw.Draw(img)
             ctx.text((1, 1), text, fill=light)
-            data[0:size[1],0:size[0]] = np.asarray(img)
+            data[0 : size[1], 0 : size[0]] = np.asarray(img)
         return data
 
     def black(self, w, h, dark, light):
@@ -120,7 +133,7 @@ class _ImageGenerator():
         if issubclass(d, np.integer):
             value = np.iinfo(d).max
         else:
-            value = 1.
+            value = 1.0
         return value * np.ones((h, w)).astype(d)
 
     def gradient(self, w, h, dark, light):
@@ -138,73 +151,103 @@ class _ImageGenerator():
         x0 = np.random.randint(w)
         y0 = np.random.randint(h)
         xx, yy = np.meshgrid(range(w), range(h))
-        return dark + light * np.exp(-((xx-x0)**2 + (yy-y0)**2) / (2*sigma**2))
+        return dark + light * np.exp(
+            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * sigma ** 2)
+        )
 
     def sawtooth(self, w, h, dark, light):
         """A sawtooth gradient that rotates about 0,0."""
         th = next(self._theta)
         xx, yy = np.meshgrid(range(w), range(h))
         wrap = 0.1 * max(xx.max(), yy.max())
-        return dark + light * ((np.sin(th)*xx + np.cos(th)*yy) % wrap) / (wrap)
+        return dark + light * ((np.sin(th) * xx + np.cos(th) * yy) % wrap) / (
+            wrap
+        )
 
 
 class TestCamera(microscope.abc.Camera):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI
-        self._roi = microscope.ROI(0,0,512,512)
-        self._binning = microscope.Binning(1,1)
+        self._roi = microscope.ROI(0, 0, 512, 512)
+        self._binning = microscope.Binning(1, 1)
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
-        self.add_setting('image pattern', 'enum',
-                         self._image_generator.method,
-                         self._image_generator.set_method,
-                         self._image_generator.get_methods)
-        self.add_setting('image data type', 'enum',
-                         self._image_generator.data_type,
-                         self._image_generator.set_data_type,
-                         self._image_generator.get_data_types)
-        self.add_setting('display image number', 'bool',
-                         lambda: self._image_generator.numbering,
-                         self._image_generator.enable_numbering,
-                         None)
+        self.add_setting(
+            "image pattern",
+            "enum",
+            self._image_generator.method,
+            self._image_generator.set_method,
+            self._image_generator.get_methods,
+        )
+        self.add_setting(
+            "image data type",
+            "enum",
+            self._image_generator.data_type,
+            self._image_generator.set_data_type,
+            self._image_generator.get_data_types,
+        )
+        self.add_setting(
+            "display image number",
+            "bool",
+            lambda: self._image_generator.numbering,
+            self._image_generator.enable_numbering,
+            None,
+        )
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
-        self.add_setting('a_setting', 'int',
-                         lambda: self._a_setting,
-                         lambda val: setattr(self, '_a_setting', val),
-                         lambda: (1, 100))
+        self.add_setting(
+            "a_setting",
+            "int",
+            lambda: self._a_setting,
+            lambda val: setattr(self, "_a_setting", val),
+            lambda: (1, 100),
+        )
         self._error_percent = 0
-        self.add_setting('_error_percent', 'int',
-                         lambda: self._error_percent,
-                         self._set_error_percent,
-                         lambda: (0, 100))
+        self.add_setting(
+            "_error_percent",
+            "int",
+            lambda: self._error_percent,
+            self._set_error_percent,
+            lambda: (0, 100),
+        )
         self._gain = 0
-        self.add_setting('gain', 'int',
-                         lambda: self._gain,
-                         self._set_gain,
-                         lambda: (0, 8192))
+        self.add_setting(
+            "gain", "int", lambda: self._gain, self._set_gain, lambda: (0, 8192)
+        )
         # Enum-setting tests
         self._intEnum = CamEnum.A
-        self.add_setting('intEnum', 'enum',
-                         lambda: self._intEnum,
-                         lambda val: setattr(self, '_intEnum', val),
-                         CamEnum)
+        self.add_setting(
+            "intEnum",
+            "enum",
+            lambda: self._intEnum,
+            lambda val: setattr(self, "_intEnum", val),
+            CamEnum,
+        )
         self._dictEnum = 0
-        self.add_setting('dictEnum', 'enum',
-                         lambda: self._dictEnum,
-                         lambda val: setattr(self, '_dictEnum', val),
-                         {0:'A', 8:'B', 13:'C', 22:'D'})
+        self.add_setting(
+            "dictEnum",
+            "enum",
+            lambda: self._dictEnum,
+            lambda val: setattr(self, "_dictEnum", val),
+            {0: "A", 8: "B", 13: "C", 22: "D"},
+        )
         self._listEnum = 0
-        self.add_setting('listEnum', 'enum',
-                         lambda: self._listEnum,
-                         lambda val: setattr(self, '_listEnum', val),
-                         ['A', 'B', 'C', 'D'])
+        self.add_setting(
+            "listEnum",
+            "enum",
+            lambda: self._listEnum,
+            lambda val: setattr(self, "_listEnum", val),
+            ["A", "B", "C", "D"],
+        )
         self._tupleEnum = 0
-        self.add_setting('tupleEnum', 'enum',
-                         lambda: self._tupleEnum,
-                         lambda val: setattr(self, '_tupleEnum', val),
-                         ('A', 'B', 'C', 'D'))
+        self.add_setting(
+            "tupleEnum",
+            "enum",
+            lambda: self._tupleEnum,
+            lambda val: setattr(self, "_tupleEnum", val),
+            ("A", "B", "C", "D"),
+        )
         self._acquiring = False
         self._exposure_time = 0.1
         self._triggered = 0
@@ -232,9 +275,9 @@ class TestCamera(microscope.abc.Camera):
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
-                _logger.info('Raising exception')
-                raise Exception('Exception raised in TestCamera._fetch_data')
-            _logger.info('Sending image')
+                _logger.info("Raising exception")
+                raise Exception("Exception raised in TestCamera._fetch_data")
+            _logger.info("Sending image")
             time.sleep(self._exposure_time)
             self._triggered -= 1
             # Create an image
@@ -242,7 +285,9 @@ class TestCamera(microscope.abc.Camera):
             light = int(255 - 128 * np.random.rand())
             width = self._roi.width // self._binning.h
             height = self._roi.height // self._binning.v
-            image = self._image_generator.get_image(width, height, dark, light, index=self._sent)
+            image = self._image_generator.get_image(
+                width, height, dark, light, index=self._sent
+            )
             self._sent += 1
             return image
 
@@ -256,7 +301,7 @@ class TestCamera(microscope.abc.Camera):
 
         Open the connection, connect properties and populate settings dict.
         """
-        _logger.info('Initializing.')
+        _logger.info("Initializing.")
         self._initialized = True
 
     def make_safe(self):
@@ -287,15 +332,16 @@ class TestCamera(microscope.abc.Camera):
         return self._exposure_time
 
     def _get_sensor_shape(self):
-        return (512,512)
+        return (512, 512)
 
     def get_trigger_type(self):
         return microscope.abc.TRIGGER_SOFT
 
     @must_be_initialized
     def soft_trigger(self):
-        _logger.info('Trigger received; self._acquiring is %s.',
-                     self._acquiring)
+        _logger.info(
+            "Trigger received; self._acquiring is %s.", self._acquiring
+        )
         if self._acquiring:
             self._triggered += 1
 
@@ -393,12 +439,13 @@ class TestDeformableMirror(microscope.abc.DeformableMirror):
     def trigger_mode(self) -> microscope.TriggerMode:
         return microscope.TriggerMode.ONCE
 
-    def set_trigger(self, ttype: microscope.TriggerType,
-                    tmode: microscope.TriggerMode) -> None:
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
         if ttype is not microscope.TriggerType.SOFTWARE:
-            raise Exception('the only trigger type supported is software')
+            raise Exception("the only trigger type supported is software")
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception('the only trigger mode supported is \'once\'')
+            raise Exception("the only trigger mode supported is 'once'")
 
     def get_current_pattern(self):
         """Method for debug purposes only.
@@ -412,7 +459,7 @@ class TestDeformableMirror(microscope.abc.DeformableMirror):
 class DummySLM(microscope.abc.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sim_diffraction_angle = 0.
+        self.sim_diffraction_angle = 0.0
         self.sequence_params = []
         self.sequence_index = 0
 
@@ -423,7 +470,7 @@ class DummySLM(microscope.abc.Device):
         pass
 
     def set_sim_diffraction_angle(self, theta):
-        _logger.info('set_sim_diffraction_angle %f', theta)
+        _logger.info("set_sim_diffraction_angle %f", theta)
         self.sim_diffraction_angle = theta
 
     def get_sim_diffraction_angle(self):
@@ -431,19 +478,19 @@ class DummySLM(microscope.abc.Device):
 
     def run(self):
         self.enabled = True
-        _logger.info('run')
+        _logger.info("run")
         return
 
     def stop(self):
         self.enabled = False
-        _logger.info('stop')
+        _logger.info("stop")
         return
 
     def get_sim_sequence(self):
         return self.sequence_params
 
     def set_sim_sequence(self, seq):
-        _logger.info('set_sim_sequence')
+        _logger.info("set_sim_sequence")
         self.sequence_params = seq
         return
 
@@ -455,7 +502,7 @@ class DummyDSP(microscope.abc.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._digi = 0
-        self._ana = [0,0,0,0]
+        self._ana = [0, 0, 0, 0]
         self._client = None
         self._actions = []
 
@@ -466,59 +513,60 @@ class DummyDSP(microscope.abc.Device):
         pass
 
     def Abort(self):
-        _logger.info('Abort')
+        _logger.info("Abort")
 
     def WriteDigital(self, value):
-        _logger.info('WriteDigital: %s', bin(value))
+        _logger.info("WriteDigital: %s", bin(value))
         self._digi = value
 
     def MoveAbsolute(self, aline, pos):
-        _logger.info('MoveAbsoluteADU: line %d, value %d', aline, pos)
+        _logger.info("MoveAbsoluteADU: line %d, value %d", aline, pos)
         self._ana[aline] = pos
 
     def arcl(self, mask, pairs):
-        _logger.info('arcl: %s, %s', mask, pairs)
+        _logger.info("arcl: %s, %s", mask, pairs)
 
     def profileSet(self, pstr, digitals, *analogs):
-        _logger.info('profileSet ...')
-        _logger.info('... ', pstr)
-        _logger.info('... ', digitals)
-        _logger.info('... ', analogs)
+        _logger.info("profileSet ...")
+        _logger.info("... ", pstr)
+        _logger.info("... ", digitals)
+        _logger.info("... ", analogs)
 
     def DownloadProfile(self):
-        _logger.info('DownloadProfile')
+        _logger.info("DownloadProfile")
 
     def InitProfile(self, numReps):
-        _logger.info('InitProfile')
+        _logger.info("InitProfile")
 
     def trigCollect(self, *args, **kwargs):
-        _logger.info('trigCollect: ... ')
+        _logger.info("trigCollect: ... ")
         _logger.info(args)
         _logger.info(kwargs)
 
     def ReadPosition(self, aline):
-        _logger.info('ReadPosition   : line %d, value %d',
-                     aline, self._ana[aline])
+        _logger.info(
+            "ReadPosition   : line %d, value %d", aline, self._ana[aline]
+        )
         return self._ana[aline]
 
     def ReadDigital(self):
-        _logger.info('ReadDigital: %s', bin(self._digi))
+        _logger.info("ReadDigital: %s", bin(self._digi))
         return self._digi
 
     def PrepareActions(self, actions, numReps=1):
-        _logger.info('PrepareActions')
+        _logger.info("PrepareActions")
         self._actions = actions
         self._repeats = numReps
 
     def RunActions(self):
-        _logger.info('RunActions ...')
+        _logger.info("RunActions ...")
         for i in range(self._repeats):
             for a in self._actions:
                 _logger.info(a)
-                time.sleep(a[0] / 1000.)
+                time.sleep(a[0] / 1000.0)
         if self._client:
             self._client.receiveData("DSP done")
-        _logger.info('... RunActions done.')
+        _logger.info("... RunActions done.")
 
     def receiveClient(self, *args, **kwargs):
         # XXX: maybe this should be on its own mixin instead of on DataDevice
@@ -534,8 +582,9 @@ class TestStageAxis(microscope.abc.StageAxis):
         super().__init__()
         self._limits = limits
         # Start axis in the middle of its range.
-        self._position = self._limits.lower + ((self._limits.upper
-                                                - self._limits.lower) /2.0)
+        self._position = self._limits.lower + (
+            (self._limits.upper - self._limits.lower) / 2.0
+        )
 
     @property
     def position(self) -> float:
@@ -545,7 +594,7 @@ class TestStageAxis(microscope.abc.StageAxis):
     def limits(self) -> microscope.AxisLimits:
         return self._limits
 
-    def move_by(self, delta: float)-> None:
+    def move_by(self, delta: float) -> None:
         self.move_to(self._position + delta)
 
     def move_to(self, pos: float) -> None:
@@ -579,8 +628,10 @@ class TestStage(microscope.abc.Stage):
         })
 
     """
-    def __init__(self, limits: typing.Mapping[str, microscope.AxisLimits],
-                 **kwargs) -> None:
+
+    def __init__(
+        self, limits: typing.Mapping[str, microscope.AxisLimits], **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self._axes = {name: TestStageAxis(lim) for name, lim in limits.items()}
 
@@ -603,8 +654,9 @@ class TestStage(microscope.abc.Stage):
             self.axes[name].move_to(pos)
 
 
-class TestFloatingDevice(microscope.abc.FloatingDeviceMixin,
-                         microscope.abc.Device):
+class TestFloatingDevice(
+    microscope.abc.FloatingDeviceMixin, microscope.abc.Device
+):
     """Simple device with a UID after having been initialized.
 
     Floating devices are devices where we can't specify which one to
@@ -612,6 +664,7 @@ class TestFloatingDevice(microscope.abc.FloatingDeviceMixin,
     UID.  In this class for test units we can check which UID to get.
 
     """
+
     def __init__(self, uid: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._initialized = False
@@ -624,7 +677,7 @@ class TestFloatingDevice(microscope.abc.FloatingDeviceMixin,
         if self._initialized:
             return self._uid
         else:
-            raise Exception('uid is not available until after initialisation')
+            raise Exception("uid is not available until after initialisation")
 
     def _on_shutdown(self) -> None:
         pass

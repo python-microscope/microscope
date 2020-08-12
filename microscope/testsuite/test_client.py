@@ -35,11 +35,14 @@ class PyroService:
     test the Client with any Python object and weird cases, even if we
     don't yet make use of them in the devices.
     """
+
     def __init__(self):
-        self._value = 42 # not exposed
+        self._value = 42  # not exposed
+
     @property
     def attr(self):  # exposed as 'proxy.attr' remote attribute
         return self._value
+
     @attr.setter
     def attr(self, value):  # exposed as 'proxy.attr' writable
         self._value = value
@@ -53,6 +56,7 @@ class ExposedDeformableMirror(dummies.TestDeformableMirror):
     subclass and have the passthrough because the property comes from
     the Abstract Base class, not the TestDeformableMirror class.
     """
+
     @property
     def n_actuators(self):
         return super().n_actuators
@@ -77,15 +81,14 @@ class TestClient(unittest.TestCase):
         """Test we can read properties via the Client"""
         # list of (object-to-serve, property-name-to-test)
         objs2prop = [
-            (PyroService(), 'attr'),
-            (ExposedDeformableMirror(10), 'n_actuators'),
+            (PyroService(), "attr"),
+            (ExposedDeformableMirror(10), "n_actuators"),
         ]
         clients = self._serve_objs([x[0] for x in objs2prop])
         for client, obj_prop in zip(clients, objs2prop):
             obj = obj_prop[0]
             name = obj_prop[1]
-            self.assertTrue(getattr(client, name),
-                            getattr(obj, name))
+            self.assertTrue(getattr(client, name), getattr(obj, name))
 
     def test_property_writing(self):
         """Test we can write properties via the Client"""
@@ -97,5 +100,5 @@ class TestClient(unittest.TestCase):
         self.assertTrue(obj.attr, 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

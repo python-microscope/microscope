@@ -68,7 +68,7 @@ _logger = logging.getLogger(__name__)
 # making logging impossible.  So change this to error.
 #
 # Debug level is a xiapi global setting but we need a Camera instance.
-xiapi.Camera().set_debug_level('XI_DL_ERROR')
+xiapi.Camera().set_debug_level("XI_DL_ERROR")
 
 
 @contextlib.contextmanager
@@ -82,6 +82,7 @@ def _disabled_camera(camera):
             camera.enable()
     else:
         yield camera
+
 
 @contextlib.contextmanager
 def _enabled_camera(camera):
@@ -160,15 +161,17 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             connect to.  It can be set to `None` if there is only
             camera on the system.
     """
-    def __init__(self, serial_number: typing.Optional[str] = None,
-                 **kwargs) -> None:
+
+    def __init__(
+        self, serial_number: typing.Optional[str] = None, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self._acquiring = False
         self._handle = xiapi.Camera()
         self._img = xiapi.Image()
         self._serial_number = serial_number
         self._sensor_shape = (0, 0)
-        self._roi = microscope.ROI(None,None,None,None)
+        self._roi = microscope.ROI(None, None, None, None)
         self._binning = microscope.Binning(1, 1)
 
         # When using the Settings system, enums are not really enums
@@ -177,13 +180,18 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         # makes it work with the rest of enums which are there to make
         # it work with TriggerTargetMixin.
         trg_source_names = [x.name for x in TrgSourceMap]
+
         def _trigger_source_setter(index: int) -> None:
             trigger_mode = TrgSourceMap[trg_source_names[index]].value
             self.set_trigger(trigger_mode, self.trigger_mode)
-        self.add_setting('trigger source', 'enum',
-                         lambda: TrgSourceMap(self.trigger_type).name,
-                         _trigger_source_setter,
-                         trg_source_names)
+
+        self.add_setting(
+            "trigger source",
+            "enum",
+            lambda: TrgSourceMap(self.trigger_type).name,
+            _trigger_source_setter,
+            trg_source_names,
+        )
 
     def _fetch_data(self) -> typing.Optional[np.ndarray]:
         if not self._acquiring:
@@ -194,10 +202,12 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         except Exception as err:
             # err.status may not exist so use getattr (see
             # https://github.com/python-microscope/vendor-issues/issues/2)
-            if getattr(err, 'status', None) == 10: # Timeout
+            if getattr(err, "status", None) == 10:  # Timeout
                 return None
-            elif (getattr(err, 'status', None) == 45 # Acquisition is stopped
-                  and not self._acquiring):
+            elif (
+                getattr(err, "status", None) == 45  # Acquisition is stopped
+                and not self._acquiring
+            ):
                 # We can end up here during disable if self._acquiring
                 # was True but is now False.
                 return None
@@ -205,12 +215,13 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 raise err
 
         data: np.ndarray = self._img.get_image_data_numpy()
-        _logger.info("Fetched imaged with dims %s and size %s.",
-                     data.shape, data.size)
+        _logger.info(
+            "Fetched imaged with dims %s and size %s.", data.shape, data.size
+        )
         return data
 
     def abort(self):
-        _logger.info('Disabling acquisition.')
+        _logger.info("Disabling acquisition.")
         if self._acquiring:
             # We set acquiring before calling stop_acquisition because
             # the fetch loop is still running and will raise errors 45
@@ -231,14 +242,19 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
 
         if self._serial_number is None:
             if n_cameras > 1:
-                raise Exception('more than one Ximea camera found but the'
-                                ' serial_number argument was not specified')
-            _logger.info('serial_number is not specified but there is only one'
-                         ' camera on the system')
+                raise Exception(
+                    "more than one Ximea camera found but the"
+                    " serial_number argument was not specified"
+                )
+            _logger.info(
+                "serial_number is not specified but there is only one"
+                " camera on the system"
+            )
             self._handle.open_device()
         else:
-            _logger.info('opening camera with serial number \'%s\'',
-                         self._serial_number)
+            _logger.info(
+                "opening camera with serial number '%s'", self._serial_number
+            )
             self._handle.open_device_by_SN(self._serial_number)
             # Camera.dev_id defaults to zero.  However, after opening
             # the device by serial number is is not updated (see
@@ -250,51 +266,64 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             # camera.
             for dev_id in range(n_cameras):
                 self._handle.dev_id = dev_id
-                if (self._serial_number.encode()
-                    == self._handle.get_device_info_string('device_sn')):
+                if self._serial_number.encode() == self._handle.get_device_info_string(
+                    "device_sn"
+                ):
                     break
             else:
-                raise Exception('failed to get DevId for device with SN %s'
-                                % self._serial_number)
+                raise Exception(
+                    "failed to get DevId for device with SN %s"
+                    % self._serial_number
+                )
 
-        self._sensor_shape = (self._handle.get_width_maximum()
-                              + self._handle.get_offsetX_maximum(),
-                              self._handle.get_height_maximum()
-                              + self._handle.get_offsetY_maximum())
-        self._roi = microscope.ROI(left=0, top=0,
-                                   width=self._sensor_shape[0],
-                                   height=self._sensor_shape[1])
+        self._sensor_shape = (
+            self._handle.get_width_maximum()
+            + self._handle.get_offsetX_maximum(),
+            self._handle.get_height_maximum()
+            + self._handle.get_offsetY_maximum(),
+        )
+        self._roi = microscope.ROI(
+            left=0,
+            top=0,
+            width=self._sensor_shape[0],
+            height=self._sensor_shape[1],
+        )
         self.set_roi(self._roi)
 
-        self.set_trigger(microscope.TriggerType.SOFTWARE,
-                         microscope.TriggerMode.ONCE)
+        self.set_trigger(
+            microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE
+        )
 
         # When we return the sensor temperature we want to return the
         # temperature that's closest to the chip since that's the one
         # that has the biggest impact on image noise.  We don't know
         # what temperature sensors each camera has so we try one at a
         # time, by order of preference, until it works.
-        for temperature_selector in ('XI_TEMP_IMAGE_SENSOR_DIE',
-                                     'XI_TEMP_IMAGE_SENSOR_DIE_RAW',
-                                     'XI_TEMP_SENSOR_BOARD',
-                                     'XI_TEMP_INTERFACE_BOARD',
-                                     'XI_TEMP_FRONT_HOUSING',
-                                     'XI_TEMP_REAR_HOUSING',
-                                     'XI_TEMP_TEC1_COLD',
-                                     'XI_TEMP_TEC1_HOT'):
+        for temperature_selector in (
+            "XI_TEMP_IMAGE_SENSOR_DIE",
+            "XI_TEMP_IMAGE_SENSOR_DIE_RAW",
+            "XI_TEMP_SENSOR_BOARD",
+            "XI_TEMP_INTERFACE_BOARD",
+            "XI_TEMP_FRONT_HOUSING",
+            "XI_TEMP_REAR_HOUSING",
+            "XI_TEMP_TEC1_COLD",
+            "XI_TEMP_TEC1_HOT",
+        ):
             try:
                 self._handle.set_temp_selector(temperature_selector)
             except xiapi.Xi_error as err:
-                if getattr(err, 'status', None) == 12: # Not supported
-                    _logger.info('no hardware support for %s temperature'
-                                 ' readings', temperature_selector)
+                if getattr(err, "status", None) == 12:  # Not supported
+                    _logger.info(
+                        "no hardware support for %s temperature" " readings",
+                        temperature_selector,
+                    )
                 else:
                     raise
             else:
-                _logger.info('temperature reading set to %s',
-                             temperature_selector)
+                _logger.info(
+                    "temperature reading set to %s", temperature_selector
+                )
                 break
-
 
     def make_safe(self):
         if self._acquiring:
@@ -322,18 +351,16 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
 
     def get_exposure_time(self) -> float:
         # exposure times are in us, so multiple by 1E-6 to get seconds.
-        return (self._handle.get_exposure() * 1.0E-6)
+        return self._handle.get_exposure() * 1.0e-6
 
     def get_cycle_time(self):
-        return (1.0/self._handle.get_framerate())
+        return 1.0 / self._handle.get_framerate()
 
     def _get_sensor_shape(self) -> typing.Tuple[int, int]:
         return self._sensor_shape
 
-
     def get_sensor_temperature(self) -> float:
         return self._handle.get_temp()
-
 
     def soft_trigger(self) -> None:
         self.trigger()
@@ -342,7 +369,6 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         # Value for set_trigger_software() has no meaning.  See
         # https://github.com/python-microscope/vendor-issues/issues/3
         self._handle.set_trigger_software(1)
-
 
     def _get_binning(self) -> microscope.Binning:
         return self._binning
@@ -356,20 +382,24 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         # what XiAPI does when mixing ROI and binning.
         raise NotImplementedError()
 
-
     def _get_roi(self) -> microscope.ROI:
-        assert self._roi == microscope.ROI(self._handle.get_offsetX(),
-                                           self._handle.get_offsetY(),
-                                           self._handle.get_width(),
-                                           self._handle.get_height()), \
-            "ROI attribute is out of sync with internal camera setting"
+        assert self._roi == microscope.ROI(
+            self._handle.get_offsetX(),
+            self._handle.get_offsetY(),
+            self._handle.get_width(),
+            self._handle.get_height(),
+        ), "ROI attribute is out of sync with internal camera setting"
         return self._roi
 
     def _set_roi(self, roi: microscope.ROI) -> bool:
-        if (roi.width + roi.left > self._sensor_shape[0]
-            or roi.height + roi.top > self._sensor_shape[1]):
-            raise ValueError('ROI %s does not fit in sensor shape %s'
-                             % (roi, self._sensor_shape))
+        if (
+            roi.width + roi.left > self._sensor_shape[0]
+            or roi.height + roi.top > self._sensor_shape[1]
+        ):
+            raise ValueError(
+                "ROI %s does not fit in sensor shape %s"
+                % (roi, self._sensor_shape)
+            )
         try:
             # These methods will fail if the width/height plus their
             # corresponding offsets are higher than the sensor size.
@@ -385,11 +415,10 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 self._handle.set_offsetX(roi.left)
                 self._handle.set_offsetY(roi.top)
         except:
-            self._set_roi(self._roi) # set it back to whatever was before
+            self._set_roi(self._roi)  # set it back to whatever was before
             raise
         self._roi = roi
         return True
-
 
     def _on_shutdown(self) -> None:
         if self._acquiring:
@@ -401,7 +430,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             # device handler is NULL.
             self._handle.close_device()
         else:
-            _logger.warning('shutdown() called but camera was already closed')
+            _logger.warning("shutdown() called but camera was already closed")
 
     @property
     def trigger_mode(self) -> microscope.TriggerMode:
@@ -409,8 +438,9 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         try:
             tmode = TrgSelectorMap[trg_selector]
         except KeyError:
-            raise Exception('somehow set to unsupported trigger mode %s'
-                            % trg_selector)
+            raise Exception(
+                "somehow set to unsupported trigger mode %s" % trg_selector
+            )
         return tmode.value
 
     @property
@@ -419,30 +449,31 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         try:
             ttype = TrgSourceMap[trg_source]
         except KeyError:
-            raise Exception('somehow set to unsupported trigger type %s'
-                            % trg_source)
+            raise Exception(
+                "somehow set to unsupported trigger type %s" % trg_source
+            )
         return ttype.value
 
-    def set_trigger(self, ttype: microscope.TriggerType,
-                    tmode: microscope.TriggerMode) -> None:
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception('%s not supported (only TriggerMode.ONCE)' % tmode)
+            raise Exception("%s not supported (only TriggerMode.ONCE)" % tmode)
 
         try:
             trg_source = TrgSourceMap(ttype)
         except ValueError:
-            raise Exception('no support for trigger type %s' % ttype)
+            raise Exception("no support for trigger type %s" % ttype)
 
         if trg_source.name != self._handle.get_trigger_source():
             # Changing trigger source requires stopping acquisition.
             with _disabled_camera(self):
                 self._handle.set_trigger_source(trg_source.name)
 
-
     def get_trigger_type(self) -> int:
         ttype_microscope_to_cockpit = {
-            microscope.TriggerType.SOFTWARE : microscope.abc.TRIGGER_SOFT,
-            microscope.TriggerType.RISING_EDGE : microscope.abc.TRIGGER_BEFORE,
-            microscope.TriggerType.FALLING_EDGE : microscope.abc.TRIGGER_AFTER,
+            microscope.TriggerType.SOFTWARE: microscope.abc.TRIGGER_SOFT,
+            microscope.TriggerType.RISING_EDGE: microscope.abc.TRIGGER_BEFORE,
+            microscope.TriggerType.FALLING_EDGE: microscope.abc.TRIGGER_AFTER,
         }
         return ttype_microscope_to_cockpit[self.trigger_type]

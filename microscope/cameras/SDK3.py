@@ -32,67 +32,71 @@ AT_WC = ctypes.c_wchar
 
 _stdcall_libraries = {}
 
-if os.name in ('nt', 'ce'):
-    _stdcall_libraries['ATCORE'] = ctypes.WinDLL('atcore')
-    _stdcall_libraries['ATUTIL'] = ctypes.WinDLL('atutility')
+if os.name in ("nt", "ce"):
+    _stdcall_libraries["ATCORE"] = ctypes.WinDLL("atcore")
+    _stdcall_libraries["ATUTIL"] = ctypes.WinDLL("atutility")
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 else:
-    _stdcall_libraries['ATCORE'] = ctypes.CDLL('atcore.so')
-    _stdcall_libraries['ATUTIL'] = ctypes.CDLL('atutility.so')
+    _stdcall_libraries["ATCORE"] = ctypes.CDLL("atcore.so")
+    _stdcall_libraries["ATUTIL"] = ctypes.CDLL("atutility.so")
     CALLBACKTYPE = ctypes.CFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 
 #### Defines
 errorCodes = {}
-def errCode(name,value):
+
+
+def errCode(name, value):
     errorCodes[value] = name
 
-AT_INFINITE = 0xFFFFFFFF
-AT_CALLBACK_SUCCESS  = 0
 
-AT_TRUE  = 1
-AT_FALSE  = 0
+AT_INFINITE = 0xFFFFFFFF
+AT_CALLBACK_SUCCESS = 0
+
+AT_TRUE = 1
+AT_FALSE = 0
 
 AT_SUCCESS = 0
-errCode('AT_ERR_NOTINITIALISED', 1)
-errCode('AT_ERR_NOTIMPLEMENTED', 2)
-errCode('AT_ERR_READONLY', 3)
-errCode('AT_ERR_NOTREADABLE', 4)
-errCode('AT_ERR_NOTWRITABLE', 5)
-errCode('AT_ERR_OUTOFRANGE', 6)
-errCode('AT_ERR_INDEXNOTAVAILABLE', 7)
-errCode('AT_ERR_INDEXNOTIMPLEMENTED', 8)
-errCode('AT_ERR_EXCEEDEDMAXSTRINGLENGTH', 9)
-errCode('AT_ERR_CONNECTION', 10)
-errCode('AT_ERR_NODATA', 11)
-errCode('AT_ERR_INVALIDHANDLE', 12)
-errCode('AT_ERR_TIMEDOUT', 13)
-errCode('AT_ERR_BUFFERFULL', 14)
-errCode('AT_ERR_INVALIDSIZE', 15)
-errCode('AT_ERR_INVALIDALIGNMENT', 16)
-errCode('AT_ERR_COMM', 17)
-errCode('AT_ERR_STRINGNOTAVAILABLE', 18)
-errCode('AT_ERR_STRINGNOTIMPLEMENTED', 19)
+errCode("AT_ERR_NOTINITIALISED", 1)
+errCode("AT_ERR_NOTIMPLEMENTED", 2)
+errCode("AT_ERR_READONLY", 3)
+errCode("AT_ERR_NOTREADABLE", 4)
+errCode("AT_ERR_NOTWRITABLE", 5)
+errCode("AT_ERR_OUTOFRANGE", 6)
+errCode("AT_ERR_INDEXNOTAVAILABLE", 7)
+errCode("AT_ERR_INDEXNOTIMPLEMENTED", 8)
+errCode("AT_ERR_EXCEEDEDMAXSTRINGLENGTH", 9)
+errCode("AT_ERR_CONNECTION", 10)
+errCode("AT_ERR_NODATA", 11)
+errCode("AT_ERR_INVALIDHANDLE", 12)
+errCode("AT_ERR_TIMEDOUT", 13)
+errCode("AT_ERR_BUFFERFULL", 14)
+errCode("AT_ERR_INVALIDSIZE", 15)
+errCode("AT_ERR_INVALIDALIGNMENT", 16)
+errCode("AT_ERR_COMM", 17)
+errCode("AT_ERR_STRINGNOTAVAILABLE", 18)
+errCode("AT_ERR_STRINGNOTIMPLEMENTED", 19)
 
-errCode('AT_ERR_NULL_FEATURE', 20)
-errCode('AT_ERR_NULL_HANDLE', 21)
-errCode('AT_ERR_NULL_IMPLEMENTED_VAR', 22)
-errCode('AT_ERR_NULL_READABLE_VAR', 23)
-errCode('AT_ERR_NULL_READONLY_VAR', 24)
-errCode('AT_ERR_NULL_WRITABLE_VAR', 25)
-errCode('AT_ERR_NULL_MINVALUE', 26)
-errCode('AT_ERR_NULL_MAXVALUE', 27)
-errCode('AT_ERR_NULL_VALUE', 28)
-errCode('AT_ERR_NULL_STRING', 29)
-errCode('AT_ERR_NULL_COUNT_VAR', 30)
-errCode('AT_ERR_NULL_ISAVAILABLE_VAR', 31)
-errCode('AT_ERR_NULL_MAXSTRINGLENGTH', 32)
-errCode('AT_ERR_NULL_EVCALLBACK', 33)
-errCode('AT_ERR_NULL_QUEUE_PTR', 34)
-errCode('AT_ERR_NULL_WAIT_PTR', 35)
-errCode('AT_ERR_NULL_PTRSIZE', 36)
-errCode('AT_ERR_NOMEMORY', 37)
+errCode("AT_ERR_NULL_FEATURE", 20)
+errCode("AT_ERR_NULL_HANDLE", 21)
+errCode("AT_ERR_NULL_IMPLEMENTED_VAR", 22)
+errCode("AT_ERR_NULL_READABLE_VAR", 23)
+errCode("AT_ERR_NULL_READONLY_VAR", 24)
+errCode("AT_ERR_NULL_WRITABLE_VAR", 25)
+errCode("AT_ERR_NULL_MINVALUE", 26)
+errCode("AT_ERR_NULL_MAXVALUE", 27)
+errCode("AT_ERR_NULL_VALUE", 28)
+errCode("AT_ERR_NULL_STRING", 29)
+errCode("AT_ERR_NULL_COUNT_VAR", 30)
+errCode("AT_ERR_NULL_ISAVAILABLE_VAR", 31)
+errCode("AT_ERR_NULL_MAXSTRINGLENGTH", 32)
+errCode("AT_ERR_NULL_EVCALLBACK", 33)
+errCode("AT_ERR_NULL_QUEUE_PTR", 34)
+errCode("AT_ERR_NULL_WAIT_PTR", 35)
+errCode("AT_ERR_NULL_PTRSIZE", 36)
+errCode("AT_ERR_NOMEMORY", 37)
 
-errCode('AT_ERR_HARDWARE_OVERFLOW', 100)
+errCode("AT_ERR_HARDWARE_OVERFLOW", 100)
+
 
 class CameraError(Exception):
     def __init__(self, fcnName, errNo):
@@ -100,27 +104,28 @@ class CameraError(Exception):
         self.fcnName = fcnName
 
     def __str__(self):
-        return 'when calling %s - %s' % (self.fcnName, errorCodes[self.errNo])
+        return "when calling %s - %s" % (self.fcnName, errorCodes[self.errNo])
 
 
-#special case for buffer timeout
+# special case for buffer timeout
 AT_ERR_TIMEDOUT = 13
 AT_ERR_NODATA = 11
+
 
 class TimeoutError(CameraError):
     pass
 
 
-
-AT_HANDLE_UNINITIALISED  = -1
-AT_HANDLE_SYSTEM  = 1
+AT_HANDLE_UNINITIALISED = -1
+AT_HANDLE_SYSTEM = 1
 
 ### Functions ###
 STRING = POINTER(AT_WC)
 
-#classes so that we do some magic and automatically add byrefs etc ... can classify outputs
+# classes so that we do some magic and automatically add byrefs etc ... can classify outputs
 class _meta:
     pass
+
 
 class OUTPUT(_meta):
     def __init__(self, val):
@@ -131,6 +136,7 @@ class OUTPUT(_meta):
         v = self.type()
         return v, ctypes.byref(v)
 
+
 class _OUTSTRING(OUTPUT):
     def __init__(self):
         self.val = STRING
@@ -139,11 +145,14 @@ class _OUTSTRING(OUTPUT):
         v = ctypes.create_unicode_buffer(bufLen)
         return v, v
 
+
 OUTSTRING = _OUTSTRING()
+
 
 class _OUTSTRLEN(_meta):
     def __init__(self):
         self.val = c_int
+
 
 OUTSTRLEN = _OUTSTRLEN()
 
@@ -154,8 +163,9 @@ def stripMeta(val):
     else:
         return val
 
+
 class dllFunction:
-    def __init__(self, name, args = [], argnames = [], lib='ATCORE'):
+    def __init__(self, name, args=[], argnames=[], lib="ATCORE"):
         self.f = getattr(_stdcall_libraries[lib], name)
         self.f.restype = c_int
         self.f.argtypes = [stripMeta(a) for a in args]
@@ -173,12 +183,12 @@ class dllFunction:
             if isinstance(self.in_args[i], _OUTSTRLEN):
                 self.buf_size_arg_pos = i
 
-        ds = name + '\n\nArguments:\n===========\n'
+        ds = name + "\n\nArguments:\n===========\n"
         for i in range(len(args)):
-            an = ''
-            if i <len(argnames):
+            an = ""
+            if i < len(argnames):
                 an = argnames[i]
-            ds += '\t%s\t%s\n' % (args[i], an)
+            ds += "\t%s\t%s\n" % (args[i], an)
 
         self.f.__doc__ = ds
 
@@ -188,7 +198,7 @@ class dllFunction:
         ret = []
 
         if len(args) < len(self.in_args):
-            raise Exception ("Not enough arguments passed to %s" % self.name)
+            raise Exception("Not enough arguments passed to %s" % self.name)
 
         if self.buf_size_arg_pos >= 0:
             bs = args[self.buf_size_arg_pos]
@@ -196,22 +206,22 @@ class dllFunction:
             bs = 255
 
         for j in range(len(self.inp)):
-            if self.inp[j]: #an input
+            if self.inp[j]:  # an input
                 ars.append(args[i])
-                i+=1
-            else: #an output
+                i += 1
+            else:  # an output
                 r, ar = self.fargs[j].getVar(bs)
                 ars.append(ar)
                 ret.append(r)
-                #print r, r._type_
+                # print r, r._type_
 
-        #print ars
+        # print ars
         res = self.f(*ars)
-        #print res
+        # print res
 
         if not res == AT_SUCCESS:
             if res == AT_ERR_TIMEDOUT or res == AT_ERR_NODATA:
-                #handle timeouts as a special case, as we expect to get them
+                # handle timeouts as a special case, as we expect to get them
                 raise TimeoutError(self.name, res)
             else:
                 raise CameraError(self.name, res)
@@ -224,70 +234,84 @@ class dllFunction:
             return ret
 
 
-
-
-def dllFunc(name, args = [], argnames = [], lib='ATCORE'):
+def dllFunc(name, args=[], argnames=[], lib="ATCORE"):
     f = dllFunction(name, args, argnames, lib)
     globals()[name[3:]] = f
 
-dllFunc('AT_InitialiseLibrary')
-dllFunc('AT_FinaliseLibrary')
 
-dllFunc('AT_Open', [c_int, OUTPUT(AT_H)])
-dllFunc('AT_Close', [AT_H])
+dllFunc("AT_InitialiseLibrary")
+dllFunc("AT_FinaliseLibrary")
 
-dllFunc('AT_IsImplemented', [AT_H, STRING, OUTPUT(AT_BOOL)])
-dllFunc('AT_IsReadable', [AT_H, STRING, OUTPUT(AT_BOOL)])
-dllFunc('AT_IsWritable', [AT_H, STRING, OUTPUT(AT_BOOL)])
-dllFunc('AT_IsReadOnly', [AT_H, STRING, OUTPUT(AT_BOOL)])
+dllFunc("AT_Open", [c_int, OUTPUT(AT_H)])
+dllFunc("AT_Close", [AT_H])
 
-dllFunc('AT_SetInt', [AT_H, STRING, AT_64])
-dllFunc('AT_GetInt', [AT_H, STRING, OUTPUT(AT_64)])
-dllFunc('AT_GetIntMax', [AT_H, STRING, OUTPUT(AT_64)])
-dllFunc('AT_GetIntMin', [AT_H, STRING, OUTPUT(AT_64)])
+dllFunc("AT_IsImplemented", [AT_H, STRING, OUTPUT(AT_BOOL)])
+dllFunc("AT_IsReadable", [AT_H, STRING, OUTPUT(AT_BOOL)])
+dllFunc("AT_IsWritable", [AT_H, STRING, OUTPUT(AT_BOOL)])
+dllFunc("AT_IsReadOnly", [AT_H, STRING, OUTPUT(AT_BOOL)])
 
-dllFunc('AT_SetFloat', [AT_H, STRING, c_double])
-dllFunc('AT_GetFloat', [AT_H, STRING, OUTPUT(c_double)])
-dllFunc('AT_GetFloatMax', [AT_H, STRING, OUTPUT(c_double)])
-dllFunc('AT_GetFloatMin', [AT_H, STRING, OUTPUT(c_double)])
+dllFunc("AT_SetInt", [AT_H, STRING, AT_64])
+dllFunc("AT_GetInt", [AT_H, STRING, OUTPUT(AT_64)])
+dllFunc("AT_GetIntMax", [AT_H, STRING, OUTPUT(AT_64)])
+dllFunc("AT_GetIntMin", [AT_H, STRING, OUTPUT(AT_64)])
 
-dllFunc('AT_SetBool', [AT_H, STRING, AT_BOOL])
-dllFunc('AT_GetBool', [AT_H, STRING, OUTPUT(AT_BOOL)])
+dllFunc("AT_SetFloat", [AT_H, STRING, c_double])
+dllFunc("AT_GetFloat", [AT_H, STRING, OUTPUT(c_double)])
+dllFunc("AT_GetFloatMax", [AT_H, STRING, OUTPUT(c_double)])
+dllFunc("AT_GetFloatMin", [AT_H, STRING, OUTPUT(c_double)])
 
-dllFunc('AT_SetEnumerated', [AT_H, STRING, c_int])
-dllFunc('AT_SetEnumeratedString', [AT_H, STRING, STRING])
-dllFunc('AT_GetEnumerated', [AT_H, STRING, OUTPUT(c_int)])
-dllFunc('AT_GetEnumeratedCount', [AT_H, STRING, OUTPUT(c_int)])
-dllFunc('AT_IsEnumeratedIndexAvailable', [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
-dllFunc('AT_IsEnumeratedIndexImplemented', [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
-dllFunc('AT_GetEnumeratedString', [AT_H, STRING, c_int, OUTSTRING, OUTSTRLEN])
+dllFunc("AT_SetBool", [AT_H, STRING, AT_BOOL])
+dllFunc("AT_GetBool", [AT_H, STRING, OUTPUT(AT_BOOL)])
 
-dllFunc('AT_SetEnumIndex', [AT_H, STRING, c_int])
-dllFunc('AT_SetEnumString', [AT_H, STRING, STRING])
-dllFunc('AT_GetEnumIndex', [AT_H, STRING, OUTPUT(c_int)])
-dllFunc('AT_GetEnumCount', [AT_H, STRING, OUTPUT(c_int)])
-dllFunc('AT_IsEnumIndexAvailable', [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
-dllFunc('AT_IsEnumIndexImplemented', [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
-dllFunc('AT_GetEnumStringByIndex', [AT_H, STRING, c_int, OUTSTRING, OUTSTRLEN])
+dllFunc("AT_SetEnumerated", [AT_H, STRING, c_int])
+dllFunc("AT_SetEnumeratedString", [AT_H, STRING, STRING])
+dllFunc("AT_GetEnumerated", [AT_H, STRING, OUTPUT(c_int)])
+dllFunc("AT_GetEnumeratedCount", [AT_H, STRING, OUTPUT(c_int)])
+dllFunc("AT_IsEnumeratedIndexAvailable", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
+dllFunc(
+    "AT_IsEnumeratedIndexImplemented", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)]
+)
+dllFunc("AT_GetEnumeratedString", [AT_H, STRING, c_int, OUTSTRING, OUTSTRLEN])
 
-dllFunc('AT_Command', [AT_H, POINTER(AT_WC)])
+dllFunc("AT_SetEnumIndex", [AT_H, STRING, c_int])
+dllFunc("AT_SetEnumString", [AT_H, STRING, STRING])
+dllFunc("AT_GetEnumIndex", [AT_H, STRING, OUTPUT(c_int)])
+dllFunc("AT_GetEnumCount", [AT_H, STRING, OUTPUT(c_int)])
+dllFunc("AT_IsEnumIndexAvailable", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
+dllFunc("AT_IsEnumIndexImplemented", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
+dllFunc("AT_GetEnumStringByIndex", [AT_H, STRING, c_int, OUTSTRING, OUTSTRLEN])
 
-dllFunc('AT_SetString', [AT_H, STRING, STRING])
-dllFunc('AT_GetString', [AT_H, STRING, OUTSTRING, OUTSTRLEN])
-dllFunc('AT_GetStringMaxLength', [AT_H, STRING, OUTPUT(c_int)])
+dllFunc("AT_Command", [AT_H, POINTER(AT_WC)])
 
-dllFunc('AT_QueueBuffer', [AT_H, POINTER(AT_U8), c_int])
-dllFunc('AT_WaitBuffer', [AT_H, OUTPUT(POINTER(AT_U8)), OUTPUT(c_int), c_uint])
-dllFunc('AT_Flush', [AT_H])
+dllFunc("AT_SetString", [AT_H, STRING, STRING])
+dllFunc("AT_GetString", [AT_H, STRING, OUTSTRING, OUTSTRLEN])
+dllFunc("AT_GetStringMaxLength", [AT_H, STRING, OUTPUT(c_int)])
 
-dllFunc('AT_RegisterFeatureCallback', [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p])
-dllFunc('AT_UnregisterFeatureCallback', [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p])
+dllFunc("AT_QueueBuffer", [AT_H, POINTER(AT_U8), c_int])
+dllFunc("AT_WaitBuffer", [AT_H, OUTPUT(POINTER(AT_U8)), OUTPUT(c_int), c_uint])
+dllFunc("AT_Flush", [AT_H])
+
+dllFunc(
+    "AT_RegisterFeatureCallback", [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p]
+)
+dllFunc(
+    "AT_UnregisterFeatureCallback",
+    [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p],
+)
 #####################################
 ##Utility library (for unpacking etc ...)
-dllFunc('AT_InitialiseUtilityLibrary', lib='ATUTIL')
-dllFunc('AT_FinaliseUtilityLibrary', lib='ATUTIL')
-dllFunc('AT_ConvertBuffer', [POINTER(AT_U8), POINTER(AT_U8), AT_64, AT_64, AT_64, STRING, STRING], lib='ATUTIL')
-dllFunc('AT_ConvertBufferUsingMetadata', [POINTER(AT_U8), POINTER(AT_U8), AT_64, STRING], lib='ATUTIL')
+dllFunc("AT_InitialiseUtilityLibrary", lib="ATUTIL")
+dllFunc("AT_FinaliseUtilityLibrary", lib="ATUTIL")
+dllFunc(
+    "AT_ConvertBuffer",
+    [POINTER(AT_U8), POINTER(AT_U8), AT_64, AT_64, AT_64, STRING, STRING],
+    lib="ATUTIL",
+)
+dllFunc(
+    "AT_ConvertBufferUsingMetadata",
+    [POINTER(AT_U8), POINTER(AT_U8), AT_64, STRING],
+    lib="ATUTIL",
+)
 
-#Initialize the utility library
+# Initialize the utility library
 InitialiseUtilityLibrary()

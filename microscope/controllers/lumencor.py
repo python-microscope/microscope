@@ -39,6 +39,7 @@ import microscope.abc
 
 class _SyncSerial:
     """Wraps a `Serial` instance with a lock for synchronization."""
+
     def __init__(self, serial: serial.Serial) -> None:
         self._serial = serial
         self._lock = threading.RLock()
@@ -67,14 +68,15 @@ class _SpectraIIIConnection:
     only tested for it.  But it should work with other lumencor light
     engines with little work though, if only we got access to them.
     """
+
     def __init__(self, serial: _SyncSerial) -> None:
         self._serial = serial
         # We use command() and readline() instead of get_command() in
         # case this is not a Lumencor and won't even give a standard
         # answer and raises an exception during the answer validation.
-        self._serial.write(b'GET MODEL\n')
+        self._serial.write(b"GET MODEL\n")
         answer = self._serial.readline()
-        if not answer.startswith(b'A MODEL Spectra III'):
+        if not answer.startswith(b"A MODEL Spectra III"):
             raise RuntimeError("Not a Lumencor Spectra III Light Engine")
 
     def command_and_answer(self, *TX_tokens: bytes) -> bytes:
@@ -82,10 +84,10 @@ class _SpectraIIIConnection:
         # TX (transmitted) command string is one of the two keywords
         # GET, SET (to query or to set).  The second token is the
         # command name.
-        assert len(TX_tokens) >= 2, 'invalid command with less than two tokens'
-        assert TX_tokens[0] in (b'GET', b'SET'), 'invalid command (not SET/GET)'
+        assert len(TX_tokens) >= 2, "invalid command with less than two tokens"
+        assert TX_tokens[0] in (b"GET", b"SET"), "invalid command (not SET/GET)"
 
-        TX_command = b' '.join(TX_tokens) + b'\n'
+        TX_command = b" ".join(TX_tokens) + b"\n"
         with self._serial.lock:
             self._serial.write(TX_command)
             answer = self._serial.readline()
@@ -93,61 +95,65 @@ class _SpectraIIIConnection:
         # A received answer has at least two tokens.  The first token
         # is A or E (for success or failure).  The second token is the
         # command name (second token of the transmitted command).
-        if (len(RX_tokens) < 2 or RX_tokens[0] != b'A'
-            or RX_tokens[1] != TX_tokens[1]):
-            raise RuntimeError('command %s failed: %s' % (TX_command, answer))
+        if (
+            len(RX_tokens) < 2
+            or RX_tokens[0] != b"A"
+            or RX_tokens[1] != TX_tokens[1]
+        ):
+            raise RuntimeError("command %s failed: %s" % (TX_command, answer))
         return answer
 
     def get_command(self, command: bytes, *args: bytes) -> bytes:
-        answer = self.command_and_answer(b'GET', command, *args)
+        answer = self.command_and_answer(b"GET", command, *args)
         # The three bytes we remove at the start are the 'A ' before
         # the command, and the space after the command.  The last two
         # bytes are '\r\n'.
-        return answer[3+len(command):-2]
+        return answer[3 + len(command) : -2]
 
     def set_command(self, command: bytes, *args: bytes) -> None:
-        self.command_and_answer(b'SET', command, *args)
+        self.command_and_answer(b"SET", command, *args)
 
     def get_channel_map(self) -> typing.List[typing.Tuple[int, str]]:
-        answer = self.get_command(b'CHMAP')
+        answer = self.get_command(b"CHMAP")
         return list(enumerate(answer.decode().split()))
 
 
 class _LightChannelConnection:
     """Commands for a channel in a Lumencor light engine."""
+
     def __init__(self, connection: _SpectraIIIConnection, index: int) -> None:
         self._conn = connection
-        self._index_bytes = b'%d' % index
+        self._index_bytes = b"%d" % index
 
     def get_light_state(self) -> bool:
         """On (True) or off (False) state"""
         # We use CHACT (actual light state) instead of CH (light
         # state) because CH checks both the TTL inputs and channel
         # state switches.
-        state = self._conn.get_command(b'CHACT', self._index_bytes)
-        if state == b'1':
+        state = self._conn.get_command(b"CHACT", self._index_bytes)
+        if state == b"1":
             return True
-        elif state == b'0':
+        elif state == b"0":
             return False
         else:
-            raise RuntimeError('unexpected answer')
+            raise RuntimeError("unexpected answer")
 
     def set_light_state(self, state: bool) -> None:
         """Turn light on (True) or off (False)."""
-        state_arg = b'1' if state else b'0'
-        self._conn.set_command(b'CH', self._index_bytes, state_arg)
+        state_arg = b"1" if state else b"0"
+        self._conn.set_command(b"CH", self._index_bytes, state_arg)
 
     def get_max_intensity(self) -> int:
         """Maximum valid intensity that can be applied to a light channel."""
-        return int(self._conn.get_command(b'MAXINT', self._index_bytes))
+        return int(self._conn.get_command(b"MAXINT", self._index_bytes))
 
     def get_intensity(self) -> int:
         """Current intensity setting between 0 and maximum intensity."""
-        return int(self._conn.get_command(b'CHINT', self._index_bytes))
+        return int(self._conn.get_command(b"CHINT", self._index_bytes))
 
     def set_intensity(self, intensity: int) -> None:
         """Set light intensity between 0 and maximum intensity."""
-        self._conn.set_command(b'CHINT', self._index_bytes, b'%d' % intensity)
+        self._conn.set_command(b"CHINT", self._index_bytes, b"%d" % intensity)
 
 
 class SpectraIIILightEngine(microscope.abc.Controller):
@@ -170,21 +176,28 @@ class SpectraIIILightEngine(microscope.abc.Controller):
     be rejected. To clear the error condition, reduce intensities of
     sources that are on or turn off additional sources.
     """
+
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._lights: typing.Mapping[str, microscope.abc.Device] = {}
 
         # We use standard (not legacy) mode communication so 115200,8,N,1
-        serial_conn = serial.Serial(port=port, baudrate=115200, timeout=1,
-                                    bytesize=serial.EIGHTBITS,
-                                    stopbits=serial.STOPBITS_ONE,
-                                    parity=serial.PARITY_NONE, xonxoff=False,
-                                    rtscts=False, dsrdtr=False)
+        serial_conn = serial.Serial(
+            port=port,
+            baudrate=115200,
+            timeout=1,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            parity=serial.PARITY_NONE,
+            xonxoff=False,
+            rtscts=False,
+            dsrdtr=False,
+        )
         connection = _SpectraIIIConnection(_SyncSerial(serial_conn))
 
         for index, name in connection.get_channel_map():
             if name in self._lights:
-                raise RuntimeError('multiple lights with name \'%s\'' % name)
+                raise RuntimeError("multiple lights with name '%s'" % name)
             self._lights[name] = _SpectraIIILightChannel(connection, index)
 
     @property
@@ -199,6 +212,7 @@ class _SpectraIIILightChannel(microscope.abc.Laser):
     `LaserDevice`.  Constituent light sources may include LEDs,
     luminescent light pipes, or lasers.
     """
+
     def __init__(self, connection: _SpectraIIIConnection, index: int) -> None:
         super().__init__()
         self._conn = _LightChannelConnection(connection, index)
@@ -229,7 +243,6 @@ class _SpectraIIILightChannel(microscope.abc.Laser):
 
     def get_is_on(self) -> bool:
         return self._conn.get_light_state()
-
 
     def _do_set_power(self, power: float) -> None:
         self._conn.set_intensity(int(power * self._max_intensity))

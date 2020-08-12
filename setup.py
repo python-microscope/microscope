@@ -16,8 +16,8 @@ import setuptools
 import setuptools.command.sdist
 
 
-project_name = 'microscope'
-project_version = '0.5.0+dev'
+project_name = "microscope"
+project_version = "0.5.0+dev"
 
 
 # setup.py is used for both maintainers actions (build documentation,
@@ -38,36 +38,37 @@ except ImportError:
 # when used to construct ctypes' CDLL and WinDLL.
 optional_c_libs = [
     # Alpao SDK
-    'ASDK',
-    'libasdk.so',
+    "ASDK",
+    "libasdk.so",
     # Andor's atcore (SDK3)
-    'atcore',
-    'atcore.so',
+    "atcore",
+    "atcore.so",
     # Andor's SDK for (EM)CCD cameras
-    'atmcd32d',
-    'atmcd32d.so',
-    'atmcd64d',
-    'atmcd64d.so',
+    "atmcd32d",
+    "atmcd32d.so",
+    "atmcd64d",
+    "atmcd64d.so",
     # Andor's atutility (SDK3)
-    'atutility',
-    'atutility.so',
+    "atutility",
+    "atutility.so",
     # Boston Micromachines Corporation (BMC) SDK
-    'BMC',
-    'libBMC.so.3',
+    "BMC",
+    "libBMC.so.3",
     # Mirao52e SDK (windows only)
-    'mirao52e',
+    "mirao52e",
     # pvcam's SDK
-    'pvcam.so',
-    'pvcam32',
-    'pvcam64',
+    "pvcam.so",
+    "pvcam32",
+    "pvcam64",
 ]
 
 # Shadow the sphinx provided command, in order to run sphinx-apidoc
 # before sphinx-build.  This builds the rst files with the actual
 # package inline documentation.
 if has_sphinx:
-    try: # In sphinx 1.7, apidoc was moved to the ext subpackage
+    try:  # In sphinx 1.7, apidoc was moved to the ext subpackage
         import sphinx.ext.apidoc as apidoc
+
         # In addition of changing the subpackage, the signature for main()
         # also changed https://github.com/sphinx-doc/sphinx/issues/5088 If
         # we are building in older versions, the program name needs to be
@@ -75,7 +76,8 @@ if has_sphinx:
         apidoc_ini_args = []
     except ImportError:
         import sphinx.apidoc as apidoc
-        apidoc_ini_args = ['sphinx-apidoc']
+
+        apidoc_ini_args = ["sphinx-apidoc"]
 
     # Building the documentation using the module docstrings causes
     # the modules to be imported.  Modules that wrap the optional C
@@ -89,8 +91,8 @@ if has_sphinx:
     # for the library is not enough, those functions will need to
     # behave well enough to not cause an error during import.
     stub_c_attrs = {
-        'AT_InitialiseLibrary.return_value' : 0, # AT_SUCCESS
-        'AT_InitialiseUtilityLibrary.return_value' : 0, # AT_SUCCESS
+        "AT_InitialiseLibrary.return_value": 0,  # AT_SUCCESS
+        "AT_InitialiseUtilityLibrary.return_value": 0,  # AT_SUCCESS
     }
     stub_c_dll = unittest.mock.MagicMock()
     stub_c_dll.configure_mock(**stub_c_attrs)
@@ -103,31 +105,39 @@ if has_sphinx:
 
     class BuildDoc(sphinx.setup_command.BuildDoc):
         def run(self):
-            apidoc.main(apidoc_ini_args + [
-                "--separate", # each module on its own page
-                "--module-first",
-                "--output-dir", "doc/api",
-                "microscope",
-                # exclude win32 so docs will build on other platforms
-                "microscope/win32.py",
-                # exclude the test unit modules
-                "microscope/testsuite/test_*",
-                # exclude the deprecated devices and deviceserver that
-                # are kept for backwards compatibility only.
-                "microscope/devices.py",
-                "microscope/deviceserver.py"
-            ])
+            apidoc.main(
+                apidoc_ini_args
+                + [
+                    "--separate",  # each module on its own page
+                    "--module-first",
+                    "--output-dir",
+                    "doc/api",
+                    "microscope",
+                    # exclude win32 so docs will build on other platforms
+                    "microscope/win32.py",
+                    # exclude the test unit modules
+                    "microscope/testsuite/test_*",
+                    # exclude the deprecated devices and deviceserver that
+                    # are kept for backwards compatibility only.
+                    "microscope/devices.py",
+                    "microscope/deviceserver.py",
+                ]
+            )
 
-            with unittest.mock.patch('ctypes.CDLL', new=cdll_diversion):
-                with unittest.mock.patch('ctypes.WinDLL', new=cdll_diversion,
-                                         create=True):
+            with unittest.mock.patch("ctypes.CDLL", new=cdll_diversion):
+                with unittest.mock.patch(
+                    "ctypes.WinDLL", new=cdll_diversion, create=True
+                ):
                     super().run()
 
+
 else:
+
     class BuildDoc(distutils.cmd.Command):
         user_options = []
+
         def __init__(self, *args, **kwargs):
-            raise RuntimeError('sphinx is required to build the documentation')
+            raise RuntimeError("sphinx is required to build the documentation")
 
 
 # Modify the sdist command class to include extra files in the source
@@ -144,6 +154,8 @@ manifest_files = [
     "NEWS",
     "README",
 ]
+
+
 class sdist(setuptools.command.sdist.sdist):
     def make_distribution(self):
         self.filelist.extend(manifest_files)
@@ -151,65 +163,44 @@ class sdist(setuptools.command.sdist.sdist):
 
 
 setuptools.setup(
-    name = project_name,
-    version = project_version,
-    description = "An extensible microscope hardware interface.",
-    long_description = open('README', 'r').read(),
-    license = "GPL-3.0+",
-
+    name=project_name,
+    version=project_version,
+    description="An extensible microscope hardware interface.",
+    long_description=open("README", "r").read(),
+    license="GPL-3.0+",
     # We need an author and an author_email value or PyPI rejects us.
     # For multiple authors, they tell us to get a mailing list :/
-    author = "See homepage for a complete list of contributors",
-    author_email = " ",
-
-    url = "https://github.com/MicronOxford/microscope",
-
-    packages = setuptools.find_packages(),
-
-    python_requires = '>=3.6',
-
-    install_requires = [
-        "Pillow",
-        "Pyro4",
-        "hidapi",
-        "numpy",
-        "pyserial",
-    ],
-
-    extras_require = {
-        'GUI' : ['PySide2'],
-    },
-
-    entry_points = {
-        'console_scripts' : [
-            'device-server = microscope.device_server:__main__',
-            'deviceserver = microscope.device_server:__main__',
-            'microscope-gui = microscope.gui:main [GUI]',
+    author="See homepage for a complete list of contributors",
+    author_email=" ",
+    url="https://github.com/MicronOxford/microscope",
+    packages=setuptools.find_packages(),
+    python_requires=">=3.6",
+    install_requires=["Pillow", "Pyro4", "hidapi", "numpy", "pyserial",],
+    extras_require={"GUI": ["PySide2"],},
+    entry_points={
+        "console_scripts": [
+            "device-server = microscope.device_server:__main__",
+            "deviceserver = microscope.device_server:__main__",
+            "microscope-gui = microscope.gui:main [GUI]",
         ]
     },
-
     # https://pypi.python.org/pypi?:action=list_classifiers
-    classifiers = [
+    classifiers=[
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     ],
-    test_suite = "microscope.testsuite",
-
-    command_options = {
-        'build_sphinx' : {
+    test_suite="microscope.testsuite",
+    command_options={
+        "build_sphinx": {
             # The dict for command_options must be of the form
             # '(option, (source, value))' where source is the
             # filename where that information came from.
-            'project': ('setup.py', project_name),
-            'version': ('setup.py', project_version),
-            'release': ('setup.py', project_version),
-            'source_dir' : ('setup.py', 'doc'),
+            "project": ("setup.py", project_name),
+            "version": ("setup.py", project_version),
+            "release": ("setup.py", project_version),
+            "source_dir": ("setup.py", "doc"),
         },
     },
-
-    cmdclass = {
-        'build_sphinx' : BuildDoc,
-        'sdist' : sdist,
-    },
+    cmdclass={"build_sphinx": BuildDoc, "sdist": sdist,},
 )

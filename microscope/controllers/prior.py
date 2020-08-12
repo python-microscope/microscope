@@ -42,42 +42,50 @@ class _ProScanIIIConnection:
     commands so it can be shared between multiple devices.
 
     """
+
     def __init__(self, port: str, baudrate: int, timeout: float) -> None:
         # From the technical datasheet: 8 bit word 1 stop bit, no
         # parity no handshake, baudrate options of 9600, 19200, 38400,
         # 57600 and 115200.
-        self._serial = serial.Serial(port=port, baudrate=baudrate,
-                                     timeout=timeout, bytesize=serial.EIGHTBITS,
-                                     stopbits=serial.STOPBITS_ONE,
-                                     parity=serial.PARITY_NONE, xonxoff=False,
-                                     rtscts=False, dsrdtr=False)
+        self._serial = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            timeout=timeout,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            parity=serial.PARITY_NONE,
+            xonxoff=False,
+            rtscts=False,
+            dsrdtr=False,
+        )
         self._lock = threading.RLock()
 
         with self._lock:
             # We do not use the general get_description() because if
             # this is not a ProScan device it would never reach the
             # '\rEND\r' that signals the end of the description.
-            self.command(b'?')
+            self.command(b"?")
             answer = self.readline()
-            if answer != b'PROSCAN INFORMATION\r':
+            if answer != b"PROSCAN INFORMATION\r":
                 self.read_until_timeout()
-                raise RuntimeError("Not a ProScanIII device: '?' returned '%s'"
-                                   % answer.decode())
+                raise RuntimeError(
+                    "Not a ProScanIII device: '?' returned '%s'"
+                    % answer.decode()
+                )
             # A description ends with END on its own line.
-            line = self._serial.read_until(b'\rEND\r')
-            if not line.endswith(b'\rEND\r'):
+            line = self._serial.read_until(b"\rEND\r")
+            if not line.endswith(b"\rEND\r"):
                 raise RuntimeError("Failed to clear description")
-
 
     def command(self, command: bytes) -> None:
         """Send command to device."""
         with self._lock:
-            self._serial.write(command + b'\r')
+            self._serial.write(command + b"\r")
 
     def readline(self) -> bytes:
         """Read a line from the device connection."""
         with self._lock:
-            return self._serial.read_until(b'\r')
+            return self._serial.read_until(b"\r")
 
     def read_until_timeout(self) -> None:
         """Read until timeout; used to clean buffer if in an unknown state."""
@@ -92,8 +100,10 @@ class _ProScanIIIConnection:
             answer = self.get_command(command)
             if answer != expected:
                 self.read_until_timeout()
-                raise RuntimeError("command '%s' failed (got '%s')"
-                                   % (command.decode(), answer.decode()))
+                raise RuntimeError(
+                    "command '%s' failed (got '%s')"
+                    % (command.decode(), answer.decode())
+                )
 
     def get_command(self, command: bytes) -> bytes:
         """Send get command and return the answer."""
@@ -109,21 +119,20 @@ class _ProScanIIIConnection:
         # sending any further commands.
         # TODO: this times 10 is a bit arbitrary.
         with self.changed_timeout(10 * self._serial.timeout):
-            self._command_and_validate(command, b'R\r')
+            self._command_and_validate(command, b"R\r")
 
     def set_command(self, command: bytes) -> None:
         """Send a set command and check return value."""
         # Property type commands that set certain status respond with
         # zero.  They respond with a zero even if there are invalid
         # arguments in the command.
-        self._command_and_validate(command, b'0\r')
+        self._command_and_validate(command, b"0\r")
 
     def get_description(self, command: bytes) -> bytes:
         """Send a get description command and return it."""
         with self._lock:
             self.command(command)
-            return self._serial.read_until(b'\rEND\r')
-
+            return self._serial.read_until(b"\rEND\r")
 
     @contextlib.contextmanager
     def changed_timeout(self, new_timeout: float):
@@ -134,10 +143,8 @@ class _ProScanIIIConnection:
         finally:
             self._serial.timeout = previous
 
-
     def assert_filterwheel_number(self, number: int) -> None:
         assert number > 0 and number < 4
-
 
     def _has_thing(self, command: bytes, expected_start: bytes) -> bool:
         # Use the commands that returns a description string to find
@@ -146,10 +153,11 @@ class _ProScanIIIConnection:
             description = self.get_description(command)
             if not description.startswith(expected_start):
                 self.read_until_timeout()
-                raise RuntimeError("Failed to get description '%s' (got '%s')"
-                                   % (command.decode(), description.decode()))
-        return not description.startswith(expected_start + b'NONE\r')
-
+                raise RuntimeError(
+                    "Failed to get description '%s' (got '%s')"
+                    % (command.decode(), description.decode())
+                )
+        return not description.startswith(expected_start + b"NONE\r")
 
     def has_filterwheel(self, number: int) -> bool:
         self.assert_filterwheel_number(number)
@@ -160,22 +168,21 @@ class _ProScanIIIConnection:
         # non filter wheels.  We hope that 'FILTER 3' will fail
         # properly if what is connected to "A AXIS" is not a filter
         # wheel.
-        return self._has_thing(b'FILTER %d' % number, b'FILTER_%d = ' % number)
-
+        return self._has_thing(b"FILTER %d" % number, b"FILTER_%d = " % number)
 
     def get_n_filter_positions(self, number: int) -> int:
         self.assert_filterwheel_number(number)
-        answer = self.get_command(b'FPW %d' % number)
+        answer = self.get_command(b"FPW %d" % number)
         return int(answer)
 
     def get_filter_position(self, number: int) -> int:
         self.assert_filterwheel_number(number)
-        answer = self.get_command(b'7 %d F' % number)
+        answer = self.get_command(b"7 %d F" % number)
         return int(answer)
 
     def set_filter_position(self, number: int, pos: int) -> None:
         self.assert_filterwheel_number(number)
-        self.move_command(b'7 %d %d' % (number, pos))
+        self.move_command(b"7 %d %d" % (number, pos))
 
 
 class ProScanIII(microscope.abc.Controller):
@@ -200,8 +207,10 @@ class ProScanIII(microscope.abc.Controller):
        connector.
 
     """
-    def __init__(self, port: str, baudrate: int = 9600, timeout: float = 0.5,
-                 **kwargs) -> None:
+
+    def __init__(
+        self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self._conn = _ProScanIIIConnection(port, baudrate, timeout)
         self._devices: typing.Mapping[str, microscope.abc.Device] = {}
@@ -209,7 +218,7 @@ class ProScanIII(microscope.abc.Controller):
         # Can have up to three filter wheels, numbered 1 to 3.
         for number in range(1, 4):
             if self._conn.has_filterwheel(number):
-                key = 'filter %d' % number
+                key = "filter %d" % number
                 self._devices[key] = _ProScanIIIFilterWheel(self._conn, number)
 
     @property

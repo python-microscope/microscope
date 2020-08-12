@@ -24,11 +24,11 @@ import ctypes
 
 
 # Vendor only supports Windows
-SDK = ctypes.WinDLL('mirao52e')
+SDK = ctypes.WinDLL("mirao52e")
 
 
-TRUE = 1 # TRUE MroBoolean value
-FALSE = 0 # FALSE MroBoolean value
+TRUE = 1  # TRUE MroBoolean value
+FALSE = 0  # FALSE MroBoolean value
 
 # Number of values of a mirao 52-e command (the number of actuators
 # is a define on the library header)
@@ -50,7 +50,7 @@ def prototype(name, argtypes, restype=Boolean):
     return func
 
 
-open = prototype('mro_open', [])
-close = prototype('mro_close', [])
+open = prototype("mro_open", [])
+close = prototype("mro_close", [])
 
-applyCommand = prototype('mro_applyCommand', [Command, Boolean])
+applyCommand = prototype("mro_applyCommand", [Command, Boolean])

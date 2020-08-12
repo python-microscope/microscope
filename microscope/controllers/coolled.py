@@ -41,6 +41,7 @@ _logger = logging.getLogger(__name__)
 
 class _CoolLEDConnection:
     """Connection to the CoolLED controller, wraps base commands."""
+
     def __init__(self, serial: _SyncSerial) -> None:
         self._serial = serial
 
@@ -53,28 +54,32 @@ class _CoolLEDConnection:
         try:
             self.get_css()
         except:
-            raise RuntimeError('Not a CoolLED device, unable to get CSS')
+            raise RuntimeError("Not a CoolLED device, unable to get CSS")
 
     def get_css(self) -> bytes:
         """Get the global channel status map."""
         with self._serial.lock:
-            self._serial.write(b'CSS?\n')
+            self._serial.write(b"CSS?\n")
             answer = self._serial.readline()
-        if not answer.startswith(b'CSS'):
-            raise RuntimeError('answer to \'CSS?\' should start with \'CSS\''
-                               ' but got \'%s\' instead' % answer.decode)
-        return answer[3:-2] # remove initial b'CSS' and final b'\r\n'
+        if not answer.startswith(b"CSS"):
+            raise RuntimeError(
+                "answer to 'CSS?' should start with 'CSS'"
+                " but got '%s' instead" % answer.decode
+            )
+        return answer[3:-2]  # remove initial b'CSS' and final b'\r\n'
 
     def set_css(self, css: bytes) -> None:
         """Set status for any number of channels."""
         if len(css) % 6 != 0:
-            raise ValueError('css must be multiple of 6 (6 per channel)')
+            raise ValueError("css must be multiple of 6 (6 per channel)")
         with self._serial.lock:
-            self._serial.write(b'CSS' + css + b'\n')
+            self._serial.write(b"CSS" + css + b"\n")
             answer = self._serial.readline()
-        if not answer.startswith(b'CSS'):
-            raise RuntimeError('answer to \'CSS?\' should start with \'CSS\''
-                               ' but got \'%s\' instead' % answer.decode)
+        if not answer.startswith(b"CSS"):
+            raise RuntimeError(
+                "answer to 'CSS?' should start with 'CSS'"
+                " but got '%s' instead" % answer.decode
+            )
 
     def get_channels(self) -> typing.List[str]:
         """Return list of channel names (names are one character string)."""
@@ -87,15 +92,16 @@ class _CoolLEDConnection:
 
 class _CoolLEDChannelConnection:
     """Wraps the CoolLED connection to control a single channel."""
+
     def __init__(self, connection: _CoolLEDConnection, name: str) -> None:
         if len(name) != 1:
-            raise ValueError('name should be a one character string')
+            raise ValueError("name should be a one character string")
         self._conn = connection
         self._css_offset = self._conn.get_css()[::6].index(name.encode()) * 6
 
     def _get_css(self) -> bytes:
         global_css = self._conn.get_css()
-        return global_css[self._css_offset:self._css_offset+6]
+        return global_css[self._css_offset : self._css_offset + 6]
 
     def get_intensity(self) -> int:
         """Intensity in integer percent [0 100]"""
@@ -112,46 +118,51 @@ class _CoolLEDChannelConnection:
 
     def set_switch_state(self, state: str) -> None:
         """N (On) or F (Off)"""
-        if state not in ['N', 'F']:
-            raise ValueError('state needs to be N (on) or F (off)')
+        if state not in ["N", "F"]:
+            raise ValueError("state needs to be N (on) or F (off)")
         css = self._get_css()
         self._conn.set_css(css[0:2] + state.encode() + css[3:])
 
     def get_selected_state(self) -> str:
-        "S (Selected) or X (Unselected)"""
+        "S (Selected) or X (Unselected)" ""
         return self._get_css()[1:2].decode()
 
 
 class _CoolLEDChannel(microscope.abc.Laser):
     """Individual light devices that compose a CoolLED controller."""
-    def __init__(self, connection: _CoolLEDConnection, name: str,
-                 **kwargs) -> None:
+
+    def __init__(
+        self, connection: _CoolLEDConnection, name: str, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self._conn = _CoolLEDChannelConnection(connection, name)
         selected_state = self._conn.get_selected_state()
-        if selected_state != 'S':
-            _logger.warning('CoolLED channel \'%s\' is not "selected".  It'
-                            ' will not not emit light until it is "selected"'
-                            ' on the control pod.'
-                            % (name))
+        if selected_state != "S":
+            _logger.warning(
+                "CoolLED channel '%s' is not \"selected\".  It"
+                ' will not not emit light until it is "selected"'
+                " on the control pod." % (name)
+            )
 
     def initialize(self) -> None:
         pass
+
     def _on_shutdown(self) -> None:
         pass
+
     def get_status(self) -> typing.List[str]:
         return []
 
     def enable(self) -> None:
-        self._conn.set_switch_state('N')
+        self._conn.set_switch_state("N")
 
     def disable(self) -> None:
-        self._conn.set_switch_state('F')
+        self._conn.set_switch_state("F")
 
     def get_is_on(self) -> bool:
         switch = self._conn.get_switch_state()
-        assert switch in ['N', 'F']
-        if switch == 'N':
+        assert switch in ["N", "F"]
+        if switch == "N":
             return True
         else:
             return False
@@ -195,16 +206,23 @@ class CoolLED(microscope.abc.Controller):
     channels will not "select" them, the user should do it himself via
     the control pod.
     """
+
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._channels: typing.Mapping[str, microscope.abc.Laser] = {}
 
         # CoolLED manual only has the baudrate, we guessed the rest.
-        serial_conn = serial.Serial(port=port, baudrate=57600, timeout=1,
-                                    bytesize=serial.EIGHTBITS,
-                                    stopbits=serial.STOPBITS_ONE,
-                                    parity=serial.PARITY_NONE, xonxoff=False,
-                                    rtscts=False, dsrdtr=False)
+        serial_conn = serial.Serial(
+            port=port,
+            baudrate=57600,
+            timeout=1,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            parity=serial.PARITY_NONE,
+            xonxoff=False,
+            rtscts=False,
+            dsrdtr=False,
+        )
         connection = _CoolLEDConnection(_SyncSerial(serial_conn))
         for name in connection.get_channels():
             self._channels[name] = _CoolLEDChannel(connection, name)

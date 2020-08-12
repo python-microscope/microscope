@@ -55,6 +55,7 @@ class Mirao52e(microscope.abc.DeformableMirror):
     The Mirao 52e deformable mirrors only support software trigger.
 
     """
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         # Status is not the return code of the function calls.
@@ -69,7 +70,6 @@ class Mirao52e(microscope.abc.DeformableMirror):
     def n_actuators(self) -> int:
         return mro.NB_COMMAND_VALUES
 
-
     @property
     def trigger_type(self) -> microscope.TriggerType:
         return microscope.TriggerType.SOFTWARE
@@ -78,13 +78,13 @@ class Mirao52e(microscope.abc.DeformableMirror):
     def trigger_mode(self) -> microscope.TriggerMode:
         return microscope.TriggerMode.ONCE
 
-    def set_trigger(self, ttype: microscope.TriggerType,
-                    tmode: microscope.TriggerMode) -> None:
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
         if ttype is not microscope.TriggerType.SOFTWARE:
-            raise Exception('the only trigger type supported is software')
+            raise Exception("the only trigger type supported is software")
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception('the only trigger mode supported is \'once\'')
-
+            raise Exception("the only trigger mode supported is 'once'")
 
     @staticmethod
     def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
@@ -92,7 +92,7 @@ class Mirao52e(microscope.abc.DeformableMirror):
         mirao52e SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
         """
-        patterns = (patterns * 2) -1
+        patterns = (patterns * 2) - 1
         return patterns
 
     def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
@@ -103,8 +103,9 @@ class Mirao52e(microscope.abc.DeformableMirror):
 
     def _raise_status(self, func: typing.Callable) -> None:
         error_code = self._status.contents.value
-        raise RuntimeError('mro_%s() failed (error code %d)'
-                           % (func.__name__, error_code))
+        raise RuntimeError(
+            "mro_%s() failed (error code %d)" % (func.__name__, error_code)
+        )
 
     def __del__(self) -> None:
         if not mro.close(self._status):

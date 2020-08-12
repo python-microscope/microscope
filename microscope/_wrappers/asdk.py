@@ -39,6 +39,8 @@ else:
 
 class DM(ctypes.Structure):
     pass
+
+
 pDM = ctypes.POINTER(DM)
 
 # We have this "typedefs" to ease matching with alpao's headers.
@@ -48,7 +50,7 @@ Scalar_p = ctypes.POINTER(Scalar)
 UInt = c_uint32
 Size_T = c_size_t
 
-COMPL_STAT = c_int # enum for function completion status
+COMPL_STAT = c_int  # enum for function completion status
 SUCCESS = 0
 FAILURE = -1
 
@@ -59,10 +61,12 @@ def make_prototype(name, argtypes, restype=COMPL_STAT):
     func.restype = restype
     return func
 
+
 Get = make_prototype("asdkGet", [pDM, CStr, Scalar_p])
 
-GetLastError = make_prototype("asdkGetLastError",
-                              [ctypes.POINTER(UInt), CStr, Size_T])
+GetLastError = make_prototype(
+    "asdkGetLastError", [ctypes.POINTER(UInt), CStr, Size_T]
+)
 
 Init = make_prototype("asdkInit", [CStr], pDM)
 

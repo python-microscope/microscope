@@ -29,6 +29,7 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
 
     Note that the FW102C also has manual controls on the device, so clients
     should periodically query the current wheel position."""
+
     def __init__(self, com, baud=115200, timeout=2.0, **kwargs):
         """Create ThorlabsFilterWheel
 
@@ -37,12 +38,16 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         :param timeout: serial timeout
         """
         super().__init__(**kwargs)
-        self.eol = '\r'
-        rawSerial = serial.Serial(port=com,
-                baudrate=baud, timeout=timeout,
-                stopbits=serial.STOPBITS_ONE,
-                bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-                xonxoff=0)
+        self.eol = "\r"
+        rawSerial = serial.Serial(
+            port=com,
+            baudrate=baud,
+            timeout=timeout,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            xonxoff=0,
+        )
         # The Thorlabs controller serial implementation is strange.
         # Generally, it uses \r as EOL, but error messages use \n.
         # A readline after sending a 'pos?\r' command always times out,
@@ -51,9 +56,12 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         # inbound, but must explicitly append \r to outgoing commands.
         # The TextIOWrapper also deals with conversion between unicode
         # and bytes.
-        self.connection = io.TextIOWrapper(rawSerial, newline=None,
-                                           line_buffering=True, # flush on write
-                                           write_through=True) # write out immediately
+        self.connection = io.TextIOWrapper(
+            rawSerial,
+            newline=None,
+            line_buffering=True,  # flush on write
+            write_through=True,
+        )  # write out immediately
 
     def initialize(self):
         pass
@@ -62,27 +70,27 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         pass
 
     def _do_set_position(self, new_position: int) -> None:
-        self._send_command('pos=%d' % n)
+        self._send_command("pos=%d" % n)
 
     def _do_get_position(self):
-        return int(self._send_command('pos?'))
+        return int(self._send_command("pos?"))
 
     def _readline(self):
         """A custom _readline to overcome limitations of the serial implementation."""
         result = [None]
-        while result[-1] not in ('\n', ''):
+        while result[-1] not in ("\n", ""):
             result.append(self.connection.read())
-        return ''.join(result[1:])
+        return "".join(result[1:])
 
     def _send_command(self, command):
         """Send a command and return any result."""
         result = None
         self.connection.write(command + self.eol)
-        response = 'dummy'
-        while response not in [command, '']:
+        response = "dummy"
+        while response not in [command, ""]:
             # Read until we receive the command echo.
-            response = self._readline().strip('> \n\r')
-        if command.endswith('?'):
+            response = self._readline().strip("> \n\r")
+        if command.endswith("?"):
             # Last response was the command. Next is result.
             result = self._readline().strip()
         return result

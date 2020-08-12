@@ -45,6 +45,7 @@ class DeviceServerExceptionQueue(microscope.device_server.DeviceServer):
     parent process can check it.
 
     """
+
     def __init__(self, queue: multiprocessing.Queue, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._queue = queue
@@ -63,12 +64,16 @@ def _patch_out_device_server_logs(func):
     files on the current directory.  There is no options to control
     this behaviour so this patches the loggers.
     """
+
     def null_logs(*args, **kwargs):
         return logging.NullHandler()
-    no_file = unittest.mock.patch('microscope.device_server.RotatingFileHandler',
-                                  null_logs)
-    no_stream = unittest.mock.patch('microscope.device_server.StreamHandler',
-                                    null_logs)
+
+    no_file = unittest.mock.patch(
+        "microscope.device_server.RotatingFileHandler", null_logs
+    )
+    no_stream = unittest.mock.patch(
+        "microscope.device_server.StreamHandler", null_logs
+    )
     return no_file(no_stream(func))
 
 
@@ -83,19 +88,23 @@ class BaseTestServeDevices(unittest.TestCase):
             receiving signal to terminate.
         p (multiprocessing.Process): device server process.
     """
+
     DEVICES = []
     TIMEOUT = 5
+
     @_patch_out_device_server_logs
     def setUp(self):
-        self.p = multiprocessing.Process(target=microscope.device_server.serve_devices,
-                                         args=(self.DEVICES,))
+        self.p = multiprocessing.Process(
+            target=microscope.device_server.serve_devices, args=(self.DEVICES,)
+        )
         self.p.start()
 
     def tearDown(self):
         self.p.terminate()
         self.p.join(self.TIMEOUT)
-        self.assertFalse(self.p.is_alive(),
-                         "deviceserver not dead after SIGTERM")
+        self.assertFalse(
+            self.p.is_alive(), "deviceserver not dead after SIGTERM"
+        )
 
 
 class BaseTestDeviceServer(unittest.TestCase):
@@ -105,8 +114,10 @@ class BaseTestDeviceServer(unittest.TestCase):
     to start the `DeviceServer` and implement `test_*` methods.
 
     """
-    args = [] # args to construct DeviceServer
-    TIMEOUT = 5 # time to wait after join() during tearDown
+
+    args = []  # args to construct DeviceServer
+    TIMEOUT = 5  # time to wait after join() during tearDown
+
     @_patch_out_device_server_logs
     def setUp(self):
         self.queue = multiprocessing.Queue()
@@ -116,16 +127,19 @@ class BaseTestDeviceServer(unittest.TestCase):
     def tearDown(self):
         self.process.terminate()
         self.process.join(self.TIMEOUT)
-        self.assertFalse(self.process.is_alive(),
-                         "deviceserver not dead after SIGTERM")
+        self.assertFalse(
+            self.process.is_alive(), "deviceserver not dead after SIGTERM"
+        )
 
 
 class TestStarting(BaseTestServeDevices):
     DEVICES = [
-        microscope.device_server.device(TestCamera, '127.0.0.1', 8001,
-                                        {'buffer_length' : 0}),
-        microscope.device_server.device(TestFilterWheel, '127.0.0.1', 8003,
-                                        {'positions' : 3}),
+        microscope.device_server.device(
+            TestCamera, "127.0.0.1", 8001, {"buffer_length": 0}
+        ),
+        microscope.device_server.device(
+            TestFilterWheel, "127.0.0.1", 8003, {"positions": 3}
+        ),
     ]
 
     def test_standard(self):
@@ -142,8 +156,9 @@ class TestInputCheck(BaseTestServeDevices):
     def test_empty_devices(self):
         """Check behaviour if there are no devices."""
         time.sleep(2)
-        self.assertTrue(not self.p.is_alive(),
-                        "not dying for empty list of devices")
+        self.assertTrue(
+            not self.p.is_alive(), "not dying for empty list of devices"
+        )
 
 
 class DeviceWithPort(microscope.abc.Device):
@@ -164,22 +179,25 @@ class DeviceWithPort(microscope.abc.Device):
 
 class TestClashingArguments(BaseTestServeDevices):
     """Device server and device constructor arguments do not clash"""
+
     DEVICES = [
-        microscope.device_server.device(DeviceWithPort, '127.0.0.1', 8000,
-                                        {'port' : 7000}),
+        microscope.device_server.device(
+            DeviceWithPort, "127.0.0.1", 8000, {"port": 7000}
+        ),
     ]
+
     def test_port_conflict(self):
         time.sleep(2)
-        client = microscope.clients.Client('PYRO:DeviceWithPort@127.0.0.1:8000')
+        client = microscope.clients.Client("PYRO:DeviceWithPort@127.0.0.1:8000")
         self.assertEqual(client.port, 7000)
 
 
 class TestConfigLoader(unittest.TestCase):
     def _test_load_source(self, filename):
-        file_contents = 'DEVICES = [1,2,3]'
+        file_contents = "DEVICES = [1,2,3]"
         with tempfile.TemporaryDirectory() as dirpath:
             filepath = os.path.join(dirpath, filename)
-            with open(filepath, 'w') as fh:
+            with open(filepath, "w") as fh:
                 fh.write(file_contents)
 
             module = microscope.device_server._load_source(filepath)
@@ -187,18 +205,18 @@ class TestConfigLoader(unittest.TestCase):
 
     def test_py_file_extension(self):
         """Reading of config file module-like works"""
-        self._test_load_source('foobar.py')
+        self._test_load_source("foobar.py")
 
     def test_cfg_file_extension(self):
         """Reading of config file does not require .py file extension"""
         # Test for issue #151.  Many importlib functions assume that
         # the file has importlib.machinery.SOURCE_SUFFIXES extension
         # so we need a bit of extra work to work with none or .cfg.
-        self._test_load_source('foobar.cfg')
+        self._test_load_source("foobar.cfg")
 
     def test_no_file_extension(self):
         """Reading of config file does not require file extension"""
-        self._test_load_source('foobar')
+        self._test_load_source("foobar")
 
 
 class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
@@ -208,41 +226,53 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
     # bar) but the config lists only one of them (bar) but the other
     # one is served instead (foo).  See issue #153.
     args = [
-        microscope.device_server.device(TestFloatingDevice, '127.0.01', 8001,
-                                        {'uid' : 'foo'}, uid='bar'),
-        {'bar' : '127.0.0.1'},
-        {'bar' : 8001},
+        microscope.device_server.device(
+            TestFloatingDevice, "127.0.01", 8001, {"uid": "foo"}, uid="bar"
+        ),
+        {"bar": "127.0.0.1"},
+        {"bar": 8001},
         multiprocessing.Event(),
     ]
+
     def test_fail_with_wrong_uid(self):
         """DeviceServer fails if it gets a FloatingDevice with another UID """
         time.sleep(1)
-        self.assertFalse(self.process.is_alive(),
-                         'expected DeviceServer to have errored and be dead')
-        self.assertRegex(str(self.queue.get_nowait()),
-                         'Host or port not found for device foo')
+        self.assertFalse(
+            self.process.is_alive(),
+            "expected DeviceServer to have errored and be dead",
+        )
+        self.assertRegex(
+            str(self.queue.get_nowait()),
+            "Host or port not found for device foo",
+        )
 
 
 class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
     # Test that with a function we can specify multiple devices and
     # they get the expected Pyro URI.
     args = [
-        microscope.device_server.device(lambda **kwargs: {'dm1' : TestDeformableMirror(10),
-                                                          'dm2' : TestDeformableMirror(20)},
-                                        'localhost', 8001),
+        microscope.device_server.device(
+            lambda **kwargs: {
+                "dm1": TestDeformableMirror(10),
+                "dm2": TestDeformableMirror(20),
+            },
+            "localhost",
+            8001,
+        ),
         {},
         {},
         multiprocessing.Event(),
     ]
+
     def test_function_in_device_definition(self):
         """Function that constructs multiple devices in device definition"""
         time.sleep(1)
         self.assertTrue(self.process.is_alive())
-        dm1 = Pyro4.Proxy('PYRO:dm1@127.0.0.1:8001')
-        dm2 = Pyro4.Proxy('PYRO:dm2@127.0.0.1:8001')
+        dm1 = Pyro4.Proxy("PYRO:dm1@127.0.0.1:8001")
+        dm2 = Pyro4.Proxy("PYRO:dm2@127.0.0.1:8001")
         self.assertEqual(dm1.n_actuators, 10)
         self.assertEqual(dm2.n_actuators, 20)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

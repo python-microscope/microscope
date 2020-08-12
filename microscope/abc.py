@@ -56,12 +56,12 @@ _logger = logging.getLogger(__name__)
 # We use a descriptor for the type instead of the actual type because
 # there may not be a unique proper type as for example in enum.
 DTYPES = {
-    'int': (tuple,),
-    'float': (tuple,),
-    'bool': (type(None),),
-    'enum': (list, EnumMeta, dict, tuple),
-    'str': (int,),
-    'tuple': (type(None),),
+    "int": (tuple,),
+    "float": (tuple,),
+    "bool": (type(None),),
+    "enum": (list, EnumMeta, dict, tuple),
+    "str": (int,),
+    "tuple": (type(None),),
 }
 
 
@@ -70,13 +70,14 @@ def _call_if_callable(f):
     return f() if callable(f) else f
 
 
-class _Setting():
+class _Setting:
     # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
     # Settings classes should be private: devices should use a factory method
     # rather than instantiate settings directly; most already use add_setting
     # for this.
-    def __init__(self, name, dtype, get_func, set_func=None, values=None,
-                 readonly=False):
+    def __init__(
+        self, name, dtype, get_func, set_func=None, values=None, readonly=False
+    ):
         """Create a setting.
 
         :param name: the setting's name
@@ -97,11 +98,12 @@ class _Setting():
         """
         self.name = name
         if dtype not in DTYPES:
-            raise Exception('Unsupported dtype.')
+            raise Exception("Unsupported dtype.")
         elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
-            raise Exception("Invalid values type for %s '%s':"
-                            " expected function or %s"
-                            % (dtype, name, DTYPES[dtype]))
+            raise Exception(
+                "Invalid values type for %s '%s':"
+                " expected function or %s" % (dtype, name, DTYPES[dtype])
+            )
         self.dtype = dtype
         self._get = get_func
         self._values = values
@@ -114,14 +116,16 @@ class _Setting():
             def w(value):
                 self._last_written = value
                 set_func(value)
+
             self._set = w
 
     def describe(self):
         return {
-            'type': self.dtype,
-            'values': self.values(),
-            'readonly': self.readonly(),
-            'cached': self._last_written is not None}
+            "type": self.dtype,
+            "values": self.values(),
+            "readonly": self.readonly(),
+            "cached": self._last_written is not None,
+        }
 
     def get(self):
         if self._get is not None:
@@ -150,7 +154,7 @@ class _Setting():
             return [(v.value, v.name) for v in self._values]
         values = _call_if_callable(self._values)
         if values is not None:
-            if self.dtype == 'enum':
+            if self.dtype == "enum":
                 if isinstance(values, dict):
                     return list(values.items())
                 else:
@@ -169,6 +173,7 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     a mixin which identifies a subclass as floating, and enforces
     the implementation of a 'get_id' method.
     """
+
     @abc.abstractmethod
     def get_id(self):
         """Return a unique hardware identifier, such as a serial number."""
@@ -247,8 +252,9 @@ class Device(metaclass=abc.ABCMeta):
         """Put the device into a safe state."""
         pass
 
-    def add_setting(self, name, dtype, get_func, set_func, values,
-                    readonly=False):
+    def add_setting(
+        self, name, dtype, get_func, set_func, values, readonly=False
+    ):
         """Add a setting definition.
 
         :param name: the setting's name
@@ -269,14 +275,16 @@ class Device(metaclass=abc.ABCMeta):
         write access functions, anyway.
         """
         if dtype not in DTYPES:
-            raise Exception('Unsupported dtype.')
+            raise Exception("Unsupported dtype.")
         elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
-            raise Exception("Invalid values type for %s '%s':"
-                            " expected function or %s"
-                            % (dtype, name, DTYPES[dtype]))
+            raise Exception(
+                "Invalid values type for %s '%s':"
+                " expected function or %s" % (dtype, name, DTYPES[dtype])
+            )
         else:
-            self._settings[name] = _Setting(name, dtype, get_func, set_func,
-                                            values, readonly)
+            self._settings[name] = _Setting(
+                name, dtype, get_func, set_func, values, readonly
+            )
 
     def get_setting(self, name):
         """Return the current value of a setting."""
@@ -296,6 +304,7 @@ class Device(metaclass=abc.ABCMeta):
             except Exception as err:
                 _logger.error("getting %s: %s", f.__self__.name, err)
                 return None
+
         return {k: catch(v.get) for k, v in self._settings.items()}
 
     def set_setting(self, name, value):
@@ -322,16 +331,21 @@ class Device(metaclass=abc.ABCMeta):
             their_keys = set(incoming.keys())
             update_keys = my_keys & their_keys
             if update_keys != my_keys:
-                missing = ', '.join([k for k in my_keys - their_keys])
-                msg = 'update_settings init=True but missing keys: %s.' % missing
+                missing = ", ".join([k for k in my_keys - their_keys])
+                msg = (
+                    "update_settings init=True but missing keys: %s." % missing
+                )
                 _logger.debug(msg)
                 raise Exception(msg)
         else:
             # Only update changed values.
             my_keys = set(self._settings.keys())
             their_keys = set(incoming.keys())
-            update_keys = set(key for key in my_keys & their_keys
-                              if self.get_setting(key) != incoming[key])
+            update_keys = set(
+                key
+                for key in my_keys & their_keys
+                if self.get_setting(key) != incoming[key]
+            )
         results = {}
         # Update values.
         for key in update_keys:
@@ -351,6 +365,7 @@ class Device(metaclass=abc.ABCMeta):
 
 def keep_acquiring(func):
     """Wrapper to preserve acquiring state of data capture devices."""
+
     def wrapper(self, *args, **kwargs):
         if self._acquiring:
             self.abort()
@@ -378,6 +393,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     Derived classes may override __init__, enable and disable, but must
     ensure to call this class's implementations as indicated in the docstrings.
     """
+
     def __init__(self, buffer_length=0, **kwargs):
         """Derived.__init__ must call this at some point."""
         super().__init__(**kwargs)
@@ -439,7 +455,10 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                     self._fetch_thread = Thread(target=self._fetch_loop)
                     self._fetch_thread.daemon = True
                     self._fetch_thread.start()
-            if not self._dispatch_thread or not self._dispatch_thread.is_alive():
+            if (
+                not self._dispatch_thread
+                or not self._dispatch_thread.is_alive()
+            ):
                 self._dispatch_thread = Thread(target=self._dispatch_loop)
                 self._dispatch_thread.daemon = True
                 self._dispatch_thread.start()
@@ -481,11 +500,14 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             # this function name as an argument to set_client, but
             # not sure how to subsequently resolve this over Pyro.
             client.receiveData(data, timestamp)
-        except (Pyro4.errors.ConnectionClosedError,
-                Pyro4.errors.CommunicationError):
+        except (
+            Pyro4.errors.ConnectionClosedError,
+            Pyro4.errors.CommunicationError,
+        ):
             # Client not listening
-            _logger.info("Removing %s from client stack: disconnected.",
-                         client._pyroUri)
+            _logger.info(
+                "Removing %s from client stack: disconnected.", client._pyroUri
+            )
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
         except Exception:
@@ -499,15 +521,14 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 continue
             err = None
             if isinstance(data, Exception):
-                standard_exception = Exception(str(data).encode('ascii'))
+                standard_exception = Exception(str(data).encode("ascii"))
                 try:
                     self._send_data(client, standard_exception, timestamp)
                 except Exception as e:
                     err = e
             else:
                 try:
-                    self._send_data(client, self._process_data(data),
-                                    timestamp)
+                    self._send_data(client, self._process_data(data), timestamp)
                 except Exception as e:
                     err = e
             if err:
@@ -628,12 +649,13 @@ class Camera(DataDevice):
     Defines the interface for cameras.
     Applies a transform to acquired data in the processing step.
     """
+
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # A list of readout mode descriptions.
-        self._readout_modes = ['default']
+        self._readout_modes = ["default"]
         # The index of the current readout mode.
         self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
@@ -644,22 +666,24 @@ class Camera(DataDevice):
         # Result of combining client and readout transforms
         self._transform = (False, False, False)
         # A transform provided by the client.
-        self.add_setting('transform', 'enum',
-                         lambda: Camera.ALLOWED_TRANSFORMS.index(self._transform),
-                         lambda index: self.set_transform(Camera.ALLOWED_TRANSFORMS[index]),
-                         Camera.ALLOWED_TRANSFORMS)
-        self.add_setting('readout mode', 'enum',
-                         lambda: self._readout_mode,
-                         self.set_readout_mode,
-                         lambda: self._readout_modes)
-        self.add_setting('binning', 'tuple',
-                         self.get_binning,
-                         self.set_binning,
-                         None)
-        self.add_setting('roi', 'tuple',
-                         self.get_roi,
-                         self.set_roi,
-                         None)
+        self.add_setting(
+            "transform",
+            "enum",
+            lambda: Camera.ALLOWED_TRANSFORMS.index(self._transform),
+            lambda index: self.set_transform(Camera.ALLOWED_TRANSFORMS[index]),
+            Camera.ALLOWED_TRANSFORMS,
+        )
+        self.add_setting(
+            "readout mode",
+            "enum",
+            lambda: self._readout_mode,
+            self.set_readout_mode,
+            lambda: self._readout_modes,
+        )
+        self.add_setting(
+            "binning", "tuple", self.get_binning, self.set_binning, None
+        )
+        self.add_setting("roi", "tuple", self.get_roi, self.set_roi, None)
 
     def _process_data(self, data):
         """Apply self._transform to data."""
@@ -670,11 +694,12 @@ class Camera(DataDevice):
         # Do rotation
         data = numpy.rot90(data, rot)
         # Flip
-        data = {(0, 0): lambda d: d,
-                (0, 1): numpy.flipud,
-                (1, 0): numpy.fliplr,
-                (1, 1): lambda d: numpy.fliplr(numpy.flipud(d))
-                }[flips](data)
+        data = {
+            (0, 0): lambda d: d,
+            (0, 1): numpy.flipud,
+            (1, 0): numpy.fliplr,
+            (1, 1): lambda d: numpy.fliplr(numpy.flipud(d)),
+        }[flips](data)
         return super()._process_data(data)
 
     def set_readout_mode(self, description):
@@ -690,8 +715,9 @@ class Camera(DataDevice):
         if isinstance(transform, str):
             transform = literal_eval(transform)
         self._client_transform = transform
-        lr, ud, rot = (self._readout_transform[i] ^ transform[i]
-                       for i in range(3))
+        lr, ud, rot = (
+            self._readout_transform[i] ^ transform[i] for i in range(3)
+        )
         if self._readout_transform[2] and self._client_transform[2]:
             lr = not lr
             ud = not ud
@@ -829,6 +855,7 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
         types and vice-versa.
 
     """
+
     @property
     @abc.abstractmethod
     def trigger_mode(self) -> microscope.TriggerMode:
@@ -840,8 +867,9 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def set_trigger(self, ttype: microscope.TriggerType,
-                    tmode: microscope.TriggerMode) -> None:
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
         """Set device for a specific trigger.
         """
         raise NotImplementedError()
@@ -871,8 +899,8 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
 
         """
         if self.trigger_type is not microscope.TriggerType.SOFTWARE:
-            raise Exception('trigger type is not software')
-        _logger.debug('trigger by software')
+            raise Exception("trigger type is not software")
+        _logger.debug("trigger by software")
         self._do_trigger()
 
 
@@ -886,6 +914,7 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
     TODO: add more logic to handle the code duplication of serial
     devices.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # TODO: We should probably construct the connection here but
@@ -907,7 +936,7 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         it will append ``b'\\r\\n'`` to command.  Override this method
         if a device requires a specific format.
         """
-        return self.connection.write(command + b'\r\n')
+        return self.connection.write(command + b"\r\n")
 
     @abc.abstractmethod
     def is_alive(self):
@@ -925,11 +954,13 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         that a function must finish all its communications before
         another can run.
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             with self._comms_lock:
                 self.connection.flushInput()
                 return func(self, *args, **kwargs)
+
         return wrapper
 
 
@@ -951,6 +982,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     destroying and re-constructing the DeformableMirror object
     provides the most obvious solution.
     """
+
     @abc.abstractmethod
     def __init__(self, **kwargs) -> None:
         """Constructor.
@@ -979,12 +1011,17 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         the clipping before sending the values.
         """
         if patterns.ndim > 2:
-            raise Exception("PATTERNS has %d dimensions (must be 1 or 2)"
-                            % patterns.ndim)
+            raise Exception(
+                "PATTERNS has %d dimensions (must be 1 or 2)" % patterns.ndim
+            )
         elif patterns.shape[-1] != self.n_actuators:
-            raise Exception(("PATTERNS length of second dimension '%d' differs"
-                             " differs from number of actuators '%d'"
-                             % (patterns.shape[-1], self.n_actuators)))
+            raise Exception(
+                (
+                    "PATTERNS length of second dimension '%d' differs"
+                    " differs from number of actuators '%d'"
+                    % (patterns.shape[-1], self.n_actuators)
+                )
+            )
 
     @abc.abstractmethod
     def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
@@ -1004,7 +1041,6 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
             raise Exception("apply_pattern requires software trigger type")
         self._validate_patterns(pattern)
         self._do_apply_pattern(pattern)
-
 
     def queue_patterns(self, patterns: numpy.ndarray) -> None:
         """Send values to the mirror.
@@ -1109,7 +1145,6 @@ class Laser(Device, metaclass=abc.ABCMeta):
         self._do_set_power(clipped_power)
         self._set_point = clipped_power
 
-
     def get_set_power(self) -> float:
         """Return the power set point."""
         return self._set_point
@@ -1119,17 +1154,20 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
     def __init__(self, positions: int, **kwargs) -> None:
         super().__init__(**kwargs)
         if positions < 1:
-            raise ValueError('positions must be a positive number (was %d)'
-                             % positions)
+            raise ValueError(
+                "positions must be a positive number (was %d)" % positions
+            )
         self._positions = positions
         # The position as an integer.
         # Deprecated: clients should call get_position and set_position;
         # still exposed as a setting until cockpit uses set_position.
-        self.add_setting('position',
-                         'int',
-                         self.get_position,
-                         self.set_position,
-                         lambda: (0, self.get_num_positions()))
+        self.add_setting(
+            "position",
+            "int",
+            self.get_position,
+            self.set_position,
+            lambda: (0, self.get_num_positions()),
+        )
 
     @property
     def n_positions(self) -> int:
@@ -1146,9 +1184,10 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
         if 0 <= new_position < self.n_positions:
             return self._do_set_position(new_position)
         else:
-            raise Exception('can\'t move to position %d, limits are [0 %d]'
-                            % (new_position, self.n_positions-1))
-
+            raise Exception(
+                "can't move to position %d, limits are [0 %d]"
+                % (new_position, self.n_positions - 1)
+            )
 
     @abc.abstractmethod
     def _do_get_position(self) -> int:
@@ -1158,12 +1197,13 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
     def _do_set_position(self, position: int) -> None:
         raise NotImplementedError()
 
-
     # Deprecated and kept for backwards compatibility.
     def get_num_positions(self) -> int:
         return self.n_positions
+
     def get_position(self) -> int:
         return self.position
+
     def set_position(self, position: int) -> None:
         self.position = position
 
@@ -1186,6 +1226,7 @@ class Controller(Device, metaclass=abc.ABCMeta):
     their shutdown and initialisation.
 
     """
+
     def initialize(self) -> None:
         super().initialize()
         for d in self.devices.values():
@@ -1215,6 +1256,7 @@ class StageAxis(metaclass=abc.ABCMeta):
     refer to its documentation.
 
     """
+
     @abc.abstractmethod
     def move_by(self, delta: float) -> None:
         """Move axis by given amount."""

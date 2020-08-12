@@ -26,11 +26,11 @@ import microscope.abc
 
 # Trigger mode to type.
 TRIGGER_MODES = {
-    'internal': None,
-    'external': microscope.abc.TRIGGER_BEFORE,
-    'external start': None,
-    'external exposure': microscope.abc.TRIGGER_DURATION,
-    'software': microscope.abc.TRIGGER_SOFT,
+    "internal": None,
+    "external": microscope.abc.TRIGGER_BEFORE,
+    "external start": None,
+    "external exposure": microscope.abc.TRIGGER_DURATION,
+    "software": microscope.abc.TRIGGER_SOFT,
 }
 
 
@@ -39,12 +39,16 @@ class TemplateCamera(microscope.abc.Camera):
         super(TestCamera, self).__init__(**kwargs)
         # Software buffers and parameters for data conversion.
         self._a_setting = 0
-        self.add_setting('a_setting', 'int',
-                         lambda: self._a_setting,
-                         lambda val: setattr(self, '_a_setting', val),
-                         lambda: (1, 100))
+        self.add_setting(
+            "a_setting",
+            "int",
+            lambda: self._a_setting,
+            lambda val: setattr(self, "_a_setting", val),
+            lambda: (1, 100),
+        )
 
     """Private methods, called here and within super classes."""
+
     def _fetch_data(self):
         """Fetch data, recycle any buffers and return data or None."""
         return data or None
@@ -67,13 +71,14 @@ class TemplateCamera(microscope.abc.Camera):
     """Private shape-related methods. These methods do not need to account
     for camera orientation or transforms due to readout mode, as that
     is handled in the parent class."""
+
     def _get_sensor_shape(self):
         """Return the sensor shape (width, height)."""
-        return (512,512)
+        return (512, 512)
 
     def _get_binning(self):
         """Return the current binning (horizontal, vertical)."""
-        return microscope.Binning(1,1)
+        return microscope.Binning(1, 1)
 
     @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
@@ -90,6 +95,7 @@ class TemplateCamera(microscope.abc.Camera):
         return False
 
     """Public methods, callable from client."""
+
     def abort(self):
         """Abort acquisition.
 
@@ -102,7 +108,7 @@ class TemplateCamera(microscope.abc.Camera):
 
         Open the connection, connect properties and populate settings dict.
         """
-        self._logger.info('Initializing.')
+        self._logger.info("Initializing.")
 
     def make_safe(self):
         """Put the camera into a safe state.

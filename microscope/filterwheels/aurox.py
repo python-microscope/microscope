@@ -30,72 +30,82 @@ from enum import Enum
 _Clarity__VENDORID = 0x1F0A
 _Clarity__PRODUCTID = 0x0088
 # Base status
-_Clarity__SLEEP = 0x7f
-_Clarity__RUN = 0x0f
+_Clarity__SLEEP = 0x7F
+_Clarity__RUN = 0x0F
 # Door status
 _Clarity__DOOROPEN = 0x01
 _Clarity__DOORCLOSED = 0x02
 # Disk position/status
-_Clarity__SLDPOS0 = 0x00 #disk out of beam path, wide field
-_Clarity__SLDPOS1 = 0x01 #disk pos 1, low sectioning
-_Clarity__SLDPOS2 = 0x02 #disk pos 2, mid sectioning
-_Clarity__SLDPOS3 = 0x03 #disk pos 3, high sectioning
-_Clarity__SLDERR = 0xff #An error has occurred in setting slide position (end stops not detected)
-_Clarity__SLDMID = 0x10 #slide between positions (was =0x03 for SD62)
+_Clarity__SLDPOS0 = 0x00  # disk out of beam path, wide field
+_Clarity__SLDPOS1 = 0x01  # disk pos 1, low sectioning
+_Clarity__SLDPOS2 = 0x02  # disk pos 2, mid sectioning
+_Clarity__SLDPOS3 = 0x03  # disk pos 3, high sectioning
+_Clarity__SLDERR = 0xFF  # An error has occurred in setting slide position (end stops not detected)
+_Clarity__SLDMID = 0x10  # slide between positions (was =0x03 for SD62)
 # Filter position/status
-_Clarity__FLTPOS1 = 0x01 #Filter in position 1
-_Clarity__FLTPOS2 = 0x02 #Filter in position 2
-_Clarity__FLTPOS3 = 0x03 #Filter in position 3
-_Clarity__FLTPOS4 = 0x04 #Filter in position 4
-_Clarity__FLTERR = 0xff #An error has been detected in the filter drive (eg filters not present)
-_Clarity__FLTMID = 0x10 #Filter between positions
+_Clarity__FLTPOS1 = 0x01  # Filter in position 1
+_Clarity__FLTPOS2 = 0x02  # Filter in position 2
+_Clarity__FLTPOS3 = 0x03  # Filter in position 3
+_Clarity__FLTPOS4 = 0x04  # Filter in position 4
+_Clarity__FLTERR = 0xFF  # An error has been detected in the filter drive (eg filters not present)
+_Clarity__FLTMID = 0x10  # Filter between positions
 # Calibration LED state
-_Clarity__CALON = 0x01 #CALibration led power on
-_Clarity__CALOFF = 0x02 #CALibration led power off
+_Clarity__CALON = 0x01  # CALibration led power on
+_Clarity__CALOFF = 0x02  # CALibration led power off
 # Error status
-_Clarity__CMDERROR = 0xff #Reply to a command that was not understood
+_Clarity__CMDERROR = 0xFF  # Reply to a command that was not understood
 # Commands
-_Clarity__GETVERSION = 0x00 #Return 3-byte version number byte1.byte2.byte3
+_Clarity__GETVERSION = 0x00  # Return 3-byte version number byte1.byte2.byte3
 # State commands: single command byte immediately followed by any data.
-_Clarity__GETONOFF = 0x12 #No data out, returns 1 byte on/off status
-_Clarity__GETDOOR = 0x13 #No data out, returns 1 byte shutter status, or SLEEP if device sleeping
-_Clarity__GETSLIDE = 0x14 #No data out, returns 1 byte disk-slide status, or SLEEP if device sleeping
-_Clarity__GETFILT = 0x15 #No data out, returns 1 byte filter position, or SLEEP if device sleeping
-_Clarity__GETCAL = 0x16 #No data out, returns 1 byte CAL led status, or SLEEP if device sleeping
-_Clarity__GETSERIAL = 0x19 #No data out, returns 4 byte BCD serial number (little endian)
-_Clarity__FULLSTAT = 0x1f #No data, Returns 10 bytes VERSION[3],ONOFF,SHUTTER,SLIDE,FILT,CAL,??,??
+_Clarity__GETONOFF = 0x12  # No data out, returns 1 byte on/off status
+_Clarity__GETDOOR = 0x13  # No data out, returns 1 byte shutter status, or SLEEP if device sleeping
+_Clarity__GETSLIDE = 0x14  # No data out, returns 1 byte disk-slide status, or SLEEP if device sleeping
+_Clarity__GETFILT = 0x15  # No data out, returns 1 byte filter position, or SLEEP if device sleeping
+_Clarity__GETCAL = 0x16  # No data out, returns 1 byte CAL led status, or SLEEP if device sleeping
+_Clarity__GETSERIAL = (
+    0x19  # No data out, returns 4 byte BCD serial number (little endian)
+)
+_Clarity__FULLSTAT = 0x1F  # No data, Returns 10 bytes VERSION[3],ONOFF,SHUTTER,SLIDE,FILT,CAL,??,??
 # Run state action commands
-_Clarity__SETONOFF = 0x21 #1 byte out on/off status, echoes command or SLEEP
-_Clarity__SETSLIDE = 0x23 #1 byte out disk position, echoes command or SLEEP
-_Clarity__SETFILT = 0x24 #1 byte out filter position, echoes command or SLEEP
-_Clarity__SETCAL = 0x25 #1 byte out CAL led status, echoes command or SLEEP
+_Clarity__SETONOFF = 0x21  # 1 byte out on/off status, echoes command or SLEEP
+_Clarity__SETSLIDE = 0x23  # 1 byte out disk position, echoes command or SLEEP
+_Clarity__SETFILT = 0x24  # 1 byte out filter position, echoes command or SLEEP
+_Clarity__SETCAL = 0x25  # 1 byte out CAL led status, echoes command or SLEEP
 # Service mode commands. Stops disk spinning for alignment.
-_Clarity__SETSVCMODE1 = 0xe0 #1 byte for service mode. SLEEP activates service mode. RUN returns to normal mode.
+_Clarity__SETSVCMODE1 = 0xE0  # 1 byte for service mode. SLEEP activates service mode. RUN returns to normal mode.
 
 
 class Clarity(microscope.devices.FilterWheelBase):
-    _slide_to_sectioning = {__SLDPOS0: 'bypass',
-                            __SLDPOS1: 'low',
-                            __SLDPOS2: 'mid',
-                            __SLDPOS3: 'high',}
+    _slide_to_sectioning = {
+        __SLDPOS0: "bypass",
+        __SLDPOS1: "low",
+        __SLDPOS2: "mid",
+        __SLDPOS3: "high",
+    }
     _positions = 4
-    _resultlen = {__GETONOFF: 1,
-                  __GETDOOR: 1,
-                  __GETSLIDE: 1,
-                  __GETFILT: 1,
-                  __GETCAL: 1,
-                  __GETSERIAL: 4,
-                  __FULLSTAT: 10}
+    _resultlen = {
+        __GETONOFF: 1,
+        __GETDOOR: 1,
+        __GETSLIDE: 1,
+        __GETFILT: 1,
+        __GETCAL: 1,
+        __GETSERIAL: 4,
+        __FULLSTAT: 10,
+    }
 
     def __init__(self, **kwargs):
         super().__init__(positions=Clarity._positions, **kwargs)
         from threading import Lock
+
         self._lock = Lock()
         self._hid = None
-        self.add_setting("sectioning", "enum",
-                         self.get_slide_position,
-                         lambda val: self.set_slide_position(val),
-                         self._slide_to_sectioning)
+        self.add_setting(
+            "sectioning",
+            "enum",
+            self.get_slide_position,
+            lambda val: self.set_slide_position(val),
+            self._slide_to_sectioning,
+        )
 
     def _send_command(self, command, param=0, max_length=16, timeout_ms=100):
         """Send a command to the Clarity and return its response"""
@@ -103,14 +113,14 @@ class Clarity(microscope.devices.FilterWheelBase):
             self.open()
         with self._lock:
             # The device expects a list of 16 integers
-            buffer = [0x00] * max_length # The 0th element must be 0.
-            buffer[1] = command # The 1st element is the command
-            buffer[2] = param # The 2nd element is any command argument.
+            buffer = [0x00] * max_length  # The 0th element must be 0.
+            buffer[1] = command  # The 1st element is the command
+            buffer[2] = param  # The 2nd element is any command argument.
             result = self._hid.write(buffer)
             if result == -1:
                 # Nothing to read back. Check hid error state.
                 err = self._hid.error()
-                if err != '':
+                if err != "":
                     self.close()
                     raise Exception(err)
                 else:
@@ -186,7 +196,7 @@ class Clarity(microscope.devices.FilterWheelBase):
         return result
 
     def get_slides(self):
-        return (self._slide_to_sectioning)
+        return self._slide_to_sectioning
 
     def get_status(self):
         # Fetch 10 bytes VERSION[3],ONOFF,SHUTTER,SLIDE,FILT,CAL,??,??
@@ -198,44 +208,48 @@ class Clarity(microscope.devices.FilterWheelBase):
         # A list to track states, any one of which mean the device is busy.
         busy = []
         # Disk running
-        status['on'] = result[3] == __RUN
+        status["on"] = result[3] == __RUN
         # Door open
         # Note - it appears that the __DOOROPEN and __DOORCLOSED status states
         # are switched, or that the DOOR is in fact an internal shutter. I'll
         # interpret 'door' as the external door here, as that is what the user
         # can see. When the external door is open, result[4] == __DOORCLOSED
         door = result[4] == __DOORCLOSED
-        status['door open'] = door
+        status["door open"] = door
         busy.append(door)
         # Slide position
         slide = result[5]
         if slide == __SLDMID:
             # Slide is moving
-            status['slide'] = (None, 'moving')
+            status["slide"] = (None, "moving")
             busy.append(True)
         else:
-            status['slide'] = (slide, self._slide_to_sectioning.get(slide, None))
+            status["slide"] = (
+                slide,
+                self._slide_to_sectioning.get(slide, None),
+            )
         # Filter position
         filter = result[6]
         if filter == __FLTMID:
             # Filter is moving
-            status['filter'] = (None, 'moving')
+            status["filter"] = (None, "moving")
             busy.append(True)
         else:
-            status['filter'] = result[6]
+            status["filter"] = result[6]
         # Calibration LED on
-        status['calibration'] = result[7] == __CALON
+        status["calibration"] = result[7] == __CALON
         # Slide or filter moving
-        status['busy'] = any(busy)
+        status["busy"] = any(busy)
         return status
 
     # Implemented by FilterWheelBase
-    #def get_filters(self):
+    # def get_filters(self):
     #    pass
 
     def moving(self):
         """Report whether or not the device is between positions."""
         import time
+
         # Wait a short time to avoid false negatives when called
         # immediately after initiating a move. Trial and error
         # indicates a delay of 50ms is required.
@@ -243,15 +257,19 @@ class Clarity(microscope.devices.FilterWheelBase):
         # Can return false negatives on long moves, so OR 5 readings.
         moving = False
         for i in range(5):
-            moving = moving or any( (self.get_slide_position() == __SLDMID,
-                                     self.get_position() == __FLTMID) )
+            moving = moving or any(
+                (
+                    self.get_slide_position() == __SLDMID,
+                    self.get_position() == __FLTMID,
+                )
+            )
             time.sleep(0.01)
         return moving
 
     def _do_get_position(self):
         """Return the current filter position"""
         result = self._send_command(__GETFILT)
-        if result ==  __FLTERR:
+        if result == __FLTERR:
             raise Exception("Filter position error.")
         return result
 

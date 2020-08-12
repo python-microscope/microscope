@@ -29,14 +29,15 @@ import threading
 import Pyro4
 
 # Pyro configuration. Use pickle because it can serialize numpy ndarrays.
-Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
-Pyro4.config.SERIALIZER = 'pickle'
+Pyro4.config.SERIALIZERS_ACCEPTED.add("pickle")
+Pyro4.config.SERIALIZER = "pickle"
 
 LISTENERS = {}
 
 
 class Client:
     """Base Client object that makes methods on proxy available locally."""
+
     def __init__(self, url):
         self._url = url
         self._proxy = None
@@ -48,10 +49,17 @@ class Client:
         self._proxy._pyroGetMetadata()
 
         # Derived classes may over-ride some methods. Leave these alone.
-        my_methods = [m[0] for m in inspect.getmembers(self, predicate=inspect.ismethod)]
+        my_methods = [
+            m[0] for m in inspect.getmembers(self, predicate=inspect.ismethod)
+        ]
         methods = set(self._proxy._pyroMethods).difference(my_methods)
         # But in the case of propertyes, we need to inspect the class.
-        my_properties = [m[0] for m in inspect.getmembers(self.__class__, predicate=inspect.isdatadescriptor)]
+        my_properties = [
+            m[0]
+            for m in inspect.getmembers(
+                self.__class__, predicate=inspect.isdatadescriptor
+            )
+        ]
         properties = set(self._proxy._pyroAttrs).difference(my_properties)
 
         for attr in itertools.chain(methods, properties):
@@ -60,12 +68,13 @@ class Client:
 
 class DataClient(Client):
     """A client that can receive and buffer data."""
+
     def __init__(self, url):
         super().__init__(url)
         self._buffer = queue.Queue()
         # Register self with a listener.
-        if self._url.split('@')[1].split(':')[0] in ['127.0.0.1', 'localhost']:
-            iface = '127.0.0.1'
+        if self._url.split("@")[1].split(":")[0] in ["127.0.0.1", "localhost"]:
+            iface = "127.0.0.1"
         else:
             # TODO: support multiple interfaces. Could use ifaddr.get_adapters() to
             # query ip addresses then pick first interface on the same subnet.
@@ -82,7 +91,6 @@ class DataClient(Client):
         self.set_client(self._client_uri)
         self._proxy.enable()
 
-
     @Pyro4.expose
     @Pyro4.oneway
     # noinspection PyPep8Naming
@@ -90,9 +98,8 @@ class DataClient(Client):
     def receiveData(self, data, timestamp, *args):
         self._buffer.put((data, timestamp))
 
-
     def trigger_and_wait(self):
-        if not hasattr(self, 'soft_trigger'):
+        if not hasattr(self, "soft_trigger"):
             raise Exception("Device has no soft_trigger method.")
         self.soft_trigger()
         return self._buffer.get(block=True)

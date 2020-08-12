@@ -22,11 +22,21 @@
 
 from microscope import AxisLimits, Binning, ROI, TriggerMode, TriggerType
 
-from microscope.abc import (DataDevice, DeformableMirror, Device,
-                            FloatingDeviceMixin, StageAxis, keep_acquiring)
+from microscope.abc import (
+    DataDevice,
+    DeformableMirror,
+    Device,
+    FloatingDeviceMixin,
+    StageAxis,
+    keep_acquiring,
+)
 
-from microscope.abc import (TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION,
-                            TRIGGER_SOFT)
+from microscope.abc import (
+    TRIGGER_AFTER,
+    TRIGGER_BEFORE,
+    TRIGGER_DURATION,
+    TRIGGER_SOFT,
+)
 
 from microscope.abc import Camera as CameraDevice
 from microscope.abc import Controller as ControllerDevice

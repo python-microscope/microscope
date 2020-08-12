@@ -19,18 +19,23 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-from .import SDK3
+from . import SDK3
+
 
 class ATProperty:
     def connect(self, handle, propertyName):
         self.handle = handle
         self.propertyName = propertyName
+
     def isImplemented(self):
         return SDK3.IsImplemented(self.handle, self.propertyName).value
+
     def isReadable(self):
         return SDK3.IsReadable(self.handle, self.propertyName).value
+
     def isWritable(self):
         return SDK3.IsWritable(self.handle, self.propertyName).value
+
     def isReadOnly(self):
         return SDK3.IsReadOnly(self.handle, self.propertyName).value
 
@@ -57,7 +62,6 @@ class ATBool(ATProperty):
         SDK3.SetBool(self.handle, self.propertyName, val)
 
 
-
 class ATFloat(ATProperty):
     def getValue(self):
         return SDK3.GetFloat(self.handle, self.propertyName).value
@@ -71,6 +75,7 @@ class ATFloat(ATProperty):
     def min(self):
         return SDK3.GetFloatMin(self.handle, self.propertyName).value
 
+
 class ATString(ATProperty):
     def getValue(self):
         return SDK3.GetString(self.handle, self.propertyName, 255).value
@@ -80,6 +85,7 @@ class ATString(ATProperty):
 
     def maxLength(self):
         return SDK3.GetStringMaxLength(self.handle, self.propertyName).value
+
 
 class ATEnum(ATProperty):
     def getIndex(self):
@@ -98,22 +104,42 @@ class ATEnum(ATProperty):
         return SDK3.GetEnumCount(self.handle, self.propertyName).value
 
     def __getitem__(self, key):
-        return SDK3.GetEnumStringByIndex(self.handle, self.propertyName, key, 255).value
+        return SDK3.GetEnumStringByIndex(
+            self.handle, self.propertyName, key, 255
+        ).value
 
     def getAvailableValues(self):
         n = SDK3.GetEnumCount(self.handle, self.propertyName).value
-        return [SDK3.GetEnumStringByIndex(self.handle, self.propertyName, i, 255).value for i in range(n) if SDK3.IsEnumIndexAvailable(self.handle, self.propertyName, i).value]
+        return [
+            SDK3.GetEnumStringByIndex(
+                self.handle, self.propertyName, i, 255
+            ).value
+            for i in range(n)
+            if SDK3.IsEnumIndexAvailable(
+                self.handle, self.propertyName, i
+            ).value
+        ]
 
     def getAvailableValueMap(self):
         n = SDK3.GetEnumCount(self.handle, self.propertyName).value
-        return {i: SDK3.GetEnumStringByIndex(self.handle, self.propertyName, i, 255).value for i in range(n) if SDK3.IsEnumIndexAvailable(self.handle, self.propertyName, i).value}
+        return {
+            i: SDK3.GetEnumStringByIndex(
+                self.handle, self.propertyName, i, 255
+            ).value
+            for i in range(n)
+            if SDK3.IsEnumIndexAvailable(
+                self.handle, self.propertyName, i
+            ).value
+        }
+
 
 class ATCommand(ATProperty):
     def __call__(self):
         return SDK3.Command(self.handle, self.propertyName)
 
+
 class camReg:
-    #keep track of the number of cameras initialised so we can initialise and finalise the library
+    # keep track of the number of cameras initialised so we can initialise and finalise the library
     numCameras = 0
 
     @classmethod
@@ -129,35 +155,35 @@ class camReg:
         if cls.numCameras == 0:
             SDK3.FinaliseLibrary()
 
-#make sure the library is intitalised
+
+# make sure the library is intitalised
 camReg.regCamera()
 
+
 def GetNumCameras():
-    return SDK3.GetInt(SDK3.AT_HANDLE_SYSTEM, 'DeviceCount').value
+    return SDK3.GetInt(SDK3.AT_HANDLE_SYSTEM, "DeviceCount").value
+
 
 def GetSoftwareVersion():
-    return SDK3.GetString(SDK3.AT_HANDLE_SYSTEM, 'SoftwareVersion', 255)
+    return SDK3.GetString(SDK3.AT_HANDLE_SYSTEM, "SoftwareVersion", 255)
 
 
 class SDK3Camera:
     def __init__(self, camNum):
         """camera initialisation - note that this should be called  from derived classes
         *AFTER* the properties have been defined"""
-        #camReg.regCamera() #initialise the library if needed
+        # camReg.regCamera() #initialise the library if needed
         self.camNum = camNum
-
 
     def Init(self):
         self.handle = SDK3.Open(self.camNum)
         self.connectProperties()
-
 
     def connectProperties(self):
         for name, var in self.__dict__.items():
             if isinstance(var, ATProperty):
                 var.connect(self.handle, name)
 
-
     def shutdown(self):
         SDK3.Close(self.handle)
-        #camReg.unregCamera()
+        # camReg.unregCamera()

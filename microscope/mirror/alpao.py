@@ -36,9 +36,9 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     """
 
     _TriggerType_to_asdkTriggerIn = {
-        microscope.TriggerType.SOFTWARE : 0,
-        microscope.TriggerType.RISING_EDGE : 1,
-        microscope.TriggerType.FALLING_EDGE : 2,
+        microscope.TriggerType.SOFTWARE: 0,
+        microscope.TriggerType.RISING_EDGE: 1,
+        microscope.TriggerType.FALLING_EDGE: 2,
     }
 
     _supported_TriggerModes = [
@@ -46,14 +46,13 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         microscope.TriggerMode.START,
     ]
 
-
     @staticmethod
     def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
         """
         Alpao SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
         """
-        patterns = (patterns * 2) -1
+        patterns = (patterns * 2) - 1
         return patterns
 
     def _find_error_str(self) -> str:
@@ -71,8 +70,8 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         if status == asdk.SUCCESS:
             msg = err_msg_buffer.value
             if len(msg) > err_msg_buffer_len:
-                msg = msg + b'...'
-            msg += b' (error code %i)' % (err.contents.value)
+                msg = msg + b"..."
+            msg += b" (error code %i)" % (err.contents.value)
             return msg.decode()
         else:
             return ""
@@ -82,7 +81,6 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
             msg = self._find_error_str()
             if msg:
                 raise exception_cls(msg)
-
 
     def __init__(self, serial_number: str, **kwargs) -> None:
         """
@@ -102,7 +100,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         self._raise_if_error(asdk.FAILURE)
 
         value = asdk.Scalar_p(asdk.Scalar())
-        status = asdk.Get(self._dm, b'NbOfActuator', value)
+        status = asdk.Get(self._dm, b"NbOfActuator", value)
         self._raise_if_error(status)
         self._n_actuators = int(value.contents.value)
         self._trigger_type = microscope.TriggerType.SOFTWARE
@@ -128,20 +126,27 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
 
     def set_trigger(self, ttype, tmode):
         if tmode not in self._supported_TriggerModes:
-            raise Exception("unsupported trigger of mode '%s' for Alpao Mirrors"
-                            % tmode.name)
-        elif (ttype == microscope.TriggerType.SOFTWARE
-              and tmode != microscope.TriggerMode.ONCE):
-            raise Exception("trigger mode '%s' only supports trigger type ONCE"
-                            % tmode.name)
+            raise Exception(
+                "unsupported trigger of mode '%s' for Alpao Mirrors"
+                % tmode.name
+            )
+        elif (
+            ttype == microscope.TriggerType.SOFTWARE
+            and tmode != microscope.TriggerMode.ONCE
+        ):
+            raise Exception(
+                "trigger mode '%s' only supports trigger type ONCE" % tmode.name
+            )
         self._trigger_mode = tmode
 
         try:
             value = self._TriggerType_to_asdkTriggerIn[ttype]
         except KeyError:
-            raise Exception("unsupported trigger of type '%s' for Alpao Mirrors"
-                            % ttype.name)
-        status = asdk.Set(self._dm, b'TriggerIn', value)
+            raise Exception(
+                "unsupported trigger of type '%s' for Alpao Mirrors"
+                % ttype.name
+            )
+        status = asdk.Set(self._dm, b"TriggerIn", value)
         self._raise_if_error(status)
         self._trigger_type = ttype
 
@@ -167,9 +172,10 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         elif self._trigger_mode == microscope.TriggerMode.START:
             n_repeats = 1
         else:
-            raise Exception("trigger type '%s' and trigger mode '%s'"
-                            % (self._trigger_type.name,
-                               self._trigger_mode.name))
+            raise Exception(
+                "trigger type '%s' and trigger mode '%s'"
+                % (self._trigger_type.name, self._trigger_mode.name)
+            )
 
         data_pointer = patterns.ctypes.data_as(asdk.Scalar_p)
 

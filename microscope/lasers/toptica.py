@@ -43,8 +43,9 @@ class _SharedSerial:
         with self._lock:
             return self._serial.readline()
 
-    def read_until(self, terminator: bytes = b'\n',
-                   size: typing.Optional[int] = None) -> bytes:
+    def read_until(
+        self, terminator: bytes = b"\n", size: typing.Optional[int] = None
+    ) -> bytes:
         with self._lock:
             return self._serial.read_until(terminator=terminator, size=size)
 
@@ -66,9 +67,9 @@ def _get_table_value(table: bytes, key: bytes) -> bytes:
     with such key) and returns the associated value.
     """
     # Key might be the first line, hence '(?:^|\r\n)'
-    match = re.search(b'(?:^|\r\n) *' + key + b': (.*)\r\n', table)
+    match = re.search(b"(?:^|\r\n) *" + key + b": (.*)\r\n", table)
     if match is None:
-        raise RuntimeError('failed to find key %s on table: %s' % (key, table))
+        raise RuntimeError("failed to find key %s on table: %s" % (key, table))
     return match.group(1)
 
 
@@ -84,17 +85,24 @@ class _iBeamConnection:
             else) to connect to.  For example, `/dev/ttyS1`, `COM1`,
             or `/dev/cuad1`.
     """
+
     def __init__(self, port: str):
         # From the Toptica iBeam SMART manual:
         # Direct connection via COMx with 115200,8,N,1 and serial
         # interface handshake "none". That means that no hardware
         # handshake (DTR, RTS) and no software handshake (XON,XOFF) of
         # the underlying operating system is supported.
-        serial_conn = serial.Serial(port=port, baudrate=115200, timeout=1.0,
-                                    bytesize=serial.EIGHTBITS,
-                                    stopbits=serial.STOPBITS_ONE,
-                                    parity=serial.PARITY_NONE, xonxoff=False,
-                                    rtscts=False, dsrdtr=False)
+        serial_conn = serial.Serial(
+            port=port,
+            baudrate=115200,
+            timeout=1.0,
+            bytesize=serial.EIGHTBITS,
+            stopbits=serial.STOPBITS_ONE,
+            parity=serial.PARITY_NONE,
+            xonxoff=False,
+            rtscts=False,
+            dsrdtr=False,
+        )
         self._serial = _SharedSerial(serial_conn)
 
         # We don't know what is the current verbosity state and so we
@@ -102,22 +110,22 @@ class _iBeamConnection:
         # set to the level we want, flush all output, and then check
         # if indeed this is a Toptica iBeam device.
         with self._serial.lock:
-            self._serial.write(b'echo off\r\n')
-            self._serial.write(b'prompt off\r\n')
+            self._serial.write(b"echo off\r\n")
+            self._serial.write(b"prompt off\r\n")
             # The talk level we want is 'usual'.  In theory we should
             # be able to use 'quiet' which only answers queries but in
             # practice 'quiet' does not answer some queries like 'show
             # serial'.
-            self._serial.write(b'talk usual\r\n')
-            self._serial.readlines() # discard all pending lines
+            self._serial.write(b"talk usual\r\n")
+            self._serial.readlines()  # discard all pending lines
 
         # Empty command does nothing and returns nothing extra so we
         # use it to ensure this at least behaves like a Toptica iBeam.
-        self.command(b'')
+        self.command(b"")
 
-        answer = self.command(b'show serial')
-        if not answer.startswith(b'SN: '):
-            raise RuntimeError('Failed to parse serial from %s' % answer)
+        answer = self.command(b"show serial")
+        if not answer.startswith(b"SN: "):
+            raise RuntimeError("Failed to parse serial from %s" % answer)
         _logger.info("got connection to Toptica iBeam %s", answer.decode())
 
     def command(self, command: bytes) -> bytes:
@@ -134,18 +142,22 @@ class _iBeamConnection:
         # We expect to be on 'talk usual' mode without prompt so each
         # command will end with [OK] on its own line.
         with self._serial.lock:
-            self._serial.write(command + b'\r\n')
+            self._serial.write(command + b"\r\n")
             # An answer always starts with \r\n so there will be one
             # before [OK] even if this command is not a query.
-            answer = self._serial.read_until(b'\r\n[OK]\r\n')
+            answer = self._serial.read_until(b"\r\n[OK]\r\n")
 
-        if not answer.startswith(b'\r\n'):
-            raise RuntimeError('answer to command %s does not start with CRLF.'
-                               ' This may be leftovers from a previous command:'
-                               ' %s' % (command, answer))
-        if not answer.endswith(b'\r\n[OK]\r\n'):
-            raise RuntimeError('Command %s failed or failed to read answer: %s'
-                               % (command, answer))
+        if not answer.startswith(b"\r\n"):
+            raise RuntimeError(
+                "answer to command %s does not start with CRLF."
+                " This may be leftovers from a previous command:"
+                " %s" % (command, answer)
+            )
+        if not answer.endswith(b"\r\n[OK]\r\n"):
+            raise RuntimeError(
+                "Command %s failed or failed to read answer: %s"
+                % (command, answer)
+            )
 
         # If an error occurred, the answer still ends in [OK].  We
         # need to check if the second line (first line is \r\n) is an
@@ -153,10 +165,10 @@ class _iBeamConnection:
         # where L is the error level (I for Information, W for
         # Warning, E for Error, and F for Fatal), and XXX is the error
         # code number.
-        if answer[2:7] == b'%SYS-' and answer[7] != ord(b'I'):
+        if answer[2:7] == b"%SYS-" and answer[7] != ord(b"I"):
             # Errors of level I (information) should not raise an
             # exception since they can be replies to normal commands.
-            raise RuntimeError('Command %s failed: %s' % (command, answer))
+            raise RuntimeError("Command %s failed: %s" % (command, answer))
 
         # Exclude the first \r\n, the \r\n from a possible answer, and
         # the final [OK]\r\n
@@ -164,11 +176,11 @@ class _iBeamConnection:
 
     def laser_on(self) -> None:
         """Activate LD driver."""
-        self.command(b'laser on')
+        self.command(b"laser on")
 
     def laser_off(self) -> None:
         """Deactivate LD driver."""
-        self.command(b'laser off')
+        self.command(b"laser off")
 
     def set_normal_channel_power(self, power: float) -> None:
         """Set power in mW for channel 2 (normal operating level channel).
@@ -177,28 +189,27 @@ class _iBeamConnection:
         want to be setting the power via channel 2 (channel 1 is the
         bias and we haven't seen a laser with a channel 3 yet).
         """
-        self.command(b'channel 2 power %f' % power)
+        self.command(b"channel 2 power %f" % power)
 
     def show_power_uW(self) -> float:
         """Returns actual laser power in µW."""
-        answer = self.command(b'show power')
-        if (not answer.startswith(b'PIC  = ')
-            and not answer.endswith(b' uW  ')):
-            raise RuntimeError('failed to parse power from answer: %s' % answer)
+        answer = self.command(b"show power")
+        if not answer.startswith(b"PIC  = ") and not answer.endswith(b" uW  "):
+            raise RuntimeError("failed to parse power from answer: %s" % answer)
         return float(answer[7:-5])
 
     def status_laser(self) -> bytes:
         """Returns actual status of the LD driver (ON or OFF)."""
-        return self.command(b'status laser')
+        return self.command(b"status laser")
 
     def show_max_power(self) -> float:
         # There should be a cleaner way to get these, right?  We can
         # query the current limits (mA) but how do we go from there to
         # the power limits (mW)?
-        table = self.command(b'show satellite')
-        key = _get_table_value(table, b'Pmax')
-        if not key.endswith(b' mW'):
-            raise RuntimeError('failed to parse power from %s' % key)
+        table = self.command(b"show satellite")
+        key = _get_table_value(table, b"Pmax")
+        if not key.endswith(b" mW"):
+            raise RuntimeError("failed to parse power from %s" % key)
         return float(key[:-3])
 
 
@@ -209,6 +220,7 @@ class TopticaiBeam(microscope.abc.Laser):
     the normal channel (#2) only.  The bias channel (#1) is left
     unmodified and so defines the lowest level power.
     """
+
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._conn = _iBeamConnection(port)
@@ -243,23 +255,21 @@ class TopticaiBeam(microscope.abc.Laser):
 
     def get_is_on(self) -> bool:
         state = self._conn.status_laser()
-        if state == b'ON':
+        if state == b"ON":
             return True
-        elif state == b'OFF':
+        elif state == b"OFF":
             return False
         else:
-            raise RuntimeError('Unexpected laser status: %s' % state.decode())
-
+            raise RuntimeError("Unexpected laser status: %s" % state.decode())
 
     def _get_max_power_mw(self) -> float:
         return self._max_power
 
     def _get_power_mw(self) -> float:
-        return (self._conn.show_power_uW() * (10**-3))
+        return self._conn.show_power_uW() * (10 ** -3)
 
     def _set_power_mw(self, mw: float) -> None:
         self._conn.set_normal_channel_power(mw)
-
 
     def _do_set_power(self, power: float) -> None:
         self._set_power_mw(power * self._get_max_power_mw())

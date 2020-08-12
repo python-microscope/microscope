@@ -48,46 +48,48 @@ class TestSerialMock(unittest.TestCase):
     # Our tests for serial devices depend on our SerialMock base
     # class working properly so yeah, we need tests for that too.
     class Serial(mocks.SerialMock):
-        eol = b'\r\n'
+        eol = b"\r\n"
+
         def handle(self, command):
-            if command.startswith(b'echo '):
+            if command.startswith(b"echo "):
                 self.in_buffer.write(command[5:] + self.eol)
-            elif command in [b'foo', b'bar']:
+            elif command in [b"foo", b"bar"]:
                 pass
             else:
                 raise RuntimeError("unknown command '%s'" % command.decode())
 
     def setUp(self):
         self.serial = TestSerialMock.Serial()
-        patcher = unittest.mock.patch.object(TestSerialMock.Serial, 'handle',
-                                             wraps=self.serial.handle)
+        patcher = unittest.mock.patch.object(
+            TestSerialMock.Serial, "handle", wraps=self.serial.handle
+        )
         self.addCleanup(patcher.stop)
         self.mock = patcher.start()
 
     def test_simple_commands(self):
-        self.serial.write(b'foo\r\n')
-        self.mock.assert_called_once_with(b'foo')
+        self.serial.write(b"foo\r\n")
+        self.mock.assert_called_once_with(b"foo")
 
     def test_partial_commands(self):
-        self.serial.write(b'fo')
-        self.serial.write(b'o')
-        self.serial.write(b'\r\n')
-        self.serial.handle.assert_called_once_with(b'foo')
+        self.serial.write(b"fo")
+        self.serial.write(b"o")
+        self.serial.write(b"\r\n")
+        self.serial.handle.assert_called_once_with(b"foo")
 
     def test_multiple_commands(self):
-        self.serial.write(b'foo\r\nbar\r\n')
-        calls = [unittest.mock.call(x) for x in [b'foo', b'bar']]
+        self.serial.write(b"foo\r\nbar\r\n")
+        calls = [unittest.mock.call(x) for x in [b"foo", b"bar"]]
         self.assertEqual(self.serial.handle.mock_calls, calls)
 
     def test_unix_eol(self):
-        self.serial.eol = b'\n'
-        self.serial.write(b'foo\nbar\n')
-        calls = [unittest.mock.call(x) for x in [b'foo', b'bar']]
+        self.serial.eol = b"\n"
+        self.serial.write(b"foo\nbar\n")
+        calls = [unittest.mock.call(x) for x in [b"foo", b"bar"]]
         self.assertEqual(self.serial.handle.mock_calls, calls)
 
     def test_write(self):
-        self.serial.write(b'echo qux\r\n')
-        self.assertEqual(self.serial.readline(), b'qux\r\n')
+        self.serial.write(b"echo qux\r\n")
+        self.assertEqual(self.serial.readline(), b"qux\r\n")
 
 
 class DeviceTests:
@@ -196,6 +198,7 @@ class LaserTests(DeviceTests):
         class that fakes the hardware.
 
     """
+
     def assertEqualMW(self, first, second, msg=None):
         # We could be smarter, but rounding the values should be
         # enough to check the values when comparing power levels.
@@ -244,19 +247,21 @@ class LaserTests(DeviceTests):
         new_power = 0.5
         new_power_mw = new_power * self.fake.max_power
         self.device.power = new_power
-        self.assertEqualMW(self.device.power * self.fake.max_power,
-                           new_power_mw)
+        self.assertEqualMW(
+            self.device.power * self.fake.max_power, new_power_mw
+        )
         self.assertEqualMW(new_power, self.device.get_set_power())
 
     def test_setting_power_outside_limit(self):
         self.device.enable()
         self.device.power = -0.1
-        self.assertEqual(self.device.power,
-                         self.fake.min_power / self.fake.max_power,
-                         'clip setting power below 0')
+        self.assertEqual(
+            self.device.power,
+            self.fake.min_power / self.fake.max_power,
+            "clip setting power below 0",
+        )
         self.device.power = 1.1
-        self.assertEqual(self.device.power, 1.0,
-                         'clip setting power above 1')
+        self.assertEqual(self.device.power, 1.0, "clip setting power above 1")
 
     def test_status(self):
         status = self.device.get_status()
@@ -272,16 +277,16 @@ class CameraTests(DeviceTests):
 class FilterWheelTests(DeviceTests):
     def test_get_and_set_position(self):
         self.assertEqual(self.device.position, 0)
-        max_pos = self.device.n_positions -1
+        max_pos = self.device.n_positions - 1
         self.device.position = max_pos
         self.assertEqual(self.device.position, max_pos)
 
     def test_set_position_to_negative(self):
-        with self.assertRaisesRegex(Exception, 'can\'t move to position'):
+        with self.assertRaisesRegex(Exception, "can't move to position"):
             self.device.position = -1
 
     def test_set_position_above_limit(self):
-        with self.assertRaisesRegex(Exception, 'can\'t move to position'):
+        with self.assertRaisesRegex(Exception, "can't move to position"):
             self.device.position = self.device.n_positions
 
 
@@ -294,9 +299,10 @@ class DeformableMirrorTests(DeviceTests):
         `fake`: an object with the method `get_current_pattern`
     """
 
-    def assertCurrentPattern(self, expected_pattern, msg=''):
-        numpy.testing.assert_array_equal(self.fake.get_current_pattern(),
-                                         expected_pattern, msg)
+    def assertCurrentPattern(self, expected_pattern, msg=""):
+        numpy.testing.assert_array_equal(
+            self.fake.get_current_pattern(), expected_pattern, msg
+        )
 
     def test_get_number_of_actuators(self):
         self.assertIsInstance(self.device.n_actuators, int)
@@ -326,7 +332,7 @@ class DeformableMirrorTests(DeviceTests):
             self.assertCurrentPattern(patterns[i])
 
     def test_validate_pattern_too_long(self):
-        patterns = numpy.zeros((self.planned_n_actuators +1))
+        patterns = numpy.zeros((self.planned_n_actuators + 1))
         with self.assertRaisesRegex(Exception, "length of second dimension"):
             self.device.apply_pattern(patterns)
 
@@ -373,14 +379,18 @@ class TestDummyLaser(unittest.TestCase, LaserTests):
         pass
 
 
-class TestCoherentSapphireLaser(unittest.TestCase, LaserTests,
-                                SerialDeviceTests):
+class TestCoherentSapphireLaser(
+    unittest.TestCase, LaserTests, SerialDeviceTests
+):
     def setUp(self):
         from microscope.lasers.sapphire import SapphireLaser
         from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
-        with unittest.mock.patch('microscope.lasers.sapphire.serial.Serial',
-                                 new=CoherentSapphireLaserMock):
-            self.device = SapphireLaser('/dev/null')
+
+        with unittest.mock.patch(
+            "microscope.lasers.sapphire.serial.Serial",
+            new=CoherentSapphireLaserMock,
+        ):
+            self.device = SapphireLaser("/dev/null")
         self.device.initialize()
 
         self.fake = CoherentSapphireLaserMock
@@ -390,22 +400,28 @@ class TestCoboltLaser(unittest.TestCase, LaserTests, SerialDeviceTests):
     def setUp(self):
         from microscope.lasers.cobolt import CoboltLaser
         from microscope.testsuite.mock_devices import CoboltLaserMock
-        with unittest.mock.patch('microscope.lasers.cobolt.serial.Serial',
-                                 new=CoboltLaserMock):
-            self.device = CoboltLaser('/dev/null')
+
+        with unittest.mock.patch(
+            "microscope.lasers.cobolt.serial.Serial", new=CoboltLaserMock
+        ):
+            self.device = CoboltLaser("/dev/null")
         self.device.initialize()
 
         self.fake = CoboltLaserMock
 
 
-class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests,
-                               SerialDeviceTests):
+class TestOmicronDeepstarLaser(
+    unittest.TestCase, LaserTests, SerialDeviceTests
+):
     def setUp(self):
         from microscope.lasers.deepstar import DeepstarLaser
         from microscope.testsuite.mock_devices import OmicronDeepstarLaserMock
-        with unittest.mock.patch('microscope.lasers.deepstar.serial.Serial',
-                                 new=OmicronDeepstarLaserMock):
-            self.device = DeepstarLaser('/dev/null')
+
+        with unittest.mock.patch(
+            "microscope.lasers.deepstar.serial.Serial",
+            new=OmicronDeepstarLaserMock,
+        ):
+            self.device = DeepstarLaser("/dev/null")
         self.device.initialize()
 
         self.fake = OmicronDeepstarLaserMock
@@ -454,8 +470,9 @@ class TestImageGenerator(unittest.TestCase):
 
 class TestEmptyDummyFilterWheel(unittest.TestCase):
     def test_zero_positions(self):
-        with self.assertRaisesRegex(ValueError,
-                                    'positions must be a positive number'):
+        with self.assertRaisesRegex(
+            ValueError, "positions must be a positive number"
+        ):
             device = dummies.TestFilterWheel(positions=0)
 
 
@@ -463,9 +480,11 @@ class TestOnePositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel(positions=1)
 
+
 class TestSixPositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
         self.device = dummies.TestFilterWheel(positions=6)
+
 
 class TestDummyDeformableMirror(unittest.TestCase, DeformableMirrorTests):
     def setUp(self):
@@ -499,10 +518,10 @@ class TestBaseDevice(unittest.TestCase):
         # failed the device is not complete and shutdown() fails
         # because the logger has not been created.  See comments on
         # issue #69.  patch __del__ to workaround this issue.
-        with unittest.mock.patch('microscope.devices.Device.__del__'):
+        with unittest.mock.patch("microscope.devices.Device.__del__"):
             with self.assertRaisesRegex(TypeError, "argument 'power'"):
                 dummies.TestLaser(power=2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -37,28 +37,36 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     instead of the actual power value.
 
     """
+
     def __init__(self, com, baud=9600, timeout=2.0, **kwargs):
         super().__init__(**kwargs)
-        self.connection = serial.Serial(port = com,
-            baudrate = baud, timeout = timeout,
-            stopbits = serial.STOPBITS_ONE,
-            bytesize = serial.EIGHTBITS, parity = serial.PARITY_NONE)
+        self.connection = serial.Serial(
+            port=com,
+            baudrate=baud,
+            timeout=timeout,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+        )
         # If the laser is currently on, then we need to use 7-byte mode; otherwise we need to
         # use 16-byte mode.
-        self._write(b'S?')
+        self._write(b"S?")
         response = self._readline()
         _logger.info("Current laser state: [%s]", response.decode())
 
-        self._write(b'STAT3')
+        self._write(b"STAT3")
         option_codes = self._readline()
-        if not option_codes.startswith(b'OC '):
-            raise RuntimeError("Failed to get option codes '%s'"
-                               % option_codes.decode())
-        if option_codes[9:12] == b'AP1':
+        if not option_codes.startswith(b"OC "):
+            raise RuntimeError(
+                "Failed to get option codes '%s'" % option_codes.decode()
+            )
+        if option_codes[9:12] == b"AP1":
             self._has_apc = True
         else:
-            _logger.info('Laser is missing APC option.  Will return set'
-                         ' power instead of actual power')
+            _logger.info(
+                "Laser is missing APC option.  Will return set"
+                " power instead of actual power"
+            )
             self._has_apc = False
 
     def _write(self, command):
@@ -66,10 +74,9 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         # We'll need to pad the command out to 16 bytes. There's also
         # a 7-byte mode but we never need to use it.  CR/LF counts
         # towards the byte limit, hence 14 (16-2)
-        command = command.ljust(14) + b'\r\n'
+        command = command.ljust(14) + b"\r\n"
         response = self.connection.write(command)
         return response
-
 
     # Get the status of the laser, by sending the
     # STAT0, STAT1, STAT2, and STAT3 commands.
@@ -77,10 +84,9 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     def get_status(self):
         result = []
         for i in range(4):
-            self._write(('STAT%d' % i).encode())
+            self._write(("STAT%d" % i).encode())
             result.append(self._readline().decode())
         return result
-
 
     # Turn the laser ON. Return True if we succeeded, False otherwise.
     @microscope.abc.SerialDeviceMixin.lock_comms
@@ -90,21 +96,24 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         # Enable internal peak power
         # Set MF turns off internal digital and bias modulation
         # Disable analog modulation to digital modulation
-        for cmd, msg in [(b'LON', 'Enable response: [%s]'),
-                         (b'L2', 'L2 response: [%s]'),
-                         (b'IPO', 'Enable-internal peak power response: [%s]'),
-                         (b'MF', 'MF response [%s]'),
-                         (b'A2DF', 'A2DF response [%s]')]:
+        for cmd, msg in [
+            (b"LON", "Enable response: [%s]"),
+            (b"L2", "L2 response: [%s]"),
+            (b"IPO", "Enable-internal peak power response: [%s]"),
+            (b"MF", "MF response [%s]"),
+            (b"A2DF", "A2DF response [%s]"),
+        ]:
             self._write(cmd)
             response = self._readline()
             _logger.info(msg, response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
-            self._write(b'S?')
+            self._write(b"S?")
             response = self._readline()
-            _logger.error("Failed to turn on. Current status: [%s]",
-                          response.decode())
+            _logger.error(
+                "Failed to turn on. Current status: [%s]", response.decode()
+            )
             return False
         return True
 
@@ -118,31 +127,28 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_disable(self):
         _logger.info("Turning laser OFF.")
-        self._write(b'LF')
+        self._write(b"LF")
         return self._readline().decode()
-
 
     @microscope.abc.SerialDeviceMixin.lock_comms
     def is_alive(self):
-        self._write(b'S?')
+        self._write(b"S?")
         response = self._readline()
-        return response.startswith(b'S')
-
+        return response.startswith(b"S")
 
     # Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
-        self._write(b'S?')
+        self._write(b"S?")
         response = self._readline()
         _logger.info("Are we on? [%s]", response.decode())
-        return response == b'S2'
-
+        return response == b"S2"
 
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _do_set_power(self, power: float) -> None:
         _logger.info("level=%d", power)
-        power_int = int (power*0xFFF)
+        power_int = int(power * 0xFFF)
         _logger.info("power=%d", power_int)
         strPower = "PP%03X" % power_int
         _logger.info("power level=%s", strPower)
@@ -150,21 +156,20 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         response = self._readline()
         _logger.info("Power response [%s]", response.decode())
 
-
     def _do_get_power(self) -> float:
         if not self.get_is_on():
             return 0.0
         if self._has_apc:
-            query = b'P'
+            query = b"P"
             scale = 0xCCC
         else:
-            query = b'PP'
+            query = b"PP"
             scale = 0xFFF
 
-        self._write(query + b'?')
+        self._write(query + b"?")
         answer = self._readline()
         if not answer.startswith(query):
             raise RuntimeError('failed to read power ""' % answer.decode())
 
-        level = int(answer[len(query):], 16)
-        return (float(level) / float(scale))
+        level = int(answer[len(query) :], 16)
+        return float(level) / float(scale)

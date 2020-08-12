@@ -43,90 +43,90 @@ DPTR_TYPE = SDK3.POINTER(SDK3.AT_U8)
 
 # Trigger mode to type.
 TRIGGER_MODES = {
-    'internal': None,
-    'external': microscope.abc.TRIGGER_BEFORE,
-    'external start': None,
-    'external exposure': microscope.abc.TRIGGER_DURATION,
-    'software': microscope.abc.TRIGGER_SOFT,
+    "internal": None,
+    "external": microscope.abc.TRIGGER_BEFORE,
+    "external start": None,
+    "external exposure": microscope.abc.TRIGGER_DURATION,
+    "software": microscope.abc.TRIGGER_SOFT,
 }
 
 SDK_NAMES = {
-    "_accumulate_count" : "AccumulateCount",
-    "_acquisition_start" : "AcquisitionStart",
-    "_acquisition_stop" : "AcquisitionStop",
-    "_alternating_readout_direction" : "AlternatingReadoutDirection",
-    "_aoi_binning" : "AOIBinning",
-    "_aoi_height" : "AOIHeight",
-    "_aoi_left" : "AOILeft",
-    "_aoi_top" : "AOITop",
-    "_aoi_width" : "AOIWidth",
-    "_aoi_stride" : "AOIStride",
-    "_auxiliary_out_source" : "AuxiliaryOutSource",
-    "_aux_out_source_two" : "AuxOutSourceTwo",
-    "_baseline_level" : "BaselineLevel",
-    "_bit_depth" : "BitDepth",
-    "_buffer_overflow_event" : "BufferOverflowEvent",
-    "_bytes_per_pixel" : "BytesPerPixel",
-    "_camera_acquiring" : "CameraAcquiring",
-    "_camera_dump" : "CameraDump",
-    "_camera_model" : "CameraModel",
-    "_camera_name" : "CameraName",
-    "_camera_present" : "CameraPresent",
-    "_controller_id" : "ControllerId",
-    "_frame_count" : "FrameCount",
-    "_cycle_mode" : "CycleMode",
-    "_electronic_shuttering_mode" : "ElectronicShutteringMode",
-    "_event_enable" : "EventEnable",
-    "_events_missed_event" : "EventsMissedEvent",
-    "_event_selector" : "EventSelector",
-    "_exposed_pixel_height" : "ExposedPixelHeight",
-    "_exposure_time" : "ExposureTime",
-    "_exposure_end_event" : "ExposureEndEvent",
-    "_exposure_start_event" : "ExposureStartEvent",
-    "_external_trigger_delay" : "ExternalTriggerDelay",
-    "_fan_speed" : "FanSpeed",
-    "_firmware_version" : "FirmwareVersion",
-    "_frame_rate" : "FrameRate",
-    "_full_aoi_control" : "FullAOIControl",
-    "_image_size_bytes" : "ImageSizeBytes",
-    "_interface_type" : "InterfaceType",
-    "_io_invert" : "IoInvert",
-    "_io_selector" : "IoSelector",
-    "_line_scan_speed" : "LineScanSpeed",
-    "_lut_index" : "LutIndex",
-    "_lut_value" : "LutValue",
-    "_max_interface_transfer_rate" : "MaxInterfaceTransferRate",
-    "_metadata_enable" : "MetadataEnable",
-    "_metadata_timestamp" : "MetadataTimestamp",
-    "_metadata_frame" : "MetadataFrame",
-    "_overlap" : "Overlap",
-    "_pixel_encoding" : "PixelEncoding",
-    "_pixel_readout_rate" : "PixelReadoutRate",
-    "_pre_amp_gain_control" : "PreAmpGainControl",
-    "_readout_time" : "ReadoutTime",
-    "_rolling_shutter_global_clear" : "RollingShutterGlobalClear",
-    "_row_n_exposure_end_event" : "RowNExposureEndEvent",
-    "_row_n_exposure_start_event" : "RowNExposureStartEvent",
-    "_row_read_time" : "RowReadTime",
-    "_scan_speed_control_enable" : "ScanSpeedControlEnable",
-    "_sensor_cooling" : "SensorCooling",
-    "_sensor_height" : "SensorHeight",
-    "_sensor_readout_mode" : "SensorReadoutMode",
-    "_sensor_temperature" : "SensorTemperature",
-    "_sensor_width" : "SensorWidth",
-    "_serial_number" : "SerialNumber",
-    "_simple_pre_amp_gain_control" : "SimplePreAmpGainControl",
-    "_software_trigger" : "SoftwareTrigger",
-    "_static_blemish_correction" : "StaticBlemishCorrection",
-    "_spurious_noise_filter" : "SpuriousNoiseFilter",
-    "_target_sensor_temperature" : "TargetSensorTemperature",
-    "_temperature_control" : "TemperatureControl",
-    "_temperature_status" : "TemperatureStatus",
-    "_timestamp_clock" : "TimestampClock",
-    "_timestamp_clock_frequency" : "TimestampClockFrequency",
-    "_timestamp_clock_reset" : "TimestampClockReset",
-    "_trigger_mode" : "TriggerMode",
-    "_vertically_centre_aoi" : "VerticallyCentreAOI",
+    "_accumulate_count": "AccumulateCount",
+    "_acquisition_start": "AcquisitionStart",
+    "_acquisition_stop": "AcquisitionStop",
+    "_alternating_readout_direction": "AlternatingReadoutDirection",
+    "_aoi_binning": "AOIBinning",
+    "_aoi_height": "AOIHeight",
+    "_aoi_left": "AOILeft",
+    "_aoi_top": "AOITop",
+    "_aoi_width": "AOIWidth",
+    "_aoi_stride": "AOIStride",
+    "_auxiliary_out_source": "AuxiliaryOutSource",
+    "_aux_out_source_two": "AuxOutSourceTwo",
+    "_baseline_level": "BaselineLevel",
+    "_bit_depth": "BitDepth",
+    "_buffer_overflow_event": "BufferOverflowEvent",
+    "_bytes_per_pixel": "BytesPerPixel",
+    "_camera_acquiring": "CameraAcquiring",
+    "_camera_dump": "CameraDump",
+    "_camera_model": "CameraModel",
+    "_camera_name": "CameraName",
+    "_camera_present": "CameraPresent",
+    "_controller_id": "ControllerId",
+    "_frame_count": "FrameCount",
+    "_cycle_mode": "CycleMode",
+    "_electronic_shuttering_mode": "ElectronicShutteringMode",
+    "_event_enable": "EventEnable",
+    "_events_missed_event": "EventsMissedEvent",
+    "_event_selector": "EventSelector",
+    "_exposed_pixel_height": "ExposedPixelHeight",
+    "_exposure_time": "ExposureTime",
+    "_exposure_end_event": "ExposureEndEvent",
+    "_exposure_start_event": "ExposureStartEvent",
+    "_external_trigger_delay": "ExternalTriggerDelay",
+    "_fan_speed": "FanSpeed",
+    "_firmware_version": "FirmwareVersion",
+    "_frame_rate": "FrameRate",
+    "_full_aoi_control": "FullAOIControl",
+    "_image_size_bytes": "ImageSizeBytes",
+    "_interface_type": "InterfaceType",
+    "_io_invert": "IoInvert",
+    "_io_selector": "IoSelector",
+    "_line_scan_speed": "LineScanSpeed",
+    "_lut_index": "LutIndex",
+    "_lut_value": "LutValue",
+    "_max_interface_transfer_rate": "MaxInterfaceTransferRate",
+    "_metadata_enable": "MetadataEnable",
+    "_metadata_timestamp": "MetadataTimestamp",
+    "_metadata_frame": "MetadataFrame",
+    "_overlap": "Overlap",
+    "_pixel_encoding": "PixelEncoding",
+    "_pixel_readout_rate": "PixelReadoutRate",
+    "_pre_amp_gain_control": "PreAmpGainControl",
+    "_readout_time": "ReadoutTime",
+    "_rolling_shutter_global_clear": "RollingShutterGlobalClear",
+    "_row_n_exposure_end_event": "RowNExposureEndEvent",
+    "_row_n_exposure_start_event": "RowNExposureStartEvent",
+    "_row_read_time": "RowReadTime",
+    "_scan_speed_control_enable": "ScanSpeedControlEnable",
+    "_sensor_cooling": "SensorCooling",
+    "_sensor_height": "SensorHeight",
+    "_sensor_readout_mode": "SensorReadoutMode",
+    "_sensor_temperature": "SensorTemperature",
+    "_sensor_width": "SensorWidth",
+    "_serial_number": "SerialNumber",
+    "_simple_pre_amp_gain_control": "SimplePreAmpGainControl",
+    "_software_trigger": "SoftwareTrigger",
+    "_static_blemish_correction": "StaticBlemishCorrection",
+    "_spurious_noise_filter": "SpuriousNoiseFilter",
+    "_target_sensor_temperature": "TargetSensorTemperature",
+    "_temperature_control": "TemperatureControl",
+    "_temperature_status": "TemperatureStatus",
+    "_timestamp_clock": "TimestampClock",
+    "_timestamp_clock_frequency": "TimestampClockFrequency",
+    "_timestamp_clock_reset": "TimestampClockReset",
+    "_trigger_mode": "TriggerMode",
+    "_vertically_centre_aoi": "VerticallyCentreAOI",
 }
 
 # Wrapper to ensure feature is readable.
@@ -135,8 +135,10 @@ def readable_wrapper(func):
         if SDK3.IsReadable(self.handle, self.propertyName):
             return func(self, *args, **kwargs)
         else:
-            return None#Warning('%s not currently readable.' % self.propertyName)
+            return None  # Warning('%s not currently readable.' % self.propertyName)
+
     return wrapper
+
 
 # Wrapper to ensure feature is writable.
 def writable_wrapper(func):
@@ -144,8 +146,10 @@ def writable_wrapper(func):
         if SDK3.IsWritable(self.handle, self.propertyName):
             return func(self, *args, **kwargs)
         else:
-            return False#Warning('%s not currently writable.' % self.propertyName)
+            return False  # Warning('%s not currently writable.' % self.propertyName)
+
     return wrapper
+
 
 # Overrides for local style and error handling.
 ATInt.get_value = readable_wrapper(ATInt.getValue)
@@ -159,40 +163,52 @@ ATFloat.set_value = writable_wrapper(ATFloat.setValue)
 ATString.get_value = readable_wrapper(ATString.getValue)
 ATString.set_value = writable_wrapper(ATString.setValue)
 ATString.max_length = readable_wrapper(ATString.maxLength)
-ATEnum.get_index  = readable_wrapper(ATEnum.getIndex)
-ATEnum.set_index  = writable_wrapper(ATEnum.setIndex)
+ATEnum.get_index = readable_wrapper(ATEnum.getIndex)
+ATEnum.set_index = writable_wrapper(ATEnum.setIndex)
 ATEnum.get_string = readable_wrapper(ATEnum.getString)
 ATEnum.set_string = writable_wrapper(ATEnum.setString)
 ATEnum.get_available_values = readable_wrapper(ATEnum.getAvailableValueMap)
-ATProperty.is_readonly = lambda self: not SDK3.IsWritable(self.handle, self.propertyName)
+ATProperty.is_readonly = lambda self: not SDK3.IsWritable(
+    self.handle, self.propertyName
+)
 
 # Mapping of AT type to microscope Setting type.
 PROPERTY_TYPES = {
-    ATInt: 'int',
-    ATBool: 'bool',
-    ATFloat: 'float',
-    ATString: 'str',
-    ATEnum: 'enum'
+    ATInt: "int",
+    ATBool: "bool",
+    ATFloat: "float",
+    ATString: "str",
+    ATEnum: "enum",
 }
 
-INVALIDATES_BUFFERS = ['_simple_pre_amp_gain_control', '_pre_amp_gain_control',
-                       '_aoi_binning', '_aoi_left', '_aoi_top',
-                       '_aoi_width', '_aoi_height', ]
+INVALIDATES_BUFFERS = [
+    "_simple_pre_amp_gain_control",
+    "_pre_amp_gain_control",
+    "_aoi_binning",
+    "_aoi_left",
+    "_aoi_top",
+    "_aoi_width",
+    "_aoi_height",
+]
 
 
 class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
     SDK_INITIALIZED = False
+
     def __init__(self, index=0, **kwargs):
         super().__init__(index=index, **kwargs)
         if not AndorSDK3.SDK_INITIALIZED:
             SDK3.InitialiseLibrary()
         self.handle = None
-        #self._sdk3cam = SDK3Camera(self._index)
-        #SDK3Camera.__init__(self, self._index)
-        self.add_setting('use_callback', 'bool',
-                         lambda: self._using_callback,
-                         self._enable_callback,
-                         None)
+        # self._sdk3cam = SDK3Camera(self._index)
+        # SDK3Camera.__init__(self, self._index)
+        self.add_setting(
+            "use_callback",
+            "bool",
+            lambda: self._using_callback,
+            self._enable_callback,
+            None,
+        )
         # Define features with local style. The SDK treats parameter names
         # without regard to case, so we just need to remove the underscores
         # when connecting properties to SDK calls. We define all possible
@@ -277,10 +293,13 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
 
         # Software buffers and parameters for data conversion.
         self.num_buffers = 32
-        self.add_setting('num_buffers', 'int',
-                         lambda: self.num_buffers,
-                         lambda val: self.set_num_buffers(val),
-                         lambda: (1, 100))
+        self.add_setting(
+            "num_buffers",
+            "int",
+            lambda: self.num_buffers,
+            lambda val: self.set_num_buffers(val),
+            lambda: (1, 100),
+        )
         self.buffers = queue.Queue()
         self._buffer_size = None
         self._img_stride = None
@@ -298,16 +317,16 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
     def _enable_callback(self, use=False):
         self.disable()
         if use:
-            SDK3.RegisterFeatureCallback(self.handle,
-                                         "ExposureEndEvent",
-                                         self._exposure_callback, None)
+            SDK3.RegisterFeatureCallback(
+                self.handle, "ExposureEndEvent", self._exposure_callback, None
+            )
             self._event_selector.set_string("ExposureEndEvent")
             self._event_enable.set_value(True)
             self._using_callback = True
         else:
-            SDK3.UnregisterFeatureCallback(self.handle,
-                                           "ExposureEndEvent",
-                                           self._exposure_callback, None)
+            SDK3.UnregisterFeatureCallback(
+                self.handle, "ExposureEndEvent", self._exposure_callback, None
+            )
             self._event_enable.set_value(False)
             self._using_callback = False
         self.enable()
@@ -328,7 +347,7 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         _logger.debug("Purging buffers.")
         self._buffers_valid = False
         if self._acquiring:
-            raise Exception ('Can not modify buffers while camera acquiring.')
+            raise Exception("Can not modify buffers while camera acquiring.")
         SDK3.Flush(self.handle)
         while True:
             try:
@@ -351,22 +370,25 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         img_size = self._image_size_bytes.get_value()
         self._buffer_size = img_size
         for i in range(num):
-            buf = np.require(np.empty(img_size), dtype='uint8',
-                             requirements=['C_CONTIGUOUS',
-                                           'ALIGNED',
-                                           'OWNDATA'])
+            buf = np.require(
+                np.empty(img_size),
+                dtype="uint8",
+                requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
+            )
             self.buffers.put(buf)
-            SDK3.QueueBuffer(self.handle,
-                             buf.ctypes.data_as(DPTR_TYPE),
-                             img_size)
+            SDK3.QueueBuffer(
+                self.handle, buf.ctypes.data_as(DPTR_TYPE), img_size
+            )
         self._buffers_valid = True
 
     def invalidate_buffers(self, func):
         """Wrap functions that invalidate buffers so buffers are recreated."""
         outerself = self
+
         def wrapper(self, *args, **kwargs):
             func(self, *args, **kwargs)
             outerself._buffers_valid = False
+
         return wrapper
 
     def _fetch_data(self, timeout=5, debug=False):
@@ -382,11 +404,17 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         raw = self.buffers.get()
         width = self._img_width
         height = self._img_height
-        data = raw#.reshape((-1, bytes_per_row))[:, 0:width].copy()
-        data = np.empty((height, width), dtype='uint16')
-        SDK3.ConvertBuffer(ptr, data.ctypes.data_as(DPTR_TYPE),
-                           width, height,
-                           self._img_stride, self._img_encoding, 'Mono16')
+        data = raw  # .reshape((-1, bytes_per_row))[:, 0:width].copy()
+        data = np.empty((height, width), dtype="uint16")
+        SDK3.ConvertBuffer(
+            ptr,
+            data.ctypes.data_as(DPTR_TYPE),
+            width,
+            height,
+            self._img_stride,
+            self._img_encoding,
+            "Mono16",
+        )
         # Requeue the buffer if buffer size has not been changed elsewhere.
         if raw.size == self._buffer_size:
             self.buffers.put(raw)
@@ -398,7 +426,7 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
 
     def abort(self):
         """Abort acquisition."""
-        _logger.debug('Disabling acquisition.')
+        _logger.debug("Disabling acquisition.")
         if self._acquiring:
             self._acquisition_stop()
 
@@ -442,16 +470,21 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
                 if name in INVALIDATES_BUFFERS:
                     set_func = self.invalidate_buffers(set_func)
 
-                self.add_setting(name.lstrip('_'), PROPERTY_TYPES[type(var)],
-                                 get_func, set_func, vals_func, is_readonly_func)
+                self.add_setting(
+                    name.lstrip("_"),
+                    PROPERTY_TYPES[type(var)],
+                    get_func,
+                    set_func,
+                    vals_func,
+                    is_readonly_func,
+                )
         # Default setup.
         self.set_cooling(True)
-        if not self._camera_model.getValue().startswith('SIMCAM'):
-            self._trigger_mode.set_string('Software')
-            self._cycle_mode.set_string('Continuous')
+        if not self._camera_model.getValue().startswith("SIMCAM"):
+            self._trigger_mode.set_string("Software")
+            self._cycle_mode.set_string("Continuous")
         else:
             _logger.warn("No hardware found - using SIMCAM")
-
 
         def callback(*args):
             data = self._fetch_data(timeout=500)
@@ -501,23 +534,25 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
 
     @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
-        bounded_value = sorted((self._exposure_time.min(),
-                      self._exposure_time.max(),
-                      value))[1]
+        bounded_value = sorted(
+            (self._exposure_time.min(), self._exposure_time.max(), value)
+        )[1]
         self._exposure_time.set_value(bounded_value)
         self._frame_rate.set_value(self._frame_rate.max())
-        _logger.debug("Set exposure time to %f, resulting framerate %f.",
-                      bounded_value, self._frame_rate.get_value())
+        _logger.debug(
+            "Set exposure time to %f, resulting framerate %f.",
+            bounded_value,
+            self._frame_rate.get_value(),
+        )
 
     def get_exposure_time(self):
         return self._exposure_time.get_value()
 
     def get_cycle_time(self):
-        return 1. / self._frame_rate.get_value()
+        return 1.0 / self._frame_rate.get_value()
 
     def _get_sensor_shape(self):
-        return (self._sensor_width.get_value(),
-                self._sensor_height.get_value())
+        return (self._sensor_width.get_value(), self._sensor_height.get_value())
 
     def get_trigger_type(self):
         return TRIGGER_MODES[self._trigger_mode.get_string().lower()]
@@ -526,13 +561,13 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         return self._software_trigger()
 
     def _get_binning(self):
-        as_text = self._aoi_binning.get_string().split('x')
+        as_text = self._aoi_binning.get_string().split("x")
         return tuple(int(t) for t in as_text)
 
     @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         modes = self._aoi_binning.get_available_values()
-        as_text = '%dx%d' % (binning.h, binning.v)
+        as_text = "%dx%d" % (binning.h, binning.v)
         if as_text in modes:
             self._aoi_binning.set_string(as_text)
             self._create_buffers()
@@ -541,10 +576,12 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
             return False
 
     def _get_roi(self):
-        return microscope.ROI(self._aoi_left.get_value(),
-                              self._aoi_top.get_value(),
-                              self._aoi_width.get_value(),
-                              self._aoi_height.get_value())
+        return microscope.ROI(
+            self._aoi_left.get_value(),
+            self._aoi_top.get_value(),
+            self._aoi_width.get_value(),
+            self._aoi_height.get_value(),
+        )
 
     @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
@@ -565,7 +602,7 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         return True
 
     def get_gain(self):
-        if hasattr(self, '_preampgain'):
+        if hasattr(self, "_preampgain"):
             return self._preampgain.get_value()
         else:
             return None

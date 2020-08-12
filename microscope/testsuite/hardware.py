@@ -24,6 +24,7 @@ import time
 
 import numpy
 
+
 def test_mirror_actuators(dm, time_interval=0.5):
     """Iterate over all actuators of a deformable mirror.
 

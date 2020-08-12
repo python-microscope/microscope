@@ -29,12 +29,14 @@ class AxisLimits(typing.NamedTuple):
 
 class Binning(typing.NamedTuple):
     """A tuple containing parameters for horizontal and vertical binning. """
+
     h: int
     v: int
 
 
 class ROI(typing.NamedTuple):
     """A tuple that defines a region of interest."""
+
     left: int
     top: int
     width: int

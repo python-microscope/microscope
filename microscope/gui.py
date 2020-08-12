@@ -49,8 +49,8 @@ _logger = logging.getLogger(__name__)
 
 # We use pickle so we can serialize numpy arrays for camera images and
 # deformable mirrors patterns.
-Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
-Pyro4.config.SERIALIZER = 'pickle'
+Pyro4.config.SERIALIZERS_ACCEPTED.add("pickle")
+Pyro4.config.SERIALIZER = "pickle"
 
 
 class DeviceSettingsWidget(QtWidgets.QWidget):
@@ -61,8 +61,8 @@ class DeviceSettingsWidget(QtWidgets.QWidget):
     modify them.
 
     """
-    def __init__(self, device: microscope.abc.Device,
-                 *args, **kwargs) -> None:
+
+    def __init__(self, device: microscope.abc.Device, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
 
@@ -79,8 +79,10 @@ class _DataQueue(queue.Queue):
     def receiveData(self, *args):
         self.put(args)
 
+
 class _Imager(QtCore.QObject):
     """Helper for CameraWidget handling the internals of the camera trigger."""
+
     imageAcquired = QtCore.Signal(numpy.ndarray)
 
     def __init__(self, camera: microscope.abc.Camera) -> None:
@@ -91,8 +93,9 @@ class _Imager(QtCore.QObject):
             pyro_daemon = Pyro4.Daemon()
             queue_uri = pyro_daemon.register(self._data_queue)
             self._camera.set_client(queue_uri)
-            data_thread = threading.Thread(target=pyro_daemon.requestLoop,
-                                           daemon=True)
+            data_thread = threading.Thread(
+                target=pyro_daemon.requestLoop, daemon=True
+            )
             data_thread.start()
         else:
             self._device.set_client(self._data_queue)
@@ -108,7 +111,7 @@ class _Imager(QtCore.QObject):
         # CameraDevice have a soft_trigger method but it may do
         # nothing.  If the camera is a TriggerTargetMixin, then it
         # will have a trigger method that does work.
-        getattr(self._camera, 'trigger', self._camera.soft_trigger)()
+        getattr(self._camera, "trigger", self._camera.soft_trigger)()
 
     def fetchLoop(self) -> None:
         while True:
@@ -125,39 +128,42 @@ class _Imager(QtCore.QObject):
 
 class CameraWidget(QtWidgets.QWidget):
     """Display camera"""
-    def __init__(self, device: microscope.abc.Camera,
-                 *args, **kwargs) -> None:
+
+    def __init__(self, device: microscope.abc.Camera, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
         self._imager = _Imager(self._device)
         self._imager.imageAcquired.connect(self.displayData)
 
         self._view = QtWidgets.QLabel(parent=self)
-        self.displayData(numpy.zeros(self._device.get_sensor_shape(),
-                                     dtype=numpy.uint8))
+        self.displayData(
+            numpy.zeros(self._device.get_sensor_shape(), dtype=numpy.uint8)
+        )
 
-        self._enable_check = QtWidgets.QCheckBox('Enabled', parent=self)
+        self._enable_check = QtWidgets.QCheckBox("Enabled", parent=self)
         self._enable_check.stateChanged.connect(self.updateEnableState)
 
         self._exposure_box = QtWidgets.QDoubleSpinBox(parent=self)
-        self._exposure_box.setSuffix(' sec')
+        self._exposure_box.setSuffix(" sec")
         self._exposure_box.setSingleStep(0.1)
         self._exposure_box.valueChanged.connect(self._device.set_exposure_time)
 
-        self._snap_button = QtWidgets.QPushButton('Snap', parent=self)
+        self._snap_button = QtWidgets.QPushButton("Snap", parent=self)
         self._snap_button.clicked.connect(self._imager.snap)
 
         self.updateEnableState()
 
         layout = QtWidgets.QVBoxLayout()
         controls_row = QtWidgets.QHBoxLayout()
-        for widget in [self._enable_check, self._exposure_box,
-                       self._snap_button]:
+        for widget in [
+            self._enable_check,
+            self._exposure_box,
+            self._snap_button,
+        ]:
             controls_row.addWidget(widget)
         layout.addLayout(controls_row)
         layout.addWidget(self._view)
         self.setLayout(layout)
-
 
     def updateEnableState(self) -> None:
         """Update UI and camera state after enable check box"""
@@ -168,17 +174,17 @@ class CameraWidget(QtWidgets.QWidget):
 
         if self._enable_check.isChecked() != self._device.get_is_enabled():
             self._enable_check.setChecked(self._device.get_is_enabled())
-            _logger.error('failed to %s camera',
-                          'enable' if check_state else 'disable')
+            _logger.error(
+                "failed to %s camera", "enable" if check_state else "disable"
+            )
 
         self._snap_button.setEnabled(self._device.get_is_enabled())
         self._exposure_box.setEnabled(self._device.get_is_enabled())
 
-
     def displayData(self, data: numpy.ndarray) -> None:
         np_to_qt = {
-            numpy.dtype('uint8') : QtGui.QImage.Format_Grayscale8,
-            numpy.dtype('uint16') : QtGui.QImage.Format_Grayscale16,
+            numpy.dtype("uint8"): QtGui.QImage.Format_Grayscale8,
+            numpy.dtype("uint16"): QtGui.QImage.Format_Grayscale16,
         }
         qt_img = QtGui.QImage(data.tobytes(), *data.shape, np_to_qt[data.dtype])
         self._view.setPixmap(QtGui.QPixmap.fromImage(qt_img))
@@ -191,8 +197,10 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
     since the actuators position are not queryable..  The reset button
     does this too, i.e., it sets all actuators to their mid-point.
     """
-    def __init__(self, device: microscope.abc.DeformableMirror,
-                 *args, **kwargs) -> None:
+
+    def __init__(
+        self, device: microscope.abc.DeformableMirror, *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
 
@@ -202,15 +210,17 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
             actuator = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent=self)
             actuator.setMinimum(0)
             actuator.setMaximum(100)
+
             def setThisActuator(value, actuator_index=i):
                 self.setActuatorValue(actuator_index, value)
+
             actuator.valueChanged.connect(setThisActuator)
             self._actuators.append(actuator)
         # We don't know the pattern currently applied to the mirror so
         # we reset it which also updates the slider positions.
         self.resetPattern()
 
-        self._reset_button = QtWidgets.QPushButton('Reset', parent=self)
+        self._reset_button = QtWidgets.QPushButton("Reset", parent=self)
         self._reset_button.clicked.connect(self.resetPattern)
 
         main_layout = QtWidgets.QVBoxLayout()
@@ -224,11 +234,12 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
 
         self.setLayout(main_layout)
 
-
     def setActuatorValue(self, actuator_index: int, value: int) -> None:
         if not (0 < actuator_index < self._pattern.size):
-            raise ValueError('index %d is invalid because DM has %d actuators'
-                             % (actuator_index, self._pattern.size))
+            raise ValueError(
+                "index %d is invalid because DM has %d actuators"
+                % (actuator_index, self._pattern.size)
+            )
         self._pattern[actuator_index] = value / 100.0
         self._device.apply_pattern(self._pattern)
 
@@ -248,14 +259,16 @@ class FilterWheelWidget(QtWidgets.QWidget):
     This widget shows a table of toggle buttons with the filterwheel
     position numbers.
     """
-    def __init__(self, device: microscope.abc.FilterWheel,
-                 *args, **kwargs) -> None:
+
+    def __init__(
+        self, device: microscope.abc.FilterWheel, *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
 
         self._button_grp = QtWidgets.QButtonGroup(self)
         for i in range(self._device.n_positions):
-            button = QtWidgets.QPushButton(str(i+1), parent=self)
+            button = QtWidgets.QPushButton(str(i + 1), parent=self)
             button.setCheckable(True)
             self._button_grp.addButton(button, i)
         self._button_grp.button(self._device.position).setChecked(True)
@@ -283,23 +296,28 @@ class StageWidget(QtWidgets.QWidget):
     enabled since otherwise it is not able to move it or query the
     limits.
     """
-    def __init__(self, device: microscope.abc.Stage,
-                 *args, **kwargs) -> None:
+
+    def __init__(self, device: microscope.abc.Stage, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._device = device
 
         layout = QtWidgets.QFormLayout(self)
         for name, axis in self._device.axes.items():
-            label = ('%s (%s : %s)'
-                     % (name, axis.limits.lower, axis.limits.upper))
+            label = "%s (%s : %s)" % (
+                name,
+                axis.limits.lower,
+                axis.limits.upper,
+            )
 
             position_box = QtWidgets.QDoubleSpinBox(parent=self)
             position_box.setMinimum(axis.limits.lower)
             position_box.setMaximum(axis.limits.upper)
             position_box.setValue(axis.position)
             position_box.setSingleStep(1.0)
+
             def setPositionSlot(position: float, name: str = name):
                 return self.setPosition(name, position)
+
             position_box.valueChanged.connect(setPositionSlot)
 
             layout.addRow(label, position_box)
@@ -318,30 +336,43 @@ class MainWindow(QtWidgets.QMainWindow):
         scroll.setWidget(widget)
 
         self.setCentralWidget(scroll)
-        for key, slot in ((QtGui.QKeySequence.Quit, self.close),
-                          (QtGui.QKeySequence.Close, self.close),):
+        for key, slot in (
+            (QtGui.QKeySequence.Quit, self.close),
+            (QtGui.QKeySequence.Close, self.close),
+        ):
             shortcut = QtWidgets.QShortcut(key, self)
             shortcut.activated.connect(slot)
 
 
 def main(argv=sys.argv) -> int:
     app = QtWidgets.QApplication(argv)
-    app.setApplicationName('Microscope GUI')
-    app.setOrganizationDomain('python-microscope.org')
+    app.setApplicationName("Microscope GUI")
+    app.setOrganizationDomain("python-microscope.org")
 
     type_to_widget = {
-        'Camera' : CameraWidget,
-        'DeformableMirror' : DeformableMirrorWidget,
-        'DeviceSettings' : DeviceSettingsWidget,
-        'FilterWheel' : FilterWheelWidget,
-        'Stage' : StageWidget,
+        "Camera": CameraWidget,
+        "DeformableMirror": DeformableMirrorWidget,
+        "DeviceSettings": DeviceSettingsWidget,
+        "FilterWheel": FilterWheelWidget,
+        "Stage": StageWidget,
     }
 
-    parser = argparse.ArgumentParser(prog='microscope-gui')
-    parser.add_argument('type', action='store', type=str, metavar='DEVICE-TYPE',
-                        choices=type_to_widget.keys(), help='Type of device')
-    parser.add_argument('uri', action='store', type=str, metavar='DEVICE-URI',
-                        help='URI for device')
+    parser = argparse.ArgumentParser(prog="microscope-gui")
+    parser.add_argument(
+        "type",
+        action="store",
+        type=str,
+        metavar="DEVICE-TYPE",
+        choices=type_to_widget.keys(),
+        help="Type of device",
+    )
+    parser.add_argument(
+        "uri",
+        action="store",
+        type=str,
+        metavar="DEVICE-URI",
+        help="URI for device",
+    )
     args = parser.parse_args(app.arguments()[1:])
 
     device = Pyro4.Proxy(args.uri)
@@ -353,5 +384,5 @@ def main(argv=sys.argv) -> int:
     return app.exec_()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv))
