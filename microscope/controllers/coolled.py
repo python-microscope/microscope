@@ -31,10 +31,7 @@ import typing
 import serial
 
 import microscope.abc
-
-# TODO: move this into its own module.
 from microscope.controllers.lumencor import _SyncSerial
-
 
 _logger = logging.getLogger(__name__)
 

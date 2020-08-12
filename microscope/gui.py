@@ -43,7 +43,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import microscope.abc
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -175,7 +174,8 @@ class CameraWidget(QtWidgets.QWidget):
         if self._enable_check.isChecked() != self._device.get_is_enabled():
             self._enable_check.setChecked(self._device.get_is_enabled())
             _logger.error(
-                "failed to %s camera", "enable" if check_state else "disable"
+                "failed to %s camera",
+                "enable" if self._enable_check.isChecked() else "disable",
             )
 
         self._snap_button.setEnabled(self._device.get_is_enabled())

@@ -20,30 +20,22 @@
 """This module is deprecated and only kept for backwards compatibility.
 """
 
-from microscope import AxisLimits, Binning, ROI, TriggerMode, TriggerType
-
-from microscope.abc import (
-    DataDevice,
-    DeformableMirror,
-    Device,
-    FloatingDeviceMixin,
-    StageAxis,
-    keep_acquiring,
-)
-
+from microscope import ROI, AxisLimits, Binning, TriggerMode, TriggerType
 from microscope.abc import (
     TRIGGER_AFTER,
     TRIGGER_BEFORE,
     TRIGGER_DURATION,
     TRIGGER_SOFT,
 )
-
 from microscope.abc import Camera as CameraDevice
 from microscope.abc import Controller as ControllerDevice
+from microscope.abc import DataDevice, DeformableMirror, Device
 from microscope.abc import FilterWheel as FilterWheelBase
+from microscope.abc import FloatingDeviceMixin
 from microscope.abc import Laser as LaserDevice
 from microscope.abc import SerialDeviceMixin as SerialDeviceMixIn
 from microscope.abc import Stage as StageDevice
+from microscope.abc import StageAxis
 from microscope.abc import TriggerTargetMixin as TriggerTargetMixIn
-
+from microscope.abc import keep_acquiring
 from microscope.device_server import device

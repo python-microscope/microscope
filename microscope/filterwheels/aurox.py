@@ -22,8 +22,8 @@
 Requires package hidapi."""
 
 import hid
+
 import microscope.devices
-from enum import Enum
 
 # Clarity constants. These may differ across products, so mangle names.
 # USB IDs

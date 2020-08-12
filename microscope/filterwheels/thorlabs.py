@@ -70,7 +70,7 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         pass
 
     def _do_set_position(self, new_position: int) -> None:
-        self._send_command("pos=%d" % n)
+        self._send_command("pos=%d" % new_position)
 
     def _do_get_position(self):
         return int(self._send_command("pos?"))

@@ -37,6 +37,7 @@ import serial
 import microscope.abc
 
 
+# TODO: move this into its own module to be used by others.
 class _SyncSerial:
     """Wraps a `Serial` instance with a lock for synchronization."""
 

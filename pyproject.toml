@@ -1,4 +1,23 @@
+[build-system]
+requires = ['setuptools']
+
+[tool.isort]
+line_length = 80
+# compatibility with black style (multi lineoutput 3 is vert-hanging)
+multi_line_output = 3
+# compatibility with black style
+include_trailing_comma = true
+
+
 [tool.black]
 line-length = 80
 target-version = ['py36', 'py37', 'py38']
-#include = '(microscope|setup.py)$'
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py
+[testenv]
+deps = pytest
+commands = pytest
+"""

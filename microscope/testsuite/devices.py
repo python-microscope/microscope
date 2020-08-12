@@ -22,19 +22,16 @@ import logging
 import random
 import time
 import typing
+from enum import IntEnum
+from functools import wraps
 
 import numpy as np
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 import microscope
 import microscope.abc
 
-from enum import IntEnum
-
-
 _logger = logging.getLogger(__name__)
-
-from functools import wraps
 
 
 def must_be_initialized(f):

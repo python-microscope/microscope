@@ -25,7 +25,6 @@ over Pyro. When called from the command line, this module will serve devices
 defined in a specified config file.
 """
 
-from collections.abc import Iterable
 import importlib.machinery
 import importlib.util
 import logging
@@ -34,6 +33,7 @@ import signal
 import sys
 import time
 import typing
+from collections.abc import Iterable
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from threading import Thread

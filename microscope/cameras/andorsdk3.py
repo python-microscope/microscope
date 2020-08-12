@@ -34,7 +34,6 @@ import microscope.abc
 
 from .SDK3Cam import *
 
-
 _logger = logging.getLogger(__name__)
 
 

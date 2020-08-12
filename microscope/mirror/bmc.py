@@ -27,8 +27,8 @@ import warnings
 import numpy
 
 import microscope
-import microscope.abc
 import microscope._wrappers.BMC as BMC
+import microscope.abc
 
 
 class BMCDeformableMirror(microscope.abc.DeformableMirror):

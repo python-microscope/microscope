@@ -33,17 +33,15 @@ import queue
 import threading
 import time
 import typing
-
 from ast import literal_eval
 from collections import OrderedDict
-from threading import Thread
 from enum import EnumMeta
+from threading import Thread
 
 import numpy
 import Pyro4
 
 import microscope
-
 
 _logger = logging.getLogger(__name__)
 

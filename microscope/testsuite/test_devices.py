@@ -343,7 +343,9 @@ class DeformableMirrorTests(DeviceTests):
 
     def test_validate_pattern_with_extra_dimension(self):
         patterns = numpy.zeros((2, 1, self.planned_n_actuators))
-        with self.assertRaisesRegex(Exception, "dimensions \(must be 1 or 2\)"):
+        with self.assertRaisesRegex(
+            Exception, "dimensions \\(must be 1 or 2\\)"
+        ):
             self.device.apply_pattern(patterns)
 
 
@@ -473,7 +475,7 @@ class TestEmptyDummyFilterWheel(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "positions must be a positive number"
         ):
-            device = dummies.TestFilterWheel(positions=0)
+            dummies.TestFilterWheel(positions=0)
 
 
 class TestOnePositionFilterWheel(unittest.TestCase, FilterWheelTests):

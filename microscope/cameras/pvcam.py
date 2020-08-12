@@ -135,12 +135,11 @@ import os
 import platform
 import time
 
-import Pyro4
 import numpy as np
+import Pyro4
 
 import microscope
 import microscope.abc
-
 
 _logger = logging.getLogger(__name__)
 

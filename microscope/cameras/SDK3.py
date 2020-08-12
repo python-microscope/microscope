@@ -21,7 +21,7 @@
 
 import ctypes
 import os
-from ctypes import POINTER, c_int, c_uint, c_double, c_void_p
+from ctypes import POINTER, c_double, c_int, c_uint, c_void_p
 
 #### typedefs
 AT_H = ctypes.c_int

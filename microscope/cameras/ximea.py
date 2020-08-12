@@ -59,7 +59,6 @@ from ximea import xiapi
 import microscope
 import microscope.abc
 
-
 _logger = logging.getLogger(__name__)
 
 # During acquisition, we rely on catching timeout errors which then

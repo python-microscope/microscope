@@ -22,14 +22,7 @@
 
 import ctypes
 import os
-
-from ctypes import c_char
-from ctypes import c_char_p
-from ctypes import c_double
-from ctypes import c_int
-from ctypes import c_uint
-from ctypes import c_uint32
-
+from ctypes import c_char, c_char_p, c_double, c_int, c_uint, c_uint32
 
 if os.name in ("nt", "ce"):
     # Not actually tested yet

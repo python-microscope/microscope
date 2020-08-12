@@ -23,8 +23,8 @@ import warnings
 import numpy
 
 import microscope
-import microscope.abc
 import microscope._wrappers.asdk as asdk
+import microscope.abc
 
 
 class AlpaoDeformableMirror(microscope.abc.DeformableMirror):

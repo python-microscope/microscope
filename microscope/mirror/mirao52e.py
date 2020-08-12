@@ -45,8 +45,8 @@ import typing
 import numpy
 
 import microscope
-import microscope.abc
 import microscope._wrappers.mirao52e as mro
+import microscope.abc
 
 
 class Mirao52e(microscope.abc.DeformableMirror):

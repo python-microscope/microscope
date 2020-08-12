@@ -31,20 +31,36 @@
 """
 
 import ctypes
+import functools
 import logging
-import sys, functools, os, platform
+import os
+import platform
+import sys
 import time
-
-from ctypes import Structure, POINTER
-from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
-from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
+from ctypes import (
+    POINTER,
+    Structure,
+    c_char,
+    c_char_p,
+    c_double,
+    c_float,
+    c_int,
+    c_long,
+    c_longlong,
+    c_short,
+    c_ubyte,
+    c_uint,
+    c_ulong,
+    c_ulonglong,
+)
+from enum import Enum, IntEnum
 from threading import Lock
 
+import numpy as np
 from numpy.ctypeslib import ndpointer
 
 import microscope
 import microscope.abc
-
 
 _logger = logging.getLogger(__name__)
 
@@ -52,7 +68,7 @@ _logger = logging.getLogger(__name__)
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.
 try:
-    from ctypes.wintypes import BYTE, WORD, DWORD, HANDLE
+    from ctypes.wintypes import BYTE, DWORD, HANDLE, WORD
 except:
     # Docs give no clues. These need testing against a non-Windows library.
     BYTE = ctypes.c_byte
@@ -534,9 +550,6 @@ class _OUTSTRLEN(_meta):
 
 
 OUTSTRLEN = _OUTSTRLEN()
-
-
-import numpy as np
 
 
 class OUTARR(OUTPUT):
@@ -1258,9 +1271,6 @@ dllFunc("WaitForAcquisitionTimeOut", [c_int], ["iTimeOutMs"])
 # PostProcessCountConvert(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iBaseline, int iMode, int iEmGain, float fQE, float fSensitivity, int iHeight, int iWidth)
 # PostProcessPhotonCounting(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iNumframes, int iNumberOfThresholds, float * pfThreshold, int iHeight, int iWidth)
 # #'PostProcessDataAveraging(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iAveragingFilterMode, int iHeight, int iWidth, int iFrameCount, int iAveragingFactor)
-
-# Enums from documentation
-from enum import Enum, IntEnum
 
 
 class TriggerMode(IntEnum):

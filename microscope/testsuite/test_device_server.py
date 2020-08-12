@@ -29,11 +29,12 @@ import Pyro4
 
 import microscope.clients
 import microscope.device_server
-
-from microscope.testsuite.devices import TestCamera
-from microscope.testsuite.devices import TestFilterWheel
-from microscope.testsuite.devices import TestFloatingDevice
-from microscope.testsuite.devices import TestDeformableMirror
+from microscope.testsuite.devices import (
+    TestCamera,
+    TestDeformableMirror,
+    TestFilterWheel,
+    TestFloatingDevice,
+)
 
 
 class DeviceServerExceptionQueue(microscope.device_server.DeviceServer):

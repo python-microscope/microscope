@@ -32,9 +32,10 @@ ctypes objects.
   * get_id returns an empty string, not the device serial number."""
 
 import ctypes
-from ctypes import byref, POINTER
+import datetime
+import time
+from ctypes import POINTER, byref
 from enum import Enum, IntEnum
-import datetime, time
 
 import microscope.abc
 
