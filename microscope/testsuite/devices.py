@@ -521,11 +521,11 @@ class DummyDSP(microscope.abc.Device):
         _logger.info('... RunActions done.')
 
     def receiveClient(self, *args, **kwargs):
-        ## XXX: maybe this should be on its own mixin instead of on DataDevice
+        # XXX: maybe this should be on its own mixin instead of on DataDevice
         return microscope.abc.DataDevice.receiveClient(self, *args, **kwargs)
 
     def set_client(self, *args, **kwargs):
-        ## XXX: maybe this should be on its own mixin instead of on DataDevice
+        # XXX: maybe this should be on its own mixin instead of on DataDevice
         return microscope.abc.DataDevice.set_client(self, *args, **kwargs)
 
 

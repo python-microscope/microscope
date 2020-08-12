@@ -71,7 +71,7 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         return response
 
 
-    ## Get the status of the laser, by sending the
+    # Get the status of the laser, by sending the
     # STAT0, STAT1, STAT2, and STAT3 commands.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
@@ -82,7 +82,7 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         return result
 
 
-    ## Turn the laser ON. Return True if we succeeded, False otherwise.
+    # Turn the laser ON. Return True if we succeeded, False otherwise.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
@@ -114,7 +114,7 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
     def initialize(self):
         pass
 
-    ## Turn the laser OFF.
+    # Turn the laser OFF.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_disable(self):
         _logger.info("Turning laser OFF.")
@@ -129,7 +129,7 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         return response.startswith(b'S')
 
 
-    ## Return True if the laser is currently able to produce light. We assume this is equivalent
+    # Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):

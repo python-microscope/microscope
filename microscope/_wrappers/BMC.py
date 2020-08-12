@@ -32,13 +32,13 @@ from ctypes import c_uint32
 
 
 if os.name in ("nt", "ce"):
-    ## Not actually tested yet
+    # Not actually tested yet
     SDK = ctypes.WinDLL("BMC2")
 else:
     SDK = ctypes.CDLL("libBMC.so.3")
 
 
-## Definitions from BMCDefs.h
+# Definitions from BMCDefs.h
 MAX_PATH = 260
 SERIAL_NUMBER_LEN = 11
 MAX_DM_SIZE = 4096

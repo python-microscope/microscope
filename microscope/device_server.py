@@ -57,11 +57,11 @@ if sys.platform == 'darwin' and sys.version_info < (3,8):
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERIALIZER = 'pickle'
 
-## We effectively expose all attributes of the classes since our
-## devices don't hold any private data.  The private methods are to
-## signal an interface not meant for public usage, not because there's
-## anything secret or unsafe.  So disable REQUIRE_EXPOSE which avoids
-## requiring Pyro4.expose all over the code (see issue #49)
+# We effectively expose all attributes of the classes since our
+# devices don't hold any private data.  The private methods are to
+# signal an interface not meant for public usage, not because there's
+# anything secret or unsafe.  So disable REQUIRE_EXPOSE which avoids
+# requiring Pyro4.expose all over the code (see issue #49)
 Pyro4.config.REQUIRE_EXPOSE = False
 
 
@@ -338,11 +338,11 @@ def serve_devices(devices, exit_event=None):
 
     servers = [] # DeviceServers instances that we need to wait for when exiting
 
-    ## Child processes inherit signal handling from the parent so we
-    ## need to make sure that only the parent process sets the exit
-    ## event and waits for the DeviceServers to exit.  See issue #9.
-    ## This won't work behind a Windows service wrapper, so we deal with
-    ## clean shutdown on win32 elsewhere.
+    # Child processes inherit signal handling from the parent so we
+    # need to make sure that only the parent process sets the exit
+    # event and waits for the DeviceServers to exit.  See issue #9.
+    # This won't work behind a Windows service wrapper, so we deal with
+    # clean shutdown on win32 elsewhere.
     parent = multiprocessing.current_process ()
     def term_func(sig, frame):
         """Terminate subprocesses cleanly."""

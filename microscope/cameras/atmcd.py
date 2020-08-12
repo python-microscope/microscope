@@ -90,12 +90,12 @@ AT_VERSION_INFO_LEN = 80
 AT_CONTROLLER_CARD_MODEL_LEN = 80
 
 """DDG Lite Definitions"""
-## Channel enumeration
+# Channel enumeration
 class AT_DDGLiteChannelId(c_int): pass
 AT_DDGLite_ChannelA = AT_DDGLiteChannelId(0x40000000)
 AT_DDGLite_ChannelB = AT_DDGLiteChannelId(0x40000001)
 AT_DDGLite_ChannelC = AT_DDGLiteChannelId(0x40000002)
-## Control byte flags
+# Control byte flags
 AT_DDGLite_ControlBit_GlobalEnable   = 0x01
 AT_DDGLite_ControlBit_ChannelEnable  = 0x01
 AT_DDGLite_ControlBit_FreeRun        = 0x02
@@ -324,7 +324,7 @@ DRV_OA_MODE_DOES_NOT_EXIST = 20193
 DRV_OA_CAMERA_NOT_SUPPORTED = 20194
 DRV_OA_FAILED_TO_GET_MODE = 20195
 DRV_PROCESSING_FAILED = 20211
-## Andor capabilities AC_...
+# Andor capabilities AC_...
 # Acquisition modes
 AC_ACQMODE_SINGLE = 1
 AC_ACQMODE_VIDEO = 2
@@ -463,13 +463,13 @@ AC_EMGAIN_12BIT = 2
 AC_EMGAIN_LINEAR12 = 4
 AC_EMGAIN_REAL12 = 8
 
-## We need a mapping to enable lookup of status codes to meaning.
+# We need a mapping to enable lookup of status codes to meaning.
 status_codes = {}
 for attrib_name in dir(sys.modules[__name__]):
     if attrib_name.startswith('DRV_'):
         status_codes.update({eval(attrib_name): attrib_name})
 
-## The lookup function.
+# The lookup function.
 def lookup_status(code):
     key = code[0] if type(code) is list else code
     if key in status_codes:
@@ -478,7 +478,7 @@ def lookup_status(code):
         return "Unknown status code %s." % key
 
 
-## The following DLL-wrapping classes are largely lifted from David Baddeley's
+# The following DLL-wrapping classes are largely lifted from David Baddeley's
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
@@ -676,7 +676,7 @@ def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
         raise Exception("Error wrapping dll function '%s':\n\t%s" % (name, e))
     globals()[name] = f
 
-## We now add selected DLL functions to this library's namespace.
+# We now add selected DLL functions to this library's namespace.
 # These may be used directly: while this may work well when there is a
 # single camera, care must be taken when there are multiple cameras
 # on a system to ensure calls act on the expected camera. The AntorAtmcd
@@ -854,7 +854,7 @@ dllFunc('GetTemperature', [OUTPUT(c_int)], ['temperature'], True)
 dllFunc('GetTemperatureF', [OUTPUT(c_float)], ['temperature'], True)
 dllFunc('GetTemperatureRange', [OUTPUT(c_int), OUTPUT(c_int)],
                                ['mintemp', 'maxtemp'])
-## Reserved function seems to be incomplete - only populates first parameter with Ixon Ultra.
+# Reserved function seems to be incomplete - only populates first parameter with Ixon Ultra.
 #dllFunc('GetTemperatureStatus', [OUTPUT(c_float) for i in range(4)],
 #                                ['SensorTemp', 'TargetTemp', 'AmbientTemp', 'CoolerVolts'], True)
 dllFunc('GetTotalNumberImagesAcquired', [OUTPUT(c_long)], ['index'])
@@ -1250,7 +1250,7 @@ class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
                         speed = GetHSSpeed(ch, amp.value, s)
                         self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
             _logger.info("... initilized %s s/n %s", model, serial)
-        ## Add settings. Some are write-only, so we set defaults here.
+        # Add settings. Some are write-only, so we set defaults here.
         # Mode
         name = 'readout mode'
         if self._readout_modes:

@@ -45,8 +45,8 @@ import microscope.testsuite.mock_devices as mocks
 
 
 class TestSerialMock(unittest.TestCase):
-    ## Our tests for serial devices depend on our SerialMock base
-    ## class working properly so yeah, we need tests for that too.
+    # Our tests for serial devices depend on our SerialMock base
+    # class working properly so yeah, we need tests for that too.
     class Serial(mocks.SerialMock):
         eol = b'\r\n'
         def handle(self, command):
@@ -108,15 +108,15 @@ class DeviceTests:
         self.device.shutdown()
 
     def test_enable_and_disable(self):
-        ## TODO: we need to define what happens when enable is called
-        ## and device has not been initialised.  See issue #69
+        # TODO: we need to define what happens when enable is called
+        # and device has not been initialised.  See issue #69
         self.device.initialize()
         self.device.enable()
         self.assertTrue(self.device.enabled)
-        ## We don't check if it is disabled after shutdown because
-        ## some devices can't be turned off.
-        ## TODO: add a `has_disabled_state` to the fake so we can
-        ## query whether we can check about being disabled.
+        # We don't check if it is disabled after shutdown because
+        # some devices can't be turned off.
+        # TODO: add a `has_disabled_state` to the fake so we can
+        # query whether we can check about being disabled.
         self.device.disable()
         self.device.shutdown()
 
@@ -197,8 +197,8 @@ class LaserTests(DeviceTests):
 
     """
     def assertEqualMW(self, first, second, msg=None):
-        ## We could be smarter, but rounding the values should be
-        ## enough to check the values when comparing power levels.
+        # We could be smarter, but rounding the values should be
+        # enough to check the values when comparing power levels.
         self.assertEqual(round(first), round(second), msg)
 
     def test_being(self):
@@ -212,10 +212,10 @@ class LaserTests(DeviceTests):
         self.assertEqual(self.device.connection.light, self.device.get_is_on())
 
     def test_off_after_constructor(self):
-        ## Some lasers, such as our Coherent Sapphire emit laser
-        ## radiation as soon as the key is switched on.  We should
-        ## ensure that the laser is turned off during the
-        ## construction.
+        # Some lasers, such as our Coherent Sapphire emit laser
+        # radiation as soon as the key is switched on.  We should
+        # ensure that the laser is turned off during the
+        # construction.
         self.assertFalse(self.device.get_is_on())
 
     def test_turning_on_and_off(self):
@@ -309,8 +309,8 @@ class DeformableMirrorTests(DeviceTests):
         self.assertCurrentPattern(pattern)
 
     def test_out_of_range_pattern(self):
-        ## While we expect values in the [0 1] range, we should not
-        ## actually be checking for that.
+        # While we expect values in the [0 1] range, we should not
+        # actually be checking for that.
         pattern = numpy.zeros((self.planned_n_actuators,))
         for v in [-1000, -1, 0, 1, 3]:
             pattern[:] = v
@@ -353,23 +353,23 @@ class TestDummyLaser(unittest.TestCase, LaserTests):
     def setUp(self):
         self.device = dummies.TestLaser()
 
-        ## TODO: we need to rethink the test so this is not needed.
+        # TODO: we need to rethink the test so this is not needed.
         self.fake = self.device
         self.fake.default_power = self.fake._set_point
         self.fake.min_power = 0.0
         self.fake.max_power = 100.0
 
     def test_being(self):
-        ## TODO: this test uses is_alive but that's actually a method
-        ## of SerialDeviceMixin and not specific to lasers.  It is not
-        ## implemented on our dummy laser.  We need to decide what to
-        ## do about it.  Is this general enough that should go to all
-        ## devices?
+        # TODO: this test uses is_alive but that's actually a method
+        # of SerialDeviceMixin and not specific to lasers.  It is not
+        # implemented on our dummy laser.  We need to decide what to
+        # do about it.  Is this general enough that should go to all
+        # devices?
         pass
 
     def test_get_is_on(self):
-        ## TODO: this test assumes the connection property to be the
-        ## fake.  We need to rethink how the mock lasers work.
+        # TODO: this test assumes the connection property to be the
+        # fake.  We need to rethink how the mock lasers work.
         pass
 
 
@@ -411,9 +411,9 @@ class TestOmicronDeepstarLaser(unittest.TestCase, LaserTests,
         self.fake = OmicronDeepstarLaserMock
 
     def test_weird_initial_state(self):
-        ## The initial state of the laser may not be ideal to actual
-        ## turn it on, so test that weird settings are reset to
-        ## something adequate.
+        # The initial state of the laser may not be ideal to actual
+        # turn it on, so test that weird settings are reset to
+        # something adequate.
 
         self.device.connection.internal_peak_power = False
         self.device.connection.bias_modulation = True
@@ -436,9 +436,9 @@ class TestDummyCamera(unittest.TestCase, CameraTests):
 
 class TestImageGenerator(unittest.TestCase):
     def test_non_square_patterns_shape(self):
-        ## TODO: we should also be testing this via the camera but the
-        ## TestCamera is only square.  In the mean time, we only test
-        ## directly the _ImageGenerator.
+        # TODO: we should also be testing this via the camera but the
+        # TestCamera is only square.  In the mean time, we only test
+        # directly the _ImageGenerator.
         width = 16
         height = 32
         generator = dummies._ImageGenerator()
@@ -495,10 +495,10 @@ class TestBaseDevice(unittest.TestCase):
         issue #84.
         """
         dummies.TestLaser()
-        ## XXX: Device.__del__ calls shutdown().  However, if __init__
-        ## failed the device is not complete and shutdown() fails
-        ## because the logger has not been created.  See comments on
-        ## issue #69.  patch __del__ to workaround this issue.
+        # XXX: Device.__del__ calls shutdown().  However, if __init__
+        # failed the device is not complete and shutdown() fails
+        # because the logger has not been created.  See comments on
+        # issue #69.  patch __del__ to workaround this issue.
         with unittest.mock.patch('microscope.devices.Device.__del__'):
             with self.assertRaisesRegex(TypeError, "argument 'power'"):
                 dummies.TestLaser(power=2)

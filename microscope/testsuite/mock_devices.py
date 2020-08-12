@@ -50,12 +50,12 @@ class SerialMock(serial.serialutil.SerialBase):
         self.in_buffer = io.BytesIO()
         self.out_buffer = io.BytesIO()
 
-        ## Number of bytes in out buffer pending 'interpretation'.  A
-        ## command is only interpreted and handled when EOL is seen.
+        # Number of bytes in out buffer pending 'interpretation'.  A
+        # command is only interpreted and handled when EOL is seen.
         self.out_pending_bytes = 0
         self.out_parsed_bytes = 0
 
-        ## Number of bytes in the input buffer that have been read
+        # Number of bytes in the input buffer that have been read
         self.in_read_bytes = 0
 
     def open(self):
@@ -73,7 +73,7 @@ class SerialMock(serial.serialutil.SerialBase):
         self.out_pending_bytes += len(data)
 
         if self.out_pending_bytes > len(data):
-            ## we need to retrieve data from a previous write
+            # we need to retrieve data from a previous write
             self.out_buffer.seek(-self.out_pending_bytes, 2)
             data = self.out_buffer.read(self.out_pending_bytes)
 
@@ -118,7 +118,7 @@ class CoherentSapphireLaserMock(SerialMock):
     """
     eol = b'\r\n'
 
-    ## Communication parameters
+    # Communication parameters
     baudrate = 19200
     parity = serial.PARITY_NONE
     bytesize = serial.EIGHTBITS
@@ -126,7 +126,7 @@ class CoherentSapphireLaserMock(SerialMock):
     rtscts = False
     dsrdtr = False
 
-    ## Laser is 200mW, range is 10 to 110%
+    # Laser is 200mW, range is 10 to 110%
     default_power = 50.0
     min_power = 20.0
     max_power = 220.0
@@ -143,44 +143,44 @@ class CoherentSapphireLaserMock(SerialMock):
         self.power = CoherentSapphireLaserMock.default_power
 
     def write(self, data):
-        ## Echo as soon as we get data, do not wait for an EOL.  Also,
-        ## echo before handling the command because if will echo even
-        ## if the command is to turn the echo off.
+        # Echo as soon as we get data, do not wait for an EOL.  Also,
+        # echo before handling the command because if will echo even
+        # if the command is to turn the echo off.
         if self.echo:
             self.in_buffer.write(data)
         else:
-            ## If echo is off, we still echo EOLs
+            # If echo is off, we still echo EOLs
             self.in_buffer.write(self.eol * data.count(self.eol))
         return super().write(data)
 
     def handle(self, command):
-        ## Operator's manual mentions all commands in uppercase.
-        ## Experimentation shows that they are case insensitive.
+        # Operator's manual mentions all commands in uppercase.
+        # Experimentation shows that they are case insensitive.
         command = command.upper()
 
         answer = None
 
-        ## Prompt
+        # Prompt
         if command == b'>=0':
             self.prompt = False
         elif command == b'>=1':
             self.prompt = True
 
-        ## Echo
+        # Echo
         elif command == b'E=0':
             self.echo = False
         elif command == b'E=1':
             self.echo = True
 
-        ## Head ID
+        # Head ID
         elif command == b'?HID':
             answer = b'505925.000'
 
-        ## Head hours
+        # Head hours
         elif command == b'?HH':
             answer = b'   257:34'
 
-        ## Key switch
+        # Key switch
         elif command == b'?K':
             if self.key == 'standby':
                 answer = b'0'
@@ -189,22 +189,22 @@ class CoherentSapphireLaserMock(SerialMock):
             else:
                 raise RuntimeError("unknown key state '%s'" % self.key)
 
-        ## Light servo
+        # Light servo
         elif command == b'L=0':
             self.light = False
         elif command == b'L=1':
             if self.tec:
                 if self.key == 'on':
                     self.light = True
-                ## if key switch is not on, keep light off
+                # if key switch is not on, keep light off
             else:
                 answer = b'TEC must be ON (T=1) to enable Light Output!'
         elif command == b'?L':
             answer = b'1' if self.light else b'0'
 
-        ## TEC servo
+        # TEC servo
         elif command == b'T=0':
-            ## turning this off, also turns light servo off
+            # turning this off, also turns light servo off
             self.tec = False
             self.light = False
         elif command == b'T=1':
@@ -212,7 +212,7 @@ class CoherentSapphireLaserMock(SerialMock):
         elif command == b'?T':
             answer = b'1' if self.tec else b'0'
 
-        ## Laser power
+        # Laser power
         elif command == b'?MINLP':
             answer = b'20.000'
         elif command == b'?MAXLP':
@@ -233,15 +233,15 @@ class CoherentSapphireLaserMock(SerialMock):
                     answer = b'Note: Laser_Output is OFF (L=0)'
                 self.power = new_power
 
-        ## Nominal output power
+        # Nominal output power
         elif command == b'NOMP':
             answer = b'200'
 
-        ## Laser type and nominal power
+        # Laser type and nominal power
         elif command == b'LT':
             answer = b'Sapphire 200mW'
 
-        ## Laser head status
+        # Laser head status
         elif command == b'?STA':
             status_codes = {
                 'start up' : b'1',
@@ -253,48 +253,48 @@ class CoherentSapphireLaserMock(SerialMock):
             }
             answer = status_codes[self.status]
 
-        ## Fault related commands.  We don't model any faults yet.
+        # Fault related commands.  We don't model any faults yet.
         elif command == b'?F':
             answer = b'0'
         elif command == b'?FF':
-            ## Two bytes with possible faults:
-            ##    0 - external interlock fault
-            ##    1 - diode temperature fault (both TEC and light
-            ##        servo off)
-            ##    2 - base plate temperature fault (both TEC and light
-            ##        servo off)
-            ##    3 - OEM controller LP temperature (both TEC and
-            ##        light servo off)
-            ##    4 - diode current fault
-            ##    5 - analog interface fault
-            ##    6 - base plate temperature fault (only light servo
-            ##        turned off)
-            ##    7 - diode temperature fault (only light servo turned
-            ##        off)
-            ##    8 - system warning/waiting for TEC servo to reach
-            ##        target temperature
-            ##    9 - head EEPROM fault
-            ##   10 - OEM controller LP EEPROM fault
-            ##   11 - EEPOT1 fault
-            ##   12 - EEPOT2 fault
-            ##   13 - laser ready
-            ##   14 - not implemented
-            ##   15 - not implemented
+            # Two bytes with possible faults:
+            #    0 - external interlock fault
+            #    1 - diode temperature fault (both TEC and light
+            #        servo off)
+            #    2 - base plate temperature fault (both TEC and light
+            #        servo off)
+            #    3 - OEM controller LP temperature (both TEC and
+            #        light servo off)
+            #    4 - diode current fault
+            #    5 - analog interface fault
+            #    6 - base plate temperature fault (only light servo
+            #        turned off)
+            #    7 - diode temperature fault (only light servo turned
+            #        off)
+            #    8 - system warning/waiting for TEC servo to reach
+            #        target temperature
+            #    9 - head EEPROM fault
+            #   10 - OEM controller LP EEPROM fault
+            #   11 - EEPOT1 fault
+            #   12 - EEPOT2 fault
+            #   13 - laser ready
+            #   14 - not implemented
+            #   15 - not implemented
             if self.light:
-                ## Has a bit of its own, but it's not really a fault.
+                # Has a bit of its own, but it's not really a fault.
                 answer = b'8192' # 00100000 00000000
             else:
                 answer = b'0'
         elif command == b'?FL':
-            ## Show faults in text.  This is a multiline reply, one
-            ## per fault, plus the header line.
+            # Show faults in text.  This is a multiline reply, one
+            # per fault, plus the header line.
             answer = b'Fault(s):\r\n\tNone'
 
-        ## Software version
+        # Software version
         elif command in [b'sv', b'svps']:
             answer = b'8.005'
 
-        ## Nominal laser wavelength
+        # Nominal laser wavelength
         elif command == b'?WAVE':
             answer = b'561'
 
@@ -322,7 +322,7 @@ class CoboltLaserMock(SerialMock):
     rtscts = False
     dsrdtr = False
 
-    ## Values in mW
+    # Values in mW
     default_power = 50.0
     min_power = 0.0
     max_power = 600.0
@@ -343,11 +343,11 @@ class CoboltLaserMock(SerialMock):
         self.fault = None
 
     def handle(self, command):
-        ## Leading and trailing whitespace is ignored.
+        # Leading and trailing whitespace is ignored.
         command = command.strip()
 
-        ## Acknowledgment string if command is not a query and there
-        ## is no error.
+        # Acknowledgment string if command is not a query and there
+        # is no error.
         answer = b'OK'
 
         if command == b'sn?': # serial number
@@ -361,14 +361,14 @@ class CoboltLaserMock(SerialMock):
         elif command == b'hrs?': # System operating hours
             answer = b'828.98'
 
-        ## TODO: This whole @cob0 and @cob1 need better testing on
-        ## what it actually does.  Documentation says that @cob1 is
-        ## "Laser ON after interlock.  Forces laser into
-        ## autostart. without checking if autostart is enabled".
-        ## @cob0 is undocumented.
+        # TODO: This whole @cob0 and @cob1 need better testing on
+        # what it actually does.  Documentation says that @cob1 is
+        # "Laser ON after interlock.  Forces laser into
+        # autostart. without checking if autostart is enabled".
+        # @cob0 is undocumented.
 
-        ## May be a bug but the commands @cob0 and @cob1 both have the
-        ## effect of also turning off the laser.
+        # May be a bug but the commands @cob0 and @cob1 both have the
+        # effect of also turning off the laser.
         elif command == b'@cob1':
             self.on_after_interlock = True
             self.light = False
@@ -383,7 +383,7 @@ class CoboltLaserMock(SerialMock):
         elif command == b'@cobas 1':
             self.auto_start = True
 
-        ## Laser state
+        # Laser state
         elif command == b'l?':
             answer = b'1' if self.light else b'0'
         elif command == b'l1':
@@ -394,9 +394,9 @@ class CoboltLaserMock(SerialMock):
         elif command == b'l0':
             self.light = False
 
-        ## Output power
+        # Output power
         elif command.startswith(b'p '):
-            ## The p command takes values in W so convert to mW
+            # The p command takes values in W so convert to mW
             new_power = float(command[2:]) * 1000.0
             if new_power > self.max_power or new_power < self.min_power:
                 answer = b'Syntax error: Value is out of range.'
@@ -410,11 +410,11 @@ class CoboltLaserMock(SerialMock):
             else:
                 answer = b'0.0000'
 
-        ## Undocumented.  Seems to be the same as 'p ...'
+        # Undocumented.  Seems to be the same as 'p ...'
         elif command.startswith(b'@cobasp '):
             return self.handle(command[6:])
 
-        ## Direct control
+        # Direct control
         elif command == b'@cobasdr?':
             answer = b'1' if self.direct_control else b'0'
         elif command == b'@cobasdr 0':
@@ -422,38 +422,38 @@ class CoboltLaserMock(SerialMock):
         elif command == b'@cobasdr 1':
             self.direct_control = False
 
-        ## Undocumented.  Seems to returns maximum laser power in mW.
+        # Undocumented.  Seems to returns maximum laser power in mW.
         elif command == b'gmlp?':
             answer = b'600.000000'
 
 
-        ## Are you there?
+        # Are you there?
         elif command == b'?':
             answer = b'OK'
 
-        ## Get operating fault
+        # Get operating fault
         elif command == b'f?':
-            ## The errors (which we don't model yet) are:
-            ##   1 = temperature error
-            ##   3 = interlock
-            ##   4 = constant power fault
+            # The errors (which we don't model yet) are:
+            #   1 = temperature error
+            #   3 = interlock
+            #   4 = constant power fault
             answer = b'0'
 
-        ## Interlock state
+        # Interlock state
         elif command == b'ilk?':
             answer = b'1' if self.interlock_open else b'0'
 
-        ## Autostart program state
+        # Autostart program state
         elif command == b'cobast?':
-            ## This is completely undocumented.  Manual
-            ## experimentation seems to be:
-            ## 0 = laser off with @cob0
-            ## 1 = laser off with @cob1
-            ## 2 = waiting for temperature
-            ## 3 = warming up
-            ## 4 = completed (laser on)
-            ## 5 = fault (such as interlock)
-            ## 6 = aborted
+            # This is completely undocumented.  Manual
+            # experimentation seems to be:
+            # 0 = laser off with @cob0
+            # 1 = laser off with @cob1
+            # 2 = waiting for temperature
+            # 3 = warming up
+            # 4 = completed (laser on)
+            # 5 = fault (such as interlock)
+            # 6 = aborted
             if self.light:
                 answer = b'4'
             else:
@@ -463,8 +463,8 @@ class CoboltLaserMock(SerialMock):
             raise NotImplementedError("no handling for command '%s'"
                                       % command.decode('utf-8'))
 
-        ## Sending a command is done with '\r' only.  However,
-        ## responses from the hardware end with '\r\n'.
+        # Sending a command is done with '\r' only.  However,
+        # responses from the hardware end with '\r\n'.
         self.in_buffer.write(answer + b'\r\n')
 
 
@@ -480,7 +480,7 @@ class OmicronDeepstarLaserMock(SerialMock):
     rtscts = False
     dsrdtr = False
 
-    ## Values in mW
+    # Values in mW
     default_power = 50.0
     min_power = 0.0
     max_power = 200.0
@@ -533,23 +533,23 @@ class OmicronDeepstarLaserMock(SerialMock):
         return True
 
     def write(self, data):
-        ## This connection does not wait for an eol to parse the
-        ## command.  It only looks at 16 or 7 bit (depending on
-        ## state).  Sending a message one character at a time will not
-        ## work so just send the whole data to be handled.
+        # This connection does not wait for an eol to parse the
+        # command.  It only looks at 16 or 7 bit (depending on
+        # state).  Sending a message one character at a time will not
+        # work so just send the whole data to be handled.
         self.handle(data)
         return len(data)
 
     def handle(self, command):
         if (len(command) != 16
             and (len(command) != 7 and self.state != self.State.S2)):
-            ## Such a thing will make the laser go into S0 state which
-            ## will also turns it off..  We don't model this because
-            ## we don't know well how the reset (RST command) works.
+            # Such a thing will make the laser go into S0 state which
+            # will also turns it off..  We don't model this because
+            # we don't know well how the reset (RST command) works.
             raise RuntimeError('invalid Omicron Deepstar command')
         elif command[-2:] != b'\r\n':
-            ## Even if a command is correct, the last two characters
-            ## need to be \r\n.
+            # Even if a command is correct, the last two characters
+            # need to be \r\n.
             raise RuntimeError("command does not end in '\\r\\n'")
 
         command = command[:-2].rstrip(b' ')
@@ -558,7 +558,7 @@ class OmicronDeepstarLaserMock(SerialMock):
         if command == b'S?':
             answer = self.state.name.encode()
         elif command == b'STAT0':
-            ## Model-code of the connected lasersystem:
+            # Model-code of the connected lasersystem:
             answer = (b'MC'
                       + b' 488' # wavelength
                       + b' ' # empty for single diode system (D for double)
@@ -579,7 +579,7 @@ class OmicronDeepstarLaserMock(SerialMock):
                       + b' WH 04667' # working hours
                       + b' SLS B9C 500') # start values for the diode parameters
         elif command == b'STAT3':
-            ## Stored option code flags.
+            # Stored option code flags.
             answer = (b'OC '
                       + b'AS1' # autostart option
                       + b'TH0' # TTL-logic-high
@@ -595,7 +595,7 @@ class OmicronDeepstarLaserMock(SerialMock):
                       + b'LA1' # RS232 interface
                       + b'FA0') # fiber coupling single mode
 
-        ## Changing mode
+        # Changing mode
         elif command in self.command2mode.keys():
             if self.state == self.State.S2:
                 self.mode = self.command2mode[command]
@@ -603,14 +603,14 @@ class OmicronDeepstarLaserMock(SerialMock):
             else:
                 answer = b'UK'
 
-        ## Current mode (undocumented)
+        # Current mode (undocumented)
         elif command == b'L?':
             if self.state == self.State.S2:
                 answer = self.mode2answer[self.mode]
             else:
                 answer = b'UK'
 
-        ## Laser on
+        # Laser on
         elif command == b'LON':
             if self.state == self.State.S1:
                 self.state = self.State.S2
@@ -618,11 +618,11 @@ class OmicronDeepstarLaserMock(SerialMock):
             elif self.mode == self.Mode.S2:
                 answer = b'UK'
             else: # in S0 state
-                ## This is undocumented and it's probably a bug on
-                ## their firmware.  Should probably be returning UK.
+                # This is undocumented and it's probably a bug on
+                # their firmware.  Should probably be returning UK.
                 answer = b'INT'
 
-        ## Laser off
+        # Laser off
         elif command == b'LF':
             if self.state == self.State.S2:
                 self.state = self.State.S1
@@ -630,12 +630,12 @@ class OmicronDeepstarLaserMock(SerialMock):
             else:
                 answer = b'UK'
 
-        ## Peak Power
+        # Peak Power
         elif command.startswith(b'PP'):
-            ## peak power values are a 3 byte char hexadecimal number,
-            ## scale to the range of possible power:
-            ##     000[hex] =    0[dec] =   0% =   0 mW
-            ##     FFF[hex] = 4095[dec] = 100% = 200 mW
+            # peak power values are a 3 byte char hexadecimal number,
+            # scale to the range of possible power:
+            #     000[hex] =    0[dec] =   0% =   0 mW
+            #     FFF[hex] = 4095[dec] = 100% = 200 mW
             if command == b'PP?':
                 level = self.power / self.max_power
                 answer = b'PP%03X' % round(float(0xFFF) * level)
@@ -646,20 +646,20 @@ class OmicronDeepstarLaserMock(SerialMock):
             else:
                 raise RuntimeError("invalid command '%'" % command)
 
-        ## Power level
+        # Power level
         elif command == b'P?':
-            ## TODO: get a laser that supports this command to test.
-            ## This is only based on the documentation.
-            ##
-            ## Actual laser power is a 4 byte char heaxadecimal
-            ## number.  Range for actual laser power is:
-            ##     0x0000 =    0 [dec] =   0% =   0 mW
-            ##     0x0CCC = 3276 [dec] = 100% = 200 mW
-            ##     0x0FFF = 4095 [dec] = 120% = 240 mW
+            # TODO: get a laser that supports this command to test.
+            # This is only based on the documentation.
+            #
+            # Actual laser power is a 4 byte char heaxadecimal
+            # number.  Range for actual laser power is:
+            #     0x0000 =    0 [dec] =   0% =   0 mW
+            #     0x0CCC = 3276 [dec] = 100% = 200 mW
+            #     0x0FFF = 4095 [dec] = 120% = 240 mW
             level = self.power / self.max_power
             answer = b'P%04X' % round(float(0xCCC) * level)
 
-        ## Internal peak power
+        # Internal peak power
         elif command == b'IPO':
             self.internal_peak_power = True
             answer = command
@@ -669,8 +669,8 @@ class OmicronDeepstarLaserMock(SerialMock):
         elif command == b'IP?':
             answer = b'IPO' if self.internal_peak_power else b'IPF'
 
-        ## Analogue modulation path or signal linked to the digital
-        ## modulation path.
+        # Analogue modulation path or signal linked to the digital
+        # modulation path.
         elif command == b'A2DO':
             self.analog2digital = True
             answer = b'A2D ON'
@@ -680,7 +680,7 @@ class OmicronDeepstarLaserMock(SerialMock):
         elif command == b'A2D?':
             answer = b'A2D ON' if self.analog2digital else b'A2D OFF'
 
-        ## Bias and Digital modulation
+        # Bias and Digital modulation
         elif command == b'MF':
             self.bias_modulation = False
             self.digital_modulation = False

@@ -53,8 +53,8 @@ class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         # Turning off command prompt
         self.send(b'>=0')
 
-        ## The sapphire laser turns on as soon as the key is switched
-        ## on.  So turn radiation off before we start.
+        # The sapphire laser turns on as soon as the key is switched
+        # on.  So turn radiation off before we start.
         self.send(b'L=0')
 
         # Head ID value is a float point value,
@@ -67,9 +67,9 @@ class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
 
     def _write(self, command):
         count = super()._write(command)
-        ## This device always writes backs something.  If echo is on,
-        ## it's the whole command, otherwise just an empty line.  Read
-        ## it and throw it away.
+        # This device always writes backs something.  If echo is on,
+        # it's the whole command, otherwise just an empty line.  Read
+        # it and throw it away.
         self._readline()
         return count
 
@@ -125,13 +125,13 @@ class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         self.flush_buffer()
 
 
-    ##  Initialization to do when cockpit connects.
+    #  Initialization to do when cockpit connects.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def initialize(self):
         self.flush_buffer()
 
 
-    ## Turn the laser ON. Return True if we succeeded, False otherwise.
+    # Turn the laser ON. Return True if we succeeded, False otherwise.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
@@ -152,14 +152,14 @@ class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         return isON
 
 
-    ## Turn the laser OFF.
+    # Turn the laser OFF.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def disable(self):
         _logger.info("Turning laser OFF.")
         return self._write(b'l=0')
 
 
-    ## Return True if the laser is currently able to produce light.
+    # Return True if the laser is currently able to produce light.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         return self.send(b'?l') == b'1'

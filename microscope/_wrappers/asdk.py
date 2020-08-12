@@ -33,7 +33,7 @@ from ctypes import c_uint32
 if os.name in ("nt", "ce"):
     SDK = ctypes.WinDLL("ASDK")
 else:
-    ## Not actually tested yet
+    # Not actually tested yet
     SDK = ctypes.CDLL("libasdk.so")
 
 
@@ -41,7 +41,7 @@ class DM(ctypes.Structure):
     pass
 pDM = ctypes.POINTER(DM)
 
-## We have this "typedefs" to ease matching with alpao's headers.
+# We have this "typedefs" to ease matching with alpao's headers.
 CStr = c_char_p
 Scalar = c_double
 Scalar_p = ctypes.POINTER(Scalar)

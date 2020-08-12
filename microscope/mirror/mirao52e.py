@@ -57,10 +57,10 @@ class Mirao52e(microscope.abc.DeformableMirror):
     """
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        ## Status is not the return code of the function calls.
-        ## Status is where we can find the error code in case a
-        ## function call returns false.  This _status variable will be
-        ## an argument in all function calls.
+        # Status is not the return code of the function calls.
+        # Status is where we can find the error code in case a
+        # function call returns false.  This _status variable will be
+        # an argument in all function calls.
         self._status = ctypes.pointer(ctypes.c_int(mro.OK))
         if not mro.open(self._status):
             self._raise_status(mro.open)

@@ -25,7 +25,7 @@ import hid
 import microscope.devices
 from enum import Enum
 
-## Clarity constants. These may differ across products, so mangle names.
+# Clarity constants. These may differ across products, so mangle names.
 # USB IDs
 _Clarity__VENDORID = 0x1F0A
 _Clarity__PRODUCTID = 0x0088

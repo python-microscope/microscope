@@ -88,7 +88,7 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         self.connection.flushInput()
 
 
-    ##  Initialization to do when cockpit connects.
+    #  Initialization to do when cockpit connects.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def initialize(self):
         self.connection.flushInput()
@@ -98,7 +98,7 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         self.send(b'@cob1')
 
 
-    ## Turn the laser ON. Return True if we succeeded, False otherwise.
+    # Turn the laser ON. Return True if we succeeded, False otherwise.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _on_enable(self):
         _logger.info("Turning laser ON.")
@@ -114,14 +114,14 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         return True
 
 
-    ## Turn the laser OFF.
+    # Turn the laser OFF.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def disable(self):
         _logger.info("Turning laser OFF.")
         return self.send(b'l0').decode()
 
 
-    ## Return True if the laser is currently able to produce light.
+    # Return True if the laser is currently able to produce light.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         response = self.send(b'l?')
@@ -142,8 +142,8 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
 
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _set_power_mw(self, mW: float) -> None:
-        ## There is no minimum power in cobolt lasers.  Any
-        ## non-negative number is accepted.
+        # There is no minimum power in cobolt lasers.  Any
+        # non-negative number is accepted.
         W_str = '%.4f' % (mW / 1000.0)
         _logger.info("Setting laser power to %s W.", W_str)
         return self.send(b'@cobasp ' + W_str.encode())

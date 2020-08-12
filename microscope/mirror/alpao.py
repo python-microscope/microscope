@@ -95,10 +95,10 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         self._dm = asdk.Init(serial_number.encode())
         if not self._dm:
             raise Exception("Failed to initialise connection: don't know why")
-        ## In theory, asdkInit should return a NULL pointer in case of
-        ## failure and that should be enough to check.  However, at least
-        ## in the case of a missing configuration file it still returns a
-        ## DM pointer so we still need to check for errors on the stack.
+        # In theory, asdkInit should return a NULL pointer in case of
+        # failure and that should be enough to check.  However, at least
+        # in the case of a missing configuration file it still returns a
+        # DM pointer so we still need to check for errors on the stack.
         self._raise_if_error(asdk.FAILURE)
 
         value = asdk.Scalar_p(asdk.Scalar())
@@ -155,13 +155,13 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         patterns = numpy.atleast_2d(patterns)
         n_patterns: int = patterns.shape[0]
 
-        ## The Alpao SDK seems to only support the trigger mode start.  It
-        ## still has option called nRepeats that we can't really figure
-        ## what is meant to do.  When set to 1, the mode is start.  What
-        ## we want it is to have trigger mode once which was not
-        ## supported.  We have received a modified version where if
-        ## nRepeats is set to same number of patterns, does trigger mode
-        ## once (not documented on Alpao SDK).
+        # The Alpao SDK seems to only support the trigger mode start.  It
+        # still has option called nRepeats that we can't really figure
+        # what is meant to do.  When set to 1, the mode is start.  What
+        # we want it is to have trigger mode once which was not
+        # supported.  We have received a modified version where if
+        # nRepeats is set to same number of patterns, does trigger mode
+        # once (not documented on Alpao SDK).
         if self._trigger_mode == microscope.TriggerMode.ONCE:
             n_repeats = n_patterns
         elif self._trigger_mode == microscope.TriggerMode.START:

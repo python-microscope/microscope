@@ -14,8 +14,8 @@ import sys
 sys.path.insert(0, '../microscope')
 
 
-## This should ve read from setup.py.  Maybe we should use
-## pkg_resources to avoid duplication?
+# This should ve read from setup.py.  Maybe we should use
+# pkg_resources to avoid duplication?
 author = 'Micron Oxford'
 project = 'Microscope'
 
@@ -34,18 +34,18 @@ extensions = [
 
 #autodoc_mock_imports = ["microscope._wrappers"]
 
-## Configuration for sphinx.ext.todo
+# Configuration for sphinx.ext.todo
 todo_include_todos = True
 
-## Configuration for sphinx.ext.napoleon
+# Configuration for sphinx.ext.napoleon
 napoleon_google_docstring = True
 napoleon_include_private_with_doc = True
 napoleon_include_special_with_doc = True
 
 
-##
-## Options for HTML output
-##
+#
+# Options for HTML output
+#
 
 html_theme = 'agogo'
 html_static_path = ['_static']

@@ -470,7 +470,7 @@ class ControllerError(Enum):
     CMS196BaseSensorOverrange       = 29
     CMS196MotorPosnError            = 30
 
-##LinkamFunctionMsgCode enum from C headers.
+#LinkamFunctionMsgCode enum from C headers.
 class Msg(IntEnum):
     OpenComms                                        = 0x00000001
     #\param[in]      hDevice     A valid handle to a comms device/port returned by eLinkamFunctionMsgCode_OpenComms.

@@ -75,7 +75,7 @@ class TestClient(unittest.TestCase):
 
     def test_property_access(self):
         """Test we can read properties via the Client"""
-        ## list of (object-to-serve, property-name-to-test)
+        # list of (object-to-serve, property-name-to-test)
         objs2prop = [
             (PyroService(), 'attr'),
             (ExposedDeformableMirror(10), 'n_actuators'),
