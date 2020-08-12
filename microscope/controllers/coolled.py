@@ -197,7 +197,7 @@ class CoolLED(microscope.abc.Controller):
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._channels = {} # type: typing.Mapping[str, microscope.abc.Laser]
+        self._channels: typing.Mapping[str, microscope.abc.Laser] = {}
 
         # CoolLED manual only has the baudrate, we guessed the rest.
         serial_conn = serial.Serial(port=port, baudrate=57600, timeout=1,

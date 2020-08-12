@@ -153,7 +153,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         self._validate_patterns(patterns)
         patterns = self._normalize_patterns(patterns)
         patterns = numpy.atleast_2d(patterns)
-        n_patterns = patterns.shape[0] # type: int
+        n_patterns: int = patterns.shape[0]
 
         ## The Alpao SDK seems to only support the trigger mode start.  It
         ## still has option called nRepeats that we can't really figure

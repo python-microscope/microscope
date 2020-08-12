@@ -172,7 +172,7 @@ class SpectraIIILightEngine(microscope.abc.Controller):
     """
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._lights = {} # type: typing.Mapping[str, microscope.abc.Device]
+        self._lights: typing.Mapping[str, microscope.abc.Device] = {}
 
         # We use standard (not legacy) mode communication so 115200,8,N,1
         serial_conn = serial.Serial(port=port, baudrate=115200, timeout=1,
@@ -218,7 +218,7 @@ class _SpectraIIILightChannel(microscope.abc.Laser):
         pass
 
     def get_status(self) -> typing.List[str]:
-        status = [] # type: typing.List[str]
+        status: typing.List[str] = []
         return status
 
     def enable(self) -> None:

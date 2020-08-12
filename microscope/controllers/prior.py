@@ -204,7 +204,7 @@ class ProScanIII(microscope.abc.Controller):
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self._conn = _ProScanIIIConnection(port, baudrate, timeout)
-        self._devices = {} # type: typing.Mapping[str, microscope.abc.Device]
+        self._devices: typing.Mapping[str, microscope.abc.Device] = {}
 
         # Can have up to three filter wheels, numbered 1 to 3.
         for number in range(1, 4):

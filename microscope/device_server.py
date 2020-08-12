@@ -198,7 +198,7 @@ class DeviceServer(multiprocessing.Process):
         """
         # The device to serve.
         self._device_def = device_def
-        self._devices = {} # type: typing.Dict[str, microscope.abc.Device]
+        self._devices: typing.Dict[str, microscope.abc.Device] = {}
         # Where to serve it.
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port

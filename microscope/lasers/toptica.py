@@ -232,7 +232,7 @@ class TopticaiBeam(microscope.abc.Laser):
         pass
 
     def get_status(self) -> typing.List[str]:
-        status = [] # type: typing.List[str]
+        status: typing.List[str] = []
         return status
 
     def enable(self) -> None:

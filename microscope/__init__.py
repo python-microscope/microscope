@@ -22,17 +22,23 @@ import typing
 import enum
 
 
-# XXX: once python>=3.6 is required, subclass from typing.NamedTuple
-# instead.
-AxisLimits = typing.NamedTuple('AxisLimits',[('lower', float),
-                                             ('upper', float)])
-
-# A tuple containing parameters for horizontal and vertical binning.
-Binning = collections.namedtuple('Binning', ['h', 'v'])
+class AxisLimits(typing.NamedTuple):
+    lower: float
+    upper: float
 
 
-# A tuple that defines a region of interest.
-ROI = collections.namedtuple('ROI', ['left', 'top', 'width', 'height'])
+class Binning(typing.NamedTuple):
+    """A tuple containing parameters for horizontal and vertical binning. """
+    h: int
+    v: int
+
+
+class ROI(typing.NamedTuple):
+    """A tuple that defines a region of interest."""
+    left: int
+    top: int
+    width: int
+    height: int
 
 
 class TriggerType(enum.Enum):

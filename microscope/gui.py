@@ -197,7 +197,7 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
         self._device = device
 
         self._pattern = numpy.ndarray(shape=(self._device.n_actuators))
-        self._actuators = [] # type: typing.List[QtWidgets.QSlider]
+        self._actuators: typing.List[QtWidgets.QSlider] = []
         for i in range(self._device.n_actuators):
             actuator = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent=self)
             actuator.setMinimum(0)

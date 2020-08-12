@@ -204,7 +204,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             else:
                 raise err
 
-        data = self._img.get_image_data_numpy() # type: np.ndarray
+        data: np.ndarray = self._img.get_image_data_numpy()
         _logger.info("Fetched imaged with dims %s and size %s.",
                      data.shape, data.size)
         return data
