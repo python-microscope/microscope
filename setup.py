@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-## Copyright (C) 2016 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2016 David Miguel Susano Pinto <carandraug@gmail.com>
 ##
 ## Copying and distribution of this file, with or without modification,
 ## are permitted in any medium without royalty provided the copyright

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-## Copyright (C) 2019 Mick Phillips <mick.phillips@gmail.com>
+## Copyright (C) 2020 Mick Phillips <mick.phillips@gmail.com>
+##
+## This file is part of Microscope.
 ##
 ## Microscope is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by

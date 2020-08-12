@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
 ##
 ## This file is part of Microscope.
 ##

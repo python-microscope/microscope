@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-## Copyright (C) 2016-2017 Mick Phillips <mick.phillips@gmail.com>
-## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
+## Copyright (C) 2020 Mick Phillips <mick.phillips@gmail.com>
 ##
 ## This file is part of Microscope.
 ##

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
-## Copyright (C) 2019 久保俊貴 <kubo@ap.eng.osaka-u.ac.jp>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
+## Copyright (C) 2020 久保俊貴 <kubo@ap.eng.osaka-u.ac.jp>
+##
+## This file is part of Microscope.
 ##
 ## Microscope is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
