@@ -457,7 +457,7 @@ def serve_devices(devices, exit_event=None):
                             old_pid,
                             servers[-1].pid,
                         )
-            if len(servers) == 0:
+            if not servers:
                 # Log and exit if no servers running. May want to change this
                 # if we add some interface to interactively restart servers.
                 _logger.info("No servers running. Exiting.")
@@ -478,7 +478,7 @@ def serve_devices(devices, exit_event=None):
             exit_event.set()
 
     _logger.debug("Shutting down servers ...")
-    while len(servers) > 0:
+    while servers:
         for s in servers:
             if not s.is_alive():
                 servers.remove(s)

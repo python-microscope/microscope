@@ -91,7 +91,7 @@ class _ProScanIIIConnection:
         """Read until timeout; used to clean buffer if in an unknown state."""
         with self._lock:
             self._serial.flushInput()
-            while len(self._serial.readline()) != 0:
+            while self._serial.readline():
                 continue
 
     def _command_and_validate(self, command: bytes, expected: bytes) -> None:

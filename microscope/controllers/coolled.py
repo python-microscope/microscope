@@ -138,7 +138,8 @@ class _CoolLEDChannel(microscope.abc.Laser):
             _logger.warning(
                 "CoolLED channel '%s' is not \"selected\".  It"
                 ' will not not emit light until it is "selected"'
-                " on the control pod." % (name)
+                " on the control pod.",
+                name,
             )
 
     def initialize(self) -> None:
@@ -159,10 +160,7 @@ class _CoolLEDChannel(microscope.abc.Laser):
     def get_is_on(self) -> bool:
         switch = self._conn.get_switch_state()
         assert switch in ["N", "F"]
-        if switch == "N":
-            return True
-        else:
-            return False
+        return switch == "N"
 
     def _do_get_power(self) -> float:
         return self._conn.get_intensity() / 100.0

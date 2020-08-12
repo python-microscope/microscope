@@ -96,6 +96,7 @@ class DataClient(Client):
     # noinspection PyPep8Naming
     # Legacy naming convention.
     def receiveData(self, data, timestamp, *args):
+        del args
         self._buffer.put((data, timestamp))
 
     def trigger_and_wait(self):

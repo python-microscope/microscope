@@ -1,6 +1,7 @@
 [build-system]
 requires = ['setuptools']
 
+
 [tool.isort]
 line_length = 80
 # compatibility with black style (multi lineoutput 3 is vert-hanging)
@@ -12,6 +13,10 @@ include_trailing_comma = true
 [tool.black]
 line-length = 80
 target-version = ['py36', 'py37', 'py38']
+
+
+[tool.pylint]
+
 
 [tool.tox]
 legacy_tox_ini = """
