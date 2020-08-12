@@ -1,4 +1,5 @@
-#
+#!/usr/bin/env python3
+
 #   andorsdk - a ctypes interface to Andor's SDK DLL.
 #   Copyright (C) 2015-2019 Mick Phillips
 #   mick.phillips@gmail.com

@@ -1,6 +1,5 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
+#!/usr/bin/env python3
+
 # Copyright 2017-2019 Mick Phillips (mick.phillips@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify

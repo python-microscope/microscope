@@ -1,6 +1,5 @@
-#!/usr/bin/python
-# -*- coding: utf-8
-#
+#!/usr/bin/env python3
+
 # Copyright 2016 Mick Phillips (mick.phillips@gmail.com)
 # and 2017 Ian Dobbie (Ian.Dobbie@gmail.com)
 # and 2018 Tiago Susano Pinto (tiagosusanopinto@gmail.com)

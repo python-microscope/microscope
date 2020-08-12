@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+
 """Win32 specific microscope classes.
 """
 import os
