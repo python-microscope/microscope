@@ -43,7 +43,7 @@ Version 0.6.0 (upcoming)
 * The `microscope.gui` module was completely rewritten to provide Qt
   widgets instead of Tkinter.
 
-* New `TestStage` and `TestStageAxis` classes.
+* New `TestController`, `TestStage` and `TestStageAxis` classes.
 
 * The `microscope.devices.device` function, used to define a device
   for the device server, is now part of the `microscope.device_server`

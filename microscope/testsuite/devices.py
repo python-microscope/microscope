@@ -360,6 +360,17 @@ class TestCamera(microscope.abc.Camera):
         pass
 
 
+class TestController(microscope.abc.Controller):
+    def __init__(
+        self, devices: typing.Mapping[str, microscope.abc.Device]
+    ) -> None:
+        self._devices = devices.copy()
+
+    @property
+    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+        return self._devices
+
+
 class TestFilterWheel(microscope.abc.FilterWheel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

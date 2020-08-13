@@ -274,6 +274,10 @@ class CameraTests(DeviceTests):
     pass
 
 
+class ControllerTests(DeviceTests):
+    pass
+
+
 class FilterWheelTests(DeviceTests):
     def test_get_and_set_position(self):
         self.assertEqual(self.device.position, 0)
@@ -468,6 +472,31 @@ class TestImageGenerator(unittest.TestCase):
                 # In matplotlib, an M-wide by N-tall image has M columns
                 # and N rows, so a shape of (N, M)
                 self.assertEqual(array.shape, (height, width))
+
+
+class TestDummyController(unittest.TestCase, ControllerTests):
+    def setUp(self):
+        self.laser = dummies.TestLaser()
+        self.filterwheel = dummies.TestFilterWheel(positions=6)
+        self.device = dummies.TestController(
+            {"laser": self.laser, "filterwheel": self.filterwheel}
+        )
+
+    def test_device_names(self):
+        self.assertSetEqual(
+            {"laser", "filterwheel"}, set(self.device.devices.keys())
+        )
+
+    def test_control_filterwheel(self):
+        self.assertEqual(self.device.devices["filterwheel"].position, 0)
+        self.device.devices["filterwheel"].position = 2
+        self.assertEqual(self.device.devices["filterwheel"].position, 2)
+
+    def test_control_laser(self):
+        self.assertEqual(self.device.devices["laser"].power, 0.0)
+        self.device.devices["laser"].enable()
+        self.device.devices["laser"].power = 0.8
+        self.assertEqual(self.device.devices["laser"].power, 0.8)
 
 
 class TestEmptyDummyFilterWheel(unittest.TestCase):
