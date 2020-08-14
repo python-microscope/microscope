@@ -90,12 +90,12 @@ def device(
             if ``cls`` is a floating device.
     """
     if not callable(cls):
-        raise Exception("cls must be a callable")
+        raise TypeError("cls must be a callable")
     elif isinstance(cls, type):
         if issubclass(cls, FloatingDeviceMixin) and uid is None:
-            raise Exception("uid must be specified for floating devices")
+            raise TypeError("uid must be specified for floating devices")
         elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
-            raise Exception("uid must not be given for non floating devices")
+            raise TypeError("uid must not be given for non floating devices")
     return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
 
 

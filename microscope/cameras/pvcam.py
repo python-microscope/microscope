@@ -1580,7 +1580,7 @@ class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         right = roi.left + roi.width
         bottom = roi.top + roi.height
         if (right, bottom) > self.shape:
-            raise Exception("ROI exceeds sensor area.")
+            raise ValueError("ROI exceeds sensor area.")
         self.roi = roi
 
     """Public methods, callable from client."""

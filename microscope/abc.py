@@ -96,11 +96,11 @@ class _Setting:
         """
         self.name = name
         if dtype not in DTYPES:
-            raise Exception("Unsupported dtype.")
+            raise ValueError("Unsupported dtype.")
         elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
-            raise Exception(
-                "Invalid values type for %s '%s':"
-                " expected function or %s" % (dtype, name, DTYPES[dtype])
+            raise TypeError(
+                "Invalid values type for %s '%s': expected function or %s"
+                % (dtype, name, DTYPES[dtype])
             )
         self.dtype = dtype
         self._get = get_func
@@ -141,7 +141,7 @@ class _Setting:
     def set(self, value):
         """Set a setting."""
         if self._set is None:
-            raise NotImplementedError
+            raise NotImplementedError()
         # TODO further validation.
         if isinstance(self._values, EnumMeta):
             value = self._values(value)
@@ -273,11 +273,11 @@ class Device(metaclass=abc.ABCMeta):
         write access functions, anyway.
         """
         if dtype not in DTYPES:
-            raise Exception("Unsupported dtype.")
+            raise ValueError("Unsupported dtype.")
         elif not (isinstance(values, DTYPES[dtype]) or callable(values)):
-            raise Exception(
-                "Invalid values type for %s '%s':"
-                " expected function or %s" % (dtype, name, DTYPES[dtype])
+            raise TypeError(
+                "Invalid values type for %s '%s': expected function or %s"
+                % (dtype, name, DTYPES[dtype])
             )
         else:
             self._settings[name] = _Setting(
@@ -1009,14 +1009,14 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         the clipping before sending the values.
         """
         if patterns.ndim > 2:
-            raise Exception(
+            raise ValueError(
                 "PATTERNS has %d dimensions (must be 1 or 2)" % patterns.ndim
             )
         elif patterns.shape[-1] != self.n_actuators:
-            raise Exception(
+            raise ValueError(
                 (
                     "PATTERNS length of second dimension '%d' differs"
-                    " differs from number of actuators '%d'"
+                    " from number of actuators '%d'"
                     % (patterns.shape[-1], self.n_actuators)
                 )
             )
@@ -1182,7 +1182,7 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
         if 0 <= new_position < self.n_positions:
             return self._do_set_position(new_position)
         else:
-            raise Exception(
+            raise ValueError(
                 "can't move to position %d, limits are [0 %d]"
                 % (new_position, self.n_positions - 1)
             )
