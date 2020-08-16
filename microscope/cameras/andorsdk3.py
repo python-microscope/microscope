@@ -31,8 +31,16 @@ import numpy as np
 
 import microscope
 import microscope.abc
-
-from .SDK3Cam import *
+from microscope.cameras import SDK3
+from microscope.cameras.SDK3Cam import (
+    ATBool,
+    ATCommand,
+    ATEnum,
+    ATFloat,
+    ATInt,
+    ATProperty,
+    ATString,
+)
 
 _logger = logging.getLogger(__name__)
 
