@@ -31,8 +31,8 @@ import numpy as np
 
 import microscope
 import microscope.abc
-from microscope.cameras import SDK3
-from microscope.cameras.SDK3Cam import (
+from microscope.cameras import _SDK3 as SDK3
+from microscope.cameras._SDK3Cam import (
     ATBool,
     ATCommand,
     ATEnum,

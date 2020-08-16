@@ -19,7 +19,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-from microscope.cameras import SDK3
+from microscope.cameras import _SDK3 as SDK3
 
 
 class ATProperty:
