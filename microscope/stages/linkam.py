@@ -977,22 +977,21 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         #    sdk_log = b''
         # else:
 
-        lpaths = [
-            "",
-            os.path.dirname(__file__),
-            os.path.dirname(microscope.abc.__file__),
-        ]
         sdk_log = os.devnull
-        while True:
-            try:
-                p = lpaths.pop()
-            except IndexError:
-                raise Exception(
-                    "Could not init SDK: no linkam license file (Linkam.lsk) found."
-                )
-            lskpath = os.path.join(p, "Linkam.lsk").encode()
-            if _lib.linkamInitialiseSDK(sdk_log, lskpath, True):
+        lpaths = [
+            os.path.dirname(microscope.abc.__file__),
+            os.path.dirname(__file__),
+            "",
+        ]
+        for p in lpaths:
+            lskpath = os.path.join(p, "Linkam.lsk")
+            if _lib.linkamInitialiseSDK(sdk_log, lskpath.encode(), True):
                 break
+        else:
+            raise Exception(
+                "No linkam license file (Linkam.lsk) found in %s." % lpaths
+            )
+
         # NewValue event callback
         cfunc = ctypes.CFUNCTYPE(_uint32_t, _CommsHandle, _ControllerStatus)(
             __class__._on_new_value
