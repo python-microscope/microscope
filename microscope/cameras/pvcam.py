@@ -134,6 +134,7 @@ import logging
 import os
 import platform
 import time
+import weakref
 
 import numpy as np
 import Pyro4
@@ -1175,8 +1176,6 @@ class PVParam:
 
     def __init__(self, camera, param_id):
         # Use a weakref back to the camera to avoid circular dependency.
-        import weakref
-
         self.cam = weakref.proxy(camera)
         self.param_id = param_id
         self.name = _param_to_name[param_id]

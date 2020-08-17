@@ -33,6 +33,9 @@ ctypes objects.
 
 import ctypes
 import datetime
+import os
+import os.path
+import threading
 import time
 from ctypes import POINTER, byref
 from enum import Enum, IntEnum
@@ -973,7 +976,6 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         # if __debug__:
         #    sdk_log = b''
         # else:
-        import os
 
         lpaths = [
             "",
@@ -1212,7 +1214,6 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         ):
             # Already trying to reconnect
             return
-        import threading
 
         self._reconnect_thread = threading.Thread(
             target=self._reopen_loop, daemon=True

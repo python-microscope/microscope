@@ -21,6 +21,9 @@
 
 Requires package hidapi."""
 
+import time
+from threading import Lock
+
 import hid
 
 import microscope.devices
@@ -95,8 +98,6 @@ class Clarity(microscope.devices.FilterWheelBase):
 
     def __init__(self, **kwargs):
         super().__init__(positions=Clarity._positions, **kwargs)
-        from threading import Lock
-
         self._lock = Lock()
         self._hid = None
         self.add_setting(
@@ -248,8 +249,6 @@ class Clarity(microscope.devices.FilterWheelBase):
 
     def moving(self):
         """Report whether or not the device is between positions."""
-        import time
-
         # Wait a short time to avoid false negatives when called
         # immediately after initiating a move. Trial and error
         # indicates a delay of 50ms is required.
