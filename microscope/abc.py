@@ -508,8 +508,6 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             )
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
-        except Exception:
-            raise
 
     def _dispatch_loop(self):
         """Process data and send results to any client."""

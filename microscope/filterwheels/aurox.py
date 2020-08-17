@@ -148,12 +148,9 @@ class Clarity(microscope.devices.FilterWheelBase):
         return self._hid is not None
 
     def open(self):
-        try:
-            h = hid.device()
-            h.open(vendor_id=__VENDORID, product_id=__PRODUCTID)
-            h.set_nonblocking(False)
-        except:
-            raise
+        h = hid.device()
+        h.open(vendor_id=__VENDORID, product_id=__PRODUCTID)
+        h.set_nonblocking(False)
         self._hid = h
 
     def close(self):

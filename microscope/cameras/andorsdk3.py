@@ -406,8 +406,7 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
             if debug:
                 _logger.debug(e)
             return None
-        except Exception:
-            raise
+
         raw = self.buffers.get()
         width = self._img_width
         height = self._img_height
@@ -509,8 +508,6 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
             self._sensor_cooling.set_value(value)
         except AttributeError:
             pass
-        except Exception:
-            raise
 
     def get_id(self):
         return self._serial_number.get_value()
@@ -532,10 +529,7 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         if self._acquiring:
             self._acquisition_stop()
         self._create_buffers()
-        try:
-            self._acquisition_start()
-        except Exception as e:
-            raise Exception(str(e))
+        self._acquisition_start()
         _logger.debug("Acquisition enabled: %s.", self._acquiring)
         return True
 
