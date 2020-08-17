@@ -40,7 +40,7 @@ def must_be_initialized(f):
         if hasattr(self, "_initialized") and self._initialized:
             return f(self, *args, **kwargs)
         else:
-            raise Exception("Device not initialized.")
+            raise microscope.DisabledDeviceError("Device not initialized.")
 
     return wrapper
 
@@ -273,7 +273,9 @@ class TestCamera(microscope.abc.Camera):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
                 _logger.info("Raising exception")
-                raise Exception("Exception raised in TestCamera._fetch_data")
+                raise microscope.DeviceError(
+                    "Exception raised in TestCamera._fetch_data"
+                )
             _logger.info("Sending image")
             time.sleep(self._exposure_time)
             self._triggered -= 1
@@ -451,9 +453,13 @@ class TestDeformableMirror(microscope.abc.DeformableMirror):
         self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
     ) -> None:
         if ttype is not microscope.TriggerType.SOFTWARE:
-            raise Exception("the only trigger type supported is software")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger type supported is software"
+            )
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception("the only trigger mode supported is 'once'")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'once'"
+            )
 
     def get_current_pattern(self):
         """Method for debug purposes only.
@@ -685,7 +691,9 @@ class TestFloatingDevice(
         if self._initialized:
             return self._uid
         else:
-            raise Exception("uid is not available until after initialisation")
+            raise microscope.IncompatibleStateError(
+                "uid is not available until after initialisation"
+            )
 
     def _on_shutdown(self) -> None:
         pass

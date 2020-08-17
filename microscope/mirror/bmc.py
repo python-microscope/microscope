@@ -27,8 +27,12 @@ import warnings
 import numpy
 
 import microscope
-import microscope._wrappers.BMC as BMC
 import microscope.abc
+
+try:
+    import microscope._wrappers.BMC as BMC
+except Exception as e:
+    raise microscope.LibraryLoadError(e) from e
 
 
 class BMCDeformableMirror(microscope.abc.DeformableMirror):
@@ -48,7 +52,7 @@ class BMCDeformableMirror(microscope.abc.DeformableMirror):
 
         status = BMC.Open(self._dm, serial_number.encode())
         if status:
-            raise Exception(BMC.ErrorString(status))
+            raise microscope.InitialiseError(BMC.ErrorString(status))
 
     @property
     def n_actuators(self) -> int:
@@ -66,15 +70,19 @@ class BMCDeformableMirror(microscope.abc.DeformableMirror):
         self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
     ) -> None:
         if ttype is not microscope.TriggerType.SOFTWARE:
-            raise Exception("the only trigger type supported is software")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger type supported is software"
+            )
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception("the only trigger mode supported is 'once'")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'once'"
+            )
 
     def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
         data_pointer = pattern.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
         status = BMC.SetArray(self._dm, data_pointer, None)
         if status:
-            raise Exception(BMC.ErrorString(status))
+            raise microscope.DeviceError(BMC.ErrorString(status))
 
     def __del__(self) -> None:
         status = BMC.Close(self._dm)

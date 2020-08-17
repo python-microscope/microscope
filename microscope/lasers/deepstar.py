@@ -22,6 +22,7 @@ import logging
 
 import serial
 
+import microscope
 import microscope.abc
 
 _logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         self._write(b"STAT3")
         option_codes = self._readline()
         if not option_codes.startswith(b"OC "):
-            raise RuntimeError(
+            raise microscope.DeviceError(
                 "Failed to get option codes '%s'" % option_codes.decode()
             )
         if option_codes[9:12] == b"AP1":
@@ -168,7 +169,9 @@ class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         self._write(query + b"?")
         answer = self._readline()
         if not answer.startswith(query):
-            raise RuntimeError('failed to read power ""' % answer.decode())
+            raise microscope.DeviceError(
+                'failed to read power ""' % answer.decode()
+            )
 
         level = int(answer[len(query) :], 16)
         return float(level) / float(scale)

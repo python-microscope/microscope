@@ -796,7 +796,9 @@ class dllFunction:
             err_code = _lib.pl_error_code()
             err_msg = ctypes.create_string_buffer(ERROR_MSG_LEN)
             _lib.pl_error_message(err_code, err_msg)
-            raise Exception("pvcam error %d: %s" % (err_code, err_msg.value))
+            raise microscope.DeviceError(
+                "pvcam error %d: %s" % (err_code, err_msg.value)
+            )
 
         if len(ret) == 0:
             return None
@@ -1169,7 +1171,7 @@ class PVParam:
         # Determine the appropiate type from its id.
         pvtype = __types__.get(param_id >> 24 & 255, PVParam)
         if pvtype is None:
-            raise Exception(
+            raise microscope.LibraryLoadError(
                 "Parameter %s not supported" % _param_to_name[param_id]
             )
         return pvtype(camera, param_id)
@@ -1209,14 +1211,16 @@ class PVParam:
         if what == ATTR_AVAIL:
             return self.available
         elif not self.available:
-            raise Exception("Parameter %s is not available" % self.name)
+            raise microscope.DeviceError(
+                "Parameter %s is not available" % self.name
+            )
         rtype = _attr_map[what]  # return type
         if not rtype:
             rtype = _get_param(self.cam.handle, self.param_id, ATTR_TYPE)
         if rtype.value == TYPE_CHAR_PTR:
             buf_len = _length_map[self.param_id]
             if not buf_len:
-                raise Exception(
+                raise microscope.DeviceError(
                     "pvcam: parameter %s not supported in python." % self.name
                 )
             try:
@@ -1611,7 +1615,7 @@ class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         # If no cameras detected, need to deinit DLL so it can be reinited to update count.
         if _cam_get_total().value == 0:
             _pvcam_uninit()
-            raise Exception("No cameras detected.")
+            raise microscope.InitialiseError("No cameras detected.")
         # Connect to the camera.
         _logger.info("DLL version: %s", _pvcam_get_ver().value)
         self._pv_name = _cam_get_name(self._index).value

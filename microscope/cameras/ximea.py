@@ -211,7 +211,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 # was True but is now False.
                 return None
             else:
-                raise err
+                raise
 
         data: np.ndarray = self._img.get_image_data_numpy()
         _logger.info(
@@ -228,7 +228,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             self._acquiring = False
             try:
                 self._handle.stop_acquisition()
-            except:
+            except Exception:
                 self._acquiring = True
                 raise
 
@@ -241,7 +241,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
 
         if self._serial_number is None:
             if n_cameras > 1:
-                raise Exception(
+                raise TypeError(
                     "more than one Ximea camera found but the"
                     " serial_number argument was not specified"
                 )
@@ -270,7 +270,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 ):
                     break
             else:
-                raise Exception(
+                raise microscope.InitialiseError(
                     "failed to get DevId for device with SN %s"
                     % self._serial_number
                 )
@@ -413,7 +413,7 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 self._handle.set_height(roi.height)
                 self._handle.set_offsetX(roi.left)
                 self._handle.set_offsetY(roi.top)
-        except:
+        except Exception:
             self._set_roi(self._roi)  # set it back to whatever was before
             raise
         self._roi = roi
@@ -457,12 +457,16 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
     ) -> None:
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception("%s not supported (only TriggerMode.ONCE)" % tmode)
+            raise microscope.UnsupportedFeatureError(
+                "%s not supported (only TriggerMode.ONCE)" % tmode
+            )
 
         try:
             trg_source = TrgSourceMap(ttype)
         except ValueError:
-            raise Exception("no support for trigger type %s" % ttype)
+            raise microscope.UnsupportedFeatureError(
+                "no support for trigger type %s" % ttype
+            )
 
         if trg_source.name != self._handle.get_trigger_source():
             # Changing trigger source requires stopping acquisition.

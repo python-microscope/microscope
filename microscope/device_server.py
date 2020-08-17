@@ -160,7 +160,7 @@ def _check_autoproxy_feature() -> None:
     # AUTOPROXY is enabled by default.  If it is disabled there must
     # be a reason so raise an error instead of silently enabling it.
     if not Pyro4.config.AUTOPROXY:
-        raise RuntimeError(
+        raise Exception(
             "serving of a ControllerDevice requires"
             " Pyro4 AUTOPROXY option enabled"
         )
@@ -169,7 +169,7 @@ def _check_autoproxy_feature() -> None:
     # not the default serializer so if it is the current serializer
     # there must be a reason so we don't just change it.
     if Pyro4.config.SERIALIZER == "marshal":
-        raise RuntimeError(
+        raise Exception(
             "Pyro's AUTOPROXY feature is required but the"
             " 'marshal' serializer is currently selected"
         )

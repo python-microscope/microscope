@@ -45,8 +45,12 @@ import typing
 import numpy
 
 import microscope
-import microscope._wrappers.mirao52e as mro
 import microscope.abc
+
+try:
+    import microscope._wrappers.mirao52e as mro
+except Exception as e:
+    raise microscope.LibraryLoadError(e) from e
 
 
 class Mirao52e(microscope.abc.DeformableMirror):
@@ -64,7 +68,10 @@ class Mirao52e(microscope.abc.DeformableMirror):
         # an argument in all function calls.
         self._status = ctypes.pointer(ctypes.c_int(mro.OK))
         if not mro.open(self._status):
-            self._raise_status(mro.open)
+            raise microscope.InitialiseError(
+                "failed to open mirao mirror (error code %d)"
+                % self._status.contents.value
+            )
 
     @property
     def n_actuators(self) -> int:
@@ -82,9 +89,13 @@ class Mirao52e(microscope.abc.DeformableMirror):
         self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
     ) -> None:
         if ttype is not microscope.TriggerType.SOFTWARE:
-            raise Exception("the only trigger type supported is software")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger type supported is software"
+            )
         if tmode is not microscope.TriggerMode.ONCE:
-            raise Exception("the only trigger mode supported is 'once'")
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'once'"
+            )
 
     @staticmethod
     def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
@@ -103,7 +114,7 @@ class Mirao52e(microscope.abc.DeformableMirror):
 
     def _raise_status(self, func: typing.Callable) -> None:
         error_code = self._status.contents.value
-        raise RuntimeError(
+        raise microscope.DeviceError(
             "mro_%s() failed (error code %d)" % (func.__name__, error_code)
         )
 

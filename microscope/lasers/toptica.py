@@ -24,6 +24,7 @@ import typing
 
 import serial
 
+import microscope
 import microscope.abc
 
 _logger = logging.getLogger(__name__)
@@ -68,7 +69,9 @@ def _get_table_value(table: bytes, key: bytes) -> bytes:
     # Key might be the first line, hence '(?:^|\r\n)'
     match = re.search(b"(?:^|\r\n) *" + key + b": (.*)\r\n", table)
     if match is None:
-        raise RuntimeError("failed to find key %s on table: %s" % (key, table))
+        raise microscope.DeviceError(
+            "failed to find key %s on table: %s" % (key, table)
+        )
     return match.group(1)
 
 
@@ -120,11 +123,18 @@ class _iBeamConnection:
 
         # Empty command does nothing and returns nothing extra so we
         # use it to ensure this at least behaves like a Toptica iBeam.
-        self.command(b"")
+        try:
+            self.command(b"")
+        except microscope.DeviceError as e:
+            raise microscope.InitialiseError(
+                "Failed to confirm Toptica iBeam on %s" % (port)
+            ) from e
 
         answer = self.command(b"show serial")
         if not answer.startswith(b"SN: "):
-            raise RuntimeError("Failed to parse serial from %s" % answer)
+            raise microscope.DeviceError(
+                "Failed to parse serial from %s" % answer
+            )
         _logger.info("got connection to Toptica iBeam %s", answer.decode())
 
     def command(self, command: bytes) -> bytes:
@@ -132,7 +142,7 @@ class _iBeamConnection:
 
         The output of a command has the format::
 
-        \r\nANSWER[OK]\r\n
+        \r\nANSWER\r\n[OK]\r\n
 
         The returned bytes only include `ANSWER` without its own final
         `\r\n`.  This means that the return value might be an empty
@@ -147,13 +157,13 @@ class _iBeamConnection:
             answer = self._serial.read_until(b"\r\n[OK]\r\n")
 
         if not answer.startswith(b"\r\n"):
-            raise RuntimeError(
+            raise microscope.DeviceError(
                 "answer to command %s does not start with CRLF."
                 " This may be leftovers from a previous command:"
                 " %s" % (command, answer)
             )
         if not answer.endswith(b"\r\n[OK]\r\n"):
-            raise RuntimeError(
+            raise microscope.DeviceError(
                 "Command %s failed or failed to read answer: %s"
                 % (command, answer)
             )
@@ -167,7 +177,9 @@ class _iBeamConnection:
         if answer[2:7] == b"%SYS-" and answer[7] != ord(b"I"):
             # Errors of level I (information) should not raise an
             # exception since they can be replies to normal commands.
-            raise RuntimeError("Command %s failed: %s" % (command, answer))
+            raise microscope.DeviceError(
+                "Command %s failed: %s" % (command, answer)
+            )
 
         # Exclude the first \r\n, the \r\n from a possible answer, and
         # the final [OK]\r\n
@@ -194,7 +206,9 @@ class _iBeamConnection:
         """Returns actual laser power in µW."""
         answer = self.command(b"show power")
         if not answer.startswith(b"PIC  = ") and not answer.endswith(b" uW  "):
-            raise RuntimeError("failed to parse power from answer: %s" % answer)
+            raise microscope.DeviceError(
+                "failed to parse power from answer: %s" % answer
+            )
         return float(answer[7:-5])
 
     def status_laser(self) -> bytes:
@@ -208,7 +222,7 @@ class _iBeamConnection:
         table = self.command(b"show satellite")
         key = _get_table_value(table, b"Pmax")
         if not key.endswith(b" mW"):
-            raise RuntimeError("failed to parse power from %s" % key)
+            raise microscope.DeviceError("failed to parse power from %s" % key)
         return float(key[:-3])
 
 
@@ -259,7 +273,9 @@ class TopticaiBeam(microscope.abc.Laser):
         elif state == b"OFF":
             return False
         else:
-            raise RuntimeError("Unexpected laser status: %s" % state.decode())
+            raise microscope.DeviceError(
+                "Unexpected laser status: %s" % state.decode()
+            )
 
     def _get_max_power_mw(self) -> float:
         return self._max_power

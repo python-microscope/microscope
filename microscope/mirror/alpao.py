@@ -23,8 +23,12 @@ import warnings
 import numpy
 
 import microscope
-import microscope._wrappers.asdk as asdk
 import microscope.abc
+
+try:
+    import microscope._wrappers.asdk as asdk
+except Exception as e:
+    raise microscope.LibraryLoadError(e) from e
 
 
 class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
@@ -76,7 +80,9 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         else:
             return ""
 
-    def _raise_if_error(self, status: int, exception_cls=Exception) -> None:
+    def _raise_if_error(
+        self, status: int, exception_cls=microscope.DeviceError
+    ) -> None:
         if status != asdk.SUCCESS:
             msg = self._find_error_str()
             if msg:
@@ -92,7 +98,9 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         super().__init__(**kwargs)
         self._dm = asdk.Init(serial_number.encode())
         if not self._dm:
-            raise Exception("Failed to initialise connection: don't know why")
+            raise microscope.InitialiseError(
+                "Failed to initialise connection: don't know why"
+            )
         # In theory, asdkInit should return a NULL pointer in case of
         # failure and that should be enough to check.  However, at least
         # in the case of a missing configuration file it still returns a
@@ -126,7 +134,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
 
     def set_trigger(self, ttype, tmode):
         if tmode not in self._supported_TriggerModes:
-            raise Exception(
+            raise microscope.UnsupportedFeatureError(
                 "unsupported trigger of mode '%s' for Alpao Mirrors"
                 % tmode.name
             )
@@ -134,7 +142,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
             ttype == microscope.TriggerType.SOFTWARE
             and tmode != microscope.TriggerMode.ONCE
         ):
-            raise Exception(
+            raise microscope.UnsupportedFeatureError(
                 "trigger mode '%s' only supports trigger type ONCE" % tmode.name
             )
         self._trigger_mode = tmode
@@ -142,7 +150,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         try:
             value = self._TriggerType_to_asdkTriggerIn[ttype]
         except KeyError:
-            raise Exception(
+            raise microscope.UnsupportedFeatureError(
                 "unsupported trigger of type '%s' for Alpao Mirrors"
                 % ttype.name
             )
@@ -172,8 +180,10 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         elif self._trigger_mode == microscope.TriggerMode.START:
             n_repeats = 1
         else:
-            raise Exception(
-                "trigger type '%s' and trigger mode '%s'"
+            # We should not get here in the first place since
+            # set_trigger filters unsupported modes.
+            raise microscope.UnsupportedFeatureError(
+                "trigger type '%s' and trigger mode '%s' is not supported"
                 % (self._trigger_type.name, self._trigger_mode.name)
             )
 

@@ -40,6 +40,7 @@ import time
 from ctypes import POINTER, byref
 from enum import Enum, IntEnum
 
+import microscope
 import microscope.abc
 
 _max_version_length = 20
@@ -988,7 +989,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
             if _lib.linkamInitialiseSDK(sdk_log, lskpath.encode(), True):
                 break
         else:
-            raise Exception(
+            raise microscope.LibraryLoadError(
                 "No linkam license file (Linkam.lsk) found in %s." % lpaths
             )
 
@@ -1074,7 +1075,10 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         # Stage status struct, updated by the NewValue callback.
         self._status = _ControllerStatus()
         if __class__._lib is None:
-            self.init_sdk()
+            try:
+                self.init_sdk()
+            except Exception as e:
+                raise microscope.LibraryLoadError(e) from e
         self._reconnect_thread = None
 
     def initialize(self):
@@ -1100,13 +1104,13 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         if not self._lib.linkamProcessMessage(
             ctypes.c_uint(msg), self._h, byref(result), param1, param2, param3
         ):
-            raise Exception("ProcessMessage error.")
+            raise microscope.DeviceError("ProcessMessage error.")
         return result
 
     def check_connection(self):
         """Raise an exception if the connection is down."""
         if not self._connectionstatus.flags.connected:
-            raise Exception("Stage not connected.")
+            raise microscope.DeviceError("Stage not connected.")
 
     def get_data_rate(self):
         """Return the status update period in seconds."""
@@ -1198,7 +1202,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
             __class__._connectionMap[self._h.value] = self
             self._process_msg(Msg.GetStageConfig, result=self._stageconfig)
         else:
-            raise Exception("Could not connect to stage.")
+            raise microscope.InitialiseError("Could not connect to stage.")
 
     def _reopen_comms(self):
         """Reopen communications.

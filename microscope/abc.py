@@ -618,7 +618,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                                waits for hardware trigger if False.
         """
         if not self.enabled:
-            raise Exception("Camera not enabled.")
+            raise microscope.DisabledDeviceError("Camera not enabled.")
         self._new_data_condition.acquire()
         # Push self onto client stack.
         self.set_client(self)
@@ -890,12 +890,14 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
         details.
 
         Raises:
-            Exception: if trigger type is not set to
-                `TriggerType.SOFTWARE`.
+            microscope.IncompatibleStateError: if trigger type is not
+                set to `TriggerType.SOFTWARE`.
 
         """
         if self.trigger_type is not microscope.TriggerType.SOFTWARE:
-            raise Exception("trigger type is not software")
+            raise microscope.IncompatibleStateError(
+                "trigger type is not software"
+            )
         _logger.debug("trigger by software")
         self._do_trigger()
 
@@ -1027,14 +1029,18 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         """Apply this pattern.
 
         Raises:
-            Exception: if device trigger type is not set to software.
+            microscope.IncompatibleStateError: if device trigger type is
+            not set to software.
+
         """
         if self.trigger_type is not microscope.TriggerType.SOFTWARE:
             # An alternative to error is to change the trigger type,
             # apply the pattern, then restore the trigger type, but
             # that would clear the queue on the device.  It's better
             # to have the user specifically do it.  See issue #61.
-            raise Exception("apply_pattern requires software trigger type")
+            raise microscope.IncompatibleStateError(
+                "apply_pattern requires software trigger type"
+            )
         self._validate_patterns(pattern)
         self._do_apply_pattern(pattern)
 
@@ -1083,7 +1089,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
            separate mixin for this.
         """
         if self._patterns is None:
-            raise Exception("no pattern queued to apply")
+            raise microscope.DeviceError("no pattern queued to apply")
         self._pattern_idx += 1
         self.apply_pattern(self._patterns[self._pattern_idx, :])
 

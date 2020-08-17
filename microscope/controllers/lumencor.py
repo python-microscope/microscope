@@ -34,6 +34,7 @@ import typing
 
 import serial
 
+import microscope
 import microscope.abc
 
 
@@ -78,7 +79,9 @@ class _SpectraIIIConnection:
         self._serial.write(b"GET MODEL\n")
         answer = self._serial.readline()
         if not answer.startswith(b"A MODEL Spectra III"):
-            raise RuntimeError("Not a Lumencor Spectra III Light Engine")
+            raise microscope.InitialiseError(
+                "Not a Lumencor Spectra III Light Engine"
+            )
 
     def command_and_answer(self, *TX_tokens: bytes) -> bytes:
         # Command contains two or more tokens.  The first token for a
@@ -101,7 +104,9 @@ class _SpectraIIIConnection:
             or RX_tokens[0] != b"A"
             or RX_tokens[1] != TX_tokens[1]
         ):
-            raise RuntimeError("command %s failed: %s" % (TX_command, answer))
+            raise microscope.DeviceError(
+                "command %s failed: %s" % (TX_command, answer)
+            )
         return answer
 
     def get_command(self, command: bytes, *args: bytes) -> bytes:
@@ -137,7 +142,7 @@ class _LightChannelConnection:
         elif state == b"0":
             return False
         else:
-            raise RuntimeError("unexpected answer")
+            raise microscope.DeviceError("unexpected answer")
 
     def set_light_state(self, state: bool) -> None:
         """Turn light on (True) or off (False)."""
@@ -197,8 +202,9 @@ class SpectraIIILightEngine(microscope.abc.Controller):
         connection = _SpectraIIIConnection(_SyncSerial(serial_conn))
 
         for index, name in connection.get_channel_map():
-            if name in self._lights:
-                raise RuntimeError("multiple lights with name '%s'" % name)
+            assert (
+                name not in self._lights
+            ), "light with name '%s' already mapped"
             self._lights[name] = _SpectraIIILightChannel(connection, index)
 
     @property

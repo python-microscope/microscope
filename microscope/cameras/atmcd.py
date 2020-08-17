@@ -733,7 +733,9 @@ def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
     try:
         f = dllFunction(name, args, argnames, rstatus, lib)
     except Exception as e:
-        raise Exception("Error wrapping dll function '%s':\n\t%s" % (name, e))
+        raise microscope.LibraryLoadError(
+            "Error wrapping dll function '%s'" % name
+        ) from e
     globals()[name] = f
 
 
@@ -1408,7 +1410,7 @@ class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
                 self._index,
                 num_cams,
             )
-            raise Exception(msg)
+            raise microscope.InitialiseError(msg)
         self._handle = GetCameraHandle(self._index)
 
         with self:
@@ -1420,7 +1422,7 @@ class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
             if not info & 1 << 2:
-                raise Exception("... initialization failed.")
+                raise microscope.InitialiseError("... initialization failed.")
             self._caps = GetCapabilities()
             model = GetHeadModel()
             serial = self.get_id()
@@ -1621,7 +1623,9 @@ class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
             x, y = GetDetector()
             self._set_image()
             if not IsTriggerModeAvailable(self.get_setting("TriggerMode")):
-                raise AtmcdException("Trigger mode is not valid.")
+                raise microscope.UnsupportedFeatureError(
+                    "Trigger mode is not valid."
+                )
             StartAcquisition()
         return True
 
@@ -1643,19 +1647,19 @@ class AndorAtmcd(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
                 )
             except AtmcdException as e:
                 if e.status == DRV_P1INVALID:
-                    out_e = Exception("Horizontal binning invalid.")
+                    out_e = ValueError("Horizontal binning invalid.")
                 elif e.status == DRV_P2INVALID:
-                    e = Exception("Vertical binning invalid.")
+                    e = ValueError("Vertical binning invalid.")
                 elif e.status == DRV_P3INVALID:
-                    out_e = Exception("roi.left invalid.")
+                    out_e = ValueError("roi.left invalid.")
                 elif e.status == DRV_P4INVALID:
-                    out_e = Exception("roi.width invalid.")
+                    out_e = ValueError("roi.width invalid.")
                 elif e.status == DRV_P5INVALID:
-                    out_e = Exception("roi.top invalid.")
+                    out_e = ValueError("roi.top invalid.")
                 elif e.status == DRV_P6INVALID:
-                    out_e = Exception("roi.height invalid.")
+                    out_e = ValueError("roi.height invalid.")
                 else:
-                    out_e = incoming
+                    out_e = e
                 # Just raise the descriptive exception, not the chain.
                 raise out_e from None
 

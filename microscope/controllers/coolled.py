@@ -30,6 +30,7 @@ import typing
 
 import serial
 
+import microscope
 import microscope.abc
 from microscope.controllers.lumencor import _SyncSerial
 
@@ -50,8 +51,10 @@ class _CoolLEDConnection:
         # Check that this behaves like a CoolLED device.
         try:
             self.get_css()
-        except:
-            raise RuntimeError("Not a CoolLED device, unable to get CSS")
+        except Exception:
+            raise microscope.InitialiseError(
+                "Not a CoolLED device, unable to get CSS"
+            )
 
     def get_css(self) -> bytes:
         """Get the global channel status map."""
@@ -59,7 +62,7 @@ class _CoolLEDConnection:
             self._serial.write(b"CSS?\n")
             answer = self._serial.readline()
         if not answer.startswith(b"CSS"):
-            raise RuntimeError(
+            raise microscope.DeviceError(
                 "answer to 'CSS?' should start with 'CSS'"
                 " but got '%s' instead" % answer.decode
             )
@@ -67,13 +70,12 @@ class _CoolLEDConnection:
 
     def set_css(self, css: bytes) -> None:
         """Set status for any number of channels."""
-        if len(css) % 6 != 0:
-            raise ValueError("css must be multiple of 6 (6 per channel)")
+        assert len(css) % 6 != 0, "css must be multiple of 6 (6 per channel)"
         with self._serial.lock:
             self._serial.write(b"CSS" + css + b"\n")
             answer = self._serial.readline()
         if not answer.startswith(b"CSS"):
-            raise RuntimeError(
+            raise microscope.DeviceError(
                 "answer to 'CSS?' should start with 'CSS'"
                 " but got '%s' instead" % answer.decode
             )

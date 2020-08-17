@@ -23,6 +23,7 @@ import logging
 
 import serial
 
+import microscope
 import microscope.abc
 
 _logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
         """
         response = self.connection.readline().strip()
         if self.connection.readline().strip() != b"OK":
-            raise Exception(
+            raise microscope.DeviceError(
                 "Did not get a proper answer from the laser serial comm."
             )
         return response

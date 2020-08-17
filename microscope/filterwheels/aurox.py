@@ -26,6 +26,7 @@ from threading import Lock
 
 import hid
 
+import microscope
 import microscope.devices
 
 # Clarity constants. These may differ across products, so mangle names.
@@ -123,7 +124,7 @@ class Clarity(microscope.devices.FilterWheelBase):
                 err = self._hid.error()
                 if err != "":
                     self.close()
-                    raise Exception(err)
+                    raise microscope.DeviceError(err)
                 else:
                     return None
             while True:
@@ -181,14 +182,14 @@ class Clarity(microscope.devices.FilterWheelBase):
         """Get the current slide position"""
         result = self._send_command(__GETSLIDE)
         if result is None:
-            raise Exception("Slide position error.")
+            raise microscope.DeviceError("Slide position error.")
         return result
 
     def set_slide_position(self, position, blocking=True):
         """Set the slide position"""
         result = self._send_command(__SETSLIDE, position)
         if result is None:
-            raise Exception("Slide position error.")
+            raise microscope.DeviceError("Slide position error.")
         while blocking and self.moving():
             pass
         return result
@@ -266,14 +267,14 @@ class Clarity(microscope.devices.FilterWheelBase):
         """Return the current filter position"""
         result = self._send_command(__GETFILT)
         if result == __FLTERR:
-            raise Exception("Filter position error.")
+            raise microscope.DeviceError("Filter position error.")
         return result
 
     def _do_set_position(self, pos, blocking=True):
         """Set the filter position"""
         result = self._send_command(__SETFILT, pos)
         if result is None:
-            raise Exception("Filter position error.")
+            raise microscope.DeviceError("Filter position error.")
         while blocking and self.moving():
             pass
         return result

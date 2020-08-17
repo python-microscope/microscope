@@ -21,6 +21,113 @@ import enum
 import typing
 
 
+class MicroscopeError(Exception):
+    """Base class for Python Microscope exceptions.
+    """
+
+    pass
+
+
+class DeviceError(MicroscopeError):
+    """Raised when there is an issue controlling a device.
+
+    This exception is raised when there is an issue with controlling
+    the device, be it with its programming interface or with the
+    physical hardware.  It is most common when commands to the device
+    fail or return something unexpected.
+
+    .. note::
+
+       The subclasses `DisabledDeviceError`, `IncompatibleStateError`,
+       `InitialiseError`, and `UnsupportedFeatureError` provide more
+       fine grained exceptions.
+
+    """
+
+    pass
+
+
+class IncompatibleStateError(DeviceError):
+    """Raised when an operation is incompatible with the current device
+    state.
+
+    This exception is raised when the device is in a state
+    incompatible with an attempted operation, e.g., calling
+    :mod:`TriggerTargetMixin.trigger` on a device that is set for
+    hardware triggers.  The subclass `DisabledDeviceError` provides an
+    exception specific to the case where the issue is the device being
+    disabled.
+
+    .. note::
+
+       This exception is for attempting to perform some action but
+       device is wrong state.  If the issue is about a setting that is
+       incompatible with some other setting that this specific device
+       does not support, then `UnsupportedFeatureError` should be
+       raised.
+
+    """
+
+    pass
+
+
+class DisabledDeviceError(IncompatibleStateError):
+    """Raised when an operation requires an enabled device but the device is
+    disabled.
+    """
+
+    pass
+
+
+class InitialiseError(DeviceError):
+    """Raised when a device fails to initialise.
+
+    This exception is raised when there is a failure connecting to a
+    device, typically because the device is not connected, or the serial
+    number or port address is incorrect.
+
+    """
+
+    pass
+
+
+class UnsupportedFeatureError(DeviceError):
+    """Raised when some operation requires a feature that is not supported.
+
+    This exception is raised when an operation requires some feature
+    that is not supported, either because the physical device does not
+    provide it, or Python Microscope has not yet implemented it.  For
+    example, most devices do not support all trigger modes.
+
+    """
+
+    pass
+
+
+class LibraryLoadError(MicroscopeError):
+    """Raised when the loading and initialisation of a device library fails.
+
+    This exception is raised when a shared library or DLL fails to load,
+    typically because the required library is not found or is missing
+    some required symbol.
+
+    If there is a module that is a straight wrapper to the C library
+    (there should be one on the `microscope._wrappers` package) then
+    this exception can easily be used chained with the exception that
+    originated it like so::
+
+    .. code-block:: python
+
+        try:
+            import microscope._wrappers.libname
+        except Exception as e:
+            raise microscope.LibraryLoadError(e) from e
+
+    """
+
+    pass
+
+
 class AxisLimits(typing.NamedTuple):
     lower: float
     upper: float

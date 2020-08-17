@@ -354,7 +354,9 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         _logger.debug("Purging buffers.")
         self._buffers_valid = False
         if self._acquiring:
-            raise Exception("Can not modify buffers while camera acquiring.")
+            raise microscope.IncompatibleStateError(
+                "Can not modify buffers while camera acquiring."
+            )
         SDK3.Flush(self.handle)
         while True:
             try:
@@ -443,10 +445,10 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         """
         try:
             self.handle = SDK3.Open(self._index)
-        except:
-            raise Exception("Problem opening camera.")
+        except Exception as e:
+            raise microscope.InitialiseError("Problem opening camera.") from e
         if self.handle == None:
-            raise Exception("No camera opened.")
+            raise microscope.InitialiseError("No camera opened.")
         for name, var in sorted(self.__dict__.items()):
             if isinstance(var, ATProperty):
                 sdk_name = SDK_NAMES[name]
