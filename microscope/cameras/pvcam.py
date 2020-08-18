@@ -1140,6 +1140,25 @@ TRIGGER_MODES = {
     TRIG_BULB: TriggerMode("bulb", BULB_MODE, microscope.abc.TRIGGER_DURATION),
 }
 
+PV_MODE_TO_TRIGGER = {
+    TRIG_SOFT: (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
+    TRIG_FIRST: (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.ONCE,
+    ),
+    TRIG_STROBED: (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.STROBE,
+    ),
+    TRIG_BULB: (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.BULB,
+    ),
+}
+
+
+TRIGGER_TO_PV_MODE = {v: k for k, v in PV_MODE_TO_TRIGGER.items()}
+
 
 class PVParam:
     """A wrapper around PVCAM parameters."""
@@ -1340,7 +1359,11 @@ class PVStringParam(PVParam):
         return values
 
 
-class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
+class PVCamera(
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.TriggerTargetMixin,
+    microscope.abc.Camera,
+):
     """Implements the CameraDevice interface for the pvcam library."""
 
     # Keep track of open cameras.
@@ -1772,12 +1795,17 @@ class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         return self.cycle_time
 
     def get_trigger_type(self):
-        """Return the current trigger type."""
+        """Return the current trigger type.
+
+        Deprecated, get the trigger_mode and trigger_type property.
+        """
         return TRIGGER_MODES[self._trigger].microscope_mode
 
     @Pyro4.oneway
     def soft_trigger(self):
         """Expose software triggering to a client.
+
+        Deprecated, use trigger().
 
         Trigger an exposure in TRIG_SOFT mode.
         Log some debugging stats in other trigger modes."""
@@ -1801,3 +1829,26 @@ class PVCamera(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
                 bytes.value,
             )
         return
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return PV_MODE_TO_TRIGGER[self._trigger][1]
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        return PV_MODE_TO_TRIGGER[self._trigger][0]
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        try:
+            self._trigger = TRIGGER_TO_PV_MODE[(ttype, tmode)]
+        except KeyError:
+            raise microscope.UnsupportedFeatureError(
+                "no PVCam mode for %s and %s" % (ttype, tmode)
+            )
+
+    def _do_trigger(self) -> None:
+        _exp_start_seq(
+            self.handle, self._buffer.ctypes.data_as(ctypes.c_void_p)
+        )
