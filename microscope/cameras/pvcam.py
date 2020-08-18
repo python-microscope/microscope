@@ -1107,8 +1107,7 @@ STATUS_STRINGS = {
 class TriggerMode:
     """A microscope trigger mode using PVCAM PMODES."""
 
-    def __init__(self, id, label, pv_mode, microscope_mode):
-        self.id = id
+    def __init__(self, label, pv_mode, microscope_mode):
         self.label = label
         self.pv_mode = pv_mode
         self.microscope_mode = microscope_mode
@@ -1129,25 +1128,16 @@ class TriggerMode:
 
 # Trigger mode definitions.
 TRIGGER_MODES = {
-    TRIG_SOFT: TriggerMode(
-        TRIG_SOFT, "software", TIMED_MODE, microscope.abc.TRIGGER_SOFT
-    ),
-    TRIG_TIMED: TriggerMode(TRIG_TIMED, "timed", TIMED_MODE, -1),
-    TRIG_VARIABLE: TriggerMode(
-        TRIG_VARIABLE, "variable timed", VARIABLE_TIMED_MODE, -1
-    ),
+    TRIG_SOFT: TriggerMode("software", TIMED_MODE, microscope.abc.TRIGGER_SOFT),
+    TRIG_TIMED: TriggerMode("timed", TIMED_MODE, -1),
+    TRIG_VARIABLE: TriggerMode("variable timed", VARIABLE_TIMED_MODE, -1),
     TRIG_FIRST: TriggerMode(
-        TRIG_FIRST,
-        "trig. first",
-        TRIGGER_FIRST_MODE,
-        microscope.abc.TRIGGER_BEFORE,
+        "trig. first", TRIGGER_FIRST_MODE, microscope.abc.TRIGGER_BEFORE,
     ),
     TRIG_STROBED: TriggerMode(
-        TRIG_STROBED, "strobed", STROBED_MODE, microscope.abc.TRIGGER_BEFORE
+        "strobed", STROBED_MODE, microscope.abc.TRIGGER_BEFORE
     ),
-    TRIG_BULB: TriggerMode(
-        TRIG_BULB, "bulb", BULB_MODE, microscope.abc.TRIGGER_DURATION
-    ),
+    TRIG_BULB: TriggerMode("bulb", BULB_MODE, microscope.abc.TRIGGER_DURATION),
 }
 
 
