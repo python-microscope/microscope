@@ -107,10 +107,7 @@ class _Imager(QtCore.QObject):
         self.destroyed.connect(lambda: self._camera.set_client(None))
 
     def snap(self) -> None:
-        # CameraDevice have a soft_trigger method but it may do
-        # nothing.  If the camera is a TriggerTargetMixin, then it
-        # will have a trigger method that does work.
-        getattr(self._camera, "trigger", self._camera.soft_trigger)()
+        self._camera.trigger()
 
     def fetchLoop(self) -> None:
         while True:
