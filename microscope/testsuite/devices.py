@@ -169,7 +169,7 @@ class _ImageGenerator:
         )
 
 
-class TestCamera(microscope.abc.Camera):
+class TestCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI
@@ -341,10 +341,35 @@ class TestCamera(microscope.abc.Camera):
         return (512, 512)
 
     def get_trigger_type(self):
+        # deprecated, use trigger_type and trigger_mode properties
         return microscope.abc.TRIGGER_SOFT
 
     @must_be_initialized
     def soft_trigger(self):
+        # deprecated, use self.trigger()
+        self.trigger()
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.ONCE
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        return microscope.TriggerType.SOFTWARE
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        if ttype is not microscope.TriggerType.SOFTWARE:
+            raise microscope.UnsupportedFeatureError(
+                "%s is not supported, only trigger type SOFTWARE" % ttype
+            )
+        if tmode is not microscope.TriggerMode.ONCE:
+            raise microscope.UnsupportedFeatureError(
+                "%s is not supported, only trigger mode ONCE" % tmode
+            )
+
+    def _do_trigger(self) -> None:
         _logger.info(
             "Trigger received; self._acquiring is %s.", self._acquiring
         )
