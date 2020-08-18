@@ -169,7 +169,7 @@ class _ImageGenerator:
         )
 
 
-class TestCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
+class TestCamera(microscope.abc.Camera):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI

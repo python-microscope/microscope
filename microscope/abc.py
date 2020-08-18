@@ -174,6 +174,66 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
         pass
 
 
+class TriggerTargetMixin(metaclass=abc.ABCMeta):
+    """Mixin for a device that may be the target of a hardware trigger.
+
+    TODO: need some way to retrieve the supported trigger types and
+        modes.  This is not just two lists, one for types and another
+        for modes, because some modes can only be used with certain
+        types and vice-versa.
+
+    """
+
+    @property
+    @abc.abstractmethod
+    def trigger_mode(self) -> microscope.TriggerMode:
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def trigger_type(self) -> microscope.TriggerType:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        """Set device for a specific trigger.
+        """
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _do_trigger(self) -> None:
+        """Actual trigger of the device.
+
+        Classes implementing this interface should implement this
+        method instead of `trigger`.
+
+        """
+        raise NotImplementedError()
+
+    def trigger(self) -> None:
+        """Trigger device.
+
+        The actual effect is device type dependent.  For example, on a
+        `Camera` it triggers image acquisition while on a
+        `DeformableMirror` it applies a queued pattern.  See
+        documentation for the devices implementing this interface for
+        details.
+
+        Raises:
+            microscope.IncompatibleStateError: if trigger type is not
+                set to `TriggerType.SOFTWARE`.
+
+        """
+        if self.trigger_type is not microscope.TriggerType.SOFTWARE:
+            raise microscope.IncompatibleStateError(
+                "trigger type is not software"
+            )
+        _logger.debug("trigger by software")
+        self._do_trigger()
+
+
 class Device(metaclass=abc.ABCMeta):
     """A base device class. All devices should subclass this class.
 
@@ -610,8 +670,8 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def grab_next_data(self, soft_trigger=True):
         """Returns results from next trigger via a direct call.
 
-        :param soft_trigger: calls soft_trigger if True,
-                               waits for hardware trigger if False.
+        :param soft_trigger: calls trigger() if True, waits for
+                               hardware trigger if False.
         """
         if not self.enabled:
             raise microscope.DisabledDeviceError("Camera not enabled.")
@@ -620,7 +680,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         self.set_client(self)
         # Wait for data from next trigger.
         if soft_trigger:
-            self.soft_trigger()
+            self.trigger()
         self._new_data_condition.wait()
         # Pop self from client stack
         self.set_client(None)
@@ -635,7 +695,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self._new_data_condition.notify()
 
 
-class Camera(DataDevice):
+class Camera(TriggerTargetMixin, DataDevice):
     """Adds functionality to DataDevice to support cameras.
 
     Defines the interface for cameras.
@@ -829,70 +889,6 @@ class Camera(DataDevice):
     def get_meta_data(self):
         """Return metadata."""
         pass
-
-    def soft_trigger(self):
-        """Optional software trigger - implement if available."""
-        pass
-
-
-class TriggerTargetMixin(metaclass=abc.ABCMeta):
-    """Mixin for a device that may be the target of a hardware trigger.
-
-    TODO: need some way to retrieve the supported trigger types and
-        modes.  This is not just two lists, one for types and another
-        for modes, because some modes can only be used with certain
-        types and vice-versa.
-
-    """
-
-    @property
-    @abc.abstractmethod
-    def trigger_mode(self) -> microscope.TriggerMode:
-        raise NotImplementedError()
-
-    @property
-    @abc.abstractmethod
-    def trigger_type(self) -> microscope.TriggerType:
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def set_trigger(
-        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
-    ) -> None:
-        """Set device for a specific trigger.
-        """
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def _do_trigger(self) -> None:
-        """Actual trigger of the device.
-
-        Classes implementing this interface should implement this
-        method instead of `trigger`.
-
-        """
-        raise NotImplementedError()
-
-    def trigger(self) -> None:
-        """Trigger device.
-
-        The actual effect is device type dependent.  For example, on a
-        `Camera` it triggers image acquisition while on a
-        `DeformableMirror` it applies a queued pattern.  See
-        documentation for the devices implementing this interface for
-        details.
-
-        Raises:
-            microscope.IncompatibleStateError: if trigger type is not
-                set to `TriggerType.SOFTWARE`.
-
-        """
-        if self.trigger_type is not microscope.TriggerType.SOFTWARE:
-            raise microscope.IncompatibleStateError(
-                "trigger type is not software"
-            )
-        _logger.debug("trigger by software")
-        self._do_trigger()
 
 
 class SerialDeviceMixin(metaclass=abc.ABCMeta):

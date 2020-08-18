@@ -163,7 +163,7 @@ class TrgSelectorMap(enum.Enum):
     #   first frame.
 
 
-class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
+class XimeaCamera(microscope.abc.Camera):
     """Ximea cameras
 
     Args:

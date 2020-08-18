@@ -1360,9 +1360,7 @@ class PVStringParam(PVParam):
 
 
 class PVCamera(
-    microscope.abc.FloatingDeviceMixin,
-    microscope.abc.TriggerTargetMixin,
-    microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
 ):
     """Implements the CameraDevice interface for the pvcam library."""
 

@@ -1346,9 +1346,7 @@ TRIGGER_TO_ATMCD_MODE = {v: k for k, v in ATMCD_MODE_TO_TRIGGER.items()}
 
 
 class AndorAtmcd(
-    microscope.abc.FloatingDeviceMixin,
-    microscope.abc.TriggerTargetMixin,
-    microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
 ):
     """Implements CameraDevice interface for Andor ATMCD library."""
 
