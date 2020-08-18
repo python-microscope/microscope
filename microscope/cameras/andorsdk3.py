@@ -57,6 +57,20 @@ TRIGGER_MODES = {
     "software": microscope.abc.TRIGGER_SOFT,
 }
 
+# Convert from SDK3 trigger mode names to Microscope trigger type and
+# mode.
+SDK3_STRING_TO_TRIGGER = {
+    "external": (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.ONCE,
+    ),
+    "external exposure": (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.BULB,
+    ),
+    "software": (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
+}
+
 SDK_NAMES = {
     "_accumulate_count": "AccumulateCount",
     "_acquisition_start": "AcquisitionStart",
@@ -199,7 +213,11 @@ INVALIDATES_BUFFERS = [
 ]
 
 
-class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
+class AndorSDK3(
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.TriggerTargetMixin,
+    microscope.abc.Camera,
+):
     SDK_INITIALIZED = False
 
     def __init__(self, index=0, **kwargs):
@@ -558,10 +576,38 @@ class AndorSDK3(microscope.abc.FloatingDeviceMixin, microscope.abc.Camera):
         return (self._sensor_width.get_value(), self._sensor_height.get_value())
 
     def get_trigger_type(self):
+        # deprecated, use trigger_mode and trigger_type properties
         return TRIGGER_MODES[self._trigger_mode.get_string().lower()]
 
     def soft_trigger(self):
+        # deprecated, use triger()
         return self._software_trigger()
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        sdk3_string = self._trigger_mode.get_string().lower()
+        return SDK3_STRING_TO_TRIGGER[sdk3_string][1]
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        sdk3_string = self._trigger_mode.get_string().lower()
+        return SDK3_STRING_TO_TRIGGER[sdk3_string][0]
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        for available_mode in self._trigger_mode.get_available_values():
+            trigger = SDK3_STRING_TO_TRIGGER[available_mode.lower()]
+            if trigger == (ttype, tmode):
+                self._trigger_mode.set_string(available_mode)
+                break
+        else:
+            raise microscope.UnsupportedFeatureError(
+                "no SDK3 mode for %s and %s" % (ttype, tmode)
+            )
+
+    def _do_trigger(self) -> None:
+        self._software_trigger()
 
     def _get_binning(self):
         as_text = self._aoi_binning.get_string().split("x")
