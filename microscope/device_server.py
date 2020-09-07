@@ -88,6 +88,24 @@ def device(
         uid: used to identify "floating" devices (see documentation
             for :class:`FloatingDeviceMixin`).  This must be specified
             if ``cls`` is a floating device.
+
+    Example
+
+    .. code-block:: python
+
+        def construct_devices() -> typing.Dict[str, Device]:
+            camera = Camera(some, arguments)
+            camera.initialize()
+            # ... any other configuration that might be wanted
+            return {'RedCamera': camera}
+
+        DEVICES = [
+            # passing a function that returns devices
+            device(construct_devices, '127.0.0.1', 8000),
+            # passing a Device class
+            device(Camera, '127.0.0.1', 8001,
+                   conf={'kwarg1': some, 'kwarg2': arguments})
+        ]
     """
     if not callable(cls):
         raise TypeError("cls must be a callable")
@@ -270,12 +288,12 @@ class DeviceServer(multiprocessing.Process):
         # be a function that returns a map of names to devices.
         cls_is_type = isinstance(cls, type)
 
-        if cls_is_type:
-            self._devices = {cls_name: cls(**self._device_def["conf"])}
-        else:
+        if not cls_is_type:
             self._devices = cls(**self._device_def["conf"])
-
-        for device in self._devices.values():
+        else:
+            # This is just the device class, we need to initialize the
+            # device after constructing it.
+            device = cls(**self._device_def["conf"])
             while not self.exit_event.is_set():
                 try:
                     device.initialize()
@@ -286,6 +304,7 @@ class DeviceServer(multiprocessing.Process):
                     time.sleep(5)
                 else:
                     break
+            self._devices = {cls_name: device}
 
         if cls_is_type and issubclass(cls, FloatingDeviceMixin):
             uid = str(list(self._devices.values())[0].get_id())
