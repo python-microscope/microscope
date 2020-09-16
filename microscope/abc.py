@@ -676,9 +676,6 @@ class Camera(DataDevice):
             self.set_readout_mode,
             lambda: self._readout_modes,
         )
-        self.add_setting(
-            "binning", "tuple", self.get_binning, self.set_binning, None
-        )
         self.add_setting("roi", "tuple", self.get_roi, self.set_roi, None)
 
     def _process_data(self, data):
