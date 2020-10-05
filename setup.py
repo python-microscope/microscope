@@ -180,7 +180,7 @@ setuptools.setup(
         "console_scripts": [
             "device-server = microscope.device_server:__main__",
             "deviceserver = microscope.device_server:__main__",
-            "microscope-gui = microscope.gui:main [GUI]",
+            "microscope-gui = microscope.gui:_setuptools_entry_point [GUI]",
         ]
     },
     # https://pypi.python.org/pypi?:action=list_classifiers

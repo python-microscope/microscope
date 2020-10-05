@@ -344,7 +344,7 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcut.activated.connect(slot)
 
 
-def main(argv=sys.argv) -> int:
+def main(argv: typing.Sequence[str]) -> int:
     app = QtWidgets.QApplication(argv)
     app.setApplicationName("Microscope GUI")
     app.setOrganizationDomain("python-microscope.org")
@@ -382,6 +382,17 @@ def main(argv=sys.argv) -> int:
     window.show()
 
     return app.exec_()
+
+
+def _setuptools_entry_point() -> int:
+    # The setuptools entry point must be a function, we can't simply
+    # name this module even if this module does work as a script.  We
+    # also do not want to set the default of main() to sys.argv
+    # because when the documentation is generated (with Sphinx's
+    # autodoc extension), then sys.argv gets replaced with the
+    # sys.argv value at the time docs were generated (see
+    # https://stackoverflow.com/a/12087750 )
+    return main(sys.argv)
 
 
 if __name__ == "__main__":
