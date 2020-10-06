@@ -25,11 +25,15 @@ from Linkam Scientific Instruments.
 Currently, this module supports on the the correlative microscopy stage,
 but should be readily extensible to support other Linkam stages.
 
-NOTE: this module does not run correctly with python optimisations in
-use. When invoked with python -O, there seem to be issues with accessing
-ctypes objects.
-  * get_status() throws AttributeError "c_ulonglong has no attribute 'flags'";
-  * get_id returns an empty string, not the device serial number."""
+.. note::
+
+    This module does not run correctly with python optimisations in
+    use.  When invoked with `python -O`, there seem to be issues with
+    accessing ctypes objects.
+
+* `get_status()` throws `AttributeError` "c_ulonglong has no attribute 'flags'";
+* `get_id` returns an empty string, not the device serial number.
+"""
 
 import ctypes
 import datetime

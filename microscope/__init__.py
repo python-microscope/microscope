@@ -129,6 +129,8 @@ class LibraryLoadError(MicroscopeError):
 
 
 class AxisLimits(typing.NamedTuple):
+    """Limits of a :class:`microscope.abc.StageAxis`."""
+
     lower: float
     upper: float
 
@@ -150,6 +152,20 @@ class ROI(typing.NamedTuple):
 
 
 class TriggerType(enum.Enum):
+    """Type of a trigger for a :class:`microscope.abc.TriggerTargetMixin`.
+
+    The trigger type defines what constitutes a trigger, as opposed to
+    the trigger mode which defines a type of action when the trigger
+    is received.
+
+    :const:`TriggerType.SOFTWARE`
+        when :meth:`microscope.abc.TriggerTargetMixin.trigger` is called
+    :const:`TriggerType.RISING_EDGE`
+        when level changes to high
+    :const:`TriggerType.FALLING_EDGE`
+        when level changes to low
+    """
+
     SOFTWARE = 0
     RISING_EDGE = 1
     FALLING_EDGE = 2
@@ -157,6 +173,27 @@ class TriggerType(enum.Enum):
 
 
 class TriggerMode(enum.Enum):
+    """Mode of a trigger for a :class:`microscope.abc.TriggerTargetMixin`.
+
+    The trigger mode defines what type of action when a trigger is
+    received, as opposed to the trigger type which defines what
+    constitutes a trigger.  The exact type of action is highly
+    dependent on device type, so check their documentation.
+
+    :const:`TriggerMode.ONCE`
+        Act once.  For example, acquire a single image when a camera
+        is triggered.
+    :const:`TriggerMode.BULB`
+        Act while device is being triggered.  For example, a laser
+        keeps emitting emit light or a camera keeps exposing while the
+        trigger line is high.  This trigger mode is incompatible with
+        :attr:`TriggerType.SOFTWARE`.
+    :const:`TriggerMode.STROBE`
+        Act repeatably while device is being triggered.  For example,
+        a camera keep acquiring multiple images while the trigger line
+        is high.
+    """
+
     ONCE = 1
     BULB = 2
     STROBE = 3

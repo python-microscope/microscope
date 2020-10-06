@@ -18,6 +18,13 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Test devices for use during development.
+
+This module provides a series of test devices, which mimic real
+hardware behaviour.  They implement the different ABC.
+
+"""
+
 import logging
 import random
 import time

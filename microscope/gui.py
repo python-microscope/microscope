@@ -24,9 +24,9 @@ not aim to be pretty; it aims to be simple, complete, and work on any
 OS and Python without extra work.  It is not meant as the basis for a
 full-fledged microscope GUI.
 
-This module requires PySide2 which is an requirement for the
-microscope "GUI" extra, i.e., only installed by `pip` if microscope is
-installed with ``pip install microscope[GUI]``.
+This module requires qtpy which is a requirement for the microscope
+"GUI" extra, i.e., only installed by `pip` if microscope is installed
+with ``pip install microscope[GUI]``.
 
 """
 

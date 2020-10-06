@@ -28,12 +28,10 @@ import numpy
 def test_mirror_actuators(dm, time_interval=0.5):
     """Iterate over all actuators of a deformable mirror.
 
-    Parameters
-    ----------
-        dm : microscope.device.DeformableMirror
-            The mirror to test
-        time_interval : number
-            Number of seconds between trying each actuator.
+    Args:
+        dm (microscope.abc.DeformableMirror): The mirror to test.
+        time_interval (float): Number of seconds between trying each
+            actuator.
     """
     base_value = 0.5
     data = numpy.full((dm.n_actuators), base_value)

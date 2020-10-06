@@ -38,11 +38,11 @@ import serial.serialutil
 class SerialMock(serial.serialutil.SerialBase):
     """Base class to mock devices controlled via serial.
 
-    It has two :class:`BytesIO` buffers.  One :func:`write` into the
-    the output buffer and :func:`read` from the input buffer.  After a
-    write, the output buffer is analysed for a command.  If there is a
-    command, stuff gets done.  This usually means adding to the input
-    buffer and changing state of the device.
+    It has two :class:`io.BytesIO` buffers.  One :func:`write`s the
+    output buffer and the other :func:`read`s the input buffer.  After
+    a write, the output buffer is analysed for a command.  If there is
+    a command, stuff gets done.  This usually means adding to the
+    input buffer and changing state of the device.
 
     """
 

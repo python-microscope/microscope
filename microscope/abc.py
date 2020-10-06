@@ -18,11 +18,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Classes for control of microscope components.
-
-This module provides base classes for experiment control and data
-acquisition devices that can be served over Pyro. This means that each
-device may be served from a separate process, or even from a different PC.
+"""Abstract Base Classes for the different device types.
 """
 
 import abc
