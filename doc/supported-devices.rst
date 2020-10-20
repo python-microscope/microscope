@@ -32,6 +32,7 @@ Filter Wheels
 - Aurox Clarity (:class:`microscope.filterwheels.aurox`)
 - Prior (:class:`microscope.controllers.prior`)
 - Thorlabs (:class:`microscope.filterwheels.thorlabs`)
+- Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 
 Lasers
 ------
@@ -48,3 +49,11 @@ Controllers
 - CoolLED (:class:`microscope.controllers.coolled`)
 - Prior ProScan III (:class:`microscope.controllers.prior`)
 - Lumencor Spectra III light engine (:class:`microscope.controllers.lumencor`)
+- Zaber daisy chain devices
+  (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
+- Zaber LED controller (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
+
+Stages
+------
+
+- Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
