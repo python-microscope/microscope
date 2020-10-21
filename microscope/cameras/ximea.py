@@ -266,25 +266,6 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
                 "opening camera with serial number '%s'", self._serial_number
             )
             self._handle.open_device_by_SN(self._serial_number)
-            # Camera.dev_id defaults to zero.  However, after opening
-            # the device by serial number is is not updated (see
-            # https://github.com/python-microscope/vendor-issues/issues/1).
-            # So we manually iterate over each possible device ID and
-            # modify dev_id until it behaves as it should.  If we
-            # don't fix this and there are multiple cameras connected,
-            # some of the handle methods will return info from another
-            # camera.
-            for dev_id in range(n_cameras):
-                self._handle.dev_id = dev_id
-                if self._serial_number.encode() == self._handle.get_device_info_string(
-                    "device_sn"
-                ):
-                    break
-            else:
-                raise microscope.InitialiseError(
-                    "failed to get DevId for device with SN %s"
-                    % self._serial_number
-                )
 
         self._sensor_shape = (
             self._handle.get_width_maximum()
