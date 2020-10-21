@@ -61,6 +61,15 @@ import microscope.abc
 
 _logger = logging.getLogger(__name__)
 
+
+# The ximea package does not provide an enum for the error codes.
+# There is ximea.xidefs.ERROR_CODES which maps the error code to an
+# error message but what we need is a symbol that maps to the error
+# code so we can use while handling exceptions.
+_XI_NOT_SUPPORTED = 12
+_XI_UNKNOWN_PARAM = 100
+
+
 # During acquisition, we rely on catching timeout errors which then
 # get discarded.  However, with debug level set to warning (XiApi
 # default log level), we get XiApi messages on stderr for each timeout
@@ -311,7 +320,11 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
             try:
                 self._handle.set_temp_selector(temperature_selector)
             except xiapi.Xi_error as err:
-                if getattr(err, "status", None) == 12:  # Not supported
+                # We need to catch both "not supported" and "unknown
+                # parameter" but we don't understand their difference.
+                # We can definitely get both (see issue #169).
+                status = getattr(err, "status", None)
+                if status in [_XI_NOT_SUPPORTED, _XI_UNKNOWN_PARAM]:
                     _logger.info(
                         "no hardware support for %s temperature" " readings",
                         temperature_selector,
