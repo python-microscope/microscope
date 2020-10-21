@@ -66,7 +66,9 @@ _logger = logging.getLogger(__name__)
 # There is ximea.xidefs.ERROR_CODES which maps the error code to an
 # error message but what we need is a symbol that maps to the error
 # code so we can use while handling exceptions.
+_XI_TIMEOUT = 10
 _XI_NOT_SUPPORTED = 12
+_XI_ACQUISITION_STOPED = 45
 _XI_UNKNOWN_PARAM = 100
 
 
@@ -210,10 +212,10 @@ class XimeaCamera(microscope.abc.TriggerTargetMixin, microscope.abc.Camera):
         except Exception as err:
             # err.status may not exist so use getattr (see
             # https://github.com/python-microscope/vendor-issues/issues/2)
-            if getattr(err, "status", None) == 10:  # Timeout
+            if getattr(err, "status", None) == _XI_TIMEOUT:
                 return None
             elif (
-                getattr(err, "status", None) == 45  # Acquisition is stopped
+                getattr(err, "status", None) == _XI_ACQUISITION_STOPED
                 and not self._acquiring
             ):
                 # We can end up here during disable if self._acquiring
