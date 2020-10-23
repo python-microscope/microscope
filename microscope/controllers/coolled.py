@@ -70,7 +70,7 @@ class _CoolLEDConnection:
 
     def set_css(self, css: bytes) -> None:
         """Set status for any number of channels."""
-        assert len(css) % 6 != 0, "css must be multiple of 6 (6 per channel)"
+        assert len(css) % 6 == 0, "css must be multiple of 6 (6 per channel)"
         with self._serial.lock:
             self._serial.write(b"CSS" + css + b"\n")
             answer = self._serial.readline()
