@@ -28,7 +28,9 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
-class DeepstarLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
+class DeepstarLaser(
+    microscope.abc.SerialDeviceMixin, microscope.abc.LightSource
+):
     """Omicron DeepStar laser.
 
     Omicron LDM lasers can be bought with and without the LDM.APC

@@ -127,7 +127,7 @@ class _CoolLEDChannelConnection:
         return self._get_css()[1:2].decode()
 
 
-class _CoolLEDChannel(microscope.abc.Laser):
+class _CoolLEDChannel(microscope.abc.LightSource):
     """Individual light devices that compose a CoolLED controller."""
 
     def __init__(
@@ -206,7 +206,7 @@ class CoolLED(microscope.abc.Controller):
 
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._channels: typing.Mapping[str, microscope.abc.Laser] = {}
+        self._channels: typing.Mapping[str, microscope.abc.LightSource] = {}
 
         # CoolLED manual only has the baudrate, we guessed the rest.
         serial_conn = serial.Serial(

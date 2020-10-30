@@ -29,7 +29,7 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
-class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
+class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
     def __init__(self, com, baud=115200, timeout=0.5, **kwargs) -> None:
         super().__init__(**kwargs)
         self.connection = serial.Serial(

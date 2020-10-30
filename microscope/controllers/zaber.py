@@ -416,14 +416,8 @@ class _ZaberFilterWheel(microscope.abc.FilterWheel):
         self._dev_conn.wait_until_idle()
 
 
-class _ZaberLED(microscope.abc.Laser):
-    """A single light channel from a light engine.
-
-    A channel is not necessarily a laser although it implements
-    :class:`microscope.abc.Laser`.  Constituent light sources may
-    include LEDs, luminescent light pipes, or lasers.
-
-    """
+class _ZaberLED(microscope.abc.LightSource):
+    """A single LED from a LED controller."""
 
     def __init__(self, dev_conn: _ZaberDeviceConnection, channel: int) -> None:
         super().__init__()

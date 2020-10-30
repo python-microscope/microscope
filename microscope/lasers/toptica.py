@@ -226,7 +226,7 @@ class _iBeamConnection:
         return float(key[:-3])
 
 
-class TopticaiBeam(microscope.abc.Laser):
+class TopticaiBeam(microscope.abc.LightSource):
     """Toptica iBeam smart laser.
 
     Control of laser power is performed by setting the power level on

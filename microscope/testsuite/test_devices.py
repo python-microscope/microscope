@@ -25,13 +25,13 @@ subclasses from that device type class of tests.  Each such class only
 needs to implement the `setUp` method.  It may also add device
 specific tests.
 
-Using lasers as example, there is a :class:`.LaserTests` class full of
-`test_*` methods, each of them a test on its own.  For each laser
-device supported there is one test class, e.g.,
+Using lasers as example, there is a :class:`.LightSourceTests` class
+full of `test_*` methods, each of them a test on its own.  For each
+light source device supported there is one test class, e.g.,
 `TestOmicronDeepstarLaser`, and `TestCoherentSapphireLaser`.  These
-subclass from both :class:`unittest.TestCase` and `LaserTests` and
-need only to implement `setUp` which sets up the fake and constructs
-the device instance required to run the tests.
+subclass from both :class:`unittest.TestCase` and `LightSourceTests`
+and need only to implement `setUp` which sets up the fake and
+constructs the device instance required to run the tests.
 
 """
 
@@ -180,15 +180,15 @@ class SerialDeviceTests:
         self.assertEqual(self.device.connection.dsrdtr, self.fake.dsrdtr)
 
 
-class LaserTests(DeviceTests):
-    """Base class for :class:`LaserDevice` tests.
+class LightSourceTests(DeviceTests):
+    """Base class for :class:`LightSource` tests.
 
     This class implements all the general laser tests and is meant to
     be mixed with :class:`unittest.TestCase`.  Subclasses must
     implement the `setUp` method which must add two properties:
 
     `device`
-        Instance of the :class:`LaserDevice` implementation being
+        Instance of the :class:`LightSource` implementation being
         tested.
 
     `fake`
@@ -361,9 +361,9 @@ class DSPTests(DeviceTests):
     pass
 
 
-class TestDummyLaser(unittest.TestCase, LaserTests):
+class TestDummyLightSource(unittest.TestCase, LightSourceTests):
     def setUp(self):
-        self.device = dummies.TestLaser()
+        self.device = dummies.TestLightSource()
 
         # TODO: we need to rethink the test so this is not needed.
         self.fake = self.device
@@ -386,7 +386,7 @@ class TestDummyLaser(unittest.TestCase, LaserTests):
 
 
 class TestCoherentSapphireLaser(
-    unittest.TestCase, LaserTests, SerialDeviceTests
+    unittest.TestCase, LightSourceTests, SerialDeviceTests
 ):
     def setUp(self):
         from microscope.lasers.sapphire import SapphireLaser
@@ -402,7 +402,7 @@ class TestCoherentSapphireLaser(
         self.fake = CoherentSapphireLaserMock
 
 
-class TestCoboltLaser(unittest.TestCase, LaserTests, SerialDeviceTests):
+class TestCoboltLaser(unittest.TestCase, LightSourceTests, SerialDeviceTests):
     def setUp(self):
         from microscope.lasers.cobolt import CoboltLaser
         from microscope.testsuite.mock_devices import CoboltLaserMock
@@ -417,7 +417,7 @@ class TestCoboltLaser(unittest.TestCase, LaserTests, SerialDeviceTests):
 
 
 class TestOmicronDeepstarLaser(
-    unittest.TestCase, LaserTests, SerialDeviceTests
+    unittest.TestCase, LightSourceTests, SerialDeviceTests
 ):
     def setUp(self):
         from microscope.lasers.deepstar import DeepstarLaser
@@ -476,7 +476,7 @@ class TestImageGenerator(unittest.TestCase):
 
 class TestDummyController(unittest.TestCase, ControllerTests):
     def setUp(self):
-        self.laser = dummies.TestLaser()
+        self.laser = dummies.TestLightSource()
         self.filterwheel = dummies.TestFilterWheel(positions=6)
         self.device = dummies.TestController(
             {"laser": self.laser, "filterwheel": self.filterwheel}
@@ -544,14 +544,14 @@ class TestBaseDevice(unittest.TestCase):
         name, and the class uses the default instead of an error.  See
         issue #84.
         """
-        dummies.TestLaser()
+        dummies.TestLightSource()
         # XXX: Device.__del__ calls shutdown().  However, if __init__
         # failed the device is not complete and shutdown() fails
         # because the logger has not been created.  See comments on
         # issue #69.  patch __del__ to workaround this issue.
         with unittest.mock.patch("microscope.devices.Device.__del__"):
             with self.assertRaisesRegex(TypeError, "argument 'power'"):
-                dummies.TestLaser(power=2)
+                dummies.TestLightSource(power=2)
 
 
 if __name__ == "__main__":

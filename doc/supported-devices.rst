@@ -34,8 +34,8 @@ Filter Wheels
 - Thorlabs (:class:`microscope.filterwheels.thorlabs`)
 - Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 
-Lasers
-------
+Light Sources
+-------------
 
 - Cobolt (:class:`microscope.lasers.cobolt`)
 - Coherent Obis (:class:`microscope.lasers.obis`)

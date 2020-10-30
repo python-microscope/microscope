@@ -27,7 +27,7 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
-class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
+class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
     def __init__(self, com=None, baud=115200, timeout=0.01, **kwargs):
         super().__init__(**kwargs)
         self.connection = serial.Serial(

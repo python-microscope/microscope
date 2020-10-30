@@ -32,7 +32,7 @@ from microscope.abc import Controller as ControllerDevice
 from microscope.abc import DataDevice, DeformableMirror, Device
 from microscope.abc import FilterWheel as FilterWheelBase
 from microscope.abc import FloatingDeviceMixin
-from microscope.abc import Laser as LaserDevice
+from microscope.abc import LightSource as LaserDevice
 from microscope.abc import SerialDeviceMixin as SerialDeviceMixIn
 from microscope.abc import Stage as StageDevice
 from microscope.abc import StageAxis

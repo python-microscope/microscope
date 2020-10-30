@@ -399,7 +399,7 @@ class TestFilterWheel(microscope.abc.FilterWheel):
         pass
 
 
-class TestLaser(microscope.abc.Laser):
+class TestLightSource(microscope.abc.LightSource):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._power = 0.0
@@ -434,6 +434,11 @@ class TestLaser(microscope.abc.Laser):
             return self._power
         else:
             return 0.0
+
+
+class TestLaser(TestLightSource):
+    # Deprecated, kept for backwards compatibility.
+    pass
 
 
 class TestDeformableMirror(microscope.abc.DeformableMirror):

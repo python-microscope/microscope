@@ -1093,7 +1093,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         return super().trigger()
 
 
-class Laser(Device, metaclass=abc.ABCMeta):
+class LightSource(Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1101,24 +1101,24 @@ class Laser(Device, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_status(self):
-        """Query and return the laser status."""
+        """Query and return the light source status."""
         result = []
         # ...
         return result
 
     @abc.abstractmethod
     def get_is_on(self):
-        """Return True if the laser is currently able to produce light."""
+        """Return True if the light source is currently able to produce light."""
         pass
 
     @abc.abstractmethod
     def _do_get_power(self) -> float:
-        """Internal function that actually returns the laser power."""
+        """Internal function that actually returns the light source power."""
         raise NotImplementedError()
 
     @abc.abstractmethod
     def _do_set_power(self, power: float) -> None:
-        """Internal function that actually sets the laser power.
+        """Internal function that actually sets the light source power.
 
         This function will be called by the `power` attribute setter
         after clipping the argument to the [0, 1] interval.
@@ -1127,12 +1127,12 @@ class Laser(Device, metaclass=abc.ABCMeta):
 
     @property
     def power(self) -> float:
-        """Laser power in the [0, 1] interval."""
+        """Light source power in the [0, 1] interval."""
         return self._do_get_power()
 
     @power.setter
     def power(self, power: float) -> None:
-        """Power laser in the [0, 1] interval.
+        """Light source power in the [0, 1] interval.
 
         The power value will be clipped to [0, 1] interval.
         """

@@ -29,7 +29,9 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
-class SapphireLaser(microscope.abc.SerialDeviceMixin, microscope.abc.Laser):
+class SapphireLaser(
+    microscope.abc.SerialDeviceMixin, microscope.abc.LightSource
+):
 
     laser_status = {
         b"1": "Start up",
