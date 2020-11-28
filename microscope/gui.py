@@ -73,11 +73,9 @@ class DeviceSettingsWidget(QtWidgets.QWidget):
 
 
 class _DataQueue(queue.Queue):
-    # FIXME: DataDevice should be able to use a normal Queue, we
-    # shouldn't need to have a class with receiveData method.
     @Pyro4.expose
-    def receiveData(self, *args):
-        self.put(args)
+    def put(self, *args, **kwargs):
+        return super().put(*args, **kwargs)
 
 
 class _Imager(QtCore.QObject):
@@ -117,9 +115,9 @@ class _Imager(QtCore.QObject):
             # rest (we could do with a class that only has one item
             # and putting a new item will discard the previous instead
             # of blocking/queue).
-            data = self._data_queue.get()[0]
+            data = self._data_queue.get()
             while not self._data_queue.empty():
-                data = self._data_queue.get()[0]
+                data = self._data_queue.get()
             self.imageAcquired.emit(data)
 
 

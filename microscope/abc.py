@@ -590,10 +590,16 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def _send_data(self, client, data, timestamp):
         """Dispatch data to the client."""
         try:
-            # Currently uses legacy receiveData. Would like to pass
-            # this function name as an argument to set_client, but
-            # not sure how to subsequently resolve this over Pyro.
-            client.receiveData(data, timestamp)
+            # Cockpit will send a client with receiveData and expects
+            # two arguments (data and timestamp).  But we really want
+            # to use Python's Queue and instead of just the timestamp
+            # we should be sending some proper metadata object.  We
+            # don't have that proper metadata class yet so just send
+            # the image data as a numpy ndarray for now.
+            if hasattr(client, "put"):
+                client.put(data)
+            else:
+                client.receiveData(data, timestamp)
         except (
             Pyro4.errors.ConnectionClosedError,
             Pyro4.errors.CommunicationError,
