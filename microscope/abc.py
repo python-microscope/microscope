@@ -30,7 +30,6 @@ import threading
 import time
 import typing
 from ast import literal_eval
-from collections import OrderedDict
 from enum import EnumMeta
 from threading import Thread
 
@@ -244,8 +243,7 @@ class Device(metaclass=abc.ABCMeta):
 
     def __init__(self, index=None):
         self.enabled = None
-        # A list of settings. (Can't serialize OrderedDict, so use {}.)
-        self._settings = OrderedDict()
+        self._settings: typing.Dict[str, _Setting] = {}
         self._index = index
 
     def __del__(self):
@@ -322,7 +320,7 @@ class Device(metaclass=abc.ABCMeta):
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
         allowable values, and set the value.
-        We store this info in an OrderedDict. I considered having a Setting
+        We store this info in a dictionary. I considered having a Setting
         class with getter, setter, etc., and adding Setting instances as
         device attributes, but Pyro does not support dot notation to access
         the functions we need (e.g. Device.some_setting.set ), so I'd have to
