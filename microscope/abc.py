@@ -791,10 +791,6 @@ class Camera(TriggerTargetMixin, DataDevice):
         """Return the cycle time, in seconds."""
         pass
 
-    def get_sensor_temperature(self):
-        """Return the sensor temperature."""
-        pass
-
     @abc.abstractmethod
     def _get_sensor_shape(self):
         """Return a tuple of (width, height) indicating shape in pixels."""
