@@ -285,40 +285,22 @@ class XimeaCamera(microscope.abc.Camera):
             microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE
         )
 
-        # When we return the sensor temperature we want to return the
-        # temperature that's closest to the chip since that's the one
-        # that has the biggest impact on image noise.  We don't know
-        # what temperature sensors each camera has so we try one at a
-        # time, by order of preference, until it works.
-        for temperature_selector in (
-            "XI_TEMP_IMAGE_SENSOR_DIE",
-            "XI_TEMP_IMAGE_SENSOR_DIE_RAW",
-            "XI_TEMP_SENSOR_BOARD",
-            "XI_TEMP_INTERFACE_BOARD",
-            "XI_TEMP_FRONT_HOUSING",
-            "XI_TEMP_REAR_HOUSING",
-            "XI_TEMP_TEC1_COLD",
-            "XI_TEMP_TEC1_HOT",
-        ):
-            try:
-                self._handle.set_temp_selector(temperature_selector)
-            except xiapi.Xi_error as err:
-                # We need to catch both "not supported" and "unknown
-                # parameter" but we don't understand their difference.
-                # We can definitely get both (see issue #169).
-                status = getattr(err, "status", None)
-                if status in [_XI_NOT_SUPPORTED, _XI_UNKNOWN_PARAM]:
-                    _logger.info(
-                        "no hardware support for %s temperature" " readings",
-                        temperature_selector,
-                    )
-                else:
-                    raise
-            else:
-                _logger.info(
-                    "temperature reading set to %s", temperature_selector
-                )
-                break
+        # Add settings for the different temperature sensors.
+        for temp_param_name in [
+            "chip_temp",
+            "hous_temp",
+            "hous_back_side_temp",
+            "sensor_board_temp",
+        ]:
+            get_temp_method = getattr(self._handle, "get_" + temp_param_name)
+            self.add_setting(
+                temp_param_name,
+                "float",
+                get_temp_method,
+                None,
+                values=tuple(),
+                readonly=True,
+            )
 
     def make_safe(self):
         if self._acquiring:
@@ -353,9 +335,6 @@ class XimeaCamera(microscope.abc.Camera):
 
     def _get_sensor_shape(self) -> typing.Tuple[int, int]:
         return self._sensor_shape
-
-    def get_sensor_temperature(self) -> float:
-        return self._handle.get_temp()
 
     def soft_trigger(self) -> None:
         self.trigger()
