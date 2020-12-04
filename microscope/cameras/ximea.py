@@ -293,14 +293,24 @@ class XimeaCamera(microscope.abc.Camera):
             "sensor_board_temp",
         ]:
             get_temp_method = getattr(self._handle, "get_" + temp_param_name)
-            self.add_setting(
-                temp_param_name,
-                "float",
-                get_temp_method,
-                None,
-                values=tuple(),
-                readonly=True,
-            )
+            # Not all cameras have temperature sensors in all
+            # locations.  We can't query if the sensor is there, we
+            # can only try to read the temperature and skip that
+            # temperature sensor if we get an exception.
+            try:
+                get_temp_method()
+            except xiapi.Xi_error as err:
+                if err.status != _XI_NOT_SUPPORTED:
+                    raise
+            else:
+                self.add_setting(
+                    temp_param_name,
+                    "float",
+                    get_temp_method,
+                    None,
+                    values=tuple(),
+                    readonly=True,
+                )
 
     def make_safe(self):
         if self._acquiring:
