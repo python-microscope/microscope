@@ -1601,7 +1601,7 @@ class AndorAtmcd(
         with self:
             return GetCameraSerialNumber()
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         """Warm up the sensor then shut down the camera.
 
         This may take some time, so we should ensure that the _dll_lock is
@@ -1628,11 +1628,11 @@ class AndorAtmcd(
         with self:
             ShutDown()
 
-    def _on_disable(self):
+    def _do_disable(self):
         """Call abort to stop acquisition."""
         self.abort()
 
-    def _on_enable(self):
+    def _do_enable(self):
         """Enter data acquisition state."""
         if self._acquiring:
             self.abort()

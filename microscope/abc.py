@@ -252,7 +252,7 @@ class Device(metaclass=abc.ABCMeta):
     def get_is_enabled(self):
         return self.enabled
 
-    def _on_disable(self):
+    def _do_disable(self):
         """Do any device-specific work on disable.
 
         Subclasses should override this method, rather than modify
@@ -262,10 +262,10 @@ class Device(metaclass=abc.ABCMeta):
 
     def disable(self):
         """Disable the device for a short period for inactivity."""
-        self._on_disable()
+        self._do_disable()
         self.enabled = False
 
-    def _on_enable(self):
+    def _do_enable(self):
         """Do any device-specific work on enable.
 
         Subclasses should override this method, rather than modify
@@ -276,12 +276,12 @@ class Device(metaclass=abc.ABCMeta):
     def enable(self):
         """Enable the device."""
         try:
-            self.enabled = self._on_enable()
+            self.enabled = self._do_enable()
         except Exception as err:
-            _logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _do_enable:", exc_info=err)
 
     @abc.abstractmethod
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         """Subclasses over-ride this with tasks to do on shutdown."""
         pass
 
@@ -297,7 +297,7 @@ class Device(metaclass=abc.ABCMeta):
         except Exception as e:
             _logger.warning("Exception in disable() during shutdown: %s", e)
         _logger.info("Shutting down ... ... ...")
-        self._on_shutdown()
+        self._do_shutdown()
         _logger.info("... ... ... ... shut down completed.")
 
     def make_safe(self):
@@ -422,7 +422,7 @@ def keep_acquiring(func):
         if self._acquiring:
             self.abort()
             result = func(self, *args, **kwargs)
-            self._on_enable()
+            self._do_enable()
         else:
             result = func(self, *args, **kwargs)
         return result
@@ -484,14 +484,14 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         """Enable the data capture device.
 
         Ensures that a data handling threads are running.
-        Implement device-specific code in _on_enable .
+        Implement device-specific code in _do_enable .
         """
         _logger.debug("Enabling ...")
         # Call device-specific code.
         try:
-            result = self._on_enable()
+            result = self._do_enable()
         except Exception as err:
-            _logger.debug("Error in _on_enable:", exc_info=err)
+            _logger.debug("Error in _do_enable:", exc_info=err)
             self.enabled = False
             raise err
         if not result:
@@ -520,7 +520,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def disable(self):
         """Disable the data capture device.
 
-        Implement device-specific code in _on_disable ."""
+        Implement device-specific code in _do_disable ."""
         self.enabled = False
         if self._fetch_thread:
             if self._fetch_thread.is_alive():
@@ -1054,7 +1054,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         pass
 
     def _do_trigger(self) -> None:
@@ -1235,10 +1235,10 @@ class Controller(Device, metaclass=abc.ABCMeta):
         """Map of names to the controlled devices."""
         raise NotImplementedError()
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         for d in self.devices.values():
             d.shutdown()
-        super()._on_shutdown()
+        super()._do_shutdown()
 
 
 class StageAxis(metaclass=abc.ABCMeta):

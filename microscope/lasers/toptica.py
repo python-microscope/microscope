@@ -253,7 +253,7 @@ class TopticaiBeam(microscope.abc.LightSource):
     def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         pass
 
     def get_status(self) -> typing.List[str]:

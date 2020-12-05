@@ -171,7 +171,7 @@ class DeviceWithPort(microscope.abc.Device):
     def port(self):
         return self._port
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
     def initialize(self):

@@ -123,7 +123,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
             return False
         return True
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         self.disable()
         # We set the power to a safe level
         self._set_power_mw(2)

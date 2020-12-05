@@ -230,7 +230,7 @@ class _SpectraIIILightChannel(microscope.abc.LightSource):
     def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         # There is a shutdown command but this actually powers off the
         # device which is not what LightSource.shutdown() is meant to
         # do.  So do nothing.

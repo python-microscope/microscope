@@ -1432,7 +1432,7 @@ class PVCamera(
         # Not used: images fetched using callback.
         return None
 
-    def _on_enable(self):
+    def _do_enable(self):
         """Enable the camera hardware and make ready to respond to triggers.
 
         Return True if successful, False if not."""
@@ -1552,12 +1552,12 @@ class PVCamera(
         self._acquiring = True
         return self._acquiring
 
-    def _on_disable(self):
+    def _do_disable(self):
         """Disable the hardware for a short period of inactivity."""
         self.abort()
         _cam_deregister_callback(self.handle, PL_CALLBACK_EOF)
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         """Disable the hardware for a prolonged period of inactivity."""
         self.abort()
         _cam_close(self.handle)
@@ -1782,14 +1782,14 @@ class PVCamera(
         """Return the current exposure time.
 
         Just return self.exposure_time, which is updated with the real
-        value during _on_enable."""
+        value during _do_enable."""
         return self.exposure_time
 
     def get_cycle_time(self):
         """Return the cycle time.
 
         Just return self.cycle_time, which is updated with the real
-        value during _on_enable."""
+        value during _do_enable."""
         return self.cycle_time
 
     def get_trigger_type(self):

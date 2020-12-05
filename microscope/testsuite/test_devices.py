@@ -149,19 +149,19 @@ class DeviceTests:
         self.device.initialize()
         self.device.make_safe()
 
-    def test_make_safe_on_enabled(self):
+    def test_make_safe_do_enabled(self):
         """Can make safe an enabled device"""
         self.device.initialize()
         self.device.enable()
         self.device.make_safe()
 
-    def test_make_safe_on_disabled(self):
+    def test_make_safe_do_disabled(self):
         """Can make safe a disabled device"""
         self.device.initialize()
         self.device.enable()
         self.device.make_safe()
 
-    def test_make_safe_on_shutdown(self):
+    def test_make_safe_do_shutdown(self):
         """Can make safe a shutdown device"""
         self.device.initialize()
         self.device.enable()

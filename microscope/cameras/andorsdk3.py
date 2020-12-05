@@ -534,15 +534,15 @@ class AndorSDK3(
         if self._acquiring:
             self.abort()
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         self.set_cooling(False)
         SDK3.Close(self.handle)
 
-    def _on_disable(self):
+    def _do_disable(self):
         self.abort()
         self._buffers_valid = False
 
-    def _on_enable(self):
+    def _do_enable(self):
         _logger.debug("Preparing for acquisition.")
         if self._acquiring:
             self._acquisition_stop()

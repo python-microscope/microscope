@@ -66,7 +66,7 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
     def initialize(self):
         pass
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
     def _do_set_position(self, new_position: int) -> None:

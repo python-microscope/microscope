@@ -314,11 +314,11 @@ class TestCamera(microscope.abc.Camera):
         if self._acquiring:
             self.abort()
 
-    def _on_disable(self):
+    def _do_disable(self):
         self.abort()
 
     @must_be_initialized
-    def _on_enable(self):
+    def _do_enable(self):
         _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
@@ -390,7 +390,7 @@ class TestCamera(microscope.abc.Camera):
     def _set_roi(self, roi):
         self._roi = roi
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
 
@@ -420,7 +420,7 @@ class TestFilterWheel(microscope.abc.FilterWheel):
     def initialize(self):
         pass
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
 
@@ -433,17 +433,17 @@ class TestLightSource(microscope.abc.LightSource):
     def get_status(self):
         return [str(x) for x in (self._emission, self._power, self._set_point)]
 
-    def _on_enable(self):
+    def _do_enable(self):
         self._emission = True
         return self._emission
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
     def initialize(self):
         pass
 
-    def _on_disable(self):
+    def _do_disable(self):
         self._emission = False
         return self._emission
 
@@ -517,7 +517,7 @@ class DummySLM(microscope.abc.Device):
     def initialize(self):
         pass
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
     def set_sim_diffraction_angle(self, theta):
@@ -560,7 +560,7 @@ class DummyDSP(microscope.abc.Device):
     def initialize(self):
         pass
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         pass
 
     def Abort(self):
@@ -689,7 +689,7 @@ class TestStage(microscope.abc.Stage):
     def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         pass
 
     @property
@@ -732,5 +732,5 @@ class TestFloatingDevice(
                 "uid is not available until after initialisation"
             )
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         pass

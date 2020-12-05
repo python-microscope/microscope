@@ -335,10 +335,10 @@ class _ZaberStage(microscope.abc.Stage):
     def initialize(self) -> None:
         super().initialize()
 
-    def _on_shutdown(self) -> None:
-        super()._on_shutdown()
+    def _do_shutdown(self) -> None:
+        super()._do_shutdown()
 
-    def _on_enable(self) -> bool:
+    def _do_enable(self) -> bool:
         # Before a device can moved, it first needs to establish a
         # reference to the home position.  We won't be able to move
         # unless we home it first.
@@ -400,8 +400,8 @@ class _ZaberFilterWheel(microscope.abc.FilterWheel):
     def initialize(self) -> None:
         super().initialize()
 
-    def _on_shutdown(self) -> None:
-        super()._on_shutdown()
+    def _do_shutdown(self) -> None:
+        super()._do_shutdown()
 
     def _do_get_position(self) -> int:
         if self._dev_conn.is_busy():
@@ -453,17 +453,17 @@ class _ZaberLED(microscope.abc.LightSource):
     def initialize(self) -> None:
         pass
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         pass
 
     def get_status(self) -> typing.List[str]:
         return super().get_status()
 
-    def _on_enable(self) -> bool:
+    def _do_enable(self) -> bool:
         self._dev_conn.lamp_on(self._channel)
         return True
 
-    def _on_disable(self) -> None:
+    def _do_disable(self) -> None:
         self._dev_conn.lamp_off(self._channel)
 
     def _do_get_power(self) -> float:

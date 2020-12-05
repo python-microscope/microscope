@@ -92,7 +92,7 @@ class DeepstarLaser(
 
     # Turn the laser ON. Return True if we succeeded, False otherwise.
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def _on_enable(self):
+    def _do_enable(self):
         _logger.info("Turning laser ON.")
         # Turn on deepstar mode with internal voltage ref
         # Enable internal peak power
@@ -119,7 +119,7 @@ class DeepstarLaser(
             return False
         return True
 
-    def _on_shutdown(self):
+    def _do_shutdown(self):
         self.disable()
 
     def initialize(self):
@@ -127,7 +127,7 @@ class DeepstarLaser(
 
     # Turn the laser OFF.
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def _on_disable(self):
+    def _do_disable(self):
         _logger.info("Turning laser OFF.")
         self._write(b"LF")
         return self._readline().decode()

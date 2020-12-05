@@ -316,10 +316,10 @@ class XimeaCamera(microscope.abc.Camera):
         if self._acquiring:
             self.abort()
 
-    def _on_disable(self):
+    def _do_disable(self):
         self.abort()
 
-    def _on_enable(self):
+    def _do_enable(self):
         _logger.info("Preparing for acquisition.")
         if self._acquiring:
             self.abort()
@@ -404,7 +404,7 @@ class XimeaCamera(microscope.abc.Camera):
         self._roi = roi
         return True
 
-    def _on_shutdown(self) -> None:
+    def _do_shutdown(self) -> None:
         if self._acquiring:
             self._handle.stop_acquisition()
         if self._handle.CAM_OPEN:
