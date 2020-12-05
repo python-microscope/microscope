@@ -1136,6 +1136,17 @@ class LightSource(Device, metaclass=abc.ABCMeta):
 
 
 class FilterWheel(Device, metaclass=abc.ABCMeta):
+    """ABC for filter wheels, cube turrets, and filter sliders.
+
+    FilterWheel devices are devices that have specific positions to
+    hold different filters.  Implementations will enable the change to
+    any of those positions, including positions that may not hold a
+    filter.
+
+    Args:
+        positions: total number of filter positions on this device.
+    """
+
     def __init__(self, positions: int, **kwargs) -> None:
         super().__init__(**kwargs)
         if positions < 1:
@@ -1184,6 +1195,7 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
 
     # Deprecated and kept for backwards compatibility.
     def get_num_positions(self) -> int:
+        """Deprecated, use the `n_positions` property."""
         return self.n_positions
 
     def get_position(self) -> int:
