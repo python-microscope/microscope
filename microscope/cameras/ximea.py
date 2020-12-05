@@ -209,7 +209,7 @@ class XimeaCamera(microscope.abc.Camera):
 
         try:
             self._handle.get_image(self._img, timeout=1)
-        except Exception as err:
+        except xiapi.Xi_error as err:
             # err.status may not exist so use getattr (see
             # https://github.com/python-microscope/vendor-issues/issues/2)
             if getattr(err, "status", None) == _XI_TIMEOUT:
