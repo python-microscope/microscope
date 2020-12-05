@@ -21,6 +21,12 @@ Version 0.6.0 (upcoming)
 
 * Changes to device ABCs:
 
+  * Device:
+
+    * The `make_safe` method was removed.  This was not an abstract
+      method and was not implemented in most devices.  In few cases
+      where it was implemented, it can be replaced with `disable`.
+
   * Camera:
 
     * The `get_sensor_temperature` method was removed.  This was not

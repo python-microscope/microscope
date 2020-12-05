@@ -312,10 +312,6 @@ class XimeaCamera(microscope.abc.Camera):
                     readonly=True,
                 )
 
-    def make_safe(self):
-        if self._acquiring:
-            self.abort()
-
     def _do_disable(self):
         self.abort()
 

@@ -530,10 +530,6 @@ class AndorSDK3(
     def get_id(self):
         return self._serial_number.get_value()
 
-    def make_safe(self):
-        if self._acquiring:
-            self.abort()
-
     def _do_shutdown(self) -> None:
         self.set_cooling(False)
         SDK3.Close(self.handle)

@@ -310,10 +310,6 @@ class TestCamera(microscope.abc.Camera):
         _logger.info("Initializing.")
         self._initialized = True
 
-    def make_safe(self):
-        if self._acquiring:
-            self.abort()
-
     def _do_disable(self):
         self.abort()
 

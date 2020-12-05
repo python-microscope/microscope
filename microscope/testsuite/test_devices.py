@@ -144,31 +144,6 @@ class DeviceTests:
         self.device.disable()
         self.device.disable()
 
-    def test_make_safe_on_initialized(self):
-        """Can make safe an initialized device"""
-        self.device.initialize()
-        self.device.make_safe()
-
-    def test_make_safe_do_enabled(self):
-        """Can make safe an enabled device"""
-        self.device.initialize()
-        self.device.enable()
-        self.device.make_safe()
-
-    def test_make_safe_do_disabled(self):
-        """Can make safe a disabled device"""
-        self.device.initialize()
-        self.device.enable()
-        self.device.make_safe()
-
-    def test_make_safe_do_shutdown(self):
-        """Can make safe a shutdown device"""
-        self.device.initialize()
-        self.device.enable()
-        self.device.disable()
-        self.device.shutdown()
-        self.device.make_safe()
-
 
 class SerialDeviceTests:
     def test_connection_defaults(self):

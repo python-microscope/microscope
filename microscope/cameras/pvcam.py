@@ -1765,14 +1765,6 @@ class PVCamera(
         if new_readout_transform:
             self._set_readout_transform(new_readout_transform)
 
-    def make_safe(self):
-        """Put the camera into a safe state.
-
-        Safe means (at least):
-         * it won't sustain damage if light falls on the sensor."""
-        if self._acquiring:
-            self.abort()
-
     @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
         """Set the exposure time to value."""

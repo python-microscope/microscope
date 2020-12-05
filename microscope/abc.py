@@ -345,10 +345,6 @@ class Device(metaclass=abc.ABCMeta):
         self._do_shutdown()
         _logger.info("... ... ... ... shut down completed.")
 
-    def make_safe(self):
-        """Put the device into a safe state."""
-        pass
-
     def add_setting(
         self, name, dtype, get_func, set_func, values, readonly=False
     ):
