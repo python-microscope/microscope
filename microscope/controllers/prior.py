@@ -239,7 +239,7 @@ class _ProScanIIIFilterWheel(microscope.abc.FilterWheel):
         self._conn.set_filter_position(self._number, position)
 
     def _do_shutdown(self) -> None:
-        super()._do_shutdown()
+        pass
 
     def initialize(self) -> None:
         super().initialize()

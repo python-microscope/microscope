@@ -281,9 +281,14 @@ class Device(metaclass=abc.ABCMeta):
             _logger.debug("Error in _do_enable:", exc_info=err)
 
     @abc.abstractmethod
-    def _do_shutdown(self):
-        """Subclasses over-ride this with tasks to do on shutdown."""
-        pass
+    def _do_shutdown(self) -> None:
+        """Private method - actual shutdown of the device.
+
+        Users should be calling :meth:`shutdown` and not this method.
+        Concrete implementations should implement this method instead
+        of `shutdown`.
+        """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def initialize(self):
@@ -1238,7 +1243,6 @@ class Controller(Device, metaclass=abc.ABCMeta):
     def _do_shutdown(self) -> None:
         for d in self.devices.values():
             d.shutdown()
-        super()._do_shutdown()
 
 
 class StageAxis(metaclass=abc.ABCMeta):
