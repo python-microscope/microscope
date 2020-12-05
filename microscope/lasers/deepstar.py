@@ -119,7 +119,7 @@ class DeepstarLaser(
             return False
         return True
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         self.disable()
 
     def initialize(self):

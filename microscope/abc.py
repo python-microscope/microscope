@@ -295,8 +295,48 @@ class Device(metaclass=abc.ABCMeta):
         """Initialize the device."""
         pass
 
-    def shutdown(self):
-        """Shutdown the device for a prolonged period of inactivity."""
+    def shutdown(self) -> None:
+        """Shutdown the device.
+
+        Disable and disconnect the device.  This method should be
+        called before destructing the device object, to ensure that
+        the device is actually shutdown.
+
+        After `shutdown`, the device object is no longer usable and
+        calling any other method is undefined behaviour.  The only
+        exception `shutdown` itself which can be called consecutively,
+        and after the first time will have no effect.
+
+        A device object that has been shutdown can't be reinitialised.
+        Instead of reusing the object, a new one should be created
+        instead.  This means that `shutdown` will leave the device in
+        a state that it can be reconnected.
+
+        .. code-block:: python
+
+            device = SomeDevice()
+            device.shutdown()
+
+            # Multiple calls to shutdown are OK
+            device.shutdown()
+            device.shutdown()
+
+            # After shutdown, everything else is undefined behaviour.
+            device.enable()  # undefined behaviour
+            device.get_setting("speed")  # undefined behaviour
+
+            # To reinitialise the device, construct a new instance.
+            device = SomeDevice()
+
+
+        .. note::
+
+            While `__del__` calls `shutdown`, one should not rely on
+            it.  Python does not guarante that `__del__` will be
+            called when the interpreter exits so if `shutdown` is not
+            called explicitely, the devices might not be shutdown.
+
+        """
         try:
             self.disable()
         except Exception as e:

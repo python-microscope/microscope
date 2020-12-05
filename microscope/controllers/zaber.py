@@ -336,7 +336,7 @@ class _ZaberStage(microscope.abc.Stage):
         super().initialize()
 
     def _do_shutdown(self) -> None:
-        super()._do_shutdown()
+        pass
 
     def _do_enable(self) -> bool:
         # Before a device can moved, it first needs to establish a
@@ -401,7 +401,7 @@ class _ZaberFilterWheel(microscope.abc.FilterWheel):
         super().initialize()
 
     def _do_shutdown(self) -> None:
-        super()._do_shutdown()
+        pass
 
     def _do_get_position(self) -> int:
         if self._dev_conn.is_busy():

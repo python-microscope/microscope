@@ -1088,7 +1088,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
     def initialize(self):
         pass
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
     def __del__(self):

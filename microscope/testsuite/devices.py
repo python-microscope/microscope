@@ -390,7 +390,7 @@ class TestCamera(microscope.abc.Camera):
     def _set_roi(self, roi):
         self._roi = roi
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
 
@@ -420,7 +420,7 @@ class TestFilterWheel(microscope.abc.FilterWheel):
     def initialize(self):
         pass
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
 
@@ -437,7 +437,7 @@ class TestLightSource(microscope.abc.LightSource):
         self._emission = True
         return self._emission
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
     def initialize(self):
@@ -517,7 +517,7 @@ class DummySLM(microscope.abc.Device):
     def initialize(self):
         pass
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
     def set_sim_diffraction_angle(self, theta):
@@ -560,7 +560,7 @@ class DummyDSP(microscope.abc.Device):
     def initialize(self):
         pass
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         pass
 
     def Abort(self):

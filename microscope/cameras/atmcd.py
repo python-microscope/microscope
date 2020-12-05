@@ -1601,7 +1601,7 @@ class AndorAtmcd(
         with self:
             return GetCameraSerialNumber()
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         """Warm up the sensor then shut down the camera.
 
         This may take some time, so we should ensure that the _dll_lock is

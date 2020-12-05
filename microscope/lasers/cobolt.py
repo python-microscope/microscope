@@ -86,7 +86,7 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         return result
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         # Disable laser.
         self.disable()
         self.send(b"@cob0")

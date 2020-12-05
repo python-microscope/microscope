@@ -534,7 +534,7 @@ class AndorSDK3(
         if self._acquiring:
             self.abort()
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         self.set_cooling(False)
         SDK3.Close(self.handle)
 

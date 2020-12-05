@@ -413,8 +413,6 @@ class XimeaCamera(microscope.abc.Camera):
             # hard with error code -1009 (unknown) since the internal
             # device handler is NULL.
             self._handle.close_device()
-        else:
-            _logger.warning("shutdown() called but camera was already closed")
 
     @property
     def trigger_mode(self) -> microscope.TriggerMode:

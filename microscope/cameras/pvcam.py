@@ -1557,7 +1557,7 @@ class PVCamera(
         self.abort()
         _cam_deregister_callback(self.handle, PL_CALLBACK_EOF)
 
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         """Disable the hardware for a prolonged period of inactivity."""
         self.abort()
         _cam_close(self.handle)

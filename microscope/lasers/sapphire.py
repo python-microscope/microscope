@@ -127,7 +127,7 @@ class SapphireLaser(
         return result
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def _do_shutdown(self):
+    def _do_shutdown(self) -> None:
         # Disable laser.
         self._write(b"l=0")
         self.flush_buffer()
