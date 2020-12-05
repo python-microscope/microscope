@@ -84,8 +84,7 @@ class BMCDeformableMirror(microscope.abc.DeformableMirror):
         if status:
             raise microscope.DeviceError(BMC.ErrorString(status))
 
-    def __del__(self) -> None:
+    def _do_shutdown(self) -> None:
         status = BMC.Close(self._dm)
         if status:
             warnings.warn(BMC.ErrorString(status), RuntimeWarning)
-            super().__del__()

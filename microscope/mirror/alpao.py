@@ -197,9 +197,8 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
         self._raise_if_error(status)
 
-    def __del__(self):
+    def _do_shutdown(self) -> None:
         status = asdk.Release(self._dm)
         if status != asdk.SUCCESS:
             msg = self._find_error_str()
             warnings.warn(msg)
-        super().__del__()

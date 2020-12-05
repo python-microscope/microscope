@@ -471,6 +471,9 @@ class TestDeformableMirror(microscope.abc.DeformableMirror):
         super().__init__(**kwargs)
         self._n_actuators = n_actuators
 
+    def _do_shutdown(self) -> None:
+        pass
+
     @property
     def n_actuators(self) -> int:
         return self._n_actuators

@@ -1099,9 +1099,6 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     def initialize(self) -> None:
         pass
 
-    def _do_shutdown(self) -> None:
-        pass
-
     def _do_trigger(self) -> None:
         """Convenience fallback.
 

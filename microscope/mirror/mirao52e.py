@@ -118,7 +118,6 @@ class Mirao52e(microscope.abc.DeformableMirror):
             "mro_%s() failed (error code %d)" % (func.__name__, error_code)
         )
 
-    def __del__(self) -> None:
+    def _do_shutdown(self) -> None:
         if not mro.close(self._status):
             self._raise_status(mro.close)
-        super().__del__()
