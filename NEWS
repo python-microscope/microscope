@@ -21,6 +21,14 @@ Version 0.6.0 (upcoming)
 
 * Changes to device ABCs:
 
+  * Camera:
+
+    * The `get_sensor_temperature` method was removed.  This was not
+      an abstract method was only implemented on `AndorAtmcd` and
+      `XimeaCamera`.  It is now available under the settings
+      dictionary under camera specific terms if supported by the
+      device.
+
   * FilterWheel:
 
     * The `get_filters` method and the constructor `filters` argument
