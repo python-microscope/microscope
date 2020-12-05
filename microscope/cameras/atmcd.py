@@ -1518,7 +1518,7 @@ class AndorAtmcd(
         # Fan control
         name = "Temperature"
         self.add_setting(
-            name, "int", self.get_sensor_temperature, None, (None, None), True
+            name, "int", self._get_sensor_temperature, None, (None, None), True
         )
         name = "Fan mode"
         self.add_setting(
@@ -1721,7 +1721,7 @@ class AndorAtmcd(
         with self:
             return GetDetector()
 
-    def get_sensor_temperature(self):
+    def _get_sensor_temperature(self):
         """Return the sensor temperature."""
         with self:
             return GetTemperature()[1]
