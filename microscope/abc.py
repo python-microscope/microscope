@@ -964,11 +964,6 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         """
         return self.connection.write(command + b"\r\n")
 
-    @abc.abstractmethod
-    def is_alive(self):
-        """Query if device is alive and we can send messages."""
-        pass
-
     @staticmethod
     def lock_comms(func):
         """Decorator to flush input buffer and lock communications.

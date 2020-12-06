@@ -179,9 +179,6 @@ class LightSourceTests(DeviceTests):
         # enough to check the values when comparing power levels.
         self.assertEqual(round(first), round(second), msg)
 
-    def test_being(self):
-        self.assertTrue(self.device.is_alive())
-
     def test_get_is_on(self):
         self.assertEqual(self.device.connection.light, self.device.get_is_on())
         self.device.enable()
@@ -345,14 +342,6 @@ class TestDummyLightSource(unittest.TestCase, LightSourceTests):
         self.fake.default_power = self.fake._set_point
         self.fake.min_power = 0.0
         self.fake.max_power = 100.0
-
-    def test_being(self):
-        # TODO: this test uses is_alive but that's actually a method
-        # of SerialDeviceMixin and not specific to lasers.  It is not
-        # implemented on our dummy laser.  We need to decide what to
-        # do about it.  Is this general enough that should go to all
-        # devices?
-        pass
 
     def test_get_is_on(self):
         # TODO: this test assumes the connection property to be the

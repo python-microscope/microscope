@@ -133,12 +133,6 @@ class DeepstarLaser(
         self._write(b"LF")
         return self._readline().decode()
 
-    @microscope.abc.SerialDeviceMixin.lock_comms
-    def is_alive(self):
-        self._write(b"S?")
-        response = self._readline()
-        return response.startswith(b"S")
-
     # Return True if the laser is currently able to produce light. We assume this is equivalent
     # to the laser being in S2 mode.
     @microscope.abc.SerialDeviceMixin.lock_comms

@@ -161,13 +161,6 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         return True
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def is_alive(self):
-        self._write(b"*IDN?")
-        reply = self._readline()
-        # 'Coherent, Inc-<model name>-<firmware version>-<firmware date>'
-        return reply.startswith(b"Coherent, Inc-")
-
-    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_is_on(self):
         """Return True if the laser is currently able to produce light."""
         self._write(b"SOURce:AM:STATe?")

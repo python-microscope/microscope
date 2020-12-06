@@ -95,10 +95,6 @@ class SapphireLaser(
             line = self._readline()
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def is_alive(self):
-        return self.send(b"?l") in b"01"
-
-    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
 

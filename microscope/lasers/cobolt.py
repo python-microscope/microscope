@@ -68,11 +68,6 @@ class CoboltLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         return self.get_status()
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def is_alive(self):
-        response = self.send(b"l?")
-        return response in b"01"
-
-    @microscope.abc.SerialDeviceMixin.lock_comms
     def get_status(self):
         result = []
         for cmd, stat in [
