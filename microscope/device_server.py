@@ -43,6 +43,7 @@ import Pyro4
 import microscope.abc
 from microscope.abc import FloatingDeviceMixin
 
+
 _logger = logging.getLogger(__name__)
 
 

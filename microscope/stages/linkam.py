@@ -47,6 +47,7 @@ from enum import Enum, IntEnum
 import microscope
 import microscope.abc
 
+
 _max_version_length = 20
 
 # Typedefs from C headers

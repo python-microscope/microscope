@@ -47,6 +47,7 @@ import numpy
 import microscope
 import microscope.abc
 
+
 try:
     import microscope._wrappers.mirao52e as mro
 except Exception as e:

@@ -29,6 +29,7 @@ import numpy
 import microscope
 import microscope.abc
 
+
 try:
     import microscope._wrappers.BMC as BMC
 except Exception as e:

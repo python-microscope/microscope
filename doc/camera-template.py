@@ -23,6 +23,7 @@
 import microscope
 import microscope.abc
 
+
 # Trigger mode to type.
 TRIGGER_MODES = {
     "internal": None,

@@ -26,6 +26,7 @@ import serial
 
 import microscope.abc
 
+
 _logger = logging.getLogger(__name__)
 
 

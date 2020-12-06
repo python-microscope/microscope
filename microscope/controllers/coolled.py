@@ -34,6 +34,7 @@ import microscope
 import microscope.abc
 from microscope.controllers.lumencor import _SyncSerial
 
+
 _logger = logging.getLogger(__name__)
 
 

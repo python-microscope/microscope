@@ -22,6 +22,7 @@
 
 import ctypes
 
+
 # Vendor only supports Windows
 SDK = ctypes.WinDLL("mirao52e")
 
