@@ -930,12 +930,15 @@ class Camera(TriggerTargetMixin, DataDevice):
 class SerialDeviceMixin(metaclass=abc.ABCMeta):
     """Mixin for devices that are controlled via serial.
 
+    DEPRECATED: turns out that this was a bad idea.  A device that has
+      a serial connection is not a serial connection.  The "has a" and
+      the not "is a" should have told us that we should have been
+      using composition instead of subclassing, but there you go.
+
     Currently handles the flushing and locking of the comms channel
     until a command has finished, and the passthrough to the serial
     channel.
 
-    TODO: add more logic to handle the code duplication of serial
-    devices.
     """
 
     def __init__(self, **kwargs):
