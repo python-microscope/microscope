@@ -168,7 +168,9 @@ class TriggerType(enum.Enum):
 
     SOFTWARE = 0
     RISING_EDGE = 1
+    HIGH = 1
     FALLING_EDGE = 2
+    LOW = 2
     PULSE = 3
 
 

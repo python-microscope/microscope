@@ -24,6 +24,7 @@ import logging
 
 import serial
 
+import microscope._utils
 import microscope.abc
 
 
@@ -31,8 +32,16 @@ _logger = logging.getLogger(__name__)
 
 
 class SapphireLaser(
-    microscope.abc.SerialDeviceMixin, microscope.abc.LightSource
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.SerialDeviceMixin,
+    microscope.abc.LightSource,
 ):
+    """Coherent Sapphire laser.
+
+    The Sapphire is a diode-pumped solid-state laser and only supports
+    `TriggerMode.SOFTWARE`.
+
+    """
 
     laser_status = {
         b"1": "Start up",

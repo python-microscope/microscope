@@ -35,6 +35,7 @@ import typing
 import serial
 
 import microscope
+import microscope._utils
 import microscope.abc
 
 
@@ -212,7 +213,10 @@ class SpectraIIILightEngine(microscope.abc.Controller):
         return self._lights
 
 
-class _SpectraIIILightChannel(microscope.abc.LightSource):
+class _SpectraIIILightChannel(
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.LightSource,
+):
     """A single light channel from a light engine.
 
     A channel may be an LED, luminescent light pipe, or a laser.

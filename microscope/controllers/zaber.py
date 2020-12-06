@@ -48,6 +48,7 @@ import typing
 import serial
 
 import microscope
+import microscope._utils
 import microscope.abc
 
 
@@ -416,7 +417,10 @@ class _ZaberFilterWheel(microscope.abc.FilterWheel):
         self._dev_conn.wait_until_idle()
 
 
-class _ZaberLED(microscope.abc.LightSource):
+class _ZaberLED(
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.LightSource,
+):
     """A single LED from a LED controller."""
 
     def __init__(self, dev_conn: _ZaberDeviceConnection, channel: int) -> None:

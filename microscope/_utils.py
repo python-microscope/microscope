@@ -49,3 +49,38 @@ class OnlyTriggersOnceOnSoftwareMixin(microscope.abc.TriggerTargetMixin):
             raise microscope.UnsupportedFeatureError(
                 "the only trigger mode supported is 'once'"
             )
+
+
+class OnlyTriggersBulbOnSoftwareMixin(microscope.abc.TriggerTargetMixin):
+    """Utility mixin for devices that only trigger "bulb" with software.
+
+    This mixin avoids code duplication for the many devices whose only
+    supported trigger type and trigger mode are `TriggerType.SOFTWARE`
+    and `TriggerMode.BULB`.
+
+    """
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        return microscope.TriggerType.SOFTWARE
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.BULB
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        if ttype is not microscope.TriggerType.SOFTWARE:
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger type supported is software"
+            )
+        if tmode is not microscope.TriggerMode.BULB:
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'bulb'"
+            )
+
+    def _do_trigger(self) -> None:
+        raise microscope.IncompatibleStateError(
+            "trigger does not make sense in trigger mode bulb, only enable"
+        )

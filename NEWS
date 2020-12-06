@@ -43,6 +43,11 @@ Version 0.6.0 (upcoming)
     * New `position` and `n_positions` properties added to replace
       `get_position`, `set_position`, and `get_num_positions` methods.
 
+  * LightSource:
+
+    * Now implement the `TriggerTargetMixin` interface so the trigger
+      type can be configured.
+
   * TriggerTargetMixIn:
 
     * New `trigger` method for software triggers.

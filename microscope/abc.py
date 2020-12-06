@@ -1120,7 +1120,21 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         return super().trigger()
 
 
-class LightSource(Device, metaclass=abc.ABCMeta):
+class LightSource(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
+    """Light source such as lasers or LEDs.
+
+    Light sources often, possibly always, only support the
+    `TriggerMode.BULB`.  In this context, the trigger type changes
+    what happens when `enable` is called.  `TriggerType.SOFTWARE`
+    means that `enable` will make the device emit light immediately,
+    and disable will make the device stop emit light.
+
+    `TriggerType.HIGH` or `TriggerType.LOW` means that `enable` will
+    set and unset the laser such that it only emits light while
+    receiving a high or low TTL, or digital, input signal.
+
+    """
+
     @abc.abstractmethod
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -188,3 +188,28 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
 
     def _do_get_power(self) -> float:
         return self._get_power_mw() / self._max_power_mw
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        return microscope.TriggerType.HIGH
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.BULB
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        if ttype is not microscope.TriggerType.HIGH:
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger type supported is 'high'"
+            )
+        if tmode is not microscope.TriggerMode.BULB:
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'bulb'"
+            )
+
+    def _do_trigger(self) -> None:
+        raise microscope.IncompatibleStateError(
+            "trigger does not make sense in trigger mode bulb, only enable"
+        )

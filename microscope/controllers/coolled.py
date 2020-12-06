@@ -31,6 +31,7 @@ import typing
 import serial
 
 import microscope
+import microscope._utils
 import microscope.abc
 from microscope.controllers.lumencor import _SyncSerial
 
@@ -128,7 +129,10 @@ class _CoolLEDChannelConnection:
         return self._get_css()[1:2].decode()
 
 
-class _CoolLEDChannel(microscope.abc.LightSource):
+class _CoolLEDChannel(
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.LightSource,
+):
     """Individual light devices that compose a CoolLED controller."""
 
     def __init__(

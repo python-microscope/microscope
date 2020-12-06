@@ -404,7 +404,10 @@ class TestFilterWheel(microscope.abc.FilterWheel):
         pass
 
 
-class TestLightSource(microscope.abc.LightSource):
+class TestLightSource(
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.LightSource,
+):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._power = 0.0
