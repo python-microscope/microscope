@@ -45,6 +45,7 @@ import typing
 import numpy
 
 import microscope
+import microscope._utils
 import microscope.abc
 
 
@@ -54,7 +55,10 @@ except Exception as e:
     raise microscope.LibraryLoadError(e) from e
 
 
-class Mirao52e(microscope.abc.DeformableMirror):
+class Mirao52e(
+    microscope._utils.OnlyTriggersOnceOnSoftwareMixin,
+    microscope.abc.DeformableMirror,
+):
     """Imagine Optic Mirao 52e deformable mirror.
 
     The Mirao 52e deformable mirrors only support software trigger.
@@ -77,26 +81,6 @@ class Mirao52e(microscope.abc.DeformableMirror):
     @property
     def n_actuators(self) -> int:
         return mro.NB_COMMAND_VALUES
-
-    @property
-    def trigger_type(self) -> microscope.TriggerType:
-        return microscope.TriggerType.SOFTWARE
-
-    @property
-    def trigger_mode(self) -> microscope.TriggerMode:
-        return microscope.TriggerMode.ONCE
-
-    def set_trigger(
-        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
-    ) -> None:
-        if ttype is not microscope.TriggerType.SOFTWARE:
-            raise microscope.UnsupportedFeatureError(
-                "the only trigger type supported is software"
-            )
-        if tmode is not microscope.TriggerMode.ONCE:
-            raise microscope.UnsupportedFeatureError(
-                "the only trigger mode supported is 'once'"
-            )
 
     @staticmethod
     def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:

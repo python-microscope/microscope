@@ -36,6 +36,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 import microscope
+import microscope._utils
 import microscope.abc
 
 
@@ -170,7 +171,9 @@ class _ImageGenerator:
         )
 
 
-class TestCamera(microscope.abc.Camera):
+class TestCamera(
+    microscope._utils.OnlyTriggersOnceOnSoftwareMixin, microscope.abc.Camera
+):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI
@@ -346,26 +349,6 @@ class TestCamera(microscope.abc.Camera):
         # deprecated, use self.trigger()
         self.trigger()
 
-    @property
-    def trigger_mode(self) -> microscope.TriggerMode:
-        return microscope.TriggerMode.ONCE
-
-    @property
-    def trigger_type(self) -> microscope.TriggerType:
-        return microscope.TriggerType.SOFTWARE
-
-    def set_trigger(
-        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
-    ) -> None:
-        if ttype is not microscope.TriggerType.SOFTWARE:
-            raise microscope.UnsupportedFeatureError(
-                "%s is not supported, only trigger type SOFTWARE" % ttype
-            )
-        if tmode is not microscope.TriggerMode.ONCE:
-            raise microscope.UnsupportedFeatureError(
-                "%s is not supported, only trigger mode ONCE" % tmode
-            )
-
     def _do_trigger(self) -> None:
         _logger.info(
             "Trigger received; self._acquiring is %s.", self._acquiring
@@ -463,7 +446,10 @@ class TestLaser(TestLightSource):
     pass
 
 
-class TestDeformableMirror(microscope.abc.DeformableMirror):
+class TestDeformableMirror(
+    microscope._utils.OnlyTriggersOnceOnSoftwareMixin,
+    microscope.abc.DeformableMirror,
+):
     def __init__(self, n_actuators, **kwargs):
         super().__init__(**kwargs)
         self._n_actuators = n_actuators
@@ -477,26 +463,6 @@ class TestDeformableMirror(microscope.abc.DeformableMirror):
 
     def _do_apply_pattern(self, pattern):
         self._current_pattern = pattern
-
-    @property
-    def trigger_type(self) -> microscope.TriggerType:
-        return microscope.TriggerType.SOFTWARE
-
-    @property
-    def trigger_mode(self) -> microscope.TriggerMode:
-        return microscope.TriggerMode.ONCE
-
-    def set_trigger(
-        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
-    ) -> None:
-        if ttype is not microscope.TriggerType.SOFTWARE:
-            raise microscope.UnsupportedFeatureError(
-                "the only trigger type supported is software"
-            )
-        if tmode is not microscope.TriggerMode.ONCE:
-            raise microscope.UnsupportedFeatureError(
-                "the only trigger mode supported is 'once'"
-            )
 
     def get_current_pattern(self):
         """Method for debug purposes only.

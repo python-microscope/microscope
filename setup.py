@@ -15,6 +15,7 @@ import unittest.mock
 import setuptools
 import setuptools.command.sdist
 
+
 project_name = "microscope"
 project_version = "0.5.0+dev"
 
