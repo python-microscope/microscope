@@ -71,6 +71,10 @@ Version 0.6.0 (upcoming)
 * The `AxisLimits, `Binning`, `ROI`, `TriggerMode`, and `TriggerType`
   classes are now available on the `microscope` module.
 
+* New `microscope.testsuite.simulated_setup` module which simulates a
+  simpler microscope setup (camera, filterwheel, and stages) given an
+  image file.
+
 
 Version 0.5.0 (2020/03/10)
 --------------------------
