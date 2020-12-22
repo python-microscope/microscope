@@ -146,13 +146,8 @@ def simulated_setup_from_image(
             "z": microscope.AxisLimits(-50, 50),
         }
     )
-    stage.initialize()
-
     filterwheel = TestFilterWheel(positions=image.shape[2])
-    filterwheel.initialize()
-
     camera = StageAwareCamera(image, stage, filterwheel)
-    camera.initialize()
 
     return {
         "camera": camera,

@@ -1360,6 +1360,7 @@ class AndorAtmcd(
         # The following parameters will be populated after hardware init.
         self._roi = None
         self._binning = None
+        self.initialize()
 
     def _bind(self, fn):
         """Binds unbound SDK functions to this camera."""

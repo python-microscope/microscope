@@ -231,9 +231,6 @@ class _SpectraIIILightChannel(
         # operations.
         self._max_intensity = float(self._conn.get_max_intensity())
 
-    def initialize(self) -> None:
-        pass
-
     def _do_shutdown(self) -> None:
         # There is a shutdown command but this actually powers off the
         # device which is not what LightSource.shutdown() is meant to

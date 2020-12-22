@@ -1414,6 +1414,8 @@ class PVCamera(
             (2, 100),
         )
 
+        self.initialize()
+
     @property
     def _region(self):
         """Return a rgn_type for current roi and binning settings."""

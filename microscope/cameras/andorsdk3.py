@@ -333,6 +333,8 @@ class AndorSDK3(
         self._buffers_valid = False
         self._exposure_callback = None
 
+        self.initialize()
+
     @property
     def _acquiring(self):
         return self._camera_acquiring.get_value()

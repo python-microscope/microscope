@@ -291,9 +291,14 @@ class Device(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    @abc.abstractmethod
-    def initialize(self):
-        """Initialize the device."""
+    def initialize(self) -> None:
+        """Initialize the device.
+
+        If devices have this method (not required, and many don't),
+        then they should call it as part of the initialisation, i.e.,
+        they should call it on their `__init__` method.
+
+        """
         pass
 
     def shutdown(self) -> None:
@@ -1097,9 +1102,6 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         """
         self.trigger()
 
-    def initialize(self) -> None:
-        pass
-
     def _do_trigger(self) -> None:
         """Convenience fallback.
 
@@ -1272,19 +1274,13 @@ class Controller(Device, metaclass=abc.ABCMeta):
     Each of the controlled devices requires a name.  The choice of
     name and its documentation is left to the concrete class.
 
-    Initialising and shutting down a controller device must initialise
-    and shutdown the controlled devices.  Concrete classes should be
-    careful to prevent that the shutdown of a controlled device does
-    not shutdown the controller and the other controlled devices.
-    This might require that controlled devices do nothing as part of
-    their shutdown and initialisation.
+    Shutting down a controller device must shutdown the controlled
+    devices.  Concrete classes should be careful to prevent that the
+    shutdown of a controlled device does not shutdown the controller
+    and the other controlled devices.  This might require that
+    controlled devices do nothing as part of their shutdown.
 
     """
-
-    def initialize(self) -> None:
-        super().initialize()
-        for d in self.devices.values():
-            d.initialize()
 
     @property
     @abc.abstractmethod
@@ -1345,7 +1341,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
     .. code-block:: python
 
         stage = SomeStageDevice()
-        stage.initialize()
         stage.enable() # may trigger a stage move
 
         # move operations

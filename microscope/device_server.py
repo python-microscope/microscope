@@ -96,7 +96,6 @@ def device(
 
         def construct_devices() -> typing.Dict[str, Device]:
             camera = Camera(some, arguments)
-            camera.initialize()
             # ... any other configuration that might be wanted
             return {'RedCamera': camera}
 
@@ -292,12 +291,9 @@ class DeviceServer(multiprocessing.Process):
         if not cls_is_type:
             self._devices = cls(**self._device_def["conf"])
         else:
-            # This is just the device class, we need to initialize the
-            # device after constructing it.
-            device = cls(**self._device_def["conf"])
             while not self.exit_event.is_set():
                 try:
-                    device.initialize()
+                    device = cls(**self._device_def["conf"])
                 except Exception as e:
                     _logger.info(
                         "Failed to start device. Retrying in 5s.", exc_info=e

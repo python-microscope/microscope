@@ -64,6 +64,8 @@ class CoboltLaser(
 
         self._max_power_mw = float(self.send(b"gmlp?"))
 
+        self.initialize()
+
     def send(self, command):
         """Send command and retrieve response."""
         success = False

@@ -174,9 +174,6 @@ class DeviceWithPort(microscope.abc.Device):
     def _do_shutdown(self):
         pass
 
-    def initialize(self):
-        pass
-
 
 class TestClashingArguments(BaseTestServeDevices):
     """Device server and device constructor arguments do not clash"""

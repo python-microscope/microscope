@@ -333,9 +333,6 @@ class _ZaberStage(microscope.abc.Stage):
             for i in range(1, self._dev_conn.get_number_axes() + 1)
         }
 
-    def initialize(self) -> None:
-        super().initialize()
-
     def _do_shutdown(self) -> None:
         pass
 
@@ -398,9 +395,6 @@ class _ZaberFilterWheel(microscope.abc.FilterWheel):
         if not self._dev_conn.been_homed():
             self._dev_conn.home()
 
-    def initialize(self) -> None:
-        super().initialize()
-
     def _do_shutdown(self) -> None:
         pass
 
@@ -453,9 +447,6 @@ class _ZaberLED(
                 values=tuple(),
                 readonly=True,
             )
-
-    def initialize(self) -> None:
-        pass
 
     def _do_shutdown(self) -> None:
         pass
@@ -557,7 +548,6 @@ class ZaberDaisyChain(microscope.abc.Controller):
                                 {2: ZaberDeviceType.STAGE,
                                  3: ZaberDeviceType.LED_CONTROLLER,
                                  4: ZaberDeviceType.FILTER_WHEEL})
-        zaber.initialize()
 
         # Device names are strings, not int.
         filterwheel = zaber.devices['4']

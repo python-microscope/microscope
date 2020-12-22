@@ -255,9 +255,6 @@ class TopticaiBeam(
         # (1) alone and control power via the normal channel (2).
         self._max_power = self._conn.show_max_power()
 
-    def initialize(self) -> None:
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 

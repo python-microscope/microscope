@@ -123,9 +123,6 @@ class DeepstarLaser(
     def _do_shutdown(self) -> None:
         self.disable()
 
-    def initialize(self):
-        pass
-
     # Turn the laser OFF.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _do_disable(self):

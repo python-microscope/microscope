@@ -63,9 +63,6 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
             write_through=True,
         )  # write out immediately
 
-    def initialize(self):
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 

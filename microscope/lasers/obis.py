@@ -69,6 +69,8 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         _logger.info("Max intensity in watts: [%s]", response.decode())
         self._max_power_mw = float(response) * 1000.0
 
+        self.initialize()
+
     def _write(self, command):
         """Send a command."""
         response = self.connection.write(command + b"\r\n")

@@ -204,6 +204,8 @@ class XimeaCamera(microscope.abc.Camera):
             trg_source_names,
         )
 
+        self.initialize()
+
     def _fetch_data(self) -> typing.Optional[np.ndarray]:
         if not self._acquiring:
             return None

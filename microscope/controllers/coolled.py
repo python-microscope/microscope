@@ -149,9 +149,6 @@ class _CoolLEDChannel(
                 name,
             )
 
-    def initialize(self) -> None:
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 

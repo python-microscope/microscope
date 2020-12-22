@@ -240,6 +240,3 @@ class _ProScanIIIFilterWheel(microscope.abc.FilterWheel):
 
     def _do_shutdown(self) -> None:
         pass
-
-    def initialize(self) -> None:
-        super().initialize()

@@ -1086,9 +1086,6 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
                 raise microscope.LibraryLoadError(e) from e
         self._reconnect_thread = None
 
-    def initialize(self):
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 

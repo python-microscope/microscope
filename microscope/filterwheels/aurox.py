@@ -282,6 +282,3 @@ class Clarity(microscope.devices.FilterWheelBase):
 
     def _do_shutdown(self) -> None:
         pass
-
-    def initialize(self):
-        pass

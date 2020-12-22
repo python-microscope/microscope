@@ -43,17 +43,6 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
-def must_be_initialized(f):
-    @wraps(f)
-    def wrapper(self, *args, **kwargs):
-        if hasattr(self, "_initialized") and self._initialized:
-            return f(self, *args, **kwargs)
-        else:
-            raise microscope.DisabledDeviceError("Device not initialized.")
-
-    return wrapper
-
-
 class CamEnum(IntEnum):
     A = 1
     B = 2
@@ -273,13 +262,11 @@ class TestCamera(
         """Purge buffers on both camera and PC."""
         _logger.info("Purging buffers.")
 
-    @must_be_initialized
     def _create_buffers(self):
         """Create buffers and store values needed to remove padding later."""
         self._purge_buffers()
         _logger.info("Creating buffers.")
 
-    @must_be_initialized
     def _fetch_data(self):
         if self._acquiring and self._triggered > 0:
             if random.randint(0, 100) < self._error_percent:
@@ -306,18 +293,9 @@ class TestCamera(
         if self._acquiring:
             self._acquiring = False
 
-    def initialize(self):
-        """Initialise the camera.
-
-        Open the connection, connect properties and populate settings dict.
-        """
-        _logger.info("Initializing.")
-        self._initialized = True
-
     def _do_disable(self):
         self.abort()
 
-    @must_be_initialized
     def _do_enable(self):
         _logger.info("Preparing for acquisition.")
         if self._acquiring:
@@ -344,7 +322,6 @@ class TestCamera(
         # deprecated, use trigger_type and trigger_mode properties
         return microscope.abc.TRIGGER_SOFT
 
-    @must_be_initialized
     def soft_trigger(self):
         # deprecated, use self.trigger()
         self.trigger()
@@ -397,9 +374,6 @@ class TestFilterWheel(microscope.abc.FilterWheel):
         _logger.info("Setting position to %s", position)
         self._position = position
 
-    def initialize(self):
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 
@@ -421,9 +395,6 @@ class TestLightSource(
         return self._emission
 
     def _do_shutdown(self) -> None:
-        pass
-
-    def initialize(self):
         pass
 
     def _do_disable(self):
@@ -483,9 +454,6 @@ class DummySLM(microscope.abc.Device):
         self.sequence_params = []
         self.sequence_index = 0
 
-    def initialize(self):
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 
@@ -525,9 +493,6 @@ class DummyDSP(microscope.abc.Device):
         self._ana = [0, 0, 0, 0]
         self._client = None
         self._actions = []
-
-    def initialize(self):
-        pass
 
     def _do_shutdown(self) -> None:
         pass
@@ -655,9 +620,6 @@ class TestStage(microscope.abc.Stage):
         super().__init__(**kwargs)
         self._axes = {name: TestStageAxis(lim) for name, lim in limits.items()}
 
-    def initialize(self) -> None:
-        pass
-
     def _do_shutdown(self) -> None:
         pass
 
@@ -689,8 +651,10 @@ class TestFloatingDevice(
         super().__init__(**kwargs)
         self._initialized = False
         self._uid = uid
+        self.initialize()
 
     def initialize(self) -> None:
+        super().initialize()
         self._initialized = True
 
     def get_id(self) -> str:

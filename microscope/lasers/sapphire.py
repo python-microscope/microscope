@@ -80,6 +80,8 @@ class SapphireLaser(
         self._max_power_mw = float(self.send(b"?maxlp"))
         self._min_power = float(self.send(b"?minlp")) / self._max_power_mw
 
+        self.initialize()
+
     def _write(self, command):
         count = super()._write(command)
         # This device always writes backs something.  If echo is on,
