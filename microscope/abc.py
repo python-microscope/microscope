@@ -933,10 +933,6 @@ class Camera(TriggerTargetMixin, DataDevice):
         """
         pass
 
-    def get_meta_data(self):
-        """Return metadata."""
-        pass
-
 
 class SerialDeviceMixin(metaclass=abc.ABCMeta):
     """Mixin for devices that are controlled via serial.
