@@ -33,7 +33,6 @@ import serial
 import microscope
 import microscope._utils
 import microscope.abc
-from microscope.controllers.lumencor import _SyncSerial
 
 
 _logger = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ _logger = logging.getLogger(__name__)
 class _CoolLEDConnection:
     """Connection to the CoolLED controller, wraps base commands."""
 
-    def __init__(self, serial: _SyncSerial) -> None:
+    def __init__(self, serial: microscope._utils.SharedSerial) -> None:
         self._serial = serial
 
         # When we connect for the first time, we will get back a
@@ -222,7 +221,8 @@ class CoolLED(microscope.abc.Controller):
             rtscts=False,
             dsrdtr=False,
         )
-        connection = _CoolLEDConnection(_SyncSerial(serial_conn))
+        shared_serial = microscope._utils.SharedSerial(serial_conn)
+        connection = _CoolLEDConnection(shared_serial)
         for name in connection.get_channels():
             self._channels[name] = _CoolLEDChannel(connection, name)
 

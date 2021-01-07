@@ -115,6 +115,8 @@ class _ZaberConnection:
     This class is just the wrap to :class:`serial.Serial`.  The class
     exposing the Zaber commands interface is
     :class:`_ZaberDeviceConnection`.
+
+    .. todo: replace with microscope._utils.SharedSerial
     """
 
     def __init__(self, port: str, baudrate: int, timeout: float) -> None:

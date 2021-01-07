@@ -29,7 +29,6 @@ We only need access to other such devices.
    (not legacy).  This can be changed via the device web interface.
 """
 
-import threading
 import typing
 
 import serial
@@ -37,31 +36,6 @@ import serial
 import microscope
 import microscope._utils
 import microscope.abc
-
-
-# TODO: move this into its own module to be used by others.
-class _SyncSerial:
-    """Wraps a `Serial` instance with a lock for synchronization."""
-
-    def __init__(self, serial: serial.Serial) -> None:
-        self._serial = serial
-        self._lock = threading.RLock()
-
-    @property
-    def lock(self) -> threading.RLock:
-        return self._lock
-
-    def readline(self) -> bytes:
-        with self._lock:
-            return self._serial.readline()
-
-    def readlines(self, hint: int = -1) -> typing.List[bytes]:
-        with self._lock:
-            return self._serial.readlines(hint)
-
-    def write(self, data: bytes) -> int:
-        with self._lock:
-            return self._serial.write(data)
 
 
 class _SpectraIIIConnection:
@@ -72,7 +46,7 @@ class _SpectraIIIConnection:
     engines with little work though, if only we got access to them.
     """
 
-    def __init__(self, serial: _SyncSerial) -> None:
+    def __init__(self, serial: microscope._utils.SharedSerial) -> None:
         self._serial = serial
         # We use command() and readline() instead of get_command() in
         # case this is not a Lumencor and won't even give a standard
@@ -200,7 +174,8 @@ class SpectraIIILightEngine(microscope.abc.Controller):
             rtscts=False,
             dsrdtr=False,
         )
-        connection = _SpectraIIIConnection(_SyncSerial(serial_conn))
+        shared_serial = microscope._utils.SharedSerial(serial_conn)
+        connection = _SpectraIIIConnection(shared_serial)
 
         for index, name in connection.get_channel_map():
             assert (

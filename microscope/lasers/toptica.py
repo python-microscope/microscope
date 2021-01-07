@@ -19,7 +19,6 @@
 
 import logging
 import re
-import threading
 import typing
 
 import serial
@@ -30,34 +29,6 @@ import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
-
-
-class _SharedSerial:
-    def __init__(self, serial: serial.Serial) -> None:
-        self._serial = serial
-        self._lock = threading.RLock()
-
-    @property
-    def lock(self) -> threading.RLock:
-        return self._lock
-
-    def readline(self) -> bytes:
-        with self._lock:
-            return self._serial.readline()
-
-    def read_until(
-        self, terminator: bytes = b"\n", size: typing.Optional[int] = None
-    ) -> bytes:
-        with self._lock:
-            return self._serial.read_until(terminator=terminator, size=size)
-
-    def write(self, data: bytes) -> int:
-        with self._lock:
-            return self._serial.write(data)
-
-    def readlines(self, hint: int = -1) -> bytes:
-        with self._lock:
-            return self._serial.readlines(hint)
 
 
 def _get_table_value(table: bytes, key: bytes) -> bytes:
@@ -107,7 +78,7 @@ class _iBeamConnection:
             rtscts=False,
             dsrdtr=False,
         )
-        self._serial = _SharedSerial(serial_conn)
+        self._serial = microscope._utils.SharedSerial(serial_conn)
 
         # We don't know what is the current verbosity state and so we
         # don't know yet what we should be reading back.  So blindly

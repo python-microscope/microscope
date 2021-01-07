@@ -17,6 +17,11 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+import threading
+import typing
+
+import serial
+
 import microscope
 import microscope.abc
 
@@ -84,3 +89,33 @@ class OnlyTriggersBulbOnSoftwareMixin(microscope.abc.TriggerTargetMixin):
         raise microscope.IncompatibleStateError(
             "trigger does not make sense in trigger mode bulb, only enable"
         )
+
+
+class SharedSerial:
+    """Wraps a `Serial` instance with a lock for synchronization."""
+
+    def __init__(self, serial: serial.Serial) -> None:
+        self._serial = serial
+        self._lock = threading.RLock()
+
+    @property
+    def lock(self) -> threading.RLock:
+        return self._lock
+
+    def readline(self) -> bytes:
+        with self._lock:
+            return self._serial.readline()
+
+    def readlines(self, hint: int = -1) -> typing.List[bytes]:
+        with self._lock:
+            return self._serial.readlines(hint)
+
+    def read_until(
+        self, terminator: bytes = b"\n", size: typing.Optional[int] = None
+    ) -> bytes:
+        with self._lock:
+            return self._serial.read_until(terminator=terminator, size=size)
+
+    def write(self, data: bytes) -> int:
+        with self._lock:
+            return self._serial.write(data)
