@@ -43,6 +43,14 @@ Version 0.6.0 (upcoming)
     * New `position` and `n_positions` properties added to replace
       `get_position`, `set_position`, and `get_num_positions` methods.
 
+  * Laser:
+
+    * This has been renamed `LightSource` since it was being used for
+      non-laser light sources.  The name remains for backwards
+      compatibility.  Similarly, all modules in ``microscope.lasers``
+      were moved to ``microscope.lights`` and previous names remain
+      for backwards compatibility.
+
   * LightSource:
 
     * Now implement the `TriggerTargetMixin` interface so the trigger
