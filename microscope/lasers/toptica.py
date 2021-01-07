@@ -222,10 +222,12 @@ class _iBeamConnection:
         # query the current limits (mA) but how do we go from there to
         # the power limits (mW)?
         table = self.command(b"show satellite")
-        key = _get_table_value(table, b"Pmax")
-        if not key.endswith(b" mW"):
-            raise microscope.DeviceError("failed to parse power from %s" % key)
-        return float(key[:-3])
+        value = _get_table_value(table, key=b"Pmax")
+        if not value.endswith(b" mW"):
+            raise microscope.DeviceError(
+                "failed to parse power from %s" % value
+            )
+        return float(value[:-3])
 
 
 class TopticaiBeam(
