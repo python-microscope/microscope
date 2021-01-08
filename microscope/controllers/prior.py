@@ -61,8 +61,8 @@ class _ProScanIIIConnection:
         self._lock = threading.RLock()
 
         with self._lock:
-            # We do not use the general get_description() because if
-            # this is not a ProScan device it would never reach the
+            # We do not use the general get_description() here because
+            # if this is not a ProScan device it would never reach the
             # '\rEND\r' that signals the end of the description.
             self.command(b"?")
             answer = self.readline()
@@ -117,7 +117,7 @@ class _ProScanIIIConnection:
         # Once a movement command is issued the application should
         # wait until the end of move R response is received before
         # sending any further commands.
-        # TODO: this times 10 is a bit arbitrary.
+        # TODO: this times 10 for timeout is a bit arbitrary.
         with self.changed_timeout(10 * self._serial.timeout):
             self._command_and_validate(command, b"R\r")
 
@@ -202,9 +202,9 @@ class ProScanIII(microscope.abc.Controller):
        The Prior ProScanIII can control up to three filter wheels.
        However, a filter position may have a different number
        dependening on which connector it is.  For example, using an 8
-       position filter wheel, what is position 1 on the filter 1 and 2
-       connectors, is position 4 when on the A axis (filter 3)
-       connector.
+       position filter wheel, what is position 1 on the "filter 1" and
+       "filter 2" connectors, is position 4 when on the "A axis" (or
+       "filter 3") connector.
 
     """
 
