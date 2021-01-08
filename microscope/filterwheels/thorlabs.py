@@ -76,7 +76,7 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
 
     def _do_set_position(self, new_position: int) -> None:
         # Thorlabs positions start at 1, hence the +1
-        self._send_command("pos=%d" % new_position + 1)
+        self._send_command("pos=%d" % (new_position + 1))
 
     def _do_get_position(self):
         # Thorlabs positions start at 1, hence the -1
