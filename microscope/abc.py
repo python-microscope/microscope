@@ -362,7 +362,9 @@ class Device(metaclass=abc.ABCMeta):
         :param set_func: a function to set the value
         :param values: a description of allowed values dependent on dtype,
                        or function that returns a description
-        :param readonly: an optional flag to indicate a read-only setting.
+        :param readonly: an optional flag to indicate a read-only
+            setting (a setting may be readonly temporarily, so it's
+            not enough to just check if `set_func` is None).
 
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
@@ -372,6 +374,7 @@ class Device(metaclass=abc.ABCMeta):
         device attributes, but Pyro does not support dot notation to access
         the functions we need (e.g. Device.some_setting.set ), so I'd have to
         write access functions, anyway.
+
         """
         if dtype not in DTYPES:
             raise ValueError("Unsupported dtype.")
