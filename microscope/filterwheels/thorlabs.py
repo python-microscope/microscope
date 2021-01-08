@@ -18,9 +18,11 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import io
+import warnings
 
 import serial
 
+import microscope
 import microscope.abc
 
 
@@ -37,7 +39,6 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         :param baud: baud rate
         :param timeout: serial timeout
         """
-        super().__init__(**kwargs)
         self.eol = "\r"
         rawSerial = serial.Serial(
             port=com,
@@ -62,6 +63,8 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
             line_buffering=True,  # flush on write
             write_through=True,
         )  # write out immediately
+        position_count = int(self._send_command("pcount?"))
+        super().__init__(positions=position_count, **kwargs)
 
     def _do_shutdown(self) -> None:
         pass
@@ -95,16 +98,43 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         return result
 
 
-# TODO: we should be able to read the model and number of positions
-# from the device itself, we shouldn't need a separate class for each
-# model.
 class ThorlabsFW102C(ThorlabsFilterWheel):
-    # Thorlabs 6-position filterwheel.
+    """Deprecated, use ThorlabsFilterWheel.
+
+    This class is from when ThorlabsFilterWheel did not automatically
+    found its own number of positions and there was a separate class
+    for each thorlabs filterwheel model.
+    """
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, positions=6, **kwargs)
+        warnings.warn(
+            "Use ThorlabsFilterWheel instead of ThorlabsFW102C",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+        if self.n_positions != 6:
+            raise microscope.InitialiseError(
+                "Does not look like a FW102C, it has %d positions instead of 6"
+            )
 
 
 class ThorlabsFW212C(ThorlabsFilterWheel):
-    # Thorlabs 12-position filterwheel.
+    """Deprecated, use ThorlabsFilterWheel.
+
+    This class is from when ThorlabsFilterWheel did not automatically
+    found its own number of positions and there was a separate class
+    for each thorlabs filterwheel model.
+    """
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, positions=12, **kwargs)
+        warnings.warn(
+            "Use ThorlabsFilterWheel instead of ThorlabsFW212C",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+        if self.n_positions != 12:
+            raise microscope.InitialiseError(
+                "Does not look like a FW212C, it has %d positions instead of 12"
+            )

@@ -67,6 +67,10 @@ Version 0.6.0 (upcoming)
     * Positions were using base 1.  This has been fixed and now uses
       base 0.
 
+    * Instead of using the individual `ThorlabsFW102C` and
+      `ThorlabsFW212C`, use the base `ThorlabsFilterWheel` which will
+      works for both models.
+
 * New program `microscope-gui` to display simple GUIs given a Pyro URI
   for a microscope device.
 
