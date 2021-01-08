@@ -60,6 +60,13 @@ Version 0.6.0 (upcoming)
 
     * New `trigger` method for software triggers.
 
+* Device specific changes:
+
+  * Thorlabs filterwheels:
+
+    * Positions were using base 1.  This has been fixed and now uses
+      base 0.
+
 * New program `microscope-gui` to display simple GUIs given a Pyro URI
   for a microscope device.
 

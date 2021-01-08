@@ -67,10 +67,12 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         pass
 
     def _do_set_position(self, new_position: int) -> None:
-        self._send_command("pos=%d" % new_position)
+        # Thorlabs positions start at 1, hence the +1
+        self._send_command("pos=%d" % new_position + 1)
 
     def _do_get_position(self):
-        return int(self._send_command("pos?"))
+        # Thorlabs positions start at 1, hence the -1
+        return int(self._send_command("pos?")) - 1
 
     def _readline(self):
         """A custom _readline to overcome limitations of the serial implementation."""
