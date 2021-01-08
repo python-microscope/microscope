@@ -30,7 +30,6 @@ import random
 import time
 import typing
 from enum import IntEnum
-from functools import wraps
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
