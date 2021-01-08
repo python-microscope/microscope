@@ -19,6 +19,7 @@
 
 import io
 import warnings
+import threading
 
 import serial
 
@@ -61,8 +62,12 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
             rawSerial,
             newline=None,
             line_buffering=True,  # flush on write
-            write_through=True,
-        )  # write out immediately
+            write_through=True,  # write out immediately
+        )
+        # A lock for the connection.  We should probably be using
+        # SharedSerial (maybe change it to SharedIO, and have it
+        # accept any IOBase implementation).
+        self._lock = threading.RLock()
         position_count = int(self._send_command("pcount?"))
         super().__init__(positions=position_count, **kwargs)
 
@@ -78,23 +83,25 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
         return int(self._send_command("pos?")) - 1
 
     def _readline(self):
-        """A custom _readline to overcome limitations of the serial implementation."""
+        """Custom _readline to overcome limitations of the serial implementation."""
         result = [None]
-        while result[-1] not in ("\n", ""):
-            result.append(self.connection.read())
+        with self._lock:
+            while result[-1] not in ("\n", ""):
+                result.append(self.connection.read())
         return "".join(result[1:])
 
     def _send_command(self, command):
         """Send a command and return any result."""
         result = None
-        self.connection.write(command + self.eol)
-        response = "dummy"
-        while response not in [command, ""]:
-            # Read until we receive the command echo.
-            response = self._readline().strip("> \n\r")
-        if command.endswith("?"):
-            # Last response was the command. Next is result.
-            result = self._readline().strip()
+        with self._lock:
+            self.connection.write(command + self.eol)
+            response = "dummy"
+            while response not in [command, ""]:
+                # Read until we receive the command echo.
+                response = self._readline().strip("> \n\r")
+            if command.endswith("?"):
+                # Last response was the command. Next is result.
+                result = self._readline().strip()
         return result
 
 
