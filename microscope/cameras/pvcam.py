@@ -17,6 +17,9 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
+## The implementation of dllFunc is based on the implementation in
+## PYME, hence copyright to David Baddeley.
+
 """pvcam library wrapper.
 
 This module exposes pvcam C library functions in python.
