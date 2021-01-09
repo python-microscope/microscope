@@ -106,7 +106,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         return result
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def enable(self):
+    def _do_enable(self):
         """Turn the laser ON. Return True if we succeeded, False otherwise."""
         _logger.info("Turning laser ON.")
         # Exiting Sleep Mode.
@@ -149,7 +149,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         self._flush_handshake()
 
     @microscope.abc.SerialDeviceMixin.lock_comms
-    def disable(self):
+    def _do_disable(self):
         """Turn the laser OFF. Return True if we succeeded, False otherwise."""
         _logger.info("Turning laser OFF.")
         # Turning LASER OFF
