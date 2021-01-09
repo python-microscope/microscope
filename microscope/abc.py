@@ -895,7 +895,7 @@ class Camera(TriggerTargetMixin, DataDevice):
         binning = self._get_binning()
         if self._transform[2]:
             # 90 degree rotation
-            binning = (binning[1], binning[0])
+            binning = microscope.Binning(binning[1], binning[0])
         return binning
 
     @abc.abstractmethod
