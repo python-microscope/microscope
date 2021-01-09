@@ -179,8 +179,8 @@ setuptools.setup(
     extras_require={"GUI": ["PySide2"],},
     entry_points={
         "console_scripts": [
-            "device-server = microscope.device_server:__main__",
-            "deviceserver = microscope.device_server:__main__",
+            "device-server = microscope.device_server:_setuptools_entry_point",
+            "deviceserver = microscope.device_server:_setuptools_entry_point",
             "microscope-gui = microscope.gui:_setuptools_entry_point [GUI]",
         ]
     },

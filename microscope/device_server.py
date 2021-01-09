@@ -23,8 +23,18 @@
 This module provides a server to make microscope control objects available
 over Pyro. When called from the command line, this module will serve devices
 defined in a specified config file.
+
+This module can be called as a program to serve devices over Pyro,
+like so::
+
+    python -m microscope.device_server CONFIG-FILEPATH
+
+where ``CONFIG-FILEPATH`` is the path for a python file that defines a
+``DEVICES = [device(...), ...]``
+
 """
 
+import argparse
 import importlib.machinery
 import importlib.util
 import logging
@@ -505,22 +515,16 @@ def serve_devices(devices, exit_event=None):
     return
 
 
-def __main__():
-    """Serve devices via Pyro.
-
-    To run in the terminal, use::
-
-        deviceserver CONFIG
-
-    ``CONFIG`` is a ``.py`` file that exports ``DEVICES = [device(...), ...]``
-    """
-
-    if len(sys.argv) == 1:
-        print("\nToo few arguments.\n", file=sys.stderr)
-        print(__main__.__doc__, file=sys.stderr)
-        sys.exit(1)
-
-    __console__()
+def _parse_cmd_line_args(args: typing.Sequence[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="device-server")
+    parser.add_argument(
+        "config_fpath",
+        action="store",
+        type=str,
+        metavar="CONFIG-FILEPATH",
+        help="Path to the configuration file",
+    )
+    return parser.parse_args(args)
 
 
 def _load_source(filepath):
@@ -541,8 +545,9 @@ def validate_devices(configfile):
     return devices
 
 
-def __console__():
-    """Serve devices from a console process."""
+def main(argv: typing.Sequence[str]) -> int:
+    args = _parse_cmd_line_args(argv[1:])
+
     root_logger = logging.getLogger()
     if __debug__:
         root_logger.setLevel(logging.DEBUG)
@@ -555,21 +560,30 @@ def __console__():
 
     root_logger.addFilter(Filter())
 
-    if len(sys.argv) < 2:
-        _logger.critical("No config file specified. Exiting.")
-        devices = []
-    else:
-        try:
-            devices = validate_devices(sys.argv[1])
-        except Exception as e:
-            _logger.critical(e)
-            devices = []
-
-    if not devices:
-        sys.exit(1)
+    devices = validate_devices(args.config_fpath)
 
     serve_devices(devices)
 
+    return 0
+
+
+def _setuptools_entry_point() -> int:
+    # The setuptools entry point must be a function, we can't simply
+    # name this module even if this module does work as a script.  We
+    # also do not want to set the default of main() to sys.argv
+    # because when the documentation is generated (with Sphinx's
+    # autodoc extension), then sys.argv gets replaced with the
+    # sys.argv value at the time docs were generated (see
+    # https://stackoverflow.com/a/12087750 )
+    return main(sys.argv)
+
+
+def __main__() -> None:
+    # Kept for backwards compatibility.  It keeps the setuptools
+    # scripts from older editable mode installations.  Will be safe to
+    # remove soon.
+    _setuptools_entry_point()
+
 
 if __name__ == "__main__":
-    __main__()
+    sys.exit(main(sys.argv))
