@@ -430,7 +430,6 @@ class _ZaberLED(
             lambda: self._dev_conn.get_lamp_temperature(self._channel),
             None,
             values=tuple(),
-            readonly=True,
         )
 
         for our_name, their_name in [
@@ -442,12 +441,7 @@ class _ZaberLED(
             )
             value = float(reply.response)
             self.add_setting(
-                our_name,
-                "float",
-                lambda x=value: x,
-                None,
-                values=tuple(),
-                readonly=True,
+                our_name, "float", lambda x=value: x, None, values=tuple(),
             )
 
     def _do_shutdown(self) -> None:

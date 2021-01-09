@@ -1503,9 +1503,7 @@ class AndorAtmcd(
             setter = self._bind(SetMCPGain)
             vrange = self._bind(GetMCPGainRange)
         if getter or setter:
-            self.add_setting(
-                name, "int", getter, setter, vrange, setter is None
-            )
+            self.add_setting(name, "int", getter, setter, vrange)
         # Temperature
         name = "TemperatureSetPoint"
         getter, setter, vrange = None, None, None
@@ -1514,13 +1512,13 @@ class AndorAtmcd(
         if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
             vrange = self._bind(GetTemperatureRange)
         if setter:
-            self.add_setting(name, "int", None, setter, vrange, setter is None)
+            self.add_setting(name, "int", None, setter, vrange)
         # Set a conservative default temperature set-point.
         self.set_setting(name, -20)
         # Fan control
         name = "Temperature"
         self.add_setting(
-            name, "int", self._get_sensor_temperature, None, (None, None), True
+            name, "int", self._get_sensor_temperature, None, (None, None)
         )
         name = "Fan mode"
         self.add_setting(

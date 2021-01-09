@@ -70,7 +70,13 @@ class _Setting:
     # rather than instantiate settings directly; most already use add_setting
     # for this.
     def __init__(
-        self, name, dtype, get_func, set_func=None, values=None, readonly=False
+        self,
+        name,
+        dtype,
+        get_func,
+        set_func=None,
+        values=None,
+        readonly: typing.Optional[typing.Callable[[], bool]] = None,
     ):
         """Create a setting.
 
@@ -80,7 +86,7 @@ class _Setting:
         :param set_func: a function to set the value
         :param values: a description of allowed values dependent on dtype,
                        or function that returns a description
-        :param readonly: an optional flag to indicate a read-only setting.
+        :param readonly: an optional function to indicate a read-only setting.
 
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
@@ -101,7 +107,6 @@ class _Setting:
         self.dtype = dtype
         self._get = get_func
         self._values = values
-        self._readonly = readonly
         self._last_written = None
         if self._get is not None:
             self._set = set_func
@@ -112,6 +117,19 @@ class _Setting:
                 set_func(value)
 
             self._set = w
+
+        if readonly is None:
+            if self._set is None:
+                self._readonly = lambda: True
+            else:
+                self._readonly = lambda: False
+        else:
+            if self._set is None:
+                raise ValueError(
+                    "`readonly` is not `None` but `set_func` is `None`"
+                )
+            else:
+                self._readonly = readonly
 
     def describe(self):
         return {
@@ -131,8 +149,8 @@ class _Setting:
         else:
             return value
 
-    def readonly(self):
-        return _call_if_callable(self._readonly)
+    def readonly(self) -> bool:
+        return self._readonly()
 
     def set(self, value):
         """Set a setting."""
@@ -352,7 +370,13 @@ class Device(metaclass=abc.ABCMeta):
         _logger.info("... ... ... ... shut down completed.")
 
     def add_setting(
-        self, name, dtype, get_func, set_func, values, readonly=False
+        self,
+        name,
+        dtype,
+        get_func,
+        set_func,
+        values,
+        readonly: typing.Optional[typing.Callable[[], bool]] = None,
     ):
         """Add a setting definition.
 
@@ -362,9 +386,11 @@ class Device(metaclass=abc.ABCMeta):
         :param set_func: a function to set the value
         :param values: a description of allowed values dependent on dtype,
                        or function that returns a description
-        :param readonly: an optional flag to indicate a read-only
+        :param readonly: an optional functin to indicate a read-only
             setting (a setting may be readonly temporarily, so it's
-            not enough to just check if `set_func` is None).
+            not enough to just check if `set_func` is None).  If set
+            to `None` (default), it is always `True` or `False`,
+            depending on whether `set_func` is set to `None`.
 
         A client needs some way of knowing a setting name and data type,
         retrieving the current value and, if settable, a way to retrieve
@@ -456,7 +482,7 @@ class Device(metaclass=abc.ABCMeta):
                 results[key] = NotImplemented
                 update_keys.remove(key)
                 continue
-            if _call_if_callable(self._settings[key].readonly):
+            if self._settings[key].readonly():
                 continue
             self._settings[key].set(incoming[key])
         # Read back values in second loop.

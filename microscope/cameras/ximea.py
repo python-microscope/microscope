@@ -312,7 +312,6 @@ class XimeaCamera(microscope.abc.Camera):
                     get_temp_method,
                     None,
                     values=tuple(),
-                    readonly=True,
                 )
 
     def _do_disable(self):

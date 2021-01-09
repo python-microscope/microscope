@@ -89,7 +89,6 @@ class StageAwareCamera(TestCamera):
             lambda pxsz: setattr(self, "_pixel_size", pxsz),
             # technically should be: (nextafter(0.0, inf), nextafter(inf, 0.0))
             values=(0.0, float("inf")),
-            readonly=False,
         )
 
     def _fetch_data(self) -> typing.Optional[np.ndarray]:
