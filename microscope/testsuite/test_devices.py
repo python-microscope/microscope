@@ -353,11 +353,11 @@ class TestCoherentSapphireLaser(
     unittest.TestCase, LightSourceTests, SerialDeviceTests
 ):
     def setUp(self):
-        from microscope.lasers.sapphire import SapphireLaser
+        from microscope.lights.sapphire import SapphireLaser
         from microscope.testsuite.mock_devices import CoherentSapphireLaserMock
 
         with unittest.mock.patch(
-            "microscope.lasers.sapphire.serial.Serial",
+            "microscope.lights.sapphire.serial.Serial",
             new=CoherentSapphireLaserMock,
         ):
             self.device = SapphireLaser("/dev/null")
@@ -368,11 +368,11 @@ class TestCoherentSapphireLaser(
 
 class TestCoboltLaser(unittest.TestCase, LightSourceTests, SerialDeviceTests):
     def setUp(self):
-        from microscope.lasers.cobolt import CoboltLaser
+        from microscope.lights.cobolt import CoboltLaser
         from microscope.testsuite.mock_devices import CoboltLaserMock
 
         with unittest.mock.patch(
-            "microscope.lasers.cobolt.serial.Serial", new=CoboltLaserMock
+            "microscope.lights.cobolt.serial.Serial", new=CoboltLaserMock
         ):
             self.device = CoboltLaser("/dev/null")
         self.device.initialize()
@@ -384,11 +384,11 @@ class TestOmicronDeepstarLaser(
     unittest.TestCase, LightSourceTests, SerialDeviceTests
 ):
     def setUp(self):
-        from microscope.lasers.deepstar import DeepstarLaser
+        from microscope.lights.deepstar import DeepstarLaser
         from microscope.testsuite.mock_devices import OmicronDeepstarLaserMock
 
         with unittest.mock.patch(
-            "microscope.lasers.deepstar.serial.Serial",
+            "microscope.lights.deepstar.serial.Serial",
             new=OmicronDeepstarLaserMock,
         ):
             self.device = DeepstarLaser("/dev/null")
