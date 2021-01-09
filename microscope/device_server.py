@@ -519,10 +519,6 @@ def __main__():
 
         deviceserver CONFIG
 
-    To configure and run as a Windows service use::
-
-        deviceserver [install,remove,update,start,stop,restart,status] CONFIG
-
     ``CONFIG`` is a ``.py`` file that exports ``DEVICES = [device(...), ...]``
     """
 
@@ -531,18 +527,7 @@ def __main__():
         print(__main__.__doc__, file=sys.stderr)
         sys.exit(1)
 
-    if sys.argv[1].lower() in [
-        "install",
-        "update",
-        "start",
-        "stop",
-        "restart",
-        "remove",
-        "status",
-    ]:
-        __winservice__()
-    else:
-        __console__()
+    __console__()
 
 
 def _load_source(filepath):
@@ -591,13 +576,6 @@ def __console__():
         sys.exit(1)
 
     serve_devices(devices)
-
-
-def __winservice__():
-    """Configure and control a Windows service to serve devices."""
-    from microscope.win32 import handle_command_line
-
-    handle_command_line()
 
 
 if __name__ == "__main__":
