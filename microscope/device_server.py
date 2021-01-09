@@ -273,11 +273,6 @@ class DeviceServer(multiprocessing.Process):
         for handler in list(root_logger.handlers):
             root_logger.removeHandler(handler)
 
-        if __debug__:
-            root_logger.setLevel(logging.DEBUG)
-        else:
-            root_logger.setLevel(logging.INFO)
-
         # Later, we'll log to one file per server, with a filename
         # based on a unique identifier for the device. Some devices
         # don't have UIDs available until after initialization, so
@@ -368,8 +363,6 @@ def serve_devices(devices, exit_event=None):
     log_handler = RotatingFileHandler("__MAIN__.log")
     log_handler.setFormatter(_create_log_formatter("device-server"))
     root_logger.addHandler(log_handler)
-
-    root_logger.setLevel(logging.DEBUG)
 
     # An event to trigger clean termination of subprocesses. This is the
     # only way to ensure devices are shut down properly when processes
