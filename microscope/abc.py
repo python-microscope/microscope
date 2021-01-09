@@ -65,10 +65,40 @@ def _call_if_callable(f):
 
 
 class _Setting:
-    # TODO: refactor into subclasses to avoid if isinstance .. elif .. else.
-    # Settings classes should be private: devices should use a factory method
-    # rather than instantiate settings directly; most already use add_setting
-    # for this.
+    """Create a setting.
+
+    Args:
+        name: the setting's name.
+        dtype: a data type from `"int"`, `"float"`, `"bool"`,
+            `"enum"`, or `"str"` (see `DTYPES`).
+        get_func: a function to get the current value.
+        set_func: a function to set the value.
+        values: a description of allowed values dependent on dtype, or
+            function that returns a description.
+        readonly: an optional function to indicate if the setting is
+            readonly.  A setting may be readonly temporarily, so this
+            function will return `True` or `False` to indicate its
+            current state.  If set to no `None` (default), then its
+            value will be dependent on the value of `set_func`.
+
+    A client needs some way of knowing a setting name and data type,
+    retrieving the current value and, if settable, a way to retrieve
+    allowable values, and set the value.
+
+    Setters and getters accept or return:
+
+    * the setting value for int, float, bool and str;
+    * the setting index into a list, dict or Enum type for enum.
+
+    .. todo::
+
+        refactor into subclasses to avoid if isinstance .. elif
+        .. else.  Settings classes should be private: devices should
+        use a factory method rather than instantiate settings
+        directly; most already use add_setting for this.
+
+    """
+
     def __init__(
         self,
         name: str,
@@ -78,24 +108,6 @@ class _Setting:
         values: typing.Any = None,
         readonly: typing.Optional[typing.Callable[[], bool]] = None,
     ) -> None:
-        """Create a setting.
-
-        :param name: the setting's name
-        :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
-        :param get_func: a function to get the current value
-        :param set_func: a function to set the value
-        :param values: a description of allowed values dependent on dtype,
-                       or function that returns a description
-        :param readonly: an optional function to indicate a read-only setting.
-
-        A client needs some way of knowing a setting name and data type,
-        retrieving the current value and, if settable, a way to retrieve
-        allowable values, and set the value.
-
-        Setters and getters accept or return:
-            the setting value for int, float, bool and str;
-            the setting index into a list, dict or Enum type for enum.
-        """
         self.name = name
         if dtype not in DTYPES:
             raise ValueError("Unsupported dtype.")
@@ -180,22 +192,25 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
-    selection of a specific device: instead, a device must be
-    initialized and then queried to determine its ID. This class is
-    a mixin which identifies a subclass as floating, and enforces
-    the implementation of a 'get_id' method.
+    selection of a specific device.  Instead, a device must be
+    initialized and then queried to determine its ID. This class is a
+    mixin which identifies a subclass as floating, and enforces the
+    implementation of a `get_id` method.
+
     """
 
     @abc.abstractmethod
     def get_id(self) -> str:
-        """Return a unique hardware identifier, such as a serial number."""
+        """Return a unique hardware identifier such as a serial number."""
         pass
 
 
 class TriggerTargetMixin(metaclass=abc.ABCMeta):
     """Mixin for a device that may be the target of a hardware trigger.
 
-    TODO: need some way to retrieve the supported trigger types and
+    .. todo::
+
+        Need some way to retrieve the supported trigger types and
         modes.  This is not just two lists, one for types and another
         for modes, because some modes can only be used with certain
         types and vice-versa.
@@ -256,8 +271,9 @@ class Device(metaclass=abc.ABCMeta):
     """A base device class. All devices should subclass this class.
 
     Args:
-        index (int): the index of the device on a shared library.
-            This argument is added by the deviceserver.
+        index: the index of the device on a shared library.  This
+            argument is added by the deviceserver.
+
     """
 
     def __init__(self, index: typing.Optional[int] = None) -> None:
@@ -274,8 +290,9 @@ class Device(metaclass=abc.ABCMeta):
     def _do_disable(self):
         """Do any device-specific work on disable.
 
-        Subclasses should override this method, rather than modify
-        disable(self).
+        Subclasses should override this method rather than modify
+        `disable`.
+
         """
         return True
 
@@ -285,10 +302,11 @@ class Device(metaclass=abc.ABCMeta):
         self.enabled = False
 
     def _do_enable(self):
-        """Do any device-specific work on enable.
+        """Do any device specific work on enable.
 
         Subclasses should override this method, rather than modify
-        enable(self).
+        `enable`.
+
         """
         return True
 
@@ -306,6 +324,7 @@ class Device(metaclass=abc.ABCMeta):
         Users should be calling :meth:`shutdown` and not this method.
         Concrete implementations should implement this method instead
         of `shutdown`.
+
         """
         raise NotImplementedError()
 
@@ -380,26 +399,29 @@ class Device(metaclass=abc.ABCMeta):
     ) -> None:
         """Add a setting definition.
 
-        :param name: the setting's name
-        :param dtype: a data type from ('int', 'float', 'bool', 'enum', 'str')
-        :param get_func: a function to get the current value
-        :param set_func: a function to set the value
-        :param values: a description of allowed values dependent on dtype,
-                       or function that returns a description
-        :param readonly: an optional functin to indicate a read-only
-            setting (a setting may be readonly temporarily, so it's
-            not enough to just check if `set_func` is None).  If set
-            to `None` (default), it is always `True` or `False`,
-            depending on whether `set_func` is set to `None`.
+        Args:
+            name: the setting's name.
+            dtype: a data type from `"int"`, `"float"`, `"bool"`,
+                `"enum"`, or `"str"` (see `DTYPES`).
+            get_func: a function to get the current value.
+            set_func: a function to set the value.
+            values: a description of allowed values dependent on
+                dtype, or function that returns a description.
+            readonly: an optional function to indicate if the setting
+                is readonly.  A setting may be readonly temporarily,
+                so this function will return `True` or `False` to
+                indicate its current state.  If set to no `None`
+                (default), then its value will be dependent on the
+                value of `set_func`.
 
-        A client needs some way of knowing a setting name and data type,
-        retrieving the current value and, if settable, a way to retrieve
-        allowable values, and set the value.
-        We store this info in a dictionary. I considered having a Setting
-        class with getter, setter, etc., and adding Setting instances as
-        device attributes, but Pyro does not support dot notation to access
-        the functions we need (e.g. Device.some_setting.set ), so I'd have to
-        write access functions, anyway.
+        A client needs some way of knowing a setting name and data
+        type, retrieving the current value and, if settable, a way to
+        retrieve allowable values, and set the value.  We store this
+        info in a dictionary.  I considered having a `Setting1 class
+        with getter, setter, etc., and adding `Setting` instances as
+        device attributes, but Pyro does not support dot notation to
+        access the functions we need (e.g. `Device.some_setting.set`),
+        so I'd have to write access functions, anyway.
 
         """
         if dtype not in DTYPES:
@@ -514,12 +536,15 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     receiveClient(uri).
 
     Derived classed should implement::
-      * abort(self)                ---  required
-      * _fetch_data(self)          ---  required
-      * _process_data(self, data)  ---  optional
 
-    Derived classes may override __init__, enable and disable, but must
-    ensure to call this class's implementations as indicated in the docstrings.
+    * :meth:`abort` (required)
+    * :meth:`_fetch_data` (required)
+    * :meth:`_process_data` (optional)
+
+    Derived classes may override `__init__`, `enable` and `disable`,
+    but must ensure to call this class's implementations as indicated
+    in the docstrings.
+
     """
 
     def __init__(self, buffer_length: int = 0, **kwargs) -> None:
@@ -559,8 +584,9 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def enable(self) -> None:
         """Enable the data capture device.
 
-        Ensures that a data handling threads are running.
-        Implement device-specific code in _do_enable .
+        Ensures that a data handling threads are running.  Implement
+        device specific code in `_do_enable`.
+
         """
         _logger.debug("Enabling ...")
         # Call device-specific code.
@@ -595,7 +621,9 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def disable(self) -> None:
         """Disable the data capture device.
 
-        Implement device-specific code in _do_disable ."""
+        Implement device-specific code in `_do_disable`.
+
+        """
         self.enabled = False
         if self._fetch_thread:
             if self._fetch_thread.is_alive():
@@ -607,12 +635,13 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def _fetch_data(self) -> None:
         """Poll for data and return it, with minimal processing.
 
-        If the device uses buffering in software, this function should copy
-        the data from the buffer, release or recycle the buffer, then return
-        a reference to the copy. Otherwise, if the SDK returns a data object
-        that will not be written to again, this function can just return a
-        reference to the object.
-        If no data is available, return None.
+        If the device uses buffering in software, this function should
+        copy the data from the buffer, release or recycle the buffer,
+        then return a reference to the copy.  Otherwise, if the SDK
+        returns a data object that will not be written to again, this
+        function can just return a reference to the object.  If no
+        data is available, return `None`.
+
         """
         return None
 
@@ -722,6 +751,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         the current client is finished.  Avoiding this will require
         rework here to identify the caller and remove only that caller
         from the client stack.
+
         """
         if new_client is not None:
             if isinstance(new_client, (str, Pyro4.core.URI)):
@@ -749,8 +779,10 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def grab_next_data(self, soft_trigger: bool = True):
         """Returns results from next trigger via a direct call.
 
-        :param soft_trigger: calls trigger() if True, waits for
-                               hardware trigger if False.
+        Args:
+            soft_trigger: calls :meth:`trigger` if `True`, waits for
+                hardware trigger if `False`.
+
         """
         if not self.enabled:
             raise microscope.DisabledDeviceError("Camera not enabled.")
@@ -775,10 +807,11 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
 
 
 class Camera(TriggerTargetMixin, DataDevice):
-    """Adds functionality to DataDevice to support cameras.
+    """Adds functionality to :class:`DataDevice` to support cameras.
 
-    Defines the interface for cameras.
-    Applies a transform to acquired data in the processing step.
+    Defines the interface for cameras.  Applies a transform to
+    acquired data in the processing step.
+
     """
 
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
@@ -858,27 +891,24 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     @abc.abstractmethod
     def set_exposure_time(self, value: float) -> None:
-        """Set the exposure time on the device.
-
-        :param value: exposure time in seconds
-        """
+        """Set the exposure time on the device in seconds."""
         pass
 
     def get_exposure_time(self) -> float:
-        """Return the current exposure time, in seconds."""
+        """Return the current exposure time in seconds."""
         pass
 
     def get_cycle_time(self) -> float:
-        """Return the cycle time, in seconds."""
+        """Return the cycle time in seconds."""
         pass
 
     @abc.abstractmethod
     def _get_sensor_shape(self) -> typing.Tuple[int, int]:
-        """Return a tuple of (width, height) indicating shape in pixels."""
+        """Return a tuple of `(width, height)` indicating shape in pixels."""
         pass
 
     def get_sensor_shape(self) -> typing.Tuple[int, int]:
-        """Return a tuple of (width, height), corrected for transform."""
+        """Return a tuple of `(width, height)` corrected for transform."""
         shape = self._get_sensor_shape()
         if self._transform[2]:
             # 90 degree rotation
@@ -887,11 +917,11 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     @abc.abstractmethod
     def _get_binning(self) -> microscope.Binning:
-        """Return a tuple of (horizontal, vertical)"""
+        """Return the current binning."""
         pass
 
     def get_binning(self) -> microscope.Binning:
-        """Return a tuple of (horizontal, vertical) corrected for transform."""
+        """Return the current binning corrected for transform."""
         binning = self._get_binning()
         if self._transform[2]:
             # 90 degree rotation
@@ -900,11 +930,11 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     @abc.abstractmethod
     def _set_binning(self, binning: microscope.Binning):
-        """Set binning along both axes. Return True if successful."""
+        """Set binning along both axes.  Return `True` if successful."""
         pass
 
     def set_binning(self, binning: microscope.Binning) -> None:
-        """Set binning along both axes. Return True if successful."""
+        """Set binning along both axes.  Return `True` if successful."""
         h_bin, v_bin = binning
         if self._transform[2]:
             # 90 degree rotation
@@ -919,10 +949,7 @@ class Camera(TriggerTargetMixin, DataDevice):
         raise NotImplementedError()
 
     def get_roi(self) -> microscope.ROI:
-        """Return ROI as a rectangle (left, top, width, height).
-
-        Chosen this rectangle format as it completely defines the ROI without
-        reference to the sensor geometry."""
+        """Return current ROI. """
         roi = self._get_roi()
         if self._transform[2]:
             # 90 degree rotation
@@ -931,13 +958,14 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     @abc.abstractmethod
     def _set_roi(self, roi: microscope.ROI):
-        """Set the ROI on the hardware, return True if successful."""
+        """Set the ROI on the hardware.  Return `True` if successful."""
         return False
 
     def set_roi(self, roi: microscope.ROI) -> None:
         """Set the ROI according to the provided rectangle.
-        ROI is a tuple (left, right, width, height)
-        Return True if ROI set correctly, False otherwise."""
+
+        Return True if ROI set correctly, False otherwise.
+        """
         maxw, maxh = self.get_sensor_shape()
         binning = self.get_binning()
         left, top, width, height = roi
@@ -1009,6 +1037,7 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         and subsequent readline.  It also locks the comms channel so
         that a function must finish all its communications before
         another can run.
+
         """
 
         @functools.wraps(func)
@@ -1037,18 +1066,16 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     set the mirror to an initial state and not a specific shape, then
     destroying and re-constructing the DeformableMirror object
     provides the most obvious solution.
+
+    The private properties `_patterns` and `_pattern_idx` are
+    initialized to `None` to support the queueing of patterns and
+    software triggering.
+
     """
 
     @abc.abstractmethod
     def __init__(self, **kwargs) -> None:
-        """Constructor.
-
-        The private properties `_patterns` and `_pattern_idx` are
-        initialized to `None` to support the queueing of patterns and
-        software triggering.
-        """
         super().__init__(**kwargs)
-
         self._patterns: typing.Optional[numpy.ndarray] = None
         self._pattern_idx: int = -1
 
@@ -1065,6 +1092,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         to handle values outside their defined range (most will simply
         clip them), then it's the responsability of the subclass to do
         the clipping before sending the values.
+
         """
         if patterns.ndim > 2:
             raise ValueError(
@@ -1088,7 +1116,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
 
         Raises:
             microscope.IncompatibleStateError: if device trigger type is
-            not set to software.
+                not set to software.
 
         """
         if self.trigger_type is not microscope.TriggerType.SOFTWARE:
@@ -1105,15 +1133,14 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     def queue_patterns(self, patterns: numpy.ndarray) -> None:
         """Send values to the mirror.
 
-        Parameters
-        ----------
-        patterns : numpy.array
-            An KxN elements array of values in the range [0 1], where N
-            equals the number of actuators, and K is the number of
-            patterns.
+        Args:
+            patterns: An `KxN` elements array of values in the range
+                `[0 1]`, where `N` equals the number of actuators, and
+                `K` is the number of patterns.
 
         A convenience fallback is provided for software triggering is
         provided.
+
         """
         self._validate_patterns(patterns)
         self._patterns = patterns
@@ -1123,6 +1150,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         """Apply the next pattern in the queue.
 
         DEPRECATED: this is the same as calling :meth:`trigger`.
+
         """
         self.trigger()
 
@@ -1137,8 +1165,11 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         Devices that support queuing patterns, should override this
         method.
 
-        .. todo:: instead of a convenience fallback, we should have a
-           separate mixin for this.
+        .. todo::
+
+            Instead of a convenience fallback, we should have a
+            separate mixin for this.
+
         """
         if self._patterns is None:
             raise microscope.DeviceError("no pattern queued to apply")
@@ -1194,6 +1225,7 @@ class LightSource(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
 
         This function will be called by the `power` attribute setter
         after clipping the argument to the [0, 1] interval.
+
         """
         raise NotImplementedError()
 
@@ -1227,6 +1259,7 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
 
     Args:
         positions: total number of filter positions on this device.
+
     """
 
     def __init__(self, positions: int, **kwargs) -> None:
@@ -1416,7 +1449,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
     Some stages need to find a reference position, home, before being
     able to be moved.  If required, this happens automatically during
     :func:`enable`.
-
     """
 
     @property
@@ -1434,7 +1466,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
         given a stage with optional axes the missing axes will *not*
         appear on the returned dict with a value of `None` or some
         other special `StageAxis` instance.
-
         """
         raise NotImplementedError()
 
@@ -1450,7 +1481,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
         The units of the position is the same as the ones being
         currently used for the absolute move (:func:`move_to`)
         operations.
-
         """
         return {name: axis.position for name, axis in self.axes.items()}
 

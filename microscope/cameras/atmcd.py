@@ -21,17 +21,17 @@
 ## The implementation of dllFunc is based on the implementation in
 ## PYME, hence copyright to David Baddeley.
 
-"""atmcd
+"""This module wraps Andor's SDK for (EM)CCD cameras.
 
-   This module wraps Andor's SDK for (EM)CCD cameras.
+Example deviceserver entry::
 
-   Example deviceserver entry:
     from microscope.cameras import atmcd
     DEVICES = [ ...
-               device(atmcd.AndorAtmcd, '127.0.0.1', 8000, uid='VSC-01234')
-              ]
+        device(atmcd.AndorAtmcd, "127.0.0.1", 8000, uid="VSC-01234")
+    ]
 
-   Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
+Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0.
+
 """
 
 import ctypes

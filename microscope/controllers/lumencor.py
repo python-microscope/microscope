@@ -141,9 +141,9 @@ class SpectraIIILightEngine(microscope.abc.Controller):
     """Spectra III Light Engine.
 
     Args:
-        port (str): port name (Windows) or path to port (everything
-            else) to connect to.  For example, `/dev/ttyS1`, `COM1`,
-            or `/dev/cuad1`.
+        port: port name (Windows) or path to port (everything else) to
+            connect to.  For example, `/dev/ttyS1`, `COM1`, or
+            `/dev/cuad1`.
 
     The names used on the devices dict are the ones provided by the
     Spectra engine.  These are the colour names in capitals such as
@@ -156,6 +156,7 @@ class SpectraIIILightEngine(microscope.abc.Controller):
     are already on, or by turning on additional sources, commands will
     be rejected. To clear the error condition, reduce intensities of
     sources that are on or turn off additional sources.
+
     """
 
     def __init__(self, port: str, **kwargs) -> None:

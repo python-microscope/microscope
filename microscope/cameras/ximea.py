@@ -168,9 +168,10 @@ class XimeaCamera(microscope.abc.Camera):
     """Ximea cameras
 
     Args:
-        serial_number (str): the serial number of the camera to
-            connect to.  It can be set to `None` if there is only
-            camera on the system.
+        serial_number: the serial number of the camera to connect to.
+            It can be set to `None` if there is only camera on the
+            system.
+
     """
 
     def __init__(

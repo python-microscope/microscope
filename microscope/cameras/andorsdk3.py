@@ -460,7 +460,9 @@ class AndorSDK3(
     def initialize(self):
         """Initialise the camera.
 
-        Open the connection, connect properties and populate settings dict.
+        Open the connection, connect properties and populate settings
+        dict.
+
         """
         try:
             self.handle = SDK3.Open(self._index)

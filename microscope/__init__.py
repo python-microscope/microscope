@@ -143,7 +143,11 @@ class Binning(typing.NamedTuple):
 
 
 class ROI(typing.NamedTuple):
-    """A tuple that defines a region of interest."""
+    """A tuple that defines a region of interest.
+
+    This rectangle format completely defines the ROI without reference
+    to the sensor geometry.
+    """
 
     left: int
     top: int

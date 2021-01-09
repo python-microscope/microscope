@@ -38,6 +38,10 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     The Alpao mirrors support hardware triggers modes
     `TriggerMode.ONCE` and `TriggerMode.START`.  By default, they will
     be set for software triggering, and trigger once.
+
+    Args:
+        serial_number: the serial number of the deformable mirror,
+            something like `"BIL103"`.
     """
 
     _TriggerType_to_asdkTriggerIn = {
@@ -63,9 +67,9 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     def _find_error_str(self) -> str:
         """Get an error string from the Alpao SDK error stack.
 
-        Returns
-        -------
-        A string.  Will be empty if there was no error on the stack.
+        Returns:
+            A string with error message.  An empty string if there was
+            no error on the stack.
         """
         err_msg_buffer_len = 64
         err_msg_buffer = ctypes.create_string_buffer(err_msg_buffer_len)
@@ -90,12 +94,6 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
                 raise exception_cls(msg)
 
     def __init__(self, serial_number: str, **kwargs) -> None:
-        """
-        Parameters
-        ----------
-        serial_number: string
-        The serial number of the deformable mirror, something like "BIL103".
-        """
         super().__init__(**kwargs)
         self._dm = asdk.Init(serial_number.encode())
         if not self._dm:

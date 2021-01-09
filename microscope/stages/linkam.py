@@ -1132,6 +1132,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
     def get_value(self, svt, result=None):
         """Fetch a value from the device.
 
+        Args:
             svt: a StageValueType
             result: an existing Variant to use to return a result, or None.
         """

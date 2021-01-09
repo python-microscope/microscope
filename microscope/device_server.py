@@ -106,6 +106,7 @@ def device(
             device(Camera, '127.0.0.1', 8001,
                    conf={'kwarg1': some, 'kwarg2': arguments})
         ]
+
     """
     if not callable(cls):
         raise TypeError("cls must be a callable")
@@ -127,7 +128,7 @@ def _create_log_formatter(name: str):
     which includes the device server name.
 
     Args:
-        name (str): device name to be used on the log output.
+        name: device name to be used on the log output.
 
     """
     return logging.Formatter(
@@ -145,8 +146,7 @@ class Filter(logging.Filter):
         self.stop_at = self.aggregate_at + 3 * self.repeat_at
 
     def filter(self, record):
-        """Pass, aggregate or suppress consecutive repetitions of a log message.
-        """
+        """Pass, aggregate or suppress consecutive repetitions of a log message."""
         if self.last == record.msg:
             # Repeated message. Increment count.
             self.count += 1
@@ -214,6 +214,18 @@ def _register_device(pyro_daemon, device, obj_id=None) -> None:
 
 
 class DeviceServer(multiprocessing.Process):
+    """Initialise a device and serve at host/port according to its id.
+
+    Args:
+        device_def: definition of the device.
+        id_to_host: host or mapping of device identifiers to hostname.
+        id_to_port: map or mapping of device identifiers to port
+            number.
+        exit_event: a shared event to signal that the process should
+            quit.
+
+    """
+
     def __init__(
         self,
         device_def,
@@ -221,14 +233,6 @@ class DeviceServer(multiprocessing.Process):
         id_to_port: typing.Mapping[str, int],
         exit_event: typing.Optional[multiprocessing.Event] = None,
     ):
-        """Initialise a device and serve at host/port according to its id.
-
-        :param device_def: definition of the device
-        :param id_to_host: host or mapping of device identifiers to hostname
-        :param id_to_port: map or mapping of device identifiers to port number
-        :param exit_event: a shared event to signal that the process
-            should quit.
-        """
         # The device to serve.
         self._device_def = device_def
         self._devices: typing.Dict[str, microscope.abc.Device] = {}
@@ -244,6 +248,7 @@ class DeviceServer(multiprocessing.Process):
         """Create new instance with same settings.
 
         This is useful to restart a device server.
+
         """
         return DeviceServer(
             self._device_def,

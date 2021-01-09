@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+## Copyright (C) 2009 David Baddeley <d.baddeley@auckland.ac.nz>
 ## Copyright (C) 2020 Mick Phillips <mick.phillips@gmail.com>
 ##
 ## This file is part of Microscope.
