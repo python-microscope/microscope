@@ -93,7 +93,7 @@ class StageAwareCamera(TestCamera):
 
     def _fetch_data(self) -> typing.Optional[np.ndarray]:
         if not self._acquiring or self._triggered == 0:
-            return
+            return None
 
         time.sleep(self._exposure_time)
         self._triggered -= 1

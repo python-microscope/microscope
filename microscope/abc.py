@@ -71,13 +71,13 @@ class _Setting:
     # for this.
     def __init__(
         self,
-        name,
-        dtype,
-        get_func,
-        set_func=None,
-        values=None,
+        name: str,
+        dtype: str,
+        get_func: typing.Optional[typing.Callable[[], typing.Any]],
+        set_func: typing.Optional[typing.Callable[[typing.Any], None]] = None,
+        values: typing.Any = None,
         readonly: typing.Optional[typing.Callable[[], bool]] = None,
-    ):
+    ) -> None:
         """Create a setting.
 
         :param name: the setting's name
@@ -152,7 +152,7 @@ class _Setting:
     def readonly(self) -> bool:
         return self._readonly()
 
-    def set(self, value):
+    def set(self, value) -> None:
         """Set a setting."""
         if self._set is None:
             raise NotImplementedError()
@@ -187,7 +187,7 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def get_id(self):
+    def get_id(self) -> str:
         """Return a unique hardware identifier, such as a serial number."""
         pass
 
@@ -260,15 +260,15 @@ class Device(metaclass=abc.ABCMeta):
             This argument is added by the deviceserver.
     """
 
-    def __init__(self, index=None):
+    def __init__(self, index: typing.Optional[int] = None) -> None:
         self.enabled = False
         self._settings: typing.Dict[str, _Setting] = {}
         self._index = index
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.shutdown()
 
-    def get_is_enabled(self):
+    def get_is_enabled(self) -> bool:
         return self.enabled
 
     def _do_disable(self):
@@ -279,7 +279,7 @@ class Device(metaclass=abc.ABCMeta):
         """
         return True
 
-    def disable(self):
+    def disable(self) -> None:
         """Disable the device for a short period for inactivity."""
         self._do_disable()
         self.enabled = False
@@ -292,7 +292,7 @@ class Device(metaclass=abc.ABCMeta):
         """
         return True
 
-    def enable(self):
+    def enable(self) -> None:
         """Enable the device."""
         try:
             self.enabled = self._do_enable()
@@ -377,7 +377,7 @@ class Device(metaclass=abc.ABCMeta):
         set_func,
         values,
         readonly: typing.Optional[typing.Callable[[], bool]] = None,
-    ):
+    ) -> None:
         """Add a setting definition.
 
         :param name: the setting's name
@@ -414,7 +414,7 @@ class Device(metaclass=abc.ABCMeta):
                 name, dtype, get_func, set_func, values, readonly
             )
 
-    def get_setting(self, name):
+    def get_setting(self, name: str):
         """Return the current value of a setting."""
         try:
             return self._settings[name].get()
@@ -435,7 +435,7 @@ class Device(metaclass=abc.ABCMeta):
 
         return {k: catch(v.get) for k, v in self._settings.items()}
 
-    def set_setting(self, name, value):
+    def set_setting(self, name: str, value) -> None:
         """Set a setting."""
         try:
             self._settings[name].set(value)
@@ -443,7 +443,7 @@ class Device(metaclass=abc.ABCMeta):
             _logger.error("in set_setting(%s):", name, exc_info=err)
             raise
 
-    def describe_setting(self, name):
+    def describe_setting(self, name: str):
         """Return ordered setting descriptions as a list of dicts."""
         return self._settings[name].describe()
 
@@ -451,7 +451,7 @@ class Device(metaclass=abc.ABCMeta):
         """Return ordered setting descriptions as a list of dicts."""
         return [(k, v.describe()) for (k, v) in self._settings.items()]
 
-    def update_settings(self, incoming, init=False):
+    def update_settings(self, incoming, init: bool = False):
         """Update settings based on dict of settings and values."""
         if init:
             # Assume nothing about state: set everything.
@@ -522,7 +522,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     ensure to call this class's implementations as indicated in the docstrings.
     """
 
-    def __init__(self, buffer_length=0, **kwargs):
+    def __init__(self, buffer_length: int = 0, **kwargs) -> None:
         """Derived.__init__ must call this at some point."""
         super().__init__(**kwargs)
         # A thread to fetch and dispatch data.
@@ -552,11 +552,11 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     set_setting = keep_acquiring(Device.set_setting)
 
     @abc.abstractmethod
-    def abort(self):
+    def abort(self) -> None:
         """Stop acquisition as soon as possible."""
         self._acquiring = False
 
-    def enable(self):
+    def enable(self) -> None:
         """Enable the data capture device.
 
         Ensures that a data handling threads are running.
@@ -592,7 +592,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 self._dispatch_thread.start()
             _logger.debug("... enabled.")
 
-    def disable(self):
+    def disable(self) -> None:
         """Disable the data capture device.
 
         Implement device-specific code in _do_disable ."""
@@ -604,7 +604,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         super().disable()
 
     @abc.abstractmethod
-    def _fetch_data(self):
+    def _fetch_data(self) -> None:
         """Poll for data and return it, with minimal processing.
 
         If the device uses buffering in software, this function should copy
@@ -644,7 +644,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self._clientStack = list(filter(client.__ne__, self._clientStack))
             self._liveClients = self._liveClients.difference([client])
 
-    def _dispatch_loop(self):
+    def _dispatch_loop(self) -> None:
         """Process data and send results to any client."""
         while True:
             client, data, timestamp = self._dispatch_buffer.get(block=True)
@@ -668,7 +668,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 _logger.error("in _dispatch_loop:", exc_info=err)
             self._dispatch_buffer.task_done()
 
-    def _fetch_loop(self):
+    def _fetch_loop(self) -> None:
         """Poll source for data and put it into dispatch buffer."""
         self._fetch_thread_run = True
 
@@ -703,11 +703,11 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self._clientStack.append(val)
         self._liveClients = set(self._clientStack)
 
-    def _put(self, data, timestamp):
+    def _put(self, data, timestamp) -> None:
         """Put data and timestamp into dispatch buffer with target dispatch client."""
         self._dispatch_buffer.put((self._client, data, timestamp))
 
-    def set_client(self, new_client):
+    def set_client(self, new_client) -> None:
         """Set up a connection to our client.
 
         Clients now sit in a stack so that a single device may send
@@ -737,16 +737,16 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             _logger.info("Current client is %s.", str(self._client))
 
     @keep_acquiring
-    def update_settings(self, settings, init=False):
+    def update_settings(self, settings, init: bool = False) -> None:
         """Update settings, toggling acquisition if necessary."""
         super().update_settings(settings, init)
 
     # noinspection PyPep8Naming
-    def receiveClient(self, client_uri):
+    def receiveClient(self, client_uri: str) -> None:
         """A passthrough for compatibility."""
         self.set_client(client_uri)
 
-    def grab_next_data(self, soft_trigger=True):
+    def grab_next_data(self, soft_trigger: bool = True):
         """Returns results from next trigger via a direct call.
 
         :param soft_trigger: calls trigger() if True, waits for
@@ -767,7 +767,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         return self._new_data
 
     # noinspection PyPep8Naming
-    def receiveData(self, data, timestamp):
+    def receiveData(self, data, timestamp) -> None:
         """Unblocks grab_next_frame so it can return."""
         with self._new_data_condition:
             self._new_data = (data, timestamp)
@@ -783,7 +783,7 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         # A list of readout mode descriptions.
         self._readout_modes = ["default"]
@@ -857,27 +857,27 @@ class Camera(TriggerTargetMixin, DataDevice):
         self.set_transform(self._client_transform)
 
     @abc.abstractmethod
-    def set_exposure_time(self, value):
+    def set_exposure_time(self, value: float) -> None:
         """Set the exposure time on the device.
 
         :param value: exposure time in seconds
         """
         pass
 
-    def get_exposure_time(self):
+    def get_exposure_time(self) -> float:
         """Return the current exposure time, in seconds."""
         pass
 
-    def get_cycle_time(self):
+    def get_cycle_time(self) -> float:
         """Return the cycle time, in seconds."""
         pass
 
     @abc.abstractmethod
-    def _get_sensor_shape(self):
+    def _get_sensor_shape(self) -> typing.Tuple[int, int]:
         """Return a tuple of (width, height) indicating shape in pixels."""
         pass
 
-    def get_sensor_shape(self):
+    def get_sensor_shape(self) -> typing.Tuple[int, int]:
         """Return a tuple of (width, height), corrected for transform."""
         shape = self._get_sensor_shape()
         if self._transform[2]:
@@ -886,11 +886,11 @@ class Camera(TriggerTargetMixin, DataDevice):
         return shape
 
     @abc.abstractmethod
-    def _get_binning(self):
+    def _get_binning(self) -> microscope.Binning:
         """Return a tuple of (horizontal, vertical)"""
         pass
 
-    def get_binning(self):
+    def get_binning(self) -> microscope.Binning:
         """Return a tuple of (horizontal, vertical) corrected for transform."""
         binning = self._get_binning()
         if self._transform[2]:
@@ -899,11 +899,11 @@ class Camera(TriggerTargetMixin, DataDevice):
         return binning
 
     @abc.abstractmethod
-    def _set_binning(self, binning):
+    def _set_binning(self, binning: microscope.Binning):
         """Set binning along both axes. Return True if successful."""
         pass
 
-    def set_binning(self, binning):
+    def set_binning(self, binning: microscope.Binning) -> None:
         """Set binning along both axes. Return True if successful."""
         h_bin, v_bin = binning
         if self._transform[2]:
@@ -914,11 +914,11 @@ class Camera(TriggerTargetMixin, DataDevice):
         return self._set_binning(binning)
 
     @abc.abstractmethod
-    def _get_roi(self):
+    def _get_roi(self) -> microscope.ROI:
         """Return the ROI as it is on hardware."""
         raise NotImplementedError()
 
-    def get_roi(self):
+    def get_roi(self) -> microscope.ROI:
         """Return ROI as a rectangle (left, top, width, height).
 
         Chosen this rectangle format as it completely defines the ROI without
@@ -930,11 +930,11 @@ class Camera(TriggerTargetMixin, DataDevice):
         return roi
 
     @abc.abstractmethod
-    def _set_roi(self, roi):
+    def _set_roi(self, roi: microscope.ROI):
         """Set the ROI on the hardware, return True if successful."""
         return False
 
-    def set_roi(self, roi):
+    def set_roi(self, roi: microscope.ROI) -> None:
         """Set the ROI according to the provided rectangle.
         ROI is a tuple (left, right, width, height)
         Return True if ROI set correctly, False otherwise."""
@@ -985,12 +985,12 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         self.connection = None  # serial.Serial (to be constructed by child)
         self._comms_lock = threading.RLock()
 
-    def _readline(self):
+    def _readline(self) -> bytes:
         """Read a line from connection without leading and trailing whitespace.
         """
         return self.connection.readline().strip()
 
-    def _write(self, command):
+    def _write(self, command: bytes) -> int:
         """Send a command to the device.
 
         This is not a simple passthrough to ``serial.Serial.write``,
@@ -1173,14 +1173,13 @@ class LightSource(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         self._set_point = 0.0
 
     @abc.abstractmethod
-    def get_status(self):
+    def get_status(self) -> typing.List[str]:
         """Query and return the light source status."""
         result = []
-        # ...
         return result
 
     @abc.abstractmethod
-    def get_is_on(self):
+    def get_is_on(self) -> bool:
         """Return True if the light source is currently able to produce light."""
         pass
 
