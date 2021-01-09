@@ -591,7 +591,6 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 self._dispatch_thread.daemon = True
                 self._dispatch_thread.start()
             _logger.debug("... enabled.")
-        return self.enabled
 
     def disable(self):
         """Disable the data capture device.
