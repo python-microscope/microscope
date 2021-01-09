@@ -261,7 +261,7 @@ class Device(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, index=None):
-        self.enabled = None
+        self.enabled = False
         self._settings: typing.Dict[str, _Setting] = {}
         self._index = index
 
