@@ -340,6 +340,73 @@ class FilterWheelWidget(QtWidgets.QWidget):
         self._device.position = self._button_grp.checkedId()
 
 
+class LightSourceWidget(QtWidgets.QWidget):
+    def __init__(
+        self, device: microscope.abc.LightSource, *args, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._device = device
+
+        self._enable_check = QtWidgets.QCheckBox("Enabled", parent=self)
+        self._enable_check.stateChanged.connect(self.updateEnableState)
+
+        self._set_power_box = QtWidgets.QDoubleSpinBox(parent=self)
+        self._set_power_box.setMinimum(0.0)
+        self._set_power_box.setMaximum(1.0)
+        self._set_power_box.setValue(self._device.power)
+        self._set_power_box.setSingleStep(0.01)
+        self._set_power_box.setAlignment(QtCore.Qt.AlignRight)
+        self._set_power_box.valueChanged.connect(
+            lambda x: setattr(self._device, "power", x)
+        )
+
+        self._current_power = QtWidgets.QLineEdit(
+            str(self._device.power), parent=self
+        )
+        self._current_power.setReadOnly(True)
+        self._current_power.setAlignment(QtCore.Qt.AlignRight)
+
+        self._get_power_timer = QtCore.QTimer(self)
+        self._get_power_timer.timeout.connect(self.updateCurrentPower)
+        self._get_power_timer.setInterval(500)  # msec
+
+        self.updateEnableState()
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self._enable_check)
+        power_layout = QtWidgets.QFormLayout()
+        power_layout.addRow("Set power", self._set_power_box)
+        power_layout.addRow("Current power", self._current_power)
+        layout.addLayout(power_layout)
+        self.setLayout(layout)
+
+    def updateEnableState(self) -> None:
+        """Update UI and light source state after enable check box"""
+        if self._enable_check.isChecked():
+            self._device.enable()
+        else:
+            self._device.disable()
+
+        device_is_enabled = self._device.get_is_enabled()
+
+        if self._enable_check.isChecked() != device_is_enabled:
+            self._enable_check.setChecked(device_is_enabled)
+            _logger.error(
+                "failed to %s light",
+                "enable" if self._enable_check.isChecked() else "disable",
+            )
+
+        self._current_power.setEnabled(device_is_enabled)
+        if device_is_enabled:
+            self._get_power_timer.start()
+        else:
+            self._get_power_timer.stop()
+            self._current_power.setText("0.0")
+
+    def updateCurrentPower(self) -> None:
+        self._current_power.setText(str(self._device.power))
+
+
 class StageWidget(QtWidgets.QWidget):
     """Stage widget displaying each of the axis position.
 
@@ -403,8 +470,8 @@ def _guess_device_widget(device) -> QtWidgets.QWidget:
         return ControllerWidget
     elif hasattr(device, "n_positions"):
         return FilterWheelWidget
-    # elif hasattr(device, "power"):
-    #     return LightSourceWidget
+    elif hasattr(device, "power"):
+        return LightSourceWidget
     elif hasattr(device, "n_actuators"):
         return DeformableMirrorWidget
     elif hasattr(device, "get_sensor_shape"):
@@ -426,6 +493,7 @@ def main(argv: typing.Sequence[str]) -> int:
         "DeformableMirror": DeformableMirrorWidget,
         "DeviceSettings": DeviceSettingsWidget,
         "FilterWheel": FilterWheelWidget,
+        "LightSourceWidget": LightSourceWidget,
         "Stage": StageWidget,
     }
 
