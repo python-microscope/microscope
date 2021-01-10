@@ -518,6 +518,14 @@ def serve_devices(devices, exit_event=None):
 def _parse_cmd_line_args(args: typing.Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="device-server")
     parser.add_argument(
+        "--logging-level",
+        action="store",
+        type=str,
+        default="info",
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="Set logging level",
+    )
+    parser.add_argument(
         "config_fpath",
         action="store",
         type=str,
@@ -549,10 +557,7 @@ def main(argv: typing.Sequence[str]) -> int:
     args = _parse_cmd_line_args(argv[1:])
 
     root_logger = logging.getLogger()
-    if __debug__:
-        root_logger.setLevel(logging.DEBUG)
-    else:
-        root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(args.logging_level.upper())
 
     stderr_handler = StreamHandler(sys.stderr)
     stderr_handler.setFormatter(_create_log_formatter("device-server"))
