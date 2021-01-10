@@ -72,6 +72,62 @@ class DeviceSettingsWidget(QtWidgets.QWidget):
         self.setLayout(layout)
 
 
+class ControllerWidget(QtWidgets.QWidget):
+    """Show devices in a controller.
+
+    This widget shows a series of buttons with the name of the
+    multiple devices in a controller.  Toggling those buttons displays
+    or hides a widget for that controlled device.
+
+    """
+
+    def __init__(
+        self, device: microscope.abc.Controller, *args, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._device = device
+
+        self._button2window: typing.Dict[
+            QtWidgets.QPushButton, typing.Optional[QtWidgets.QMainWindow]
+        ] = {}
+        self._button2name: typing.Dict[QtWidgets.QPushButton, str] = {}
+
+        self._button_grp = QtWidgets.QButtonGroup(self)
+        self._button_grp.setExclusive(False)
+        for name in self._device.devices.keys():
+            button = QtWidgets.QPushButton(name, parent=self)
+            button.setCheckable(True)
+            self._button_grp.addButton(button)
+            self._button2name[button] = name
+            self._button2window[button] = None
+        self._button_grp.buttonToggled.connect(self.toggleDeviceWidget)
+
+        layout = QtWidgets.QVBoxLayout()
+        for button in self._button_grp.buttons():
+            layout.addWidget(button)
+        self.setLayout(layout)
+
+    def toggleDeviceWidget(
+        self, button: QtWidgets.QAbstractButton, checked: bool
+    ) -> None:
+        if checked:
+            device = self._device.devices[self._button2name[button]]
+            widget_cls = _guess_device_widget(device)
+            widget = widget_cls(device)
+            window = MainWindow(widget, parent=self)
+            self._button2window[button] = window
+            window.show()
+        else:
+            window = self._button2window[button]
+            if window is None:
+                _logger.error(
+                    "unchecking subdevice button but there's no window"
+                )
+            else:
+                window.close()
+                self._button2window[button] = None
+
+
 class _DataQueue(queue.Queue):
     @Pyro4.expose
     def put(self, *args, **kwargs):
@@ -324,8 +380,8 @@ class StageWidget(QtWidgets.QWidget):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, widget: QtWidgets.QWidget) -> None:
-        super().__init__()
+    def __init__(self, widget: QtWidgets.QWidget, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
@@ -340,6 +396,25 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcut.activated.connect(slot)
 
 
+def _guess_device_widget(device) -> QtWidgets.QWidget:
+    if hasattr(device, "axes"):
+        return StageWidget
+    elif hasattr(device, "devices"):
+        return ControllerWidget
+    elif hasattr(device, "n_positions"):
+        return FilterWheelWidget
+    # elif hasattr(device, "power"):
+    #     return LightSourceWidget
+    elif hasattr(device, "n_actuators"):
+        return DeformableMirrorWidget
+    elif hasattr(device, "get_sensor_shape"):
+        return CameraWidget
+    elif hasattr(device, "get_all_settings"):
+        return DeviceSettingsWidget
+    else:
+        raise TypeError("device is not a Microscope Device")
+
+
 def main(argv: typing.Sequence[str]) -> int:
     app = QtWidgets.QApplication(argv)
     app.setApplicationName("Microscope GUI")
@@ -347,6 +422,7 @@ def main(argv: typing.Sequence[str]) -> int:
 
     type_to_widget = {
         "Camera": CameraWidget,
+        "Controller": ControllerWidget,
         "DeformableMirror": DeformableMirrorWidget,
         "DeviceSettings": DeviceSettingsWidget,
         "FilterWheel": FilterWheelWidget,
@@ -354,14 +430,23 @@ def main(argv: typing.Sequence[str]) -> int:
     }
 
     parser = argparse.ArgumentParser(prog="microscope-gui")
+
+    # Although we have a function that can guess the device type from
+    # the attributes on the proxy this is still useful.  For example,
+    # to display the device settings instead of the device UI.  Or
+    # maybe we're dealing with a device that implements more than one
+    # interface (earlier iterations of aurox Clarity were both a
+    # camera and a filterwheel).  This option provides a way to force
+    # a specific widget.
     parser.add_argument(
         "type",
         action="store",
         type=str,
         metavar="DEVICE-TYPE",
         choices=type_to_widget.keys(),
-        help="Type of device",
+        help="Type of device/widget to show",
     )
+
     parser.add_argument(
         "uri",
         action="store",
