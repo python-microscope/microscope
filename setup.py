@@ -9,7 +9,6 @@
 ## without any warranty.
 
 import distutils.cmd
-import sys
 import unittest.mock
 
 import setuptools
@@ -165,18 +164,26 @@ class sdist(setuptools.command.sdist.sdist):
 setuptools.setup(
     name=project_name,
     version=project_version,
-    description="An extensible microscope hardware interface.",
+    description="An interface for control of microscope devices.",
     long_description=open("README", "r").read(),
     license="GPL-3.0+",
     # We need an author and an author_email value or PyPI rejects us.
-    # For multiple authors, they tell us to get a mailing list :/
+    # For email address, when there are multiple authors, they tell us
+    # to get a mailing list :/
     author="See homepage for a complete list of contributors",
     author_email=" ",
-    url="https://github.com/MicronOxford/microscope",
+    url="https://www.python-microscope.org",
+    download_url="https://pypi.org/project/microscope/",
+    project_urls={
+        "Documentation": "https://www.python-microscope.org/doc/",
+        "Source": "https://github.com/python-microscope/microscope",
+        "Release notes": "https://www.python-microscope.org/doc/news.html",
+        "Tracker": "https://github.com/python-microscope/microscope",
+    },
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
-    install_requires=["Pillow", "Pyro4", "hidapi", "numpy", "pyserial",],
-    extras_require={"GUI": ["PySide2"],},
+    install_requires=["Pillow", "Pyro4", "hidapi", "numpy", "pyserial"],
+    extras_require={"GUI": ["PySide2"]},
     entry_points={
         "console_scripts": [
             "device-server = microscope.device_server:_setuptools_entry_point",
@@ -202,5 +209,5 @@ setuptools.setup(
             "source_dir": ("setup.py", "doc"),
         },
     },
-    cmdclass={"build_sphinx": BuildDoc, "sdist": sdist,},
+    cmdclass={"build_sphinx": BuildDoc, "sdist": sdist},
 )
