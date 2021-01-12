@@ -18,11 +18,6 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 """CoolLED illumination systems.
-
-This was developed with a CoolLED pE-300 ultra but should work with
-the whole pE-300 series.  It should also work with the pE-4000 and the
-pE expansion box with the exception of loading different sources.
-
 """
 
 import logging
@@ -127,11 +122,15 @@ class _CoolLEDChannelConnection:
         "S (Selected) or X (Unselected)" ""
         return self._get_css()[1:2].decode()
 
+    def set_selected_state(self, state: str) -> None:
+        """X (Unselected) or S (Selected)"""
+        if state not in ["X", "S"]:
+            raise ValueError("state must be X (Unselected) or S (Selected)")
+        css = self._get_css()
+        self._conn.set_css(css[0:1] + state.encode() + css[2:])
 
-class _CoolLEDChannel(
-    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
-    microscope.abc.LightSource,
-):
+
+class _CoolLEDChannel(microscope.abc.LightSource):
     """Individual light devices that compose a CoolLED controller."""
 
     def __init__(
@@ -139,14 +138,24 @@ class _CoolLEDChannel(
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _CoolLEDChannelConnection(connection, name)
-        selected_state = self._conn.get_selected_state()
-        if selected_state != "S":
-            _logger.warning(
-                "CoolLED channel '%s' is not \"selected\".  It"
-                ' will not not emit light until it is "selected"'
-                " on the control pod.",
-                name,
-            )
+        # If a channel is disabled ("unselected"), setting the trigger
+        # type to software ("on") is not recorded and reverts back to
+        # high ("off").  Because of this, we keep track of what
+        # trigger type we want, i.e., should be "on" or "off", and
+        # apply it when the channel is enabled.
+        self._should_be_on = False
+
+        # The channel may be "selected" (enabled) and "off" (trigger
+        # type HIGH).  When we set the trigger type to software,
+        # that's the same as setting it "on" which will make the
+        # channel emit light.  Constructing this channel should not
+        # accidentally mae it emit light so disable it firt.
+        self.disable()
+
+        # Default to software trigger type.
+        self.set_trigger(
+            microscope.TriggerType.SOFTWARE, microscope.TriggerMode.BULB
+        )
 
     def _do_shutdown(self) -> None:
         pass
@@ -155,15 +164,21 @@ class _CoolLEDChannel(
         return []
 
     def enable(self) -> None:
-        self._conn.set_switch_state("N")
+        self._conn.set_selected_state("S")
+        if self._should_be_on:
+            # TriggerType.SOFTWARE
+            self._conn.set_switch_state("N")
+        else:
+            # TriggerType.HIGH
+            self._conn.set_switch_state("F")
 
     def disable(self) -> None:
-        self._conn.set_switch_state("F")
+        self._conn.set_selected_state("X")
 
     def get_is_on(self) -> bool:
-        switch = self._conn.get_switch_state()
-        assert switch in ["N", "F"]
-        return switch == "N"
+        selected = self._conn.get_selected_state()
+        assert selected in ["S", "X"]
+        return selected == "S"
 
     def _do_get_power(self) -> float:
         return self._conn.get_intensity() / 100.0
@@ -171,13 +186,57 @@ class _CoolLEDChannel(
     def _do_set_power(self, power: float) -> None:
         self._conn.set_intensity(int(power * 100.0))
 
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        if self._conn.get_selected_state() == "S":
+            # Channel is "selected" (enabled): get the answer from
+            # switch state ("on" or "off").
+            if self._conn.get_switch_state() == "N":
+                return microscope.TriggerType.SOFTWARE
+            else:
+                return microscope.TriggerType.HIGH
+        else:
+            # Channel is "unselected" (disabled): trigger type will be
+            # whatever we set it to when we enable it.
+            if self._should_be_on:
+                return microscope.TriggerType.SOFTWARE
+            else:
+                return microscope.TriggerType.HIGH
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return microscope.TriggerMode.BULB
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        if tmode is not microscope.TriggerMode.BULB:
+            raise microscope.UnsupportedFeatureError(
+                "the only trigger mode supported is 'bulb'"
+            )
+        if ttype is microscope.TriggerType.SOFTWARE:
+            self._conn.set_switch_state("N")
+            self._should_be_on = True
+        elif ttype is microscope.TriggerType.HIGH:
+            self._conn.set_switch_state("F")
+            self._should_be_on = False
+        else:
+            raise microscope.UnsupportedFeatureError(
+                "trigger type supported must be 'SOFTWARE' or 'HIGH'"
+            )
+
+    def _do_trigger(self) -> None:
+        raise microscope.IncompatibleStateError(
+            "trigger does not make sense in trigger mode bulb, only enable"
+        )
+
 
 class CoolLED(microscope.abc.Controller):
     """CoolLED controller for the individual light devices.
 
     Args:
         port: port name (Windows) or path to port (everything else) to
-            connect to.  For example, `/dev/ttyS1`, `COM1`, or
+            connect to.  For example, `/dev/ttyACM0`, `COM1`, or
             `/dev/cuad1`.
 
     The individual channels are named A to H and depend on the actual
@@ -197,17 +256,43 @@ class CoolLED(microscope.abc.Controller):
        # Turn on the violet channel.
        violet.enable()
 
-    CoolLED controllers are often also used with a control pod.  The
-    control pod can turn on and off individual channels but it can
-    also select/unselect those channels.  If a channel is "unselected"
-    a channel can only be off.  Calling `enable()` on the individual
-    channels will not "select" them, the user should do it himself via
-    the control pod.
+    CoolLED controllers are often used with a control pod which can
+    select/unselect and turn on/off individual channels.  The meaning
+    of these two states are:
+
+    * "selected" and "on": channel is always emitting light.  This is
+      equivalent to being enabled with `SOFTWARE` trigger type.
+
+    * "selected" and "off": channel will emit light in receipt of a
+      TTL signal.  This is equivalent to being enabled with `HIGH`
+      trigger type.
+
+    * "unselected" and "off": channel nevers emit light.  This is
+      equivalent to being disabled.
+
+    * "unselected" and "on": this is not possible.  If an "unselected"
+      channel is turned "on" it reverts back to "off".
+
+    .. note::
+
+       If a channel is set with `TriggerType.SOFTWARE` ("on") it will
+       start emitting light once enabled ("selected").  Once enabled,
+       even though trigger type is set to software and not hardware,
+       if the channel receives a TTL signal it will switch to
+       `TriggerType.HIGH` and continue to report being set to
+       software.  This seems to be an issue with the CoolLED
+       https://github.com/python-microscope/vendor-issues/issues/9
+
+    This was developed with a CoolLED pE-300 ultra but should work
+    with the whole pE-300 series.  It should also work with the
+    pE-4000 and the pE expansion box with the exception of loading
+    different sources.
+
     """
 
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._channels: typing.Mapping[str, microscope.abc.LightSource] = {}
+        self._channels: typing.Dict[str, microscope.abc.LightSource] = {}
 
         # CoolLED manual only has the baudrate, we guessed the rest.
         serial_conn = serial.Serial(
@@ -227,5 +312,5 @@ class CoolLED(microscope.abc.Controller):
             self._channels[name] = _CoolLEDChannel(connection, name)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> typing.Dict[str, microscope.abc.Device]:
         return self._channels
