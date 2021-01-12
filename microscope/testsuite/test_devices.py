@@ -42,6 +42,7 @@ import numpy
 
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
+from microscope import simulators
 
 
 class TestSerialMock(unittest.TestCase):
@@ -335,7 +336,7 @@ class DSPTests(DeviceTests):
 
 class TestDummyLightSource(unittest.TestCase, LightSourceTests):
     def setUp(self):
-        self.device = dummies.TestLightSource()
+        self.device = simulators.SimulatedLightSource()
 
         # TODO: we need to rethink the test so this is not needed.
         self.fake = self.device
@@ -417,7 +418,7 @@ class TestOmicronDeepstarLaser(
 
 class TestDummyCamera(unittest.TestCase, CameraTests):
     def setUp(self):
-        self.device = dummies.TestCamera()
+        self.device = simulators.SimulatedCamera()
 
 
 class TestImageGenerator(unittest.TestCase):
@@ -427,7 +428,7 @@ class TestImageGenerator(unittest.TestCase):
         # directly the _ImageGenerator.
         width = 16
         height = 32
-        generator = dummies._ImageGenerator()
+        generator = simulators._ImageGenerator()
         patterns = list(generator.get_methods())
         for i, pattern in enumerate(patterns):
             with self.subTest(pattern):
@@ -440,9 +441,9 @@ class TestImageGenerator(unittest.TestCase):
 
 class TestDummyController(unittest.TestCase, ControllerTests):
     def setUp(self):
-        self.laser = dummies.TestLightSource()
-        self.filterwheel = dummies.TestFilterWheel(positions=6)
-        self.device = dummies.TestController(
+        self.laser = simulators.SimulatedLightSource()
+        self.filterwheel = simulators.SimulatedFilterWheel(positions=6)
+        self.device = simulators.SimulatedController(
             {"laser": self.laser, "filterwheel": self.filterwheel}
         )
 
@@ -468,23 +469,25 @@ class TestEmptyDummyFilterWheel(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "positions must be a positive number"
         ):
-            dummies.TestFilterWheel(positions=0)
+            simulators.SimulatedFilterWheel(positions=0)
 
 
 class TestOnePositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel(positions=1)
+        self.device = simulators.SimulatedFilterWheel(positions=1)
 
 
 class TestSixPositionFilterWheel(unittest.TestCase, FilterWheelTests):
     def setUp(self):
-        self.device = dummies.TestFilterWheel(positions=6)
+        self.device = simulators.SimulatedFilterWheel(positions=6)
 
 
 class TestDummyDeformableMirror(unittest.TestCase, DeformableMirrorTests):
     def setUp(self):
         self.planned_n_actuators = 86
-        self.device = dummies.TestDeformableMirror(self.planned_n_actuators)
+        self.device = simulators.SimulatedDeformableMirror(
+            self.planned_n_actuators
+        )
         self.fake = self.device
 
 
@@ -508,14 +511,14 @@ class TestBaseDevice(unittest.TestCase):
         name, and the class uses the default instead of an error.  See
         issue #84.
         """
-        dummies.TestLightSource()
+        simulators.SimulatedLightSource()
         # XXX: Device.__del__ calls shutdown().  However, if __init__
         # failed the device is not complete and shutdown() fails
         # because the logger has not been created.  See comments on
         # issue #69.  patch __del__ to workaround this issue.
         with unittest.mock.patch("microscope.devices.Device.__del__"):
             with self.assertRaisesRegex(TypeError, "argument 'power'"):
-                dummies.TestLightSource(power=2)
+                simulators.SimulatedLightSource(power=2)
 
 
 if __name__ == "__main__":

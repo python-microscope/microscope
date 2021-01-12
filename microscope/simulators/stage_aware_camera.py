@@ -31,13 +31,17 @@ import scipy.ndimage
 
 import microscope
 import microscope.abc
-from microscope.testsuite.devices import TestCamera, TestFilterWheel, TestStage
+from microscope.simulators import (
+    SimulatedCamera,
+    SimulatedFilterWheel,
+    SimulatedStage,
+)
 
 
 _logger = logging.getLogger(__name__)
 
 
-class StageAwareCamera(TestCamera):
+class StageAwareCamera(SimulatedCamera):
     """Simulated camera that returns subregions of image based on stage
     position.
 
@@ -79,7 +83,7 @@ class StageAwareCamera(TestCamera):
         # Empty the settings dict, most of them are for testing
         # settings, and the rest is specific to the image generator
         # which we don't need.  We probably should have a simpler
-        # TestCamera that we could subclass.
+        # SimulatedCamera that we could subclass.
         self._settings = {}
 
         self.add_setting(
@@ -138,14 +142,14 @@ def simulated_setup_from_image(
     if len(image.shape) < 3:
         raise ValueError("not an RGB image")
 
-    stage = TestStage(
+    stage = SimulatedStage(
         {
             "x": microscope.AxisLimits(0, image.shape[0]),
             "y": microscope.AxisLimits(0, image.shape[1]),
             "z": microscope.AxisLimits(-50, 50),
         }
     )
-    filterwheel = TestFilterWheel(positions=image.shape[2])
+    filterwheel = SimulatedFilterWheel(positions=image.shape[2])
     camera = StageAwareCamera(image, stage, filterwheel)
 
     return {

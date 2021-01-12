@@ -90,9 +90,14 @@ Version 0.6.0 (upcoming)
 * The `AxisLimits, `Binning`, `ROI`, `TriggerMode`, and `TriggerType`
   classes are now available on the `microscope` module.
 
-* New `microscope.testsuite.simulated_setup` module which simulates a
-  simpler microscope setup (camera, filterwheel, and stages) given an
-  image file.
+* New `microscope.simulators.stage_aware_camera` module which provides
+  the components to simulate a microscope by simulating a camera that
+  returns regions of a larger image based on the coordinates of a
+  simulated stage and the position of a simulated filter wheel.
+
+* The multiple classes that simulate the different device types, i.e.,
+  the `Test*` classes in the `microscope.testsuite.devices` module,
+  were moved to the `microscope.simulators` subpackage.
 
 
 Version 0.5.0 (2020/03/10)
