@@ -3,13 +3,15 @@ requires = ['setuptools']
 
 
 [tool.isort]
+profile = "black"
 line_length = 80
 lines_after_imports = 2
-# compatibility with black style (multi lineoutput 3 is vert-hanging)
-multi_line_output = 3
-# compatibility with black style
+# Despite the profile option being set to "black", there's still some
+# options that are not correcly set in a compatible manner.  The
+# following are for compatibility with black style.
+combine_as_imports = true
 include_trailing_comma = true
-
+multi_line_output = 3  # multi lineoutput 3 is vert-hanging
 
 [tool.black]
 line-length = 80
