@@ -164,7 +164,7 @@ class DeepstarLaser(
         answer = self._readline()
         if not answer.startswith(query):
             raise microscope.DeviceError(
-                'failed to read power ""' % answer.decode()
+                "failed to read power from '%s'" % answer.decode()
             )
 
         level = int(answer[len(query) :], 16)
