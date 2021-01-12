@@ -901,7 +901,9 @@ dllFunc(
     [ctypes.POINTER(smart_stream_type),],
     ["pSmtStruct",],
 )
-dllFunc("pl_create_frame_info_struct", [OUTPUT(FRAME_INFO),], ["pNewFrameInfo"])
+dllFunc(
+    "pl_create_frame_info_struct", [OUTPUT(FRAME_INFO),], ["pNewFrameInfo"]
+)
 dllFunc(
     "pl_release_frame_info_struct",
     [ctypes.POINTER(FRAME_INFO),],
@@ -1000,7 +1002,9 @@ dllFunc(
 dllFunc("pl_exp_unlock_oldest_frame", [int16], ["hcam"])
 dllFunc("pl_exp_stop_cont", [int16, int16], ["hcam", "cam_state"])
 dllFunc("pl_exp_abort", [int16, int16], ["hcam", "cam_state"])
-dllFunc("pl_exp_finish_seq", [int16, ctypes.c_void_p], ["hcam", "pixel_stream"])
+dllFunc(
+    "pl_exp_finish_seq", [int16, ctypes.c_void_p], ["hcam", "pixel_stream"]
+)
 
 
 # Map ATTR_ enums to the return type for that ATTR.
@@ -1133,7 +1137,9 @@ class TriggerMode:
 
 # Trigger mode definitions.
 TRIGGER_MODES = {
-    TRIG_SOFT: TriggerMode("software", TIMED_MODE, microscope.abc.TRIGGER_SOFT),
+    TRIG_SOFT: TriggerMode(
+        "software", TIMED_MODE, microscope.abc.TRIGGER_SOFT
+    ),
     TRIG_TIMED: TriggerMode("timed", TIMED_MODE, -1),
     TRIG_VARIABLE: TriggerMode("variable timed", VARIABLE_TIMED_MODE, -1),
     TRIG_FIRST: TriggerMode(
@@ -1281,7 +1287,9 @@ class PVParam:
     @property
     def count(self):
         """Return count of parameter enum entries."""
-        return int(_get_param(self.cam.handle, self.param_id, ATTR_COUNT).value)
+        return int(
+            _get_param(self.cam.handle, self.param_id, ATTR_COUNT).value
+        )
 
     @property
     def values(self):
@@ -1541,7 +1549,8 @@ class PVCamera(
             self.exposure_time = t_readback * multipliers[t_resolution]
         # Update cycle time. Exposure time in seconds; readout time in microseconds.
         self.cycle_time = (
-            self.exposure_time + 1e-6 * self._params[PARAM_READOUT_TIME].current
+            self.exposure_time
+            + 1e-6 * self._params[PARAM_READOUT_TIME].current
         )
         # Set up exposure time for VARIABLE_TIMED_MODE, as according to documentation.
         # It doesn't seem to work.

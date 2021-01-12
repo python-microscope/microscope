@@ -316,7 +316,9 @@ class DeviceServer(multiprocessing.Process):
         if cls_is_type and issubclass(cls, FloatingDeviceMixin):
             uid = str(list(self._devices.values())[0].get_id())
             if uid not in self._id_to_host or uid not in self._id_to_port:
-                raise Exception("Host or port not found for device %s" % (uid,))
+                raise Exception(
+                    "Host or port not found for device %s" % (uid,)
+                )
             host = self._id_to_host[uid]
             port = self._id_to_port[uid]
         else:

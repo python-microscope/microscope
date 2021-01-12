@@ -64,7 +64,10 @@ class _SpectraIIIConnection:
         # GET, SET (to query or to set).  The second token is the
         # command name.
         assert len(TX_tokens) >= 2, "invalid command with less than two tokens"
-        assert TX_tokens[0] in (b"GET", b"SET"), "invalid command (not SET/GET)"
+        assert TX_tokens[0] in (
+            b"GET",
+            b"SET",
+        ), "invalid command (not SET/GET)"
 
         TX_command = b" ".join(TX_tokens) + b"\n"
         with self._serial.lock:

@@ -268,7 +268,9 @@ dllFunc("AT_SetEnumerated", [AT_H, STRING, c_int])
 dllFunc("AT_SetEnumeratedString", [AT_H, STRING, STRING])
 dllFunc("AT_GetEnumerated", [AT_H, STRING, OUTPUT(c_int)])
 dllFunc("AT_GetEnumeratedCount", [AT_H, STRING, OUTPUT(c_int)])
-dllFunc("AT_IsEnumeratedIndexAvailable", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)])
+dllFunc(
+    "AT_IsEnumeratedIndexAvailable", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)]
+)
 dllFunc(
     "AT_IsEnumeratedIndexImplemented", [AT_H, STRING, c_int, OUTPUT(AT_BOOL)]
 )
@@ -293,7 +295,8 @@ dllFunc("AT_WaitBuffer", [AT_H, OUTPUT(POINTER(AT_U8)), OUTPUT(c_int), c_uint])
 dllFunc("AT_Flush", [AT_H])
 
 dllFunc(
-    "AT_RegisterFeatureCallback", [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p]
+    "AT_RegisterFeatureCallback",
+    [AT_H, POINTER(AT_WC), CALLBACKTYPE, c_void_p],
 )
 dllFunc(
     "AT_UnregisterFeatureCallback",

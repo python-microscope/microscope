@@ -186,7 +186,9 @@ class TestClashingArguments(BaseTestServeDevices):
 
     def test_port_conflict(self):
         time.sleep(2)
-        client = microscope.clients.Client("PYRO:DeviceWithPort@127.0.0.1:8000")
+        client = microscope.clients.Client(
+            "PYRO:DeviceWithPort@127.0.0.1:8000"
+        )
         self.assertEqual(client.port, 7000)
 
 

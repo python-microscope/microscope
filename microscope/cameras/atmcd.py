@@ -799,7 +799,9 @@ dllFunc("GetBaselineClamp", [OUTPUT(c_int)], ["state"])
 dllFunc("GetBitDepth", [c_int, OUTPUT(c_int)], ["channel", "depth"])
 dllFunc("GetCameraEventStatus", [OUTPUT(DWORD)], ["camStatus"])
 dllFunc(
-    "GetCameraHandle", [c_long, OUTPUT(c_long)], ["cameraIndex", "cameraHandle"]
+    "GetCameraHandle",
+    [c_long, OUTPUT(c_long)],
+    ["cameraIndex", "cameraHandle"],
 )
 dllFunc(
     "GetCameraInformation", [c_int, OUTPUT(c_long)], ["index", "information"]
@@ -882,7 +884,14 @@ dllFunc("GetImageFlip", [OUTPUT(c_int), OUTPUT(c_int)], ["iHFlip", "iVFlip"])
 dllFunc("GetImageRotate", [OUTPUT(c_int)], ["Rotate"])
 dllFunc(
     "GetImages",
-    [c_long, c_long, OUTARR(at_32), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
+    [
+        c_long,
+        c_long,
+        OUTARR(at_32),
+        OUTARRSIZE,
+        OUTPUT(c_long),
+        OUTPUT(c_long),
+    ],
     ["first", "last", "arr", "size", "validfirst", "validlast"],
 )
 dllFunc(
@@ -942,7 +951,9 @@ dllFunc(
 dllFunc(
     "GetNumberNewImages", [OUTPUT(c_long), OUTPUT(c_long)], ["first", "last"]
 )
-dllFunc("GetNumberPhotonCountingDivisions", [OUTPUT(at_u32)], ["noOfDivisions"])
+dllFunc(
+    "GetNumberPhotonCountingDivisions", [OUTPUT(at_u32)], ["noOfDivisions"]
+)
 dllFunc("GetNumberPreAmpGains", [OUTPUT(c_int)], ["noGains"])
 dllFunc("GetNumberRingExposureTimes", [OUTPUT(c_int)], ["ipnumTimes"])
 dllFunc("GetNumberIO", [OUTPUT(c_int)], ["iNumber"])
@@ -1456,7 +1467,8 @@ class AndorAtmcd(
             if GetNumberAmp() > 1:
                 if self._caps.ulCameraType == AC_CAMERATYPE_CLARA:
                     self.amplifiers = IntEnum(
-                        "Amplifiers", (("CONVENTIONAL", 0), ("EXTENDED_NIR", 1))
+                        "Amplifiers",
+                        (("CONVENTIONAL", 0), ("EXTENDED_NIR", 1)),
                     )
                 else:
                     self.amplifiers = IntEnum(
@@ -1573,7 +1585,9 @@ class AndorAtmcd(
             vrange = range(
                 0, [5, 6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR]
             )
-            self.add_setting(name, "int", None, self._bind(SetGateMode), vrange)
+            self.add_setting(
+                name, "int", None, self._bind(SetGateMode), vrange
+            )
         # HighCapacity
         name = "HighCapacity"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
@@ -1797,7 +1811,9 @@ class AndorAtmcd(
         top = roi.top or 1
         width = roi.width or x
         height = roi.height or y
-        if any([left < 1, top < 1, left + width - 1 > x, top + height - 1 > y]):
+        if any(
+            [left < 1, top < 1, left + width - 1 > x, top + height - 1 > y]
+        ):
             return False
         self._roi = microscope.ROI(left, top, width, height)
         return True

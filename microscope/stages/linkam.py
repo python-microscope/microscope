@@ -1183,8 +1183,12 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         stopped flags appear to be more reliable than the MDSStatus MoveDone
         flags."""
         if axis is not None and axis.upper() in "XYZ":
-            has_motor = getattr(self._stageconfig.flags, "motor" + axis.upper())
-            stopped = getattr(self._status.flags, "motorStopped" + axis.upper())
+            has_motor = getattr(
+                self._stageconfig.flags, "motor" + axis.upper()
+            )
+            stopped = getattr(
+                self._status.flags, "motorStopped" + axis.upper()
+            )
             return has_motor and not stopped
         else:
             return any(self.is_moving(ax) for ax in "XYZ")
@@ -1493,7 +1497,9 @@ class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
         for axis in "XYZ":
             if getattr(self._stageconfig.flags, "motor" + axis):
                 res[axis] = (
-                    self.get_value(getattr(_StageValueType, "MotorPos" + axis)),
+                    self.get_value(
+                        getattr(_StageValueType, "MotorPos" + axis)
+                    ),
                     self.get_value(
                         getattr(_StageValueType, "MotorSetpoint" + axis)
                     ),

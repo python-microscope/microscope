@@ -4,7 +4,7 @@ requires = ['setuptools']
 
 [tool.isort]
 profile = "black"
-line_length = 80
+line_length = 79
 lines_after_imports = 2
 # Despite the profile option being set to "black", there's still some
 # options that are not correcly set in a compatible manner.  The
@@ -14,12 +14,12 @@ include_trailing_comma = true
 multi_line_output = 3  # multi lineoutput 3 is vert-hanging
 
 [tool.black]
-line-length = 80
+line-length = 79
 target-version = ['py36', 'py37', 'py38']
 
 
 [tool.pylint.FORMAT]
-max-line-length = 80
+max-line-length = 79
 
 
 [tool.pytest.ini_options]

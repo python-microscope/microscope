@@ -111,7 +111,10 @@ class SapphireLaser(
 
         status_code = self.send(b"?sta")
         result.append(
-            ("Laser status: " + self.laser_status.get(status_code, "Undefined"))
+            (
+                "Laser status: "
+                + self.laser_status.get(status_code, "Undefined")
+            )
         )
 
         for cmd, stat in [

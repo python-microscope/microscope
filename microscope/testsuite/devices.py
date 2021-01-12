@@ -209,7 +209,11 @@ class TestCamera(
         )
         self._gain = 0
         self.add_setting(
-            "gain", "int", lambda: self._gain, self._set_gain, lambda: (0, 8192)
+            "gain",
+            "int",
+            lambda: self._gain,
+            self._set_gain,
+            lambda: (0, 8192),
         )
         # Enum-setting tests
         self._intEnum = CamEnum.A

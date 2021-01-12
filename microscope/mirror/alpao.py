@@ -142,7 +142,8 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
             and tmode != microscope.TriggerMode.ONCE
         ):
             raise microscope.UnsupportedFeatureError(
-                "trigger mode '%s' only supports trigger type ONCE" % tmode.name
+                "trigger mode '%s' only supports trigger type ONCE"
+                % tmode.name
             )
         self._trigger_mode = tmode
 
@@ -193,7 +194,9 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         status = asdk.Stop(self._dm)
         self._raise_if_error(status)
 
-        status = asdk.SendPattern(self._dm, data_pointer, n_patterns, n_repeats)
+        status = asdk.SendPattern(
+            self._dm, data_pointer, n_patterns, n_repeats
+        )
         self._raise_if_error(status)
 
     def _do_shutdown(self) -> None:

@@ -238,7 +238,9 @@ class CameraWidget(QtWidgets.QWidget):
             numpy.dtype("uint8"): QtGui.QImage.Format_Grayscale8,
             numpy.dtype("uint16"): QtGui.QImage.Format_Grayscale16,
         }
-        qt_img = QtGui.QImage(data.tobytes(), *data.shape, np_to_qt[data.dtype])
+        qt_img = QtGui.QImage(
+            data.tobytes(), *data.shape, np_to_qt[data.dtype]
+        )
         self._view.setPixmap(QtGui.QPixmap.fromImage(qt_img))
 
 

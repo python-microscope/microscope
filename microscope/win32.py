@@ -73,7 +73,9 @@ class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
 
     @classmethod
     def get_config_file(cls):
-        return win32serviceutil.GetServiceCustomOption(cls._svc_name_, "config")
+        return win32serviceutil.GetServiceCustomOption(
+            cls._svc_name_, "config"
+        )
 
     def log(self, message, error=False):
         if error:

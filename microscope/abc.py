@@ -688,7 +688,9 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                     err = e
             else:
                 try:
-                    self._send_data(client, self._process_data(data), timestamp)
+                    self._send_data(
+                        client, self._process_data(data), timestamp
+                    )
                 except Exception as e:
                     err = e
             if err:

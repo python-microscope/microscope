@@ -572,7 +572,10 @@ class AndorSDK3(
         return 1.0 / self._frame_rate.get_value()
 
     def _get_sensor_shape(self):
-        return (self._sensor_width.get_value(), self._sensor_height.get_value())
+        return (
+            self._sensor_width.get_value(),
+            self._sensor_height.get_value(),
+        )
 
     def get_trigger_type(self):
         # deprecated, use trigger_mode and trigger_type properties
