@@ -44,10 +44,17 @@ class _SpectraIIIConnection:
     This module makes checks for Spectra III light engine and it was
     only tested for it.  But it should work with other lumencor light
     engines with little work though, if only we got access to them.
+
     """
 
     def __init__(self, serial: microscope._utils.SharedSerial) -> None:
         self._serial = serial
+        # If the Spectra has just been powered up the first command
+        # will fail with UNKNOWNCMD.  So just send an empty command
+        # and ignore the result.
+        self._serial.write(b"\n")
+        self._serial.readline()
+
         # We use command() and readline() instead of get_command() in
         # case this is not a Lumencor and won't even give a standard
         # answer and raises an exception during the answer validation.
