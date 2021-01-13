@@ -49,8 +49,8 @@ class CamEnum(IntEnum):
 class TestCamera(SimulatedCamera):
     # This adds a series of weird settings to the base simulated
     # camera which are only useful to test settings in cockpit.
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         # Enum-setting tests
         self._intEnum = CamEnum.A
         self.add_setting(
