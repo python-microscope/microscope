@@ -56,3 +56,10 @@ html_show_copyright = False
 html_show_sphinx = False
 html_copy_source = False
 html_show_sourcelink = False
+
+rst_prolog = """
+.. _repo-browse: https://github.com/python-microscope/microscope
+.. _repo-vcs: https://github.com/python-microscope/microscope.git
+.. _gpl-licence: https://www.gnu.org/licenses/gpl-3.0.html
+.. _cockpit-link: https://github.com/MicronOxford/cockpit/
+"""

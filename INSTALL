@@ -3,10 +3,9 @@ Microscope is available on the Python Package Index (PyPI) and can be
 <https://packaging.python.org/tutorials/installing-packages/>`_.  The
 short version of it is use pip::
 
-  pip install microscope
+    pip install microscope
 
-Note that you need to have Python and pip already installed on your
-system.
+You need to have Python and pip already installed on your system.
 
 
 Requirements
@@ -18,8 +17,7 @@ individual devices and intended usage may add specific requirements:
 - **hardware performance**: control of devices at high speed, namely
   image acquisition at very high rates, may require a fast connection
   to the camera, high amount of memory, or a disk with fast write
-  speeds.  In such case, it may be advantageous to have a dedicated
-  machine for the camera.
+  speeds.
 
 - **external libraries**: control of many devices is performed via
   vendor provided external libraries which are often limited to
@@ -46,7 +44,7 @@ installed with pip.  However, the interface to many devices is done
 via an external library (or SDK, or driver) that is only provided by
 the device vendor.
 
-To identify if an external library is required, check the associated
+To identify if an external library is required check the associated
 module documentation.  If an external library is required, contact the
 device vendor for install instructions.  Cameras, deformable mirrors,
 and spatial light modulators all require an external library.  Filter

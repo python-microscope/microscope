@@ -8,6 +8,7 @@
 ## notice and this notice are preserved.  This file is offered as-is,
 ## without any warranty.
 
+import ctypes
 import distutils.cmd
 import unittest.mock
 
@@ -96,11 +97,13 @@ if has_sphinx:
     stub_c_dll = unittest.mock.MagicMock()
     stub_c_dll.configure_mock(**stub_c_attrs)
 
+    real_c_dll = ctypes.CDLL
+
     def cdll_diversion(name, *args, **kwargs):
         if name in optional_c_libs:
             return stub_c_dll
         else:
-            return cls(name, *args, **kwargs)
+            return real_c_dll(name, *args, **kwargs)
 
     class BuildDoc(sphinx.setup_command.BuildDoc):
         def run(self):

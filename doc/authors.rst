@@ -4,7 +4,15 @@
    Attribution-ShareAlike 4.0 International License.  To view a copy of
    this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
 
-Release Notes
-*************
+Contributors
+************
 
-.. include:: ../NEWS
+The following people have contributed in the development of
+Microscope:
+
+- David Miguel Susano Pinto
+- Ian Dobbie
+- Julio Mateos-Langerak
+- Mick Phillips
+- Tiago Susano Pinto
+- 久保俊貴 (Toshiki Kubo)
