@@ -17,7 +17,7 @@ Microscope Documentation
    api/index
    news
    get-involved/index
-   contributors
+   authors
 
 Microscope is fundamentally a Python package for the control of
 microscope devices.  It provides an easy to use interface for
