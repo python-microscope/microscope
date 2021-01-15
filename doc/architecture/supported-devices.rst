@@ -49,11 +49,11 @@ Filter Wheels
 Light Sources
 =============
 
-- Cobolt (:class:`microscope.lasers.cobolt.CoboltLaser`)
-- Coherent Obis (:class:`microscope.lasers.obis.ObisLaser`)
-- Coherent Sapphire (:class:`microscope.lasers.sapphire.SapphireLaser`)
-- Omicron Deepstar (:class:`microscope.lasers.deepstar.DeepstarLaser`)
-- Toptica iBeam (:class:`microscope.lasers.toptica.TopticaiBeam`)
+- Cobolt (:class:`microscope.lights.cobolt.CoboltLaser`)
+- Coherent Obis (:class:`microscope.lights.obis.ObisLaser`)
+- Coherent Sapphire (:class:`microscope.lights.sapphire.SapphireLaser`)
+- Omicron Deepstar (:class:`microscope.lights.deepstar.DeepstarLaser`)
+- Toptica iBeam (:class:`microscope.lights.toptica.TopticaiBeam`)
 
 Stages
 ======

@@ -26,7 +26,7 @@ series experiment:
     import queue
     import time
 
-    from microscope.lasers.cobolt import CoboltLaser
+    from microscope.lights.cobolt import CoboltLaser
     from microscope.cameras.atmcd import AndorAtmcd
 
     laser = CoboltLaser(com='/dev/ttyS0')
@@ -88,7 +88,7 @@ device.  For example::
     from microscope.device_server import device
 
     # Import required device classes
-    from microscope.lasers.cobolt import CoboltLaser
+    from microscope.lights.cobolt import CoboltLaser
     from microscope.cameras.atmcd import AndorAtmcd
 
     # host is the IP address (or hostname) from where the device will be

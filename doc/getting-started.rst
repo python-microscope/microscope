@@ -27,7 +27,7 @@ number (this is typically printed on a label on the physical device).
 
 .. code-block:: python
 
-    from microscope.lasers.sapphire import SapphireLaser
+    from microscope.lights.sapphire import SapphireLaser
     laser = SapphireLaser(com="/dev/ttyS0")
 
     from microscope.mirror.alpao import AlpaoDeformableMirror

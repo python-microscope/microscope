@@ -27,7 +27,7 @@ different device types.  For example:
 
     # Connect to a Coherent Sapphire laser, set its power while
     # emitting light.
-    from microscope.lasers.sapphire import SapphireLaser
+    from microscope.lights.sapphire import SapphireLaser
     laser = SapphireLaser(com="/dev/ttyS1")
     laser.initialize()
     laser.power = .7  # initial laser power at 70%
