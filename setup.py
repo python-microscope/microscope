@@ -153,8 +153,9 @@ else:
 # for user information.
 manifest_files = [
     "COPYING",
-    "NEWS",
-    "README",
+    "NEWS.rst",
+    "README.rst",
+    "INSTALL.rst",
 ]
 
 
