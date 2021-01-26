@@ -169,7 +169,8 @@ setuptools.setup(
     name=project_name,
     version=project_version,
     description="An interface for control of microscope devices.",
-    long_description=open("README", "r").read(),
+    long_description=open("README.rst", "r").read(),
+    long_description_content_type="text/x-rst",
     license="GPL-3.0+",
     # We need an author and an author_email value or PyPI rejects us.
     # For email address, when there are multiple authors, they tell us
