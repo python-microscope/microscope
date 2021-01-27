@@ -5,9 +5,11 @@ Python's microscope package is a free and open source library for:
 * automate microscope experiments
 
 It is aimed at those that are building their own microscopes or want
-programmatic control for microscope experiments. More detail can be
+programmatic control for microscope experiments. More details can be
 found in our paper on bioRxiv `Python-Microscope: High performance
-control of arbitrarily complex and scalable bespoke microscopes. <https://www.biorxiv.org/content/10.1101/2021.01.18.427171v1>`__
+control of arbitrarily complex and scalable bespoke
+microscopes <https://www.biorxiv.org/content/10.1101/2021.01.18.427171v1>`__
+and in the  `online documentation <https://www.micron.ox.ac.uk/software/microscope/>`__.
 
 Microscope is distributed as a source distribution in `PyPI
 <https://pypi.python.org/pypi/microscope>`__ and can be easily
