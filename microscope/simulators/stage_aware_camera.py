@@ -138,6 +138,7 @@ def simulated_setup_from_image(
                    conf={'filepath': path_to_image_file}),
         ]
     """
+    PIL.Image.MAX_IMAGE_PIXELS = None
     image = np.array(PIL.Image.open(filepath))
     if len(image.shape) < 3:
         raise ValueError("not an RGB image")
