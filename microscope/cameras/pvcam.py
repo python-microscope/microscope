@@ -1202,6 +1202,10 @@ class PVParam:
         self.param_id = param_id
         self.name = _param_to_name[param_id]
         self._pvtype = param_id >> 24 & 255
+        if self.name == "PARAM_READOUT_TIME":
+            # Bugged. Here is what the SDK says: "The parameter type is
+            # incorrectly defined. The actual type is TYPE_UNS32."
+            self._pvtype = TYPE_UNS32
         self.dtype = _dtypemap[self._pvtype]
         self._ctype = _typemap[self._pvtype]
         self.__cache = {}
@@ -1459,6 +1463,10 @@ class PVCamera(
         else:
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t_exp = int(self.exposure_time * 1e3)
+        # Determine the data type of the buffer
+        buffer_dtype = "uint16"
+        if self._params[PARAM_BIT_DEPTH].current == 8:
+            buffer_dtype = "uint8"
         # Configure camera, allocate buffer, and register callback.
         if self._trigger == TRIG_SOFT:
             # Software triggering for single frames.
@@ -1492,18 +1500,23 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype="uint16"),
+                np.zeros(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
         else:
             # Use a circular buffer.
             self._using_callback = True
 
+            # Determine the data type of the frame
+            frame_type = uns16
+            if buffer_dtype == "uint8":
+                frame_type = uns8
+
             def cb():
                 """Circular buffer mode end-of-frame callback."""
                 timestamp = time.time()
                 frame_p = ctypes.cast(
-                    _exp_get_latest_frame(self.handle), ctypes.POINTER(uns16)
+                    _exp_get_latest_frame(self.handle), ctypes.POINTER(frame_type)
                 )
                 frame = np.ctypeslib.as_array(
                     frame_p, (self.roi[2], self.roi[3])
@@ -1523,7 +1536,7 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype="uint16"),
+                np.zeros(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
             nbytes = _exp_setup_cont(
