@@ -1464,6 +1464,8 @@ class PVCamera(
             self._params[PARAM_EXP_RES].set_value(EXP_RES_ONE_MILLISEC)
             t_exp = int(self.exposure_time * 1e3)
         # Determine the data type of the buffer
+        # Kinetix has an 8 bit mode, may need more options for colour
+        # cameras.
         buffer_dtype = "uint16"
         if self._params[PARAM_BIT_DEPTH].current == 8:
             buffer_dtype = "uint8"
