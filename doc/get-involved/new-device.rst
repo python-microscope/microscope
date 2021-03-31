@@ -12,4 +12,8 @@ already an open issue about it.  If not, please open a new issue
 before starting to work on it.  This ensures that there is no
 duplication of work.
 
+If you do implement a new device please ensure that you add the
+relevant information to the supported device list which is in
+doc/architecture/supported devices.rst .
+
 .. The plan is to fill this with tips to write that code.
