@@ -496,6 +496,7 @@ def serve_devices(devices, exit_event=None):
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
 
+    _logger.info("Device Server started. Press Ctrl+C to exit.")
     while not exit_event.is_set():
         try:
             time.sleep(5)
