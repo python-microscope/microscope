@@ -548,10 +548,11 @@ def _load_source(filepath):
 
 def validate_devices(configfile):
     config = _load_source(configfile)
-    devices = getattr(config, "DEVICES", None)
-    if not devices:
+    try:
+        devices = getattr(config, "DEVICES")
+    except AttributeError:
         raise Exception("No 'DEVICES=...' in config file.")
-    elif not isinstance(devices, Iterable):
+    if not isinstance(devices, Iterable):
         raise Exception("Error in config: DEVICES should be an iterable.")
     return devices
 
