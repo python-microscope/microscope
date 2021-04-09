@@ -1518,7 +1518,8 @@ class PVCamera(
                 """Circular buffer mode end-of-frame callback."""
                 timestamp = time.time()
                 frame_p = ctypes.cast(
-                    _exp_get_latest_frame(self.handle), ctypes.POINTER(frame_type)
+                    _exp_get_latest_frame(self.handle),
+                    ctypes.POINTER(frame_type),
                 )
                 frame = np.ctypeslib.as_array(
                     frame_p, (self.roi[2], self.roi[3])
