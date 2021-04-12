@@ -63,7 +63,7 @@ class _ImageGenerator:
             self.white,
         )
         self._method_index = 0
-        self._datatypes = (np.uint8, np.uint16, np.float)
+        self._datatypes = (np.uint8, np.uint16, float)
         self._datatype_index = 0
         self._theta = _theta_generator()
         self.numbering = True
