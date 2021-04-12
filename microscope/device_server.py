@@ -487,10 +487,11 @@ def serve_devices(devices, exit_event=None):
                 # if we add some interface to interactively restart servers.
                 _logger.info("No servers running. Exiting.")
                 exit_event.set()
-            try:
-                time.sleep(5)
-            except (KeyboardInterrupt, IOError):
-                pass
+            else:
+                try:
+                    time.sleep(5)
+                except (KeyboardInterrupt, IOError):
+                    pass
 
     keep_alive_thread = Thread(target=keep_alive)
     keep_alive_thread.start()
