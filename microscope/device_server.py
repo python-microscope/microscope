@@ -414,7 +414,6 @@ def serve_devices(devices, exit_event=None):
     for dev in devices:
         by_class[dev["cls"]] = by_class.get(dev["cls"], []) + [dev]
 
-    # Group devices by class.
     if not by_class:
         _logger.critical("No valid devices specified. Exiting")
         sys.exit()
