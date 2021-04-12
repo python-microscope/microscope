@@ -415,8 +415,7 @@ def serve_devices(devices, exit_event=None):
         by_class[dev["cls"]] = by_class.get(dev["cls"], []) + [dev]
 
     if not by_class:
-        _logger.critical("No valid devices specified. Exiting")
-        sys.exit()
+        _logger.warning("No valid devices specified. Maybe an empty list?")
 
     for cls, devs in by_class.items():
         # Keep track of how many of these classes we have set up.
