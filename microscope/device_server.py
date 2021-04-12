@@ -418,9 +418,6 @@ def serve_devices(devices, exit_event=None):
         _logger.warning("No valid devices specified. Maybe an empty list?")
 
     for cls, devs in by_class.items():
-        # Keep track of how many of these classes we have set up.
-        # Some SDKs need this information to index devices.
-        count = 0
         # Floating devices are devices that can only be identified
         # after having been initialized, so the constructor will
         # return any device that it supports.  To work around this we
@@ -432,21 +429,24 @@ def serve_devices(devices, exit_event=None):
         uid_to_host = {}
         uid_to_port = {}
         if isinstance(cls, type) and issubclass(cls, FloatingDeviceMixin):
-            # Need to provide maps of uid to host and port.
+            # In addition to the maps of uid to host/port, floating
+            # devices SDKs need the number of devices to index them.
+            count = 0
             for dev in devs:
                 uid = dev["uid"]
                 uid_to_host[uid] = dev["host"]
                 uid_to_port[uid] = dev["port"]
 
+                dev["conf"]["index"] = count
+                count += 1
+
         for dev in devs:
-            dev["conf"]["index"] = count
             servers.append(
                 DeviceServer(
                     dev, uid_to_host, uid_to_port, exit_event=exit_event
                 )
             )
             servers[-1].start()
-            count += 1
 
     # Main thread must be idle to process signals correctly, so use another
     # thread to check DeviceServers, restarting them where necessary. Define

@@ -197,7 +197,15 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     mixin which identifies a subclass as floating, and enforces the
     implementation of a `get_id` method.
 
+    Args:
+        index: the index of the device on a shared library.  This
+            argument is added by the device_server program.
+
     """
+
+    def __init__(self, index: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._index = index
 
     @abc.abstractmethod
     def get_id(self) -> str:
@@ -268,18 +276,11 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
 
 
 class Device(metaclass=abc.ABCMeta):
-    """A base device class. All devices should subclass this class.
+    """A base device class. All devices should subclass this class."""
 
-    Args:
-        index: the index of the device on a shared library.  This
-            argument is added by the deviceserver.
-
-    """
-
-    def __init__(self, index: typing.Optional[int] = None) -> None:
+    def __init__(self) -> None:
         self.enabled = False
         self._settings: typing.Dict[str, _Setting] = {}
-        self._index = index
 
     def __del__(self) -> None:
         self.shutdown()

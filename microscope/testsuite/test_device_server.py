@@ -245,7 +245,14 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
     # one is served instead (foo).  See issue #153.
     args = [
         microscope.device_server.device(
-            TestFloatingDevice, "127.0.01", 8001, {"uid": "foo"}, uid="bar"
+            TestFloatingDevice,
+            "127.0.0.1",
+            8001,
+            # The index kwarg is typically injected by serve_devices
+            # but here we're only testing DeviceServer so we need to
+            # do it ourselves.
+            {"uid": "foo", "index": 0},
+            uid="bar",
         ),
         {"bar": "127.0.0.1"},
         {"bar": 8001},
