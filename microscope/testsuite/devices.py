@@ -231,6 +231,10 @@ class TestFloatingDevice(
         super().initialize()
         self._initialized = True
 
+    def get_index(self) -> int:
+        """Expose private _index for testing purposes."""
+        return self._index
+
     def get_id(self) -> str:
         if self._initialized:
             return self._uid

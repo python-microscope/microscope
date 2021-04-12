@@ -219,6 +219,24 @@ class TestConfigLoader(unittest.TestCase):
         self._test_load_source("foobar")
 
 
+class TestFloatingDeviceIndexInjection(BaseTestServeDevices):
+    DEVICES = [
+        microscope.device_server.device(
+            TestFloatingDevice, "127.0.0.1", 8001, {"uid": "foo"}, uid="foo"
+        ),
+        microscope.device_server.device(
+            TestFloatingDevice, "127.0.0.1", 8002, {"uid": "bar"}, uid="bar"
+        ),
+    ]
+
+    def test_injection_of_index_kwarg(self):
+        time.sleep(1)
+        floating_1 = Pyro4.Proxy("PYRO:TestFloatingDevice@127.0.0.1:8001")
+        floating_2 = Pyro4.Proxy("PYRO:TestFloatingDevice@127.0.0.1:8002")
+        self.assertEqual(floating_1.get_index(), 0)
+        self.assertEqual(floating_2.get_index(), 1)
+
+
 class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
     # This test will create a floating device with a UID different
     # (foo) than what appears on the config (bar).  This is what
