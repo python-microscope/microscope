@@ -19,14 +19,18 @@
 
 import logging
 import multiprocessing
+import os
 import os.path
+import signal
 import tempfile
 import time
 import unittest
 import unittest.mock
 
 import Pyro4
+import Pyro4.errors
 
+import microscope.abc
 import microscope.clients
 import microscope.device_server
 from microscope.testsuite.devices import (
@@ -35,6 +39,16 @@ from microscope.testsuite.devices import (
     TestFilterWheel,
     TestFloatingDevice,
 )
+
+
+class ExposePIDDevice(microscope.abc.Device):
+    """Test device for testing the device server keep alive."""
+
+    def _do_shutdown(self) -> None:
+        pass
+
+    def get_pid(self) -> int:
+        return os.getpid()
 
 
 class DeviceServerExceptionQueue(microscope.device_server.DeviceServer):
@@ -297,6 +311,36 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
         dm2 = Pyro4.Proxy("PYRO:dm2@127.0.0.1:8001")
         self.assertEqual(dm1.n_actuators, 10)
         self.assertEqual(dm2.n_actuators, 20)
+
+
+class TestKeepDeviceServerAlive(BaseTestServeDevices):
+    DEVICES = [
+        microscope.device_server.device(
+            ExposePIDDevice, "127.0.0.1", 8001, {}
+        ),
+    ]
+
+    @unittest.skipUnless(
+        hasattr(signal, "SIGKILL"),
+        "can't test if we can't kill subprocess (windows)",
+    )
+    def test_keep_alive(self):
+        time.sleep(2)
+        device = Pyro4.Proxy("PYRO:ExposePIDDevice@127.0.0.1:8001")
+        initial_pid = device.get_pid()
+
+        os.kill(initial_pid, signal.SIGKILL)
+
+        with self.assertRaises(Pyro4.errors.ConnectionClosedError):
+            device.get_pid()
+
+        # The device server checks every 5 seconds for a crashed
+        # device server so give it 6 seconds.
+        time.sleep(6)
+
+        device._pyroReconnect(tries=1)
+        new_pid = device.get_pid()
+        self.assertNotEqual(initial_pid, new_pid)
 
 
 if __name__ == "__main__":
