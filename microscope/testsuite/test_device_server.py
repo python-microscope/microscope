@@ -144,8 +144,8 @@ class BaseTestDeviceServer(unittest.TestCase):
     def tearDown(self):
         self.process.terminate()
         self.process.join(self.TIMEOUT)
-        self.assertFalse(
-            self.process.is_alive(), "deviceserver not dead after SIGTERM"
+        self.assertIsNotNone(
+            self.process.exitcode, "deviceserver not dead after SIGTERM"
         )
 
 
