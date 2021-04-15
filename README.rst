@@ -1,3 +1,10 @@
+Python-Microscope
+*****************
+
+.. image:: https://github.com/python-microscope/python-microscope.org/raw/master/_static/microscope-logo-96-dpi.png
+   :align: center
+   :alt: Python-Microscope logo
+
 Python's ``microscope`` package is a free and open source library for:
 
 * control of local and remote microscope devices;
