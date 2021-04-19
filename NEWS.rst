@@ -4,6 +4,12 @@ python-microscope releases.
 Version 0.7.0 (upcoming)
 ------------------------
 
+* The device server logging was broken in version 0.6.0 for Windows
+  and macOS (systems not using fork for multiprocessing).  This
+  version fixes that issue.
+
+* Microscope is now dependent on Python 3.7 or later.
+
 
 Version 0.6.0 (2021/01/14)
 --------------------------

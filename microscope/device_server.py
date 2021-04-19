@@ -44,6 +44,7 @@ import sys
 import time
 import typing
 from collections.abc import Iterable
+from dataclasses import dataclass
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from threading import Thread
@@ -184,6 +185,19 @@ class Filter(logging.Filter):
             return False
 
 
+@dataclass(frozen=True)
+class DeviceServerOptions:
+    """Class to define configuration for a device server.
+
+    The different fields map to the different ``device-server``
+    command line options.
+
+    """
+
+    config_fpath: str
+    logging_level: int
+
+
 def _check_autoproxy_feature() -> None:
     # AUTOPROXY is enabled by default.  If it is disabled there must
     # be a reason so raise an error instead of silently enabling it.
@@ -228,6 +242,7 @@ class DeviceServer(multiprocessing.Process):
 
     Args:
         device_def: definition of the device.
+        options: configuration for the device server.
         id_to_host: host or mapping of device identifiers to hostname.
         id_to_port: map or mapping of device identifiers to port
             number.
@@ -239,12 +254,14 @@ class DeviceServer(multiprocessing.Process):
     def __init__(
         self,
         device_def,
+        options: DeviceServerOptions,
         id_to_host: typing.Mapping[str, str],
         id_to_port: typing.Mapping[str, int],
         exit_event: typing.Optional[multiprocessing.Event] = None,
     ):
         # The device to serve.
         self._device_def = device_def
+        self._options = options
         self._devices: typing.Dict[str, microscope.abc.Device] = {}
         # Where to serve it.
         self._id_to_host = id_to_host
@@ -262,6 +279,7 @@ class DeviceServer(multiprocessing.Process):
         """
         return DeviceServer(
             self._device_def,
+            self._options,
             self._id_to_host,
             self._id_to_port,
             exit_event=self.exit_event,
@@ -282,6 +300,8 @@ class DeviceServer(multiprocessing.Process):
         # iterating over the same list as removeHandler().
         for handler in list(root_logger.handlers):
             root_logger.removeHandler(handler)
+
+        root_logger.setLevel(self._options.logging_level)
 
         # Later, we'll log to one file per server, with a filename
         # based on a unique identifier for the device. Some devices
@@ -369,7 +389,7 @@ class DeviceServer(multiprocessing.Process):
                 _logger.error("Failure to shutdown device %s", device, ex)
 
 
-def serve_devices(devices, exit_event=None):
+def serve_devices(devices, options: DeviceServerOptions, exit_event=None):
     root_logger = logging.getLogger()
 
     log_handler = RotatingFileHandler("__MAIN__.log")
@@ -443,7 +463,11 @@ def serve_devices(devices, exit_event=None):
         for dev in devs:
             servers.append(
                 DeviceServer(
-                    dev, uid_to_host, uid_to_port, exit_event=exit_event
+                    dev,
+                    options,
+                    uid_to_host,
+                    uid_to_port,
+                    exit_event=exit_event,
                 )
             )
             servers[-1].start()
@@ -517,7 +541,7 @@ def serve_devices(devices, exit_event=None):
     return
 
 
-def _parse_cmd_line_args(args: typing.Sequence[str]) -> argparse.Namespace:
+def _parse_cmd_line_args(args: typing.Sequence[str]) -> DeviceServerOptions:
     parser = argparse.ArgumentParser(prog="device-server")
     parser.add_argument(
         "--logging-level",
@@ -534,7 +558,11 @@ def _parse_cmd_line_args(args: typing.Sequence[str]) -> argparse.Namespace:
         metavar="CONFIG-FILEPATH",
         help="Path to the configuration file",
     )
-    return parser.parse_args(args)
+    parsed = parser.parse_args(args)
+    return DeviceServerOptions(
+        config_fpath=parsed.config_fpath,
+        logging_level=getattr(logging, parsed.logging_level.upper()),
+    )
 
 
 def _load_source(filepath):
@@ -557,10 +585,10 @@ def validate_devices(configfile):
 
 
 def main(argv: typing.Sequence[str]) -> int:
-    args = _parse_cmd_line_args(argv[1:])
+    options = _parse_cmd_line_args(argv[1:])
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(args.logging_level.upper())
+    root_logger.setLevel(options.logging_level)
 
     stderr_handler = StreamHandler(sys.stderr)
     stderr_handler.setFormatter(_create_log_formatter("device-server"))
@@ -568,9 +596,9 @@ def main(argv: typing.Sequence[str]) -> int:
 
     root_logger.addFilter(Filter())
 
-    devices = validate_devices(args.config_fpath)
+    devices = validate_devices(options.config_fpath)
 
-    serve_devices(devices)
+    serve_devices(devices, options)
 
     return 0
 

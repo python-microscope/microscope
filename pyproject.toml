@@ -15,7 +15,7 @@ multi_line_output = 3  # multi lineoutput 3 is vert-hanging
 
 [tool.black]
 line-length = 79
-target-version = ['py36', 'py37', 'py38']
+target-version = ['py37', 'py38']
 
 
 [tool.pylint.FORMAT]

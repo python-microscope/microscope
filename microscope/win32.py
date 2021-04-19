@@ -31,6 +31,7 @@ To configure and run as a Windows service use::
 """
 
 
+import logging
 import multiprocessing
 import os
 import sys
@@ -98,11 +99,19 @@ class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
         self.log("Logging at %s." % os.getcwd())
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
 
-        from microscope.device_server import serve_devices, validate_devices
+        from microscope.device_server import (
+            serve_devices,
+            validate_devices,
+            DeviceServerOptions,
+        )
+
+        options = DeviceServerOptions(
+            config_fpath=configfile, logging_level=logging.INFO,
+        )
 
         try:
             devices = validate_devices(configfile)
-            serve_devices(devices, self.stop_event)
+            serve_devices(devices, options, self.stop_event)
         except Exception as e:
             servicemanager.LogErrorMsg(str(e))
             # Exit with non-zero error code so Windows will attempt to restart.

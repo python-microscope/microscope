@@ -109,8 +109,12 @@ class BaseTestServeDevices(unittest.TestCase):
 
     @_patch_out_device_server_logs
     def setUp(self):
+        options = microscope.device_server.DeviceServerOptions(
+            config_fpath="", logging_level=logging.INFO,
+        )
         self.p = multiprocessing.Process(
-            target=microscope.device_server.serve_devices, args=(self.DEVICES,)
+            target=microscope.device_server.serve_devices,
+            args=(self.DEVICES, options),
         )
         self.p.start()
         time.sleep(1)
@@ -266,6 +270,9 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
             {"uid": "foo", "index": 0},
             uid="bar",
         ),
+        microscope.device_server.DeviceServerOptions(
+            config_fpath="", logging_level=logging.INFO,
+        ),
         {"bar": "127.0.0.1"},
         {"bar": 8001},
         multiprocessing.Event(),
@@ -294,6 +301,9 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
             },
             "localhost",
             8001,
+        ),
+        microscope.device_server.DeviceServerOptions(
+            config_fpath="", logging_level=logging.INFO,
         ),
         {},
         {},

@@ -186,7 +186,7 @@ setuptools.setup(
         "Tracker": "https://github.com/python-microscope/microscope",
     },
     packages=setuptools.find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=["Pillow", "Pyro4", "hidapi", "numpy", "pyserial"],
     extras_require={"GUI": ["PySide2"]},
     entry_points={
