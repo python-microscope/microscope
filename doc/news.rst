@@ -7,4 +7,4 @@
 Release Notes
 *************
 
-.. include:: ../NEWS
+.. include:: ../NEWS.rst
