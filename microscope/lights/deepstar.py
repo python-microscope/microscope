@@ -66,7 +66,7 @@ class DeepstarLaser(
         if option_codes[9:12] == b"AP1":
             self._has_apc = True
         else:
-            _logger.info(
+            _logger.warning(
                 "Laser is missing APC option.  Will return set"
                 " power instead of actual power"
             )
@@ -108,7 +108,7 @@ class DeepstarLaser(
         ]:
             self._write(cmd)
             response = self._readline()
-            _logger.info(msg, response.decode())
+            _logger.debug(msg, response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
@@ -136,19 +136,19 @@ class DeepstarLaser(
     def get_is_on(self):
         self._write(b"S?")
         response = self._readline()
-        _logger.info("Are we on? [%s]", response.decode())
+        _logger.debug("Are we on? [%s]", response.decode())
         return response == b"S2"
 
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _do_set_power(self, power: float) -> None:
-        _logger.info("level=%d", power)
+        _logger.debug("level=%d", power)
         power_int = int(power * 0xFFF)
-        _logger.info("power=%d", power_int)
+        _logger.debug("power=%d", power_int)
         strPower = "PP%03X" % power_int
-        _logger.info("power level=%s", strPower)
+        _logger.debug("power level=%s", strPower)
         self._write(strPower.encode())
         response = self._readline()
-        _logger.info("Power response [%s]", response.decode())
+        _logger.debug("Power response [%s]", response.decode())
 
     def _do_get_power(self) -> float:
         if not self.get_is_on():
