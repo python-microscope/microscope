@@ -192,10 +192,21 @@ class FloatingDeviceMixin(metaclass=abc.ABCMeta):
     """A mixin for devices that 'float'.
 
     Some SDKs handling multiple devices do not allow for explicit
-    selection of a specific device.  Instead, a device must be
-    initialized and then queried to determine its ID. This class is a
-    mixin which identifies a subclass as floating, and enforces the
-    implementation of a `get_id` method.
+    selection of a specific device.  Instead, when the SDK is
+    initialised it assigns an index to each device.  However, this
+    index is only unique until the program ends and next time the
+    program runs the device might be assigned a different index.  This
+    means that it is not possible to request a specific device to the
+    SDK.  Instead, one connects to one of the available devices, then
+    initialises it, and only then can one check which one we got.
+
+    Floating devices are a problem in systems where there are multiple
+    devices of the same type but we only want to initialise a subset
+    of them.  Make sure that a device really is a floating device
+    before making use of this class.  Avoid it if possible.
+
+    This class is a mixin which enforces the implementation of a
+    `get_id` method, which typically returns the device serial number.
 
     Args:
         index: the index of the device on a shared library.  This
