@@ -1718,12 +1718,11 @@ class AndorAtmcd(
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
             readout = GetReadOutTime()
-            #IMD 20210422 DeepSIM timing is wrong as the keepclear cycles are
-            # not accounted for. 
-            #return exposure + readout
-            #This appears to allow the correct time between trigger pulses.
+            # IMD 20210422 DeepSIM timing is wrong as the keepclear cycles are
+            # not accounted for.
+            # return exposure + readout
+            # This appears to allow the correct time between trigger pulses.
             return kinetic
-
 
     def _set_readout_mode(self, mode_index):
         """Configure channel, amplifier and VS-speed."""
