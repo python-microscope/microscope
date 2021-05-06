@@ -7,13 +7,6 @@
 Get Involved
 ************
 
-.. toctree::
-   :hidden:
-
-   dev-install
-   hacking
-   new-device
-
 Microscope is free and open source software released under the terms
 of the `GNU GPL <gpl-licence_>`_.  Development is open and all
 conversations about development happen on the public `GitHub
@@ -22,3 +15,10 @@ repository <repo-browse_>`_.
 We welcome all contributions, be it in form of comments, ideas, and
 code.  Anyone with an interest in the project can chime in the
 development.
+
+.. toctree::
+   :maxdepth: 2
+
+   dev-install
+   hacking
+   new-device
