@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
 ##
 ## This file is part of Microscope.
 ##
@@ -24,7 +23,7 @@
 import enum
 import unittest
 
-import microscope.devices
+import microscope.abc
 
 
 class EnumSetting(enum.Enum):
@@ -35,6 +34,7 @@ class EnumSetting(enum.Enum):
 
 class ThingWithSomething:
     """Very simple container with setter and getter methods"""
+
     def __init__(self, val):
         self.val = val
 
@@ -49,13 +49,13 @@ def create_enum_setting(default, with_getter=True, with_setter=True):
     thing = ThingWithSomething(EnumSetting(default))
     getter = thing.get_val if with_getter else None
     setter = thing.set_val if with_setter else None
-    setting = microscope.devices._Setting('foobar', 'enum', get_func=getter,
-                                          set_func=setter, values=EnumSetting)
+    setting = microscope.abc._Setting(
+        "foobar", "enum", get_func=getter, set_func=setter, values=EnumSetting
+    )
     return setting, thing
 
 
 class TestEnumSetting(unittest.TestCase):
-
     def test_get_returns_enum_value(self):
         """For enums, get() returns the enum value not the enum instance"""
         setting, thing = create_enum_setting(1)
@@ -77,5 +77,5 @@ class TestEnumSetting(unittest.TestCase):
         self.assertEqual(EnumSetting(2), thing.val)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
