@@ -1116,10 +1116,9 @@ STATUS_STRINGS = {
 class TriggerMode:
     """A microscope trigger mode using PVCAM PMODES."""
 
-    def __init__(self, label, pv_mode, microscope_mode):
+    def __init__(self, label, pv_mode):
         self.label = label
         self.pv_mode = pv_mode
-        self.microscope_mode = microscope_mode
 
     def __repr__(self):
         return "<%s: '%s'>" % (type(self).__name__, self.label)
@@ -1137,18 +1136,12 @@ class TriggerMode:
 
 # Trigger mode definitions.
 TRIGGER_MODES = {
-    TRIG_SOFT: TriggerMode(
-        "software", TIMED_MODE, microscope.abc.TRIGGER_SOFT
-    ),
-    TRIG_TIMED: TriggerMode("timed", TIMED_MODE, -1),
-    TRIG_VARIABLE: TriggerMode("variable timed", VARIABLE_TIMED_MODE, -1),
-    TRIG_FIRST: TriggerMode(
-        "trig. first", TRIGGER_FIRST_MODE, microscope.abc.TRIGGER_BEFORE,
-    ),
-    TRIG_STROBED: TriggerMode(
-        "strobed", STROBED_MODE, microscope.abc.TRIGGER_BEFORE
-    ),
-    TRIG_BULB: TriggerMode("bulb", BULB_MODE, microscope.abc.TRIGGER_DURATION),
+    TRIG_SOFT: TriggerMode("software", TIMED_MODE),
+    TRIG_TIMED: TriggerMode("timed", TIMED_MODE),
+    TRIG_VARIABLE: TriggerMode("variable timed", VARIABLE_TIMED_MODE),
+    TRIG_FIRST: TriggerMode("trig. first", TRIGGER_FIRST_MODE),
+    TRIG_STROBED: TriggerMode("strobed", STROBED_MODE),
+    TRIG_BULB: TriggerMode("bulb", BULB_MODE),
 }
 
 PV_MODE_TO_TRIGGER = {
@@ -1816,13 +1809,6 @@ class PVCamera(
         Just return self.cycle_time, which is updated with the real
         value during _do_enable."""
         return self.cycle_time
-
-    def get_trigger_type(self):
-        """Return the current trigger type.
-
-        Deprecated, get the trigger_mode and trigger_type property.
-        """
-        return TRIGGER_MODES[self._trigger].microscope_mode
 
     @Pyro4.oneway
     def soft_trigger(self):

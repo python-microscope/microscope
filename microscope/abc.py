@@ -42,9 +42,6 @@ import microscope
 _logger = logging.getLogger(__name__)
 
 
-# Trigger types.
-(TRIGGER_AFTER, TRIGGER_BEFORE, TRIGGER_DURATION, TRIGGER_SOFT) = range(4)
-
 # Mapping of setting data types descriptors to allowed-value types.
 #
 # We use a descriptor for the type instead of the actual type because
@@ -992,16 +989,6 @@ class Camera(TriggerTargetMixin, DataDevice):
         else:
             roi = microscope.ROI(left, top, width, height)
         return self._set_roi(roi)
-
-    def get_trigger_type(self):
-        """Return the current trigger mode.
-
-        One of
-            TRIGGER_AFTER,
-            TRIGGER_BEFORE or
-            TRIGGER_DURATION (bulb exposure.)
-        """
-        pass
 
 
 class SerialDeviceMixin(metaclass=abc.ABCMeta):

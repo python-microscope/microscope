@@ -1748,19 +1748,6 @@ class AndorAtmcd(
         with self:
             return GetTemperature()[1]
 
-    def get_trigger_type(self):
-        """Return the microscope.devices trigger type.
-
-        deprecated, use trigger_mode and trigger_type properties.
-        """
-        trig = self.get_setting("TriggerMode")
-        if trig == TriggerMode.BULB:
-            return microscope.abc.TRIGGER_DURATION
-        elif trig == TriggerMode.SOFTWARE:
-            return microscope.abc.TRIGGER_SOFT
-        else:
-            return microscope.abc.TRIGGER_BEFORE
-
     def soft_trigger(self):
         """Send a software trigger signal.
 

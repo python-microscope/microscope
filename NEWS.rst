@@ -4,6 +4,15 @@ python-microscope releases.
 Version 0.7.0 (upcoming)
 ------------------------
 
+* Selected most important, backwards incompatible, changes:
+
+  * The `Camera.get_trigger_type` method, deprecated on version 0.6.0,
+    has been removed as well as the multiple `TRIGGER_*` constants it
+    returned.  Use the `Camera.trigger_type` and `Camera.trigger_mode`
+    properties.  Note that, despite the similar names, the removed
+    `Camera.get_trigger_type` does not return the same as
+    `Camera.trigger_type` property.
+
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This
   version fixes that issue.
