@@ -1,0 +1,44 @@
+[build-system]
+requires = ['setuptools']
+
+
+[tool.isort]
+profile = "black"
+line_length = 79
+lines_after_imports = 2
+# Despite the profile option being set to "black", there's still some
+# options that are not correcly set in a compatible manner.  The
+# following are for compatibility with black style.
+combine_as_imports = true
+include_trailing_comma = true
+multi_line_output = 3  # multi lineoutput 3 is vert-hanging
+
+[tool.black]
+line-length = 79
+target-version = ['py37', 'py38']
+
+
+[tool.pylint.FORMAT]
+max-line-length = 79
+
+
+[tool.pytest.ini_options]
+testpaths = "microscope/testsuite"
+# python_classes must be an empty string otherwise it defaults to all
+# Test* classes which then include the TestDevices imported in the
+# test_* modules.  By using an empty value, it defaults to only
+# picking classes that subclass from unittest.TestCase.  If we ever
+# move away from the unittest framework, an alternative is to import
+# the TestDevice classes under a different name.
+python_classes = ""
+
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py
+[testenv]
+commands = python -m unittest discover \
+  --start-directory microscope/testsuite \
+  --verbose
+"""

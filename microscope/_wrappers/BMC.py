@@ -1,7 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-## Copyright (C) 2017 David Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
+##
+## This file is part of Microscope.
 ##
 ## Microscope is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -21,36 +22,33 @@
 
 import ctypes
 import os
-
-from ctypes import c_char
-from ctypes import c_char_p
-from ctypes import c_double
-from ctypes import c_int
-from ctypes import c_uint
-from ctypes import c_uint32
+from ctypes import c_char, c_char_p, c_double, c_int, c_uint, c_uint32
 
 
 if os.name in ("nt", "ce"):
-    ## Not actually tested yet
+    # Not actually tested yet
     SDK = ctypes.WinDLL("BMC2")
 else:
     SDK = ctypes.CDLL("libBMC.so.3")
 
 
-## Definitions from BMCDefs.h
+# Definitions from BMCDefs.h
 MAX_PATH = 260
 SERIAL_NUMBER_LEN = 11
 MAX_DM_SIZE = 4096
 
+
 class DM_PRIV(ctypes.Structure):
     pass
+
 
 class DM_DRIVER(ctypes.Structure):
     _fields_ = [
         ("channel_count", c_uint),
-        ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
-        ("reserved", c_uint * 7)
+        ("serial_number", c_char * (SERIAL_NUMBER_LEN + 1)),
+        ("reserved", c_uint * 7),
     ]
+
 
 class DM(ctypes.Structure):
     _fields_ = [
@@ -70,16 +68,17 @@ class DM(ctypes.Structure):
         ("maps_path", c_char * MAX_PATH),
         ("cals_path", c_char * MAX_PATH),
         ("cal", c_char * MAX_PATH),
-        ("serial_number", c_char * (SERIAL_NUMBER_LEN+1)),
+        ("serial_number", c_char * (SERIAL_NUMBER_LEN + 1)),
         ("driver", DM_DRIVER),
         ("priv", ctypes.POINTER(DM_PRIV)),
     ]
 
+
 DMHANDLE = ctypes.POINTER(DM)
 
-RC = c_int # enum for error codes
+RC = c_int  # enum for error codes
 
-LOGLEVEL = c_int # enum for log-levels
+LOGLEVEL = c_int  # enum for log-levels
 LOG_ALL = 0
 LOG_TRACE = LOG_ALL
 LOG_DEBUG = 1
@@ -96,13 +95,17 @@ def make_prototype(name, argtypes, restype=RC):
     func.restype = restype
     return func
 
+
 Open = make_prototype("BMCOpen", [DMHANDLE, c_char_p])
 
-SetArray = make_prototype("BMCSetArray", [DMHANDLE, ctypes.POINTER(c_double),
-                                          ctypes.POINTER(c_uint32)])
+SetArray = make_prototype(
+    "BMCSetArray",
+    [DMHANDLE, ctypes.POINTER(c_double), ctypes.POINTER(c_uint32)],
+)
 
-GetArray = make_prototype("BMCGetArray", [DMHANDLE, ctypes.POINTER(c_double),
-                                          c_uint32])
+GetArray = make_prototype(
+    "BMCGetArray", [DMHANDLE, ctypes.POINTER(c_double), c_uint32]
+)
 
 Close = make_prototype("BMCClose", [DMHANDLE])
 

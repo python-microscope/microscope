@@ -1,7 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
+##
+## This file is part of Microscope.
 ##
 ## Microscope is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -23,11 +24,11 @@ import ctypes
 
 
 # Vendor only supports Windows
-SDK = ctypes.WinDLL('mirao52e')
+SDK = ctypes.WinDLL("mirao52e")
 
 
-TRUE = 1 # TRUE MroBoolean value
-FALSE = 0 # FALSE MroBoolean value
+TRUE = 1  # TRUE MroBoolean value
+FALSE = 0  # FALSE MroBoolean value
 
 # Number of values of a mirao 52-e command (the number of actuators
 # is a define on the library header)
@@ -49,7 +50,7 @@ def prototype(name, argtypes, restype=Boolean):
     return func
 
 
-open = prototype('mro_open', [])
-close = prototype('mro_close', [])
+open = prototype("mro_open", [])
+close = prototype("mro_close", [])
 
-applyCommand = prototype('mro_applyCommand', [Command, Boolean])
+applyCommand = prototype("mro_applyCommand", [Command, Boolean])
