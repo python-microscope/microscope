@@ -6,7 +6,8 @@ Import device classes, then define entries in DEVICES as:
 ## Function to create record for each device.
 from microscope.devices import device
 ## Import device modules/classes here.
-from microscope.lasers.deepstar import DeepstarLaser
+from microscope.lights.deepstar import DeepstarLaser
+# from microscope.lasers.deepstar import DeepstarLaser
 from microscope.lasers.obis import ObisLaser
 
 DEVICES = [
