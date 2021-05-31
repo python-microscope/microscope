@@ -27,7 +27,7 @@ host = '10.6.19.31'
 #
 
 DEVICES = [
-    device(AndorSDK3, host, 8001)  # {'transform': (0, 1, 1)}),  # timeout=1, buffer_length=, index=0,
+    device(AndorSDK3, host, 8001, uid="VSC-05100")  # , uid="VSC-01604"{'transform': (0, 1, 1)}),  # timeout=1, buffer_length=, index=0,
     # device(TestCamera, host, 8005, otherargs=1,),
     # device(TestCamera, host, 8006, otherargs=1,),
     ]
