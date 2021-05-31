@@ -63,12 +63,6 @@ SDK3_STRING_TO_TRIGGER = {
     "software": (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
 }
 
-# Electronic shuttering modes.
-SHUTTERING_MODES = {
-    'global': devices.SHUTTERING_GLOBAL,
-    'rolling': devices.SHUTTERING_ROLLING,
-}
-
 SDK_NAMES = {
     "_accumulate_count": "AccumulateCount",
     "_acquisition_start": "AcquisitionStart",
@@ -564,9 +558,6 @@ class AndorSDK3(
 
     def get_exposure_time(self):
         return self._exposure_time.get_value()
-
-    def get_shuttering_mode(self):
-        return SHUTTERING_MODES[self._electronic_shuttering_mode.get_string().lower()]
 
     def get_cycle_time(self):
         return 1.0 / self._frame_rate.get_value()
