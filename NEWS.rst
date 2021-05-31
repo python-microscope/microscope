@@ -1,18 +1,94 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
-Version 0.6.0 (upcoming)
+Version 0.7.0 (upcoming)
 ------------------------
+
+* Selected most important, backwards incompatible, changes:
+
+  * The `Camera.get_trigger_type` method, deprecated on version 0.6.0,
+    has been removed as well as the multiple `TRIGGER_*` constants it
+    returned.  Use the `Camera.trigger_type` and `Camera.trigger_mode`
+    properties.  Note that, despite the similar names, the removed
+    `Camera.get_trigger_type` does not return the same as
+    `Camera.trigger_type` property.
+
+* The device server logging was broken in version 0.6.0 for Windows
+  and macOS (systems not using fork for multiprocessing).  This
+  version fixes that issue.
+
+* Microscope is now dependent on Python 3.7 or later.
+
+
+Version 0.6.0 (2021/01/14)
+--------------------------
+
+* Selected most important, backwards incompatible, changes:
+
+  * The `LaserDevice` has changed the methods to set laser power to
+    use fractional values in the [0 1] range instead of milliwatts.
+    Effectively, the following methods have been removed:
+
+    * `LaserDevice.get_max_power_mw`
+    * `LaserDevice.get_min_power_mw`
+    * `LaserDevice.get_power_mw`
+    * `LaserDevice.get_set_power_mw`
+    * `LaserDevice.set_power_mw`
+
+    And have been replaced with a `LaserDevice.power` property and
+    `LaserDevice.get_set_power` method.
 
 * Changes to device ABCs:
 
-  * FilterWheelBase:
+  * Device:
+
+    * The `make_safe` method was removed.  This was not an abstract
+      method and was not implemented in most devices.  In few cases
+      where it was implemented, it can be replaced with `disable`.
+
+  * Camera:
+
+    * The `get_sensor_temperature` method was removed.  This was not
+      an abstract method was only implemented on `AndorAtmcd` and
+      `XimeaCamera`.  It is now available under the settings
+      dictionary under camera specific terms if supported by the
+      device.
+
+  * FilterWheel:
 
     * The `get_filters` method and the constructor `filters` argument
       have been removed.
 
     * New `position` and `n_positions` properties added to replace
       `get_position`, `set_position`, and `get_num_positions` methods.
+
+  * Laser:
+
+    * This has been renamed `LightSource` since it was being used for
+      non-laser light sources.  The name remains for backwards
+      compatibility.  Similarly, all modules in ``microscope.lasers``
+      were moved to ``microscope.lights`` and previous names remain
+      for backwards compatibility.
+
+  * LightSource:
+
+    * Now implement the `TriggerTargetMixin` interface so the trigger
+      type can be configured.
+
+  * TriggerTargetMixIn:
+
+    * New `trigger` method for software triggers.
+
+* Device specific changes:
+
+  * Thorlabs filterwheels:
+
+    * Positions were using base 1.  This has been fixed and now uses
+      base 0.
+
+    * Instead of using the individual `ThorlabsFW102C` and
+      `ThorlabsFW212C`, use the base `ThorlabsFilterWheel` which will
+      works for both models.
 
 * New program `microscope-gui` to display simple GUIs given a Pyro URI
   for a microscope device.
@@ -24,7 +100,23 @@ Version 0.6.0 (upcoming)
 * The `microscope.gui` module was completely rewritten to provide Qt
   widgets instead of Tkinter.
 
-* New `TestStage` and `TestStageAxis` classes.
+* New `TestController`, `TestStage` and `TestStageAxis` classes.
+
+* The `microscope.devices.device` function, used to define a device
+  for the device server, is now part of the `microscope.device_server`
+  module.
+
+* The `AxisLimits, `Binning`, `ROI`, `TriggerMode`, and `TriggerType`
+  classes are now available on the `microscope` module.
+
+* New `microscope.simulators.stage_aware_camera` module which provides
+  the components to simulate a microscope by simulating a camera that
+  returns regions of a larger image based on the coordinates of a
+  simulated stage and the position of a simulated filter wheel.
+
+* The multiple classes that simulate the different device types, i.e.,
+  the `Test*` classes in the `microscope.testsuite.devices` module,
+  were moved to the `microscope.simulators` subpackage.
 
 
 Version 0.5.0 (2020/03/10)
@@ -81,6 +173,9 @@ Version 0.4.0 (2020/01/07)
   * Prior ProScan III controller
   * Prior filter wheels
   * Toptica iBeam laser
+  * Zaber LED controllers
+  * Zaber filter wheels and cube turrets
+  * Zaber stages
 
 * Changes to device ABCs:
 
