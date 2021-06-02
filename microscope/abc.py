@@ -878,6 +878,10 @@ class Camera(TriggerTargetMixin, DataDevice):
         """Set the readout mode and _readout_transform."""
         pass
 
+    def get_shuttering_mode(self):
+        """Return the electronic shuttering mode."""
+        pass
+
     def get_transform(self):
         """Return the current transform without readout transform."""
         return self._client_transform
