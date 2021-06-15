@@ -81,7 +81,7 @@ def device(
     cls: typing.Callable,
     host: str,
     port: int,
-    conf: typing.Mapping[str, typing.Any] = {},
+    conf: typing.Mapping[str, typing.Any] = None,
     uid: typing.Optional[str] = None,
 ):
     """Define devices and where to serve them.
@@ -119,6 +119,8 @@ def device(
         ]
 
     """
+    if conf is None:
+        conf = {}
     if not callable(cls):
         raise TypeError("cls must be a callable")
     elif isinstance(cls, type):
