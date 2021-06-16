@@ -1480,6 +1480,9 @@ class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
             level = 0
         self.set_value(_StageValueType.CmsCondenserLEDLevel, level)
 
+    def get_condensor(self):
+        return self.get_value(_StageValueType.CmsCondenserLEDLevel) > 0
+
     def set_condensor_level(self, level):
         """Set the condensor LED level"""
         self._condensor_level = level
