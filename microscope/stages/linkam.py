@@ -991,7 +991,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         ]
         for p in lpaths:
             lskpath = os.path.join(p, "Linkam.lsk")
-            if _lib.linkamInitialiseSDK(sdk_log, lskpath.encode(), True):
+            if _lib.linkamInitialiseSDK(sdk_log, lskpath.encode(), True) == 1:
                 break
         else:
             raise microscope.LibraryLoadError(
