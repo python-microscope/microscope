@@ -26,7 +26,9 @@ Controllers
 
 - CoolLED (:class:`microscope.controllers.coolled.CoolLED`)
 - Prior ProScan III (:class:`microscope.controllers.prior.ProScanIII`)
-- Lumencor Spectra III light engine (:class:`microscope.controllers.lumencor.SpectraIIILightEngine`)
+- Lumencor Spectra III light engine
+  (:class:`microscope.controllers.lumencor.SpectraIIILightEngine`)
+- Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
 - Zaber daisy chain devices
   (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 - Zaber LED controller (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
