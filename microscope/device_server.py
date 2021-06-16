@@ -43,6 +43,7 @@ import signal
 import sys
 import time
 import typing
+from copy import deepcopy
 from collections.abc import Iterable
 from dataclasses import dataclass
 from logging import StreamHandler
@@ -81,7 +82,7 @@ def device(
     cls: typing.Callable,
     host: str,
     port: int,
-    conf: typing.Mapping[str, typing.Any] = None,
+    conf: typing.Mapping[str, typing.Any] = {},
     uid: typing.Optional[str] = None,
 ):
     """Define devices and where to serve them.
@@ -119,8 +120,6 @@ def device(
         ]
 
     """
-    if conf is None:
-        conf = {}
     if not callable(cls):
         raise TypeError("cls must be a callable")
     elif isinstance(cls, type):
@@ -128,7 +127,7 @@ def device(
             raise TypeError("uid must be specified for floating devices")
         elif not issubclass(cls, FloatingDeviceMixin) and uid is not None:
             raise TypeError("uid must not be given for non floating devices")
-    return dict(cls=cls, host=host, port=int(port), uid=uid, conf=conf)
+    return dict(cls=cls, host=host, port=int(port), uid=uid, conf=deepcopy(conf))
 
 
 def _create_log_formatter(name: str):
