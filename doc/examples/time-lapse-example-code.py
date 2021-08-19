@@ -15,45 +15,48 @@
 
 import time
 from queue import Queue
+
+from tifffile import TiffWriter
+
 from microscope import TriggerMode, TriggerType
 from microscope.cameras.pvcam import PVCamera
 from microscope.lights.toptica import TopticaiBeam
-from tifffile import TiffWriter
 
-#set parameters
+
+# set parameters
 n_repeats = 10
 interval_seconds = 15
-exposure_seconds = .5
-power_level = .5
+exposure_seconds = 0.5
+power_level = 0.5
 
-#create devices
+# create devices
 camera = PVCamera()
 laser = TopticaiBeam(port="COM1")
 
-#initialise buffer as a queue
+# initialise buffer as a queue
 image_buffer = Queue()
 
-#configure camera, pass the buffer queue and enable.
+# configure camera, pass the buffer queue and enable.
 camera.set_client(image_buffer)
 camera.exposure_time = exposure_seconds
 camera.set_trigger(TriggerType.SOFTWARE, TriggerMode.ONCE)
 camera.enable()
 
-#configure laser
+# configure laser
 laser.power = power_level
 laser.set_trigger(TriggerType.HIGH, TriggerMode.BULB)
 laser.enable()
 
-#main loop to collect images.
+# main loop to collect images.
 for i in range(n_repeats):
     camera.trigger()
     time.sleep(interval_seconds)
 
-#shutdown hardware devices
+# shutdown hardware devices
 laser.shutdown()
 camera.shutdown()
 
-#write out image data to a file.
+# write out image data to a file.
 writer = TiffWriter("data.tif")
 for i in range(n_repeats):
     writer.save(image_buffer.get())
