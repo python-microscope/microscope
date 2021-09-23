@@ -204,3 +204,22 @@ class TriggerMode(enum.Enum):
     BULB = 2
     STROBE = 3
     START = 4
+
+
+class ElectronicShutteringMode(enum.Enum):
+    """Electronic shuttering Mode for a :class:`microscope.abc.Camera`.
+
+    The Electronic shuttering mode defines how the camera is exposing and reading
+    the pixels.
+
+    :const:`ElectronicShutteringMode.GLOBAL`
+        The camera is exposing or reading all of the pixels across the sensor at a
+        single point in time.
+
+    :const:`ElectronicShutteringMode.ROLLING`
+        The camera is exposing and reading each individual row of pixels on the sensor
+        at a time.
+    """
+
+    GLOBAL = 1
+    ROLLING = 2

@@ -63,6 +63,12 @@ SDK3_STRING_TO_TRIGGER = {
     "software": (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
 }
 
+# Convert from SDK3 electronic shuttering modes names to Microscope shuttering mode
+SDK3_STRING_TO_SHUTTERING_MODE = {
+    "global": microscope.ElectronicShutteringMode.GLOBAL,
+    "rolling": microscope.ElectronicShutteringMode.ROLLING
+}
+
 SDK_NAMES = {
     "_accumulate_count": "AccumulateCount",
     "_acquisition_start": "AcquisitionStart",
@@ -597,6 +603,12 @@ class AndorSDK3(
 
     def _do_trigger(self) -> None:
         self._software_trigger()
+
+    def get_shuttering_mode(self):
+        return SDK3_STRING_TO_SHUTTERING_MODE[self._electronic_shuttering_mode.get_string().lower()]
+
+    def set_shuttering_mode(self, mode):
+        raise NotImplementedError
 
     def _get_binning(self):
         as_text = self._aoi_binning.get_string().split("x")
