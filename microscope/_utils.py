@@ -26,6 +26,23 @@ import microscope
 import microscope.abc
 
 
+# Both pySerial and serial distribution packages install an import
+# package named serial.  If both are installed we may have imported
+# the wrong one.  Check it to provide a better error message.  See
+# issue #232.
+if not hasattr(serial, "Serial"):
+    if hasattr(serial, "marshall"):
+        raise microscope.MicroscopeError(
+            "incorrect imported package serial.  It appears that the serial"
+            " package from the distribution serial, instead of pyserial, was"
+            " imported.  Consider uninstalling serial and installing pySerial."
+        )
+    else:
+        raise microscope.MicroscopeError(
+            "imported package serial does not have Serial class"
+        )
+
+
 class OnlyTriggersOnceOnSoftwareMixin(microscope.abc.TriggerTargetMixin):
     """Utility mixin for devices that only trigger "once" with software.
 
