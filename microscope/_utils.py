@@ -110,11 +110,13 @@ class SharedSerial:
         with self._lock:
             return self._serial.readlines(hint)
 
+    # Beware: pySerial 3.5 changed the named of its first argument
+    # from terminator to expected.  See issue #233.
     def read_until(
         self, terminator: bytes = b"\n", size: typing.Optional[int] = None
     ) -> bytes:
         with self._lock:
-            return self._serial.read_until(terminator=terminator, size=size)
+            return self._serial.read_until(terminator, size=size)
 
     def write(self, data: bytes) -> int:
         with self._lock:
