@@ -13,6 +13,10 @@ Version 0.7.0 (upcoming)
     `Camera.get_trigger_type` does not return the same as
     `Camera.trigger_type` property.
 
+* New devices supported:
+
+  * Toptica iChrome MLE
+
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This
   version fixes that issue.

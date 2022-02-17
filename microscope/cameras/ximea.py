@@ -46,6 +46,14 @@ for hardware triggers (see `vendor issues
 However, `XimeaCamera.trigger()` checks the trigger type and will
 raise an exception unless the camera is set for software triggers.
 
+Requirements
+------------
+
+Support for Ximea cameras requires Ximea's API Python (xiApiPython).
+This is only available via Ximea's website and is not available on
+PyPI.  See Ximea's website for `install instructions
+<https://www.ximea.com/support/wiki/apis/Python>`__.
+
 """
 
 import contextlib
