@@ -78,20 +78,58 @@ class PiCamera(microscope.abc.Camera):
         trg_source_names = [x.name for x in TrgSourceMap]
         #set up queue to store images as they are acquired
         self._queue = queue.Queue()
-
+        self._awb_modes= picamera.PiCamera.AWB_MODES
+        self._iso_modes=[0, 100, 200, 320, 400, 500, 640, 800]
         def _trigger_source_setter(index: int) -> None:
             trigger_type = TrgSourceMap[trg_source_names[index]].value
             self.set_trigger(trigger_type, self.trigger_mode)
 
         self.add_setting(
-            "trigger source",
+            "trig source",
             "enum",
             lambda: TrgSourceMap(self._trigger_type).name,
             _trigger_source_setter,
             trg_source_names,
         )
+        self.add_setting(
+            "AWB",
+            "enum",
+            lambda: self._awb_modes[self.get_awb_mode()],
+            lambda awb: self.set_awb_mode(awb),
+            values=(list(self._awb_modes.keys())),
+        )
+
+        self.add_setting(
+            "ISO",
+            "enum",
+            lambda: self._iso_modes.index(self.camera.iso),
+            lambda iso: self.set_iso_mode(iso),
+            values=(self._iso_modes),
+        )
+
+
+        # self.add_setting(
+        #     "pixel size",
+        #     "float",
+        #     lambda: self._pixel_size,
+        #     lambda pxsz: setattr(self, "_pixel_size", pxsz),
+        #     # technically should be: (nextafter(0.0, inf), nextafter(inf, 0.0))
+        #     values=(0.0, float("inf")),
+        # )
         self.initialize()
 
+    def get_awb_mode(self):
+        return(self.camera.awb_mode)
+    
+    def set_awb_mode(self,val):
+        for key , value in self._awb_modes.items():
+            if value == val:
+                self.camera.awb_mode= key
+
+    def set_iso_mode(self,val):
+        self.camera.iso= self._iso_modes[val]
+
+                
         
     def HW_trigger(self,channel):
         '''Function called by GPIO interupt, needs to trigger image capture'''
@@ -118,10 +156,15 @@ class PiCamera(microscope.abc.Camera):
             except:
                 raise Exception("Problem opening camera.")
         _logger.info('Initializing camera.')
+        self.camversion=self.camera.revision
+        _logger.info('cam version '+self.camversion)
+
         #create img buffer to hold images.
         #disable camera LED by default
         self.setLED(False)
+        self.set_awb_mode(0) # set auto white balance to off
         self._get_sensor_shape()
+        
         
     def make_safe(self):
         if self._acquiring:
@@ -213,7 +256,10 @@ class PiCamera(microscope.abc.Camera):
 
     
     def _get_sensor_shape(self):
-        res=self.camera.resolution
+        if self.camversion=='ov5647': #picam version 1
+            self.camera.resolution=(2592,1944)
+        #faqll back to defualt if not set above. 
+        res=self.camera.resolution 
         self._set_roi(0,0,res[0],res[1])
         return (res)
     def _do_trigger(self):
@@ -229,10 +275,6 @@ class PiCamera(microscope.abc.Camera):
 
 
 
-    def HWtrigger(self, pin):
-        _logger.info('HWTrigger received')
-
-        
 #ongoing implemetation notes
 
 #should be able to use rotation and hflip to set specific output image
