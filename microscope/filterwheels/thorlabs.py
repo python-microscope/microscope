@@ -81,7 +81,12 @@ class ThorlabsFilterWheel(microscope.abc.FilterWheel):
 
     def _do_get_position(self):
         # Thorlabs positions start at 1, hence the -1
-        return int(self._send_command("pos?")) - 1
+        try:
+            return int(self._send_command("pos?")) - 1
+        except TypeError:
+            raise microscope.DeviceError(
+                "Unable to get position of %s", self.__class__.__name__
+            )
 
     def _readline(self):
         """Custom _readline to overcome limitations of the serial implementation."""
