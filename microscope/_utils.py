@@ -26,6 +26,23 @@ import microscope
 import microscope.abc
 
 
+# Both pySerial and serial distribution packages install an import
+# package named serial.  If both are installed we may have imported
+# the wrong one.  Check it to provide a better error message.  See
+# issue #232.
+if not hasattr(serial, "Serial"):
+    if hasattr(serial, "marshall"):
+        raise microscope.MicroscopeError(
+            "incorrect imported package serial.  It appears that the serial"
+            " package from the distribution serial, instead of pyserial, was"
+            " imported.  Consider uninstalling serial and installing pySerial."
+        )
+    else:
+        raise microscope.MicroscopeError(
+            "imported package serial does not have Serial class"
+        )
+
+
 class OnlyTriggersOnceOnSoftwareMixin(microscope.abc.TriggerTargetMixin):
     """Utility mixin for devices that only trigger "once" with software.
 
@@ -110,11 +127,13 @@ class SharedSerial:
         with self._lock:
             return self._serial.readlines(hint)
 
+    # Beware: pySerial 3.5 changed the named of its first argument
+    # from terminator to expected.  See issue #233.
     def read_until(
         self, terminator: bytes = b"\n", size: typing.Optional[int] = None
     ) -> bytes:
         with self._lock:
-            return self._serial.read_until(terminator=terminator, size=size)
+            return self._serial.read_until(terminator, size=size)
 
     def write(self, data: bytes) -> int:
         with self._lock:
