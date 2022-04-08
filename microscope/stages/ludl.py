@@ -27,6 +27,7 @@ import threading
 import typing
 import time
 import serial
+import re
 
 import microscope.abc
 
@@ -124,6 +125,37 @@ class _LudlController:
             # '\rEND\r' that signals the end of the description.
             self.command(b'RCONFIG')
             answer = self.read_multiline()
+
+            # parse config responce which tells us what devices are present
+            # on this controller.
+
+            self._devlist={}
+
+            for line in answer[4:-1]:
+                #loop through lines 4 to second last one which are devices
+                #present on this controller
+                devinfo=re.split(r"\s{2,}",line.decode('ascii'))
+                # dev address,label,id,description, type
+                self._devlist[devinfo[0]]=devinfo[1:]
+
+
+# ['EMOT', 'X', 'X axis stage', 'MCMSE']
+# >>> devinfo[0]
+# '1'
+# >>> answer[3]
+# b''
+# >>> answer[4]
+# b'1       EMOT    X    X axis stage        MCMSE'
+# >>> answer[5]
+# b'2       EMOT    Y    Y axis stage        MCMSE'
+# >>> answer[6]
+# b'3       EMOT    B    B aux  motor        MCMSE'
+# >>> answer[7]
+# b'7       HSMOT   T    T rotation robot    MCMSE **** Should be     T rot'
+
+#            for dev in self._devlist:
+                
+            
             print(answer)
 #            if answer != b"PROSCAN INFORMATION\r":
 #                self.read_until_timeout()
