@@ -25,11 +25,20 @@
 import contextlib
 import threading
 import typing
-
+import time
 import serial
 
 import microscope.abc
 
+
+
+# so far very basic support for stages
+# no support for filter, shutters, or slide loader as I dont have hardware
+
+# Issues to fix
+# very slow in mosaic
+# No limit support
+# what is scaling?
 
 
 # commands
@@ -37,6 +46,7 @@ import microscope.abc
 # Where X Y - :A -2000 1000
 # Where X Y - :A -2000 N-2  # Y axis no installed N-2 is error -2
 
+# commands end in a '\r' but replies return ending in '\n'!
 
 # errors
 # -1 Unknown command
@@ -57,7 +67,25 @@ import microscope.abc
 # MOVE X=2000 - A: positive reply? need to check movement is finished. 
 # VMOVE X=1 y=2 -
 # MOVREL 
+# REMRES - reset controller.
 
+#suggested startup routine for stage which will explore the extremes
+#and then  move stage to center and set that as 0,0
+#"CENTER X=100000 Y=100000"
+#"HERE X=0 Y=0"
+#
+
+LUDL_ERRORS = { -1: 'Unknown command',
+              -2: 'Illegal point type or axis, or module not installed',
+              -3: 'Not enough parameters (e.g. move r=)',
+              -4: 'Parameter out of range',
+              -21: 'Process aborted by HALT command',
+              }
+
+AXIS_MAPPER = { 1: 'X' ,
+                2: 'Y' ,
+                3: 'Z' ,
+               }
 
 class _LudlController:
     """Connection to a Ludl Controller and wrapper to its commands.
@@ -82,7 +110,7 @@ class _LudlController:
             baudrate=baudrate,
             timeout=timeout,
             bytesize=serial.EIGHTBITS,
-            stopbits=serial.STOPBITS_ONE,
+            stopbits=serial.STOPBITS_TWO,
             parity=serial.PARITY_NONE,
             xonxoff=False,
             rtscts=False,
@@ -94,29 +122,49 @@ class _LudlController:
             # We do not use the general get_description() here because
             # if this is not a ProScan device it would never reach the
             # '\rEND\r' that signals the end of the description.
-            self.command(b"?")
-            answer = self.readline()
-            if answer != b"PROSCAN INFORMATION\r":
-                self.read_until_timeout()
-                raise RuntimeError(
-                    "Not a ProScanIII device: '?' returned '%s'"
-                    % answer.decode()
-                )
-            # A description ends with END on its own line.
-            line = self._serial.read_until(b"\rEND\r")
-            if not line.endswith(b"\rEND\r"):
-                raise RuntimeError("Failed to clear description")
+            self.command(b'RCONFIG')
+            answer = self.read_multiline()
+            print(answer)
+#            if answer != b"PROSCAN INFORMATION\r":
+#                self.read_until_timeout()
+#                raise RuntimeError(
+#                    "Not a ProScanIII device: '?' returned '%s'"
+#                    % answer.decode()
+#                )
+#            # A description ends with END on its own line.
+#            line = self._serial.read_until(b"\rEND\r")
+#            if not line.endswith(b"\rEND\r"):
+#                raise RuntimeError("Failed to clear description")
 
+    def is_busy(self):
+        pass
+
+    def get_number_axes(self):
+        return 2
+
+    
     def command(self, command: bytes) -> None:
         """Send command to device."""
         with self._lock:
             self._serial.write(command + b"\r")
 
     def readline(self) -> bytes:
-        """Read a line from the device connection."""
+        """Read a line from the device connection until '\n'."""
         with self._lock:
-            return self._serial.read_until(b"\r")
+            return self._serial.read_until(b"\n")
 
+    def read_multiline(self):
+        output=[]
+        line=True
+        while (line):
+            line=self.readline()
+            output.append(line.strip())
+            if line==b'N' or line[0:2] == b':A' :
+                #thins means an end of command strings doesn require an
+                #addition timeout before it returns 
+                return (output)
+        return(output)
+            
     def read_until_timeout(self) -> None:
         """Read until timeout; used to clean buffer if in an unknown state."""
         with self._lock:
@@ -124,16 +172,18 @@ class _LudlController:
             while self._serial.readline():
                 continue
 
+    def wait_until_idle(self) -> None:
+        """Keep sending the 'STATUS' comand until the respnce
+        returns b'0\r' """
+        self._command_and_validate(b'STATUS', b"N")
+        
     def _command_and_validate(self, command: bytes, expected: bytes) -> None:
-        """Send command and raise exception if answer is unexpected"""
         with self._lock:
             answer = self.get_command(command)
-            if answer != expected:
-                self.read_until_timeout()
-                raise RuntimeError(
-                    "command '%s' failed (got '%s')"
-                    % (command.decode(), answer.decode())
-                )
+            #wait for move to stop
+            while(self.get_command(b'STATUS') != expected):
+                time.sleep(0.1)
+            return answer
 
     def get_command(self, command: bytes) -> bytes:
         """Send get command and return the answer."""
@@ -143,14 +193,32 @@ class _LudlController:
 
     def move_command(self, command: bytes) -> None:
         """Send a move command and check return value."""
-        # Movement commands respond with an R at the end of move.
-        # Once a movement command is issued the application should
-        # wait until the end of move R response is received before
-        # sending any further commands.
-        # TODO: this times 10 for timeout is a bit arbitrary.
-        with self.changed_timeout(10 * self._serial.timeout):
-            self._command_and_validate(command, b"R\r")
+        # Movement commands respond with ":A \n" but the move is then
+        # being performed.  The move is only finihsed once the
+        # "STATUS" command returns "N" rather than "B"
+        self._command_and_validate(command, b"N")
 
+    def move_by_relative_position(self, axis: bytes, delta: float) -> None:
+        """Send a realtive movement command to stated axis"""
+        axisname=AXIS_MAPPER[axis]
+        self.move_command(bytes('MOVREL {0}={1}'.format(axisname,
+                                                        str(delta)),'ascii'))
+        
+    def move_to_absolute_position(self, axis: bytes, pos: float) -> None:
+        """Send a realtive movement command to stated axis"""
+        axisname=AXIS_MAPPER[axis]
+        self.move_command(bytes('MOVE {0}={1}'.format(axisname,
+                                                      str(pos)),'ascii'))
+
+    def get_absolute_position(self, axis: bytes) -> float:
+        axisname=AXIS_MAPPER[axis]
+        position=self.get_command(bytes('WHERE {0}'.format(axisname),'ascii'))
+        if position[3:4]==b'N':
+            print("Error: {0} : {1}".format(position,
+                                         LUDL_ERRORS[int(position[4:6])]))
+        else:
+            return float(position.strip()[2:])
+                                
     def set_command(self, command: bytes) -> None:
         """Send a set command and check return value."""
         # Property type commands that set certain status respond with
@@ -173,83 +241,147 @@ class _LudlController:
         finally:
             self._serial.timeout = previous
 
-    def assert_filterwheel_number(self, number: int) -> None:
-        assert number > 0 and number < 4
 
-    def _has_thing(self, command: bytes, expected_start: bytes) -> bool:
-        # Use the commands that returns a description string to find
-        # whether a specific device is connected.
-        with self._lock:
-            description = self.get_description(command)
-            if not description.startswith(expected_start):
-                self.read_until_timeout()
-                raise RuntimeError(
-                    "Failed to get description '%s' (got '%s')"
-                    % (command.decode(), description.decode())
-                )
-        return not description.startswith(expected_start + b"NONE\r")
+class _LudlStageAxis(microscope.abc.StageAxis):
+    def __init__(self, dev_conn: _LudlController, axis: str) -> None:
+        super().__init__()
+        self._dev_conn = dev_conn
+        self._axis = axis
 
-    def has_filterwheel(self, number: int) -> bool:
-        self.assert_filterwheel_number(number)
-        # We use the 'FILTER w' command to check if there's a filter
-        # wheel instead of the '?' command.  The reason is that the
-        # third filter wheel, named "A AXIS" on the controller box and
-        # "FOURTH" on the output of the '?' command, can be used for
-        # non filter wheels.  We hope that 'FILTER 3' will fail
-        # properly if what is connected to "A AXIS" is not a filter
-        # wheel.
-        return self._has_thing(b"FILTER %d" % number, b"FILTER_%d = " % number)
+    def move_by(self, delta: float) -> None:
+        self._dev_conn.move_by_relative_position(self._axis, int(delta))
 
-    def get_n_filter_positions(self, number: int) -> int:
-        self.assert_filterwheel_number(number)
-        answer = self.get_command(b"FPW %d" % number)
-        return int(answer)
+    def move_to(self, pos: float) -> None:
+        self._dev_conn.move_to_absolute_position(self._axis, int(pos))
 
-    def get_filter_position(self, number: int) -> int:
-        self.assert_filterwheel_number(number)
-        answer = self.get_command(b"7 %d F" % number)
-        return int(answer)
+    @property
+    def position(self) -> float:
+        if self._dev_conn.is_busy():
+            _logger.warning("querying stage axis position but device is busy")
+            self._dev_conn.wait_until_idle()
+        return float(self._dev_conn.get_absolute_position(self._axis))
 
-    def set_filter_position(self, number: int, pos: int) -> None:
-        self.assert_filterwheel_number(number)
-        self.move_command(b"7 %d %d" % (number, pos))
+    @property
+    def limits(self) -> microscope.AxisLimits:
+        min_limit = -1000000 #self._dev_conn.get_limit_min(self._axis)
+        max_limit = 1000000 #self._dev_conn.get_limit_max(self._axis)
+        return microscope.AxisLimits(lower=min_limit, upper=max_limit)
+
+class _LudlStage(microscope.abc.Stage):
+    def __init__(
+        self, conn: _LudlController, **kwargs
+    ) -> None:
+        super().__init__(**kwargs)
+        self._dev_conn = conn
+        self._axes = {
+            str(i): _LudlStageAxis(self._dev_conn, i)
+            for i in range(1, 3)#self._dev_conn.get_number_axes() + 1)
+        }
+
+    def _do_shutdown(self) -> None:
+        pass
+
+    def _do_enable(self) -> bool:
+        # Before a device can moved, it first needs to establish a
+        # reference to the home position.  We won't be able to move
+        # unless we home it first.
+ #       if not self._dev_conn.been_homed():
+ #           self._dev_conn.home()
+        return True
+
+    @property
+    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
+        return self._axes
+
+    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+        """Move specified axes by the specified distance. """
+        for axis_name, axis_delta in delta.items():
+            self._dev_conn.move_by_relative_position(
+                int(axis_name), int(axis_delta),
+            )
+        self._dev_conn.wait_until_idle()
+
+    def move_to(self, position: typing.Mapping[str, float]) -> None:
+        """Move specified axes by the specified distance. """
+        for axis_name, axis_position in position.items():
+            self._dev_conn.move_to_absolute_position(
+                int(axis_name), int(axis_position),
+            )
+        self._dev_conn.wait_until_idle()
+
+    
 
 
+#    def assert_filterwheel_number(self, number: int) -> None:
+#        assert number > 0 and number < 4
+
+#    def _has_thing(self, command: bytes, expected_start: bytes) -> bool:
+#        # Use the commands that returns a description string to find
+#        # whether a specific device is connected.
+#        with self._lock:
+#            description = self.get_description(command)
+#            if not description.startswith(expected_start):
+#                self.read_until_timeout()
+#                raise RuntimeError(
+#                    "Failed to get description '%s' (got '%s')"
+#                    % (command.decode(), description.decode())
+#                )
+#        return not description.startswith(expected_start + b"NONE\r")
+
+    # def has_filterwheel(self, number: int) -> bool:
+    #     self.assert_filterwheel_number(number)
+    #     # We use the 'FILTER w' command to check if there's a filter
+    #     # wheel instead of the '?' command.  The reason is that the
+    #     # third filter wheel, named "A AXIS" on the controller box and
+    #     # "FOURTH" on the output of the '?' command, can be used for
+    #     # non filter wheels.  We hope that 'FILTER 3' will fail
+    #     # properly if what is connected to "A AXIS" is not a filter
+    #     # wheel.
+    #     return self._has_thing(b"FILTER %d" % number, b"FILTER_%d = " % number)
+
+    # def get_n_filter_positions(self, number: int) -> int:
+    #     self.assert_filterwheel_number(number)
+    #     answer = self.get_command(b"FPW %d" % number)
+    #     return int(answer)
+
+    # def get_filter_position(self, number: int) -> int:
+    #     self.assert_filterwheel_number(number)
+    #     answer = self.get_command(b"7 %d F" % number)
+    #     return int(answer)
+
+    # def set_filter_position(self, number: int, pos: int) -> None:
+    #     self.assert_filterwheel_number(number)
+    #     self.move_command(b"7 %d %d" % (number, pos))
+
+
+#IMD 20220408
+#Not yet implemented filterwheel or shutters as I dont have any on my system
+        
 class ludlMC2000(microscope.abc.Controller):
     """Ludl MC 2000 controller.
 
-    The controlled devices have the following labels:
-
-    `filter 1`
-      Filter wheel connected to connector labelled "FILTER 1".
-    `filter 2`
-      Filter wheel connected to connector labelled "FILTER 1".
-    `filter 3`
-      Filter wheel connected to connector labelled "A AXIS".
-
     .. note::
 
-       The Prior ProScanIII can control up to three filter wheels.
-       However, a filter position may have a different number
-       dependening on which connector it is.  For example, using an 8
-       position filter wheel, what is position 1 on the "filter 1" and
-       "filter 2" connectors, is position 4 when on the "A axis" (or
-       "filter 3") connector.
-
+       The Ludl MC5000 can control a stage, filter wheels and shutters.
+ 
     """
 
+
+    
     def __init__(
         self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self._conn = _ludlConnection(port, baudrate, timeout)
+        self._conn = _LudlController(port, baudrate, timeout)
         self._devices: typing.Mapping[str, microscope.abc.Device] = {}
+        self._devices['stage']=_LudlStage(self._conn)
+#        # Can have up to three filter wheels, numbered 1 to 3.
+#        for number in range(1, 4):
+#            if self._conn.has_filterwheel(number):
+#                key = "filter %d" % number
+#                self._devices[key] = _ludlFilterWheel(self._conn, number)
 
-        # Can have up to three filter wheels, numbered 1 to 3.
-        for number in range(1, 4):
-            if self._conn.has_filterwheel(number):
-                key = "filter %d" % number
-                self._devices[key] = _ludlFilterWheel(self._conn, number)
+
 
     @property
     def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
