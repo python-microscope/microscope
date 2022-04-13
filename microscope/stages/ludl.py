@@ -212,9 +212,10 @@ class _LudlController:
     def _command_and_validate(self, command: bytes, expected: bytes) -> None:
         with self._lock:
             answer = self.get_command(command)
+            if answer == b':A \n' :
             #wait for move to stop
-            while(self.get_command(b'STATUS') != expected):
-                time.sleep(0.1)
+                while(self.get_command(b'STATUS') != expected):
+                    time.sleep(0.01)
             return answer
 
     def get_command(self, command: bytes) -> bytes:
@@ -228,8 +229,12 @@ class _LudlController:
         # Movement commands respond with ":A \n" but the move is then
         # being performed.  The move is only finihsed once the
         # "STATUS" command returns "N" rather than "B"
-        self._command_and_validate(command, b"N")
-
+        #self._command_and_validate(command, b"N")
+        #
+        #actully beter to just issue the move command and rely on
+        #other process to check position
+        self.get_command(command)
+        
     def move_by_relative_position(self, axis: bytes, delta: float) -> None:
         """Send a realtive movement command to stated axis"""
         axisname=AXIS_MAPPER[axis]
@@ -335,6 +340,7 @@ class _LudlStage(microscope.abc.Stage):
 
     def move_to(self, position: typing.Mapping[str, float]) -> None:
         """Move specified axes by the specified distance. """
+        print(position)
         for axis_name, axis_position in position.items():
             self._dev_conn.move_to_absolute_position(
                 int(axis_name), int(axis_position),
