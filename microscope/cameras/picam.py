@@ -27,7 +27,7 @@ from io import BytesIO
 
 import numpy as np
 
-import microscope
+import microscope.abc
 
 # import raspberry pi specific modules
 import picamera
@@ -35,8 +35,8 @@ import picamera.array
 
 # to allow hardware trigger.
 import RPi.GPIO as GPIO
-from microscope import devices
-from microscope.devices import ROI, Binning, keep_acquiring
+from microscope import ROI, Binning, TriggerType, TriggerMode
+from microscope.abc import keep_acquiring
 
 
 GPIO_Trigger = 21
@@ -44,11 +44,12 @@ GPIO_CAMLED = 5
 
 _logger = logging.getLogger(__name__)
 
+
 # Trigger types.
 @enum.unique
 class TrgSourceMap(enum.Enum):
-    SOFTWARE = microscope.TriggerType.SOFTWARE
-    EDGE_RISING = microscope.TriggerType.RISING_EDGE
+    SOFTWARE = TriggerType.SOFTWARE
+    EDGE_RISING = TriggerType.RISING_EDGE
 
 
 class PiCamera(microscope.abc.Camera):
@@ -69,7 +70,7 @@ class PiCamera(microscope.abc.Camera):
         self.exposure_time = 0.001  # in seconds
         self.cycle_time = self.exposure_time
         # initialise in soft trigger mode
-        self._trigger_type = microscope.TriggerType.SOFTWARE
+        self._trigger_type = TriggerType.SOFTWARE
         # setup hardware triggerline
         GPIO.setmode(GPIO.BCM)
         # GPIO trigger line is an input
@@ -193,32 +194,32 @@ class PiCamera(microscope.abc.Camera):
             self._acquiring = False
 
     def set_trigger(
-        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+        self, ttype: TriggerType, tmode: TriggerMode
     ) -> None:
         if ttype == self._trigger_type:
             return
-        elif ttype == microscope.TriggerType.SOFTWARE:
+        elif ttype == TriggerType.SOFTWARE:
             GPIO.remove_event_detect(GPIO_Trigger)
-            self._trigger_type = microscope.TriggerType.SOFTWARE
-        elif ttype == microscope.TriggerType.RISING_EDGE:
+            self._trigger_type = TriggerType.SOFTWARE
+        elif ttype == TriggerType.RISING_EDGE:
             GPIO.add_event_detect(
                 GPIO_Trigger,
                 GPIO.RISING,
                 callback=self.HW_trigger,
                 bouncetime=10,
             )
-            self._trigger_type = microscope.TriggerType.RISING_EDGE
+            self._trigger_type = TriggerType.RISING_EDGE
 
     @property
-    def trigger_mode(self) -> microscope.TriggerMode:
+    def trigger_mode(self) -> TriggerMode:
         #        if self._trigger_type==devices.TRIGGER_BEFORE:
-        return microscope.TriggerMode.ONCE
+        return TriggerMode.ONCE
 
     #        else:
-    #            return microscope.TriggerMode.ONCE
+    #            return TriggerMode.ONCE
 
     @property
-    def trigger_type(self) -> microscope.TriggerType:
+    def trigger_type(self) -> TriggerType:
         return self._trigger_type
 
     def _get_roi(self):
