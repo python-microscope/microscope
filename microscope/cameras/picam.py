@@ -26,16 +26,12 @@ import time
 from io import BytesIO
 
 import numpy as np
-
-import microscope.abc
-
-# import raspberry pi specific modules
 import picamera
 import picamera.array
-
-# to allow hardware trigger.
 import RPi.GPIO as GPIO
-from microscope import ROI, Binning, TriggerType, TriggerMode
+
+import microscope.abc
+from microscope import ROI, Binning, TriggerMode, TriggerType
 from microscope.abc import keep_acquiring
 
 
