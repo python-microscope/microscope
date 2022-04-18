@@ -26,7 +26,6 @@ import time
 from io import BytesIO
 
 import numpy as np
-import Pyro4
 
 import microscope
 
@@ -52,8 +51,6 @@ class TrgSourceMap(enum.Enum):
     EDGE_RISING = microscope.TriggerType.RISING_EDGE
 
 
-@Pyro4.expose
-@Pyro4.behavior("single")
 class PiCamera(microscope.abc.Camera):
     def __init__(self, *args, **kwargs):
         super(PiCamera, self).__init__(**kwargs)
