@@ -19,23 +19,25 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
-
-import Pyro4
-import numpy as np
-import logging
 import enum
-import microscope
+import logging
 import queue
-from microscope import devices
-from microscope.devices import keep_acquiring, Binning, ROI
+import time
+from io import BytesIO
 
+import numpy as np
+import Pyro4
+
+import microscope
 #import raspberry pi specific modules
 import picamera
 import picamera.array
-from io import BytesIO
 #to allow hardware trigger.
 import RPi.GPIO as GPIO
+from microscope import devices
+from microscope.devices import ROI, Binning, keep_acquiring
+
+
 GPIO_Trigger=21
 GPIO_CAMLED=5
 
@@ -284,5 +286,3 @@ class PiCamera(microscope.abc.Camera):
 
 #Need to setup a buffer for harware triggered data aquisition so we can
 #call the acquisition and then download the data at our leasure
-
-
