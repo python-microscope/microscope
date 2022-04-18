@@ -138,7 +138,7 @@ class _ImageGenerator:
         y0 = np.random.randint(h)
         xx, yy = np.meshgrid(range(w), range(h))
         return dark + light * np.exp(
-            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * sigma ** 2)
+            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * sigma**2)
         )
 
     def sawtooth(self, w, h, dark, light):

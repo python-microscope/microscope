@@ -22,8 +22,7 @@ import typing
 
 
 class MicroscopeError(Exception):
-    """Base class for Python Microscope exceptions.
-    """
+    """Base class for Python Microscope exceptions."""
 
     pass
 
@@ -136,7 +135,7 @@ class AxisLimits(typing.NamedTuple):
 
 
 class Binning(typing.NamedTuple):
-    """A tuple containing parameters for horizontal and vertical binning. """
+    """A tuple containing parameters for horizontal and vertical binning."""
 
     h: int
     v: int

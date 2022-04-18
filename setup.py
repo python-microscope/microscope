@@ -132,7 +132,6 @@ if has_sphinx:
                 ):
                     super().run()
 
-
 else:
 
     class BuildDoc(distutils.cmd.Command):

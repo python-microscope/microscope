@@ -257,7 +257,7 @@ class TopticaiBeam(
         return self._max_power
 
     def _get_power_mw(self) -> float:
-        return self._conn.show_power_uW() * (10 ** -3)
+        return self._conn.show_power_uW() * (10**-3)
 
     def _set_power_mw(self, mw: float) -> None:
         self._conn.set_normal_channel_power(mw)

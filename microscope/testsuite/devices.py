@@ -23,6 +23,7 @@ import time
 from enum import IntEnum
 
 import microscope.abc
+
 # These classes were originally in testsuite but have been moved to
 # their own subpackage, these imports are for backwards compatibility.
 from microscope.simulators import (

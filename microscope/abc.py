@@ -247,8 +247,7 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
     def set_trigger(
         self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
     ) -> None:
-        """Set device for a specific trigger.
-        """
+        """Set device for a specific trigger."""
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -960,7 +959,7 @@ class Camera(TriggerTargetMixin, DataDevice):
         raise NotImplementedError()
 
     def get_roi(self) -> microscope.ROI:
-        """Return current ROI. """
+        """Return current ROI."""
         roi = self._get_roi()
         if self._transform[2]:
             # 90 degree rotation
@@ -1015,8 +1014,7 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         self._comms_lock = threading.RLock()
 
     def _readline(self) -> bytes:
-        """Read a line from connection without leading and trailing whitespace.
-        """
+        """Read a line from connection without leading and trailing whitespace."""
         return self.connection.readline().strip()
 
     def _write(self, command: bytes) -> int:

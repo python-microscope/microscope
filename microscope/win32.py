@@ -53,7 +53,7 @@ except:
 
 
 class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
-    """ Serves microscope devices via a Windows service.
+    """Serves microscope devices via a Windows service.
 
     Win32 service manipulation relies on fetching _svc_name_ without
     instantiating any object, so _svc_name_ must be a class
@@ -106,7 +106,8 @@ class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
         )
 
         options = DeviceServerOptions(
-            config_fpath=configfile, logging_level=logging.INFO,
+            config_fpath=configfile,
+            logging_level=logging.INFO,
         )
 
         try:

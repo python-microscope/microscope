@@ -839,7 +839,15 @@ dllFunc(
     ["can_num", "cam_name"],
     buf_len=CAM_NAME_LEN,
 )
-dllFunc("pl_cam_get_total", [OUTPUT(int16),], ["total_cams",])
+dllFunc(
+    "pl_cam_get_total",
+    [
+        OUTPUT(int16),
+    ],
+    [
+        "total_cams",
+    ],
+)
 dllFunc(
     "pl_cam_open",
     [STRING, OUTPUT(int16), int16],
@@ -890,7 +898,13 @@ dllFunc(
     [int16, uns32, uns32, OUTPUT(uns32)],
     ["hcam", "param_id", "index", "length"],
 )
-dllFunc("pl_pp_reset", [int16,], ["hcam"])
+dllFunc(
+    "pl_pp_reset",
+    [
+        int16,
+    ],
+    ["hcam"],
+)
 dllFunc(
     "pl_create_smart_stream_struct",
     [OUTPUT(smart_stream_type), uns16],
@@ -898,16 +912,28 @@ dllFunc(
 )
 dllFunc(
     "pl_release_smart_stream_struct",
-    [ctypes.POINTER(smart_stream_type),],
-    ["pSmtStruct",],
+    [
+        ctypes.POINTER(smart_stream_type),
+    ],
+    [
+        "pSmtStruct",
+    ],
 )
 dllFunc(
-    "pl_create_frame_info_struct", [OUTPUT(FRAME_INFO),], ["pNewFrameInfo"]
+    "pl_create_frame_info_struct",
+    [
+        OUTPUT(FRAME_INFO),
+    ],
+    ["pNewFrameInfo"],
 )
 dllFunc(
     "pl_release_frame_info_struct",
-    [ctypes.POINTER(FRAME_INFO),],
-    ["pFrameInfoToDel",],
+    [
+        ctypes.POINTER(FRAME_INFO),
+    ],
+    [
+        "pFrameInfoToDel",
+    ],
 )
 dllFunc("pl_exp_abort", [int16, int16], ["hcam", "cam_state"])
 dllFunc(
@@ -1370,7 +1396,8 @@ class PVStringParam(PVParam):
 
 
 class PVCamera(
-    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.Camera,
 ):
     """Implements the CameraDevice interface for the pvcam library."""
 
