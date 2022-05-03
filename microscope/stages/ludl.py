@@ -246,7 +246,30 @@ class _LudlController:
         axisname=AXIS_MAPPER[axis]
         self.move_command(bytes('MOVE {0}={1}'.format(axisname,
                                                       str(pos)),'ascii'))
+    def move_to_limit(self,axis: bytes,speed: int):
+        axisname=AXIS_MAPPER[axis]
+        self.get_command(bytes('SPIN {0}={1}'.format(axisname,speed),'ascii'))
 
+    def motor_moving(self,axis: bytes) -> int:
+        axisname=AXIS_MAPPER[axis]
+        reply=self.get_command(bytes('RDSTAT {0}'.format(axisname),'ascii'))
+        flags=int(reply.strip()[3:])
+        return (flags&1)
+
+    def set_speed(self, axis: bytes, speed: int) -> None:
+        axisname=AXIS_MAPPER[axis]
+        self.get_command(bytes('SPEED {0}={1}'.format(axisname,speed),'ascii'))
+
+
+    def wait_for_motor_stop(self,axis: bytes):
+        while(self.motor_moving(axis)):
+            time.sleep(0.1)
+            
+
+    def reset_position(self, axis: bytes):
+        axisname=AXIS_MAPPER[axis]
+        self.get_command(bytes('HERE {0}=0'.format(axisname),'ascii'))
+        
     def get_absolute_position(self, axis: bytes) -> float:
         axisname=AXIS_MAPPER[axis]
         position=self.get_command(bytes('WHERE {0}'.format(axisname),'ascii'))
@@ -284,6 +307,11 @@ class _LudlStageAxis(microscope.abc.StageAxis):
         super().__init__()
         self._dev_conn = dev_conn
         self._axis = axis
+        # not a good solution as min/max are used to build the stage map in
+        # mosaic etc... Maybe we just need to know it! 
+        self.min_limit = 0.0
+        self.max_limit = 0.0
+        self.set_speed(100000)
 
     def move_by(self, delta: float) -> None:
         self._dev_conn.move_by_relative_position(self._axis, int(delta))
@@ -300,10 +328,33 @@ class _LudlStageAxis(microscope.abc.StageAxis):
 
     @property
     def limits(self) -> microscope.AxisLimits:
-        min_limit = -1000000 #self._dev_conn.get_limit_min(self._axis)
-        max_limit = 1000000 #self._dev_conn.get_limit_max(self._axis)
-        return microscope.AxisLimits(lower=min_limit, upper=max_limit)
+        return microscope.AxisLimits(lower=self.min_limit, upper=self.max_limit)
 
+    def home(self) -> None:
+        self.find_limits()
+        self.move_to(self.max_limit/2)
+
+    def set_speed(self, speed: int) -> None:
+        self._dev_conn.set_speed(self._axis, speed)
+
+    def find_limits(self,speed = 100000):
+        #drive axis to minimum pos, zero and then drive to max position
+        self._dev_conn.move_to_limit(self._axis,-speed)
+        # spin moves dont set the status info need to query the motor
+        # status byte
+        self._dev_conn.wait_for_motor_stop(self._axis)
+        # reset positon to zero.
+        print(self.position)
+        self._dev_conn.reset_position(self._axis)
+        self.min_limit=0.0
+        # move to positive limit
+        self._dev_conn.move_to_limit(self._axis,speed)
+        self._dev_conn.wait_for_motor_stop(self._axis)
+        self.max_limit=self.position
+        return self.limits
+
+
+    
 class _LudlStage(microscope.abc.Stage):
     def __init__(
         self, conn: _LudlController, **kwargs
