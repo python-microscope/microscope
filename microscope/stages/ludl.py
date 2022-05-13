@@ -36,17 +36,7 @@ import microscope.abc
 # so far very basic support for stages
 # no support for filter, shutters, or slide loader as I dont have hardware
 
-# Issues to fix
-# very slow in mosaic
-# No limit support
-# what is scaling?
-
-
-# commands
-# Where X - A: 12000
-# Where X Y - :A -2000 1000
-# Where X Y - :A -2000 N-2  # Y axis no installed N-2 is error -2
-
+# Note: 
 # commands end in a '\r' but replies return ending in '\n'!
 
 # errors
@@ -65,23 +55,22 @@ import microscope.abc
 # end limit, etc….)
 # -17 Initialization erro
 
-# MOVE X=2000 - A: positive reply? need to check movement is finished. 
-# VMOVE X=1 y=2 -
-# MOVREL 
-# REMRES - reset controller.
-
-#suggested startup routine for stage which will explore the extremes
-#and then  move stage to center and set that as 0,0
-#"CENTER X=100000 Y=100000"
-#"HERE X=0 Y=0"
-#
+#On startup the stage move to extremes to find limits and then sets
+# the -ve limit on each axis to 0.
 
 LUDL_ERRORS = { -1: 'Unknown command',
-              -2: 'Illegal point type or axis, or module not installed',
-              -3: 'Not enough parameters (e.g. move r=)',
-              -4: 'Parameter out of range',
-              -21: 'Process aborted by HALT command',
-              }
+                -2: 'Illegal point type or axis, or module not installed',
+                -3: 'Not enough parameters (e.g. move r=)',
+                -4: 'Parameter out of range',
+                -21: 'Process aborted by HALT command',
+                # Slide Loader:
+                #-4:, (parameter out of range) used for cassette or slot range errors
+                -10: 'No slides selected',
+                -11: 'End of list reached',
+                -12: 'Slide error',
+                -16: 'Motor move error (move not completed successfully due to stall, end limit, etc.',
+                -17: 'Initialization error',
+               }
 
 AXIS_MAPPER = { 1: 'X' ,
                 2: 'Y' ,
@@ -118,6 +107,7 @@ class _LudlController:
             dsrdtr=False,
         )
         self._lock = threading.RLock()
+        self.homed = False
 
         with self._lock:
             # We do not use the general get_description() here because
@@ -138,42 +128,17 @@ class _LudlController:
                 # dev address,label,id,description, type
                 self._devlist[devinfo[0]]=devinfo[1:]
 
+#            print(answer)
 
-# ['EMOT', 'X', 'X axis stage', 'MCMSE']
-# >>> devinfo[0]
-# '1'
-# >>> answer[3]
-# b''
-# >>> answer[4]
-# b'1       EMOT    X    X axis stage        MCMSE'
-# >>> answer[5]
-# b'2       EMOT    Y    Y axis stage        MCMSE'
-# >>> answer[6]
-# b'3       EMOT    B    B aux  motor        MCMSE'
-# >>> answer[7]
-# b'7       HSMOT   T    T rotation robot    MCMSE **** Should be     T rot'
-
-#            for dev in self._devlist:
-                
-            
-            print(answer)
-#            if answer != b"PROSCAN INFORMATION\r":
-#                self.read_until_timeout()
-#                raise RuntimeError(
-#                    "Not a ProScanIII device: '?' returned '%s'"
-#                    % answer.decode()
-#                )
-#            # A description ends with END on its own line.
-#            line = self._serial.read_until(b"\rEND\r")
-#            if not line.endswith(b"\rEND\r"):
-#                raise RuntimeError("Failed to clear description")
 
     def is_busy(self):
         pass
 
+    def been_homed(self):
+        return self.homed
+    
     def get_number_axes(self):
         return 2
-
     
     def command(self, command: bytes) -> None:
         """Send command to device."""
@@ -193,8 +158,12 @@ class _LudlController:
             output.append(line.strip())
             if line==b'N' or line[0:2] == b':A' :
                 #thins means an end of command strings doesn require an
-                #addition timeout before it returns 
+                #additional timeout before it returns 
                 return (output)
+            elif line[0] == b'N':
+                #this is an error string
+                error=line[2:].strip()
+                raise('Ludl controller error: %s,%s' % (error,LUDL_ERRORS[error]))
         return(output)
             
     def read_until_timeout(self) -> None:
@@ -310,8 +279,9 @@ class _LudlStageAxis(microscope.abc.StageAxis):
         # not a good solution as min/max are used to build the stage map in
         # mosaic etc... Maybe we just need to know it! 
         self.min_limit = 0.0
-        self.max_limit = 0.0
+        self.max_limit = 100000.0
         self.set_speed(100000)
+        self.home()
 
     def move_by(self, delta: float) -> None:
         self._dev_conn.move_by_relative_position(self._axis, int(delta))
@@ -330,11 +300,16 @@ class _LudlStageAxis(microscope.abc.StageAxis):
     def limits(self) -> microscope.AxisLimits:
         return microscope.AxisLimits(lower=self.min_limit, upper=self.max_limit)
 
+ #   def speed(self) -> int:
+ #       return self.speed
+
+    
     def home(self) -> None:
         self.find_limits()
         self.move_to(self.max_limit/2)
 
     def set_speed(self, speed: int) -> None:
+        self.speed = speed
         self._dev_conn.set_speed(self._axis, speed)
 
     def find_limits(self,speed = 100000):
@@ -347,6 +322,7 @@ class _LudlStageAxis(microscope.abc.StageAxis):
         print(self.position)
         self._dev_conn.reset_position(self._axis)
         self.min_limit=0.0
+        self._dev_conn.homed = True
         # move to positive limit
         self._dev_conn.move_to_limit(self._axis,speed)
         self._dev_conn.wait_for_motor_stop(self._axis)
@@ -373,8 +349,8 @@ class _LudlStage(microscope.abc.Stage):
         # Before a device can moved, it first needs to establish a
         # reference to the home position.  We won't be able to move
         # unless we home it first.
- #       if not self._dev_conn.been_homed():
- #           self._dev_conn.home()
+        if not self._dev_conn.been_homed():
+            self.home()
         return True
 
     @property
@@ -398,8 +374,11 @@ class _LudlStage(microscope.abc.Stage):
             )
         self._dev_conn.wait_until_idle()
 
-    
-
+    def home(self,axes = None):
+        if axes == None:
+            axes=self.axes
+        for axis in axes:
+            self.axes[axis].home()
 
 #    def assert_filterwheel_number(self, number: int) -> None:
 #        assert number > 0 and number < 4
