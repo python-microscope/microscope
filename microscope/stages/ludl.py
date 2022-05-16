@@ -107,7 +107,6 @@ class _LudlController:
             dsrdtr=False,
         )
         self._lock = threading.RLock()
-        self.homed = False
 
         with self._lock:
             # We do not use the general get_description() here because
@@ -340,6 +339,7 @@ class _LudlStage(microscope.abc.Stage):
         self._axes = {
             str(i): _LudlStageAxis(self._dev_conn, i)
             for i in range(1, 3)#self._dev_conn.get_number_axes() + 1)
+        self.homed = False
         }
 
     def _do_shutdown(self) -> None:
@@ -349,13 +349,15 @@ class _LudlStage(microscope.abc.Stage):
         # Before a device can moved, it first needs to establish a
         # reference to the home position.  We won't be able to move
         # unless we home it first.
-        if not self._dev_conn.been_homed():
-            self.home()
         return True
 
     @property
     def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
         return self._axes
+
+    @property
+    def need_homed(self):
+        return not(self.homed)
 
     def move_by(self, delta: typing.Mapping[str, float]) -> None:
         """Move specified axes by the specified distance. """
@@ -374,12 +376,13 @@ class _LudlStage(microscope.abc.Stage):
             )
         self._dev_conn.wait_until_idle()
 
-    def home(self,axes = None):
-        if axes == None:
+    def home(self):
+        if self.need_homed:
             axes=self.axes
-        for axis in axes:
-            self.axes[axis].home()
-
+            for axis in axes:
+                self.axes[axis].home()
+            self.homed = True
+                
 #    def assert_filterwheel_number(self, number: int) -> None:
 #        assert number > 0 and number < 4
 
