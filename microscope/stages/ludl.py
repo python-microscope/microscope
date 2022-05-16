@@ -280,7 +280,6 @@ class _LudlStageAxis(microscope.abc.StageAxis):
         self.min_limit = 0.0
         self.max_limit = 100000.0
         self.set_speed(100000)
-        self.home()
 
     def move_by(self, delta: float) -> None:
         self._dev_conn.move_by_relative_position(self._axis, int(delta))
@@ -339,8 +338,8 @@ class _LudlStage(microscope.abc.Stage):
         self._axes = {
             str(i): _LudlStageAxis(self._dev_conn, i)
             for i in range(1, 3)#self._dev_conn.get_number_axes() + 1)
-        self.homed = False
         }
+        self.homed = False
 
     def _do_shutdown(self) -> None:
         pass
@@ -357,7 +356,7 @@ class _LudlStage(microscope.abc.Stage):
 
     @property
     def need_homed(self):
-        return not(self.homed)
+        return not self.homed
 
     def move_by(self, delta: typing.Mapping[str, float]) -> None:
         """Move specified axes by the specified distance. """
