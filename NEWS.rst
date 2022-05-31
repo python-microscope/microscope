@@ -17,6 +17,12 @@ Version 0.7.0 (upcoming)
 
   * Toptica iChrome MLE
 
+* Device specific changes:
+
+  * `PVCamera`: in version 0.6.0 the default PVCAM trigger mode was
+    accidentally changed from "strobed" to "trig. first".  This has
+    now been reversed.
+
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This
   version fixes that issue.

@@ -1172,13 +1172,19 @@ TRIGGER_MODES = {
 
 PV_MODE_TO_TRIGGER = {
     TRIG_SOFT: (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
+    # Microscope and PVCam use mode strobe for very different things,
+    # check with the PVCam manual carefully.  PVCam's STROBED_MODE
+    # means that one external trigger starts *each* exposure in a
+    # sequence, which maps to Microscope trigger mode ONCE.  PVCam's
+    # TRIGGER_FIRST_MODE means that one external trigger signals the
+    # start of a sequence.
     TRIG_FIRST: (
         microscope.TriggerType.RISING_EDGE,
-        microscope.TriggerMode.ONCE,
+        microscope.TriggerMode.START,
     ),
     TRIG_STROBED: (
         microscope.TriggerType.RISING_EDGE,
-        microscope.TriggerMode.STROBE,
+        microscope.TriggerMode.ONCE,
     ),
     TRIG_BULB: (
         microscope.TriggerType.RISING_EDGE,
