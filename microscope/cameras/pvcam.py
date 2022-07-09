@@ -1528,7 +1528,7 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype=buffer_dtype),
+                np.empty(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
         else:
@@ -1565,7 +1565,7 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype=buffer_dtype),
+                np.empty(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
             nbytes = _exp_setup_cont(
