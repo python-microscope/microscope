@@ -1396,7 +1396,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
     .. code-block:: python
 
         stage = SomeStageDevice()
-        stage.enable() # may trigger a stage move
+        stage.enable()  # may trigger a stage move
 
         # move operations
         stage.move_to({'x': 42.0, 'y': -5.1})
@@ -1447,7 +1447,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
 
     Some stages need to find a reference position, home, before being
     able to be moved.  If required, this happens automatically during
-    :func:`enable`.
+    :func:`enable` (see also :func:`may_move_on_enable`).
     """
 
     @property
@@ -1468,27 +1468,34 @@ class Stage(Device, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    @property
-    def need_homed(self) -> bool:
-        """Boolean flag to say if the stage needs to be homed. Many stages 
-        need to be driven to their limts at startup to find a repeatable zero
-        position and sometimes to find their limits as well. 
 
-        By default this function returns "False". If the stage needs
-        to be homed then this function should be overwritten to return
-        "True" until the homing operation has been performed.
-        Additionaly a stage that needs to be homed should implement a
-        home() fucntion that performs the home move, sets limits and
-        leaves the stage somewhere sensible.  This function should
-        also set the need_homed propety to False.
+    @abc.abstractmethod
+    def may_move_on_enable(self) -> bool:
+        """Whether calling :func:`enable` is likely to make the stage move.
 
-        Stages that dont need homing can leave this default function
-        and dont need to implment the home() function.
+        Most stages need to be driven to their limits at startup to
+        find a repeatable zero position and sometimes to find their
+        limits as well.  This is typically called "homing".
+
+        Stages that need to "home" differ on how often they need it
+        but they only do it during :func:`enable`.  They may need to
+        move each time `enable` is called, the first time after the
+        `Stage` object has been created, or even only the first time
+        since the device was powered up.
+
+        Note the "*may*" on "may_move_on_enable".  This is because it
+        can be difficult to know for certain if `enable` will cause
+        the stage to home.  Still, knowing that the stage *may* move
+        is essential for safety.  An unexpected movement of the stage,
+        particularly large movements such as moving to the stage
+        limits, can destroy a sample on the stage --- or even worse,
+        it can damage an objective or the stage itself.  When in
+        doubt, implementations should return `True`.
 
         """
-        return False
+        raise NotImplementedError()
 
-    
+
     @property
     def position(self) -> typing.Mapping[str, float]:
         """Map of axis name to their current position.

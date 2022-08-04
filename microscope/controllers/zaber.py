@@ -346,6 +346,9 @@ class _ZaberStage(microscope.abc.Stage):
             self._dev_conn.home()
         return True
 
+    def may_move_on_enable(self) -> bool:
+        return not self._dev_conn.been_homed()
+
     @property
     def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
         return self._axes
