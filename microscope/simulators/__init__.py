@@ -463,6 +463,9 @@ class SimulatedStage(microscope.abc.Stage):
     def _do_shutdown(self) -> None:
         pass
 
+    def may_move_on_enable(self) -> bool:
+        return False
+
     @property
     def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
         return self._axes
