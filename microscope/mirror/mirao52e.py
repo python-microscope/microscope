@@ -1,8 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-## Copyright (C) 2019 David Miguel Susano Pinto <david.pinto@bioch.ox.ac.uk>
-## Copyright (C) 2019 久保俊貴 <kubo@ap.eng.osaka-u.ac.jp>
+## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
+## Copyright (C) 2020 久保俊貴 <kubo@ap.eng.osaka-u.ac.jp>
+##
+## This file is part of Microscope.
 ##
 ## Microscope is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -43,20 +44,39 @@ import typing
 
 import numpy
 
-import microscope.devices
-import microscope._wrappers.mirao52e as mro
+import microscope
+import microscope._utils
+import microscope.abc
 
 
-class Mirao52e(microscope.devices.DeformableMirror):
+try:
+    import microscope._wrappers.mirao52e as mro
+except Exception as e:
+    raise microscope.LibraryLoadError(e) from e
+
+
+class Mirao52e(
+    microscope._utils.OnlyTriggersOnceOnSoftwareMixin,
+    microscope.abc.DeformableMirror,
+):
+    """Imagine Optic Mirao 52e deformable mirror.
+
+    The Mirao 52e deformable mirrors only support software trigger.
+
+    """
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        ## Status is not the return code of the function calls.
-        ## Status is where we can find the error code in case a
-        ## function call returns false.  This _status variable will be
-        ## an argument in all function calls.
+        # Status is not the return code of the function calls.
+        # Status is where we can find the error code in case a
+        # function call returns false.  This _status variable will be
+        # an argument in all function calls.
         self._status = ctypes.pointer(ctypes.c_int(mro.OK))
         if not mro.open(self._status):
-            self._raise_status(mro.open)
+            raise microscope.InitialiseError(
+                "failed to open mirao mirror (error code %d)"
+                % self._status.contents.value
+            )
 
     @property
     def n_actuators(self) -> int:
@@ -68,11 +88,10 @@ class Mirao52e(microscope.devices.DeformableMirror):
         mirao52e SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
         """
-        patterns = (patterns * 2) -1
+        patterns = (patterns * 2) - 1
         return patterns
 
-    def apply_pattern(self, pattern: numpy.ndarray) -> None:
-        self._validate_patterns(pattern)
+    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
         pattern = self._normalize_patterns(pattern)
         command = pattern.ctypes.data_as(mro.Command)
         if not mro.applyCommand(command, mro.FALSE, self._status):
@@ -80,10 +99,10 @@ class Mirao52e(microscope.devices.DeformableMirror):
 
     def _raise_status(self, func: typing.Callable) -> None:
         error_code = self._status.contents.value
-        raise RuntimeError('mro_%s() failed (error code %d)'
-                           % (func.__name__, error_code))
+        raise microscope.DeviceError(
+            "mro_%s() failed (error code %d)" % (func.__name__, error_code)
+        )
 
-    def __del__(self) -> None:
+    def _do_shutdown(self) -> None:
         if not mro.close(self._status):
             self._raise_status(mro.close)
-        super().__del__()

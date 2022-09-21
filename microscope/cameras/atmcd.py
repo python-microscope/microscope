@@ -1,42 +1,70 @@
-#
-#   andorsdk - a ctypes interface to Andor's SDK DLL.
-#   Copyright (C) 2015-2019 Mick Phillips
-#   mick.phillips@gmail.com
-#   Re-wrapped using David Baddeley's approach for SDK3.
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-"""atmcd
+#!/usr/bin/env python3
 
-   This module wraps Andor's SDK for (EM)CCD cameras.
+## Copyright (C) 2009 David Baddeley <d.baddeley@auckland.ac.nz>
+## Copyright (C) 2020 Mick Phillips <mick.phillips@gmail.com>
+##
+## This file is part of Microscope.
+##
+## Microscope is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Microscope is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
-   Example deviceserver entry:
+## The implementation of dllFunc is based on the implementation in
+## PYME, hence copyright to David Baddeley.
+
+"""This module wraps Andor's SDK for (EM)CCD cameras.
+
+Example deviceserver entry::
+
     from microscope.cameras import atmcd
     DEVICES = [ ...
-               device(atmcd.AndorAtmcd, '127.0.0.1', 8000, uid='VSC-01234')
-              ]
+        device(atmcd.AndorAtmcd, "127.0.0.1", 8000, uid="VSC-01234")
+    ]
 
-   Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0 .
+Tested against Ixon Ultra with atmcd64d.dll ver 2.97.30007.0.
+
 """
 
-import logging
-import sys, functools, os, platform
 import ctypes
-from ctypes import Structure, POINTER
-from ctypes import c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong
-from ctypes import c_ubyte, c_short, c_float, c_double, c_char, c_char_p
+import functools
+import logging
+import os
+import platform
+import sys
+import time
+from ctypes import (
+    POINTER,
+    Structure,
+    c_char,
+    c_char_p,
+    c_double,
+    c_float,
+    c_int,
+    c_long,
+    c_longlong,
+    c_short,
+    c_ubyte,
+    c_uint,
+    c_ulong,
+    c_ulonglong,
+)
+from enum import Enum, IntEnum
+from threading import Lock
+
+import numpy as np
 from numpy.ctypeslib import ndpointer
+
+import microscope
+import microscope.abc
 
 
 _logger = logging.getLogger(__name__)
@@ -45,7 +73,7 @@ _logger = logging.getLogger(__name__)
 # Andor docs use Windows datatypes in call signatures. These may not be available on
 # other platforms.
 try:
-    from ctypes.wintypes import BYTE, WORD, DWORD, HANDLE
+    from ctypes.wintypes import BYTE, DWORD, HANDLE, WORD
 except:
     # Docs give no clues. These need testing against a non-Windows library.
     BYTE = ctypes.c_byte
@@ -55,24 +83,27 @@ except:
 
 _stdcall_libraries = {}
 arch, plat = platform.architecture()
-if arch == '32bit':
-    _dllName = 'atmcd32d'
+if arch == "32bit":
+    _dllName = "atmcd32d"
 else:
-    _dllName = 'atmcd64d'
-if os.name in ('nt', 'ce'):
+    _dllName = "atmcd64d"
+if os.name in ("nt", "ce"):
     _dll = ctypes.WinDLL(_dllName)
 else:
-    _dll = ctypes.CDLL(_dllName + '.so')
+    _dll = ctypes.CDLL(_dllName + ".so")
 
 # Andor's types
 at_32 = c_long
 at_u32 = c_ulong
 at_64 = c_longlong
-at_u64 =  c_ulonglong
+at_u64 = c_ulonglong
 
 """Version Information Definitions"""
 # Version information enumeration
-class AT_VersionInfoId(c_int): pass
+class AT_VersionInfoId(c_int):
+    pass
+
+
 AT_SDKVersion = AT_VersionInfoId(0x40000000)
 AT_DeviceDriverVersion = AT_VersionInfoId(0x40000001)
 # No. of elements in version info.
@@ -83,104 +114,112 @@ AT_VERSION_INFO_LEN = 80
 AT_CONTROLLER_CARD_MODEL_LEN = 80
 
 """DDG Lite Definitions"""
-## Channel enumeration
-class AT_DDGLiteChannelId(c_int): pass
+# Channel enumeration
+class AT_DDGLiteChannelId(c_int):
+    pass
+
+
 AT_DDGLite_ChannelA = AT_DDGLiteChannelId(0x40000000)
 AT_DDGLite_ChannelB = AT_DDGLiteChannelId(0x40000001)
 AT_DDGLite_ChannelC = AT_DDGLiteChannelId(0x40000002)
-## Control byte flags
-AT_DDGLite_ControlBit_GlobalEnable   = 0x01
-AT_DDGLite_ControlBit_ChannelEnable  = 0x01
-AT_DDGLite_ControlBit_FreeRun        = 0x02
+# Control byte flags
+AT_DDGLite_ControlBit_GlobalEnable = 0x01
+AT_DDGLite_ControlBit_ChannelEnable = 0x01
+AT_DDGLite_ControlBit_FreeRun = 0x02
 AT_DDGLite_ControlBit_DisableOnFrame = 0x04
-AT_DDGLite_ControlBit_RestartOnFire  = 0x08
-AT_DDGLite_ControlBit_Invert         = 0x10
-AT_DDGLite_ControlBit_EnableOnFire   = 0x20
+AT_DDGLite_ControlBit_RestartOnFire = 0x08
+AT_DDGLite_ControlBit_Invert = 0x10
+AT_DDGLite_ControlBit_EnableOnFire = 0x20
 
 """USB iStar Definitions"""
 # Electrical
-AT_DDG_POLARITY_POSITIVE  = 0
-AT_DDG_POLARITY_NEGATIVE  = 1
+AT_DDG_POLARITY_POSITIVE = 0
+AT_DDG_POLARITY_NEGATIVE = 1
 AT_DDG_TERMINATION_50OHMS = 0
-AT_DDG_TERMINATION_HIGHZ  = 1
+AT_DDG_TERMINATION_HIGHZ = 1
 # Stepmode
-AT_STEPMODE_CONSTANT      = 0
-AT_STEPMODE_EXPONENTIAL   = 1
-AT_STEPMODE_LOGARITHMIC   = 2
-AT_STEPMODE_LINEAR        = 3
-AT_STEPMODE_OFF           = 100
+AT_STEPMODE_CONSTANT = 0
+AT_STEPMODE_EXPONENTIAL = 1
+AT_STEPMODE_LOGARITHMIC = 2
+AT_STEPMODE_LINEAR = 3
+AT_STEPMODE_OFF = 100
 # Gatemode
 AT_GATEMODE_FIRE_AND_GATE = 0
-AT_GATEMODE_FIRE_ONLY     = 1
-AT_GATEMODE_GATE_ONLY     = 2
-AT_GATEMODE_CW_ON         = 3
-AT_GATEMODE_CW_OFF        = 4
-AT_GATEMODE_DDG           = 5
+AT_GATEMODE_FIRE_ONLY = 1
+AT_GATEMODE_GATE_ONLY = 2
+AT_GATEMODE_CW_ON = 3
+AT_GATEMODE_CW_OFF = 4
+AT_GATEMODE_DDG = 5
 
 
 """typedef structs"""
+
+
 class ANDORCAPS(Structure):
     _fields_ = [
-                ("ulSize", c_ulong),
-                ("ulAcqModes", c_ulong),
-                ("ulReadModes", c_ulong),
-                ("ulTriggerModes", c_ulong),
-                ("ulCameraType", c_ulong),
-                ("ulPixelMode", c_ulong),
-                ("ulSetFunctions", c_ulong),
-                ("ulGetFunctions", c_ulong),
-                ("ulFeatures", c_ulong),
-                ("ulPCICard", c_ulong),
-                ("ulEMGainCapability", c_ulong),
-                ("ulFTReadModes", c_ulong),
-                ]
+        ("ulSize", c_ulong),
+        ("ulAcqModes", c_ulong),
+        ("ulReadModes", c_ulong),
+        ("ulTriggerModes", c_ulong),
+        ("ulCameraType", c_ulong),
+        ("ulPixelMode", c_ulong),
+        ("ulSetFunctions", c_ulong),
+        ("ulGetFunctions", c_ulong),
+        ("ulFeatures", c_ulong),
+        ("ulPCICard", c_ulong),
+        ("ulEMGainCapability", c_ulong),
+        ("ulFTReadModes", c_ulong),
+    ]
 
     def __init__(self):
         # The function that uses this strcut requires that ulSize contains
         # the size of the structure.
         self.ulSize = ctypes.sizeof(self)
 
+
 AndorCapabilities = ANDORCAPS
 
 
 class COLORDEMOSAICINFO(Structure):
     _fields_ = [
-        ('iX', c_int),
-        ('iY', c_int),
-        ('iAlgorithm', c_int),
-        ('iXPhase', c_int),
-        ('iYPhase', c_int),
-        ('iBackground', c_int),
-        ]
+        ("iX", c_int),
+        ("iY", c_int),
+        ("iAlgorithm", c_int),
+        ("iXPhase", c_int),
+        ("iYPhase", c_int),
+        ("iBackground", c_int),
+    ]
+
 
 ColorDemosaicInfo = COLORDEMOSAICINFO
 
 
 class SYSTEMTIME(Structure):
     _fields_ = [
-        ('wYear', WORD),
-        ('wMonth', WORD),
-        ('wDayOfWeek', WORD),
-        ('wDay', WORD),
-        ('wHour', WORD),
-        ('wMinute', WORD),
-        ('wSecond', WORD),
-        ('wMilliseconds', WORD),
-        ]
+        ("wYear", WORD),
+        ("wMonth", WORD),
+        ("wDayOfWeek", WORD),
+        ("wDay", WORD),
+        ("wHour", WORD),
+        ("wMinute", WORD),
+        ("wSecond", WORD),
+        ("wMilliseconds", WORD),
+    ]
 
 
 class WHITEBALANCEINFO(Structure):
     _fields_ = [
-        ('iSize', c_int),
-        ('iX', c_int),
-        ('iY', c_int),
-        ('iAlgorithm', c_int),
-        ('iROI_left', c_int),
-        ('iROI_right', c_int),
-        ('iROI_top', c_int),
-        ('iROI_bottom', c_int),
-        ('iOperation', c_int),
-        ]
+        ("iSize", c_int),
+        ("iX", c_int),
+        ("iY", c_int),
+        ("iAlgorithm", c_int),
+        ("iROI_left", c_int),
+        ("iROI_right", c_int),
+        ("iROI_top", c_int),
+        ("iROI_bottom", c_int),
+        ("iOperation", c_int),
+    ]
+
 
 WhiteBalanceInfo = WHITEBALANCEINFO
 
@@ -317,7 +356,7 @@ DRV_OA_MODE_DOES_NOT_EXIST = 20193
 DRV_OA_CAMERA_NOT_SUPPORTED = 20194
 DRV_OA_FAILED_TO_GET_MODE = 20195
 DRV_PROCESSING_FAILED = 20211
-## Andor capabilities AC_...
+# Andor capabilities AC_...
 # Acquisition modes
 AC_ACQMODE_SINGLE = 1
 AC_ACQMODE_VIDEO = 2
@@ -370,8 +409,8 @@ AC_PIXELMODE_14BIT = 2
 AC_PIXELMODE_16BIT = 4
 AC_PIXELMODE_32BIT = 8
 AC_PIXELMODE_MONO = 0x000000
-AC_PIXELMODE_RGB  = 0x010000
-AC_PIXELMODE_CMY  = 0x020000
+AC_PIXELMODE_RGB = 0x010000
+AC_PIXELMODE_CMY = 0x020000
 # Set functions
 AC_SETFUNCTION_VREADOUT = 0x01
 AC_SETFUNCTION_HREADOUT = 0x02
@@ -456,13 +495,13 @@ AC_EMGAIN_12BIT = 2
 AC_EMGAIN_LINEAR12 = 4
 AC_EMGAIN_REAL12 = 8
 
-## We need a mapping to enable lookup of status codes to meaning.
+# We need a mapping to enable lookup of status codes to meaning.
 status_codes = {}
 for attrib_name in dir(sys.modules[__name__]):
-    if attrib_name.startswith('DRV_'):
+    if attrib_name.startswith("DRV_"):
         status_codes.update({eval(attrib_name): attrib_name})
 
-## The lookup function.
+# The lookup function.
 def lookup_status(code):
     key = code[0] if type(code) is list else code
     if key in status_codes:
@@ -471,17 +510,20 @@ def lookup_status(code):
         return "Unknown status code %s." % key
 
 
-## The following DLL-wrapping classes are largely lifted from David Baddeley's
+# The following DLL-wrapping classes are largely lifted from David Baddeley's
 # SDK3 wrapper, with some modifications and additions.
 
 # Classes used to handle outputs and parameters that need buffers.
 class _meta:
     pass
 
+
 STRING = c_char_p
+
 
 class OUTPUT(_meta):
     """Used to indicated output from a DLL call"""
+
     def __init__(self, val):
         self.type = val
         self.val = POINTER(val)
@@ -493,6 +535,7 @@ class OUTPUT(_meta):
 
 class _OUTSTRING(OUTPUT):
     """A special type of OUTPUT that creates an output buffer."""
+
     def __init__(self):
         self.val = STRING
 
@@ -500,35 +543,40 @@ class _OUTSTRING(OUTPUT):
         v = ctypes.create_string_buffer(bufLen)
         return v, v
 
+
 OUTSTRING = _OUTSTRING()
 
 
 class _OUTSTRLEN(_meta):
     """Used to mark call parameters that define a string buffer size."""
+
     def __init__(self):
         self.val = c_int
+
 
 OUTSTRLEN = _OUTSTRLEN()
 
 
-import numpy as np
 class OUTARR(OUTPUT):
     """Used for DLL call parameters that return an array."""
+
     def __init__(self, val):
         self.type = val
-        #self.val = POINTER(val)
+        # self.val = POINTER(val)
         self.val = ndpointer(val, flags="C_CONTIGUOUS")
 
     def getVar(self, size):
-        #self.val = (size * self.type)()
+        # self.val = (size * self.type)()
         self.val = np.zeros(int(size), dtype=self.type)
         return self.val, self.val
 
 
 class _OUTARRSIZE(_meta):
     """Used to mark DLL call parameters that define array sizes."""
+
     def __init__(self):
         self.val = c_ulong
+
 
 OUTARRSIZE = _OUTARRSIZE()
 
@@ -540,10 +588,23 @@ def stripMeta(val):
     else:
         return val
 
+
 def extract_value(val):
     """Calls .value on simple ctypes."""
-    if type(val) in [c_int, c_uint, c_long, c_ulong, c_longlong, c_ulonglong,
-                     c_ubyte, c_short, c_float, c_double, c_char, c_char_p]:
+    if type(val) in [
+        c_int,
+        c_uint,
+        c_long,
+        c_ulong,
+        c_longlong,
+        c_ulonglong,
+        c_ubyte,
+        c_short,
+        c_float,
+        c_double,
+        c_char,
+        c_char_p,
+    ]:
         return val.value
     elif isinstance(val, ctypes.Array) and val._type_ is c_char:
         return val.value.decode()
@@ -553,6 +614,7 @@ def extract_value(val):
 
 class AtmcdException(Exception):
     """An exception arising from a DLL call."""
+
     def __init__(self, status):
         self.message = "%s  %s" % (status, lookup_status(status))
         super().__init__(self.message)
@@ -561,6 +623,7 @@ class AtmcdException(Exception):
 
 class dllFunction:
     """A wrapper class for DLL functions to make them available in python."""
+
     def __init__(self, name, args=[], argnames=[], rstatus=False, lib=_dll):
         # the library function
         self.f = getattr(lib, name)
@@ -589,12 +652,12 @@ class dllFunction:
             if isinstance(self.in_args[i], _OUTARRSIZE):
                 self.arr_size_pos = i
         # Generate a docstring.
-        ds = name + '\n\nArguments:\n===========\n'
+        ds = name + "\n\nArguments:\n===========\n"
         for i in range(len(args)):
-            an = ''
+            an = ""
             if i < len(argnames):
                 an = argnames[i]
-            ds += '\t%s\t%s\n' % (args[i], an)
+            ds += "\t%s\t%s\n" % (args[i], an)
         self.f.__doc__ = ds
 
     def __call__(self, *args):
@@ -647,11 +710,20 @@ class dllFunction:
         if self.rstatus:
             if status == DRV_SUCCESS:
                 return True
-            elif status in [DRV_INVALID_AMPLIFIER, DRV_INVALID_MODE,
-                            DRV_INVALID_COUNTCONVERT_MODE, DRV_INVALID_FILTER]:
+            elif status in [
+                DRV_INVALID_AMPLIFIER,
+                DRV_INVALID_MODE,
+                DRV_INVALID_COUNTCONVERT_MODE,
+                DRV_INVALID_FILTER,
+            ]:
                 return False
-            elif status in [DRV_TEMP_OFF, DRV_TEMP_STABILIZED, DRV_TEMP_NOT_REACHED,
-                            DRV_TEMP_DRIFT, DRV_TEMP_NOT_STABILIZED]:
+            elif status in [
+                DRV_TEMP_OFF,
+                DRV_TEMP_STABILIZED,
+                DRV_TEMP_NOT_REACHED,
+                DRV_TEMP_DRIFT,
+                DRV_TEMP_NOT_STABILIZED,
+            ]:
                 return (status, ret)
             else:
                 raise AtmcdException(status)
@@ -666,55 +738,83 @@ def dllFunc(name, args=[], argnames=[], rstatus=False, lib=_dll):
     try:
         f = dllFunction(name, args, argnames, rstatus, lib)
     except Exception as e:
-        raise Exception("Error wrapping dll function '%s':\n\t%s" % (name, e))
+        raise microscope.LibraryLoadError(
+            "Error wrapping dll function '%s'" % name
+        ) from e
     globals()[name] = f
 
-## We now add selected DLL functions to this library's namespace.
+
+# We now add selected DLL functions to this library's namespace.
 # These may be used directly: while this may work well when there is a
 # single camera, care must be taken when there are multiple cameras
 # on a system to ensure calls act on the expected camera. The AntorAtmcd
 # class defined below does much of this work.
-dllFunc('AbortAcquisition', [], [])
-dllFunc('CancelWait', [], [])
-dllFunc('CoolerOFF', [], [])
-dllFunc('CoolerON', [], [])
-dllFunc('DemosaicImage', [POINTER(WORD), POINTER(WORD), POINTER(WORD),
-                          POINTER(WORD), POINTER(ColorDemosaicInfo)],
-                         ['grey', 'red', 'green', 'blue', 'info'])
-dllFunc('EnableKeepCleans', [c_int], ['iMode'])
-dllFunc('FreeInternalMemory', [], [])
+dllFunc("AbortAcquisition", [], [])
+dllFunc("CancelWait", [], [])
+dllFunc("CoolerOFF", [], [])
+dllFunc("CoolerON", [], [])
+dllFunc(
+    "DemosaicImage",
+    [
+        POINTER(WORD),
+        POINTER(WORD),
+        POINTER(WORD),
+        POINTER(WORD),
+        POINTER(ColorDemosaicInfo),
+    ],
+    ["grey", "red", "green", "blue", "info"],
+)
+dllFunc("EnableKeepCleans", [c_int], ["iMode"])
+dllFunc("FreeInternalMemory", [], [])
 # Note - documentation states that the next two functions return the data
 # "from the last acquisition". That appears to mean the data resulting from
 # the last trigger, rather than all the available data between the last
 # StartAcquisition and Abort calls.
-dllFunc('GetAcquiredData', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
-dllFunc('GetAcquiredData16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
+dllFunc("GetAcquiredData", [OUTARR(at_32), OUTARRSIZE], ["arr", "size"])
+dllFunc("GetAcquiredData16", [OUTARR(WORD), OUTARRSIZE], ["arr", "size"])
 # GetAcquiredFloatData(float * arr, unsigned long size)
-dllFunc('GetAcquisitionProgress', [OUTPUT(c_long), OUTPUT(c_long)],
-                                  ['acc', 'series'])
-dllFunc('GetAcquisitionTimings', [OUTPUT(c_float), OUTPUT(c_float), OUTPUT(c_float)],
-                                 ['exposure', 'accumulate', 'kinetic'])
-dllFunc('GetAdjustedRingExposureTimes', [c_int, POINTER(c_float)],
-                                        ['iNumTimes', 'fptimes'])
+dllFunc(
+    "GetAcquisitionProgress",
+    [OUTPUT(c_long), OUTPUT(c_long)],
+    ["acc", "series"],
+)
+dllFunc(
+    "GetAcquisitionTimings",
+    [OUTPUT(c_float), OUTPUT(c_float), OUTPUT(c_float)],
+    ["exposure", "accumulate", "kinetic"],
+)
+dllFunc(
+    "GetAdjustedRingExposureTimes",
+    [c_int, POINTER(c_float)],
+    ["iNumTimes", "fptimes"],
+)
 # GetAllDMAData(at_32 * arr, unsigned long size)
-dllFunc('GetAmpDesc', [c_int, OUTSTRING, OUTSTRLEN],
-                      ['index', 'name', 'length'])
-dllFunc('GetAmpMaxSpeed', [c_int, OUTPUT(c_float)], ['index', 'speed'])
-dllFunc('GetAvailableCameras', [OUTPUT(c_long)], ['totalCameras'])
+dllFunc(
+    "GetAmpDesc", [c_int, OUTSTRING, OUTSTRLEN], ["index", "name", "length"]
+)
+dllFunc("GetAmpMaxSpeed", [c_int, OUTPUT(c_float)], ["index", "speed"])
+dllFunc("GetAvailableCameras", [OUTPUT(c_long)], ["totalCameras"])
 # # GetBackground(at_32 * arr, unsigned long size)
-dllFunc('GetBaselineClamp', [OUTPUT(c_int)], ['state'])
-dllFunc('GetBitDepth', [c_int, OUTPUT(c_int)], ['channel', 'depth'])
-dllFunc('GetCameraEventStatus', [OUTPUT(DWORD)], ['camStatus'])
-dllFunc('GetCameraHandle', [c_long, OUTPUT(c_long)],
-                           ['cameraIndex', 'cameraHandle'])
-dllFunc('GetCameraInformation', [c_int, OUTPUT(c_long)],
-                                ['index', 'information'])
-dllFunc('GetCameraSerialNumber', [OUTPUT(c_int)], ['number'])
-dllFunc('GetCapabilities', [OUTPUT(AndorCapabilities)], ['caps'])
-dllFunc('GetControllerCardModel', [OUTSTRING], ['controllerCardModel'])
-dllFunc('GetCountConvertWavelengthRange', [OUTPUT(c_float), OUTPUT(c_float)],
-                                          ['minVal', 'maxVal'])
-dllFunc('GetCurrentCamera', [OUTPUT(c_long)], ['cameraHandle'])
+dllFunc("GetBaselineClamp", [OUTPUT(c_int)], ["state"])
+dllFunc("GetBitDepth", [c_int, OUTPUT(c_int)], ["channel", "depth"])
+dllFunc("GetCameraEventStatus", [OUTPUT(DWORD)], ["camStatus"])
+dllFunc(
+    "GetCameraHandle",
+    [c_long, OUTPUT(c_long)],
+    ["cameraIndex", "cameraHandle"],
+)
+dllFunc(
+    "GetCameraInformation", [c_int, OUTPUT(c_long)], ["index", "information"]
+)
+dllFunc("GetCameraSerialNumber", [OUTPUT(c_int)], ["number"])
+dllFunc("GetCapabilities", [OUTPUT(AndorCapabilities)], ["caps"])
+dllFunc("GetControllerCardModel", [OUTSTRING], ["controllerCardModel"])
+dllFunc(
+    "GetCountConvertWavelengthRange",
+    [OUTPUT(c_float), OUTPUT(c_float)],
+    ["minVal", "maxVal"],
+)
+dllFunc("GetCurrentCamera", [OUTPUT(c_long)], ["cameraHandle"])
 # # GetCYMGShift(int * iXshift, int * iYShift)
 # GetDDGExternalOutputEnabled(at_u32 uiIndex, at_u32 * puiEnabled)
 # GetDDGExternalOutputPolarity(at_u32 uiIndex, at_u32 * puiPolarity)
@@ -741,126 +841,197 @@ dllFunc('GetCurrentCamera', [OUTPUT(c_long)], ['cameraHandle'])
 # GetDDGPulse(double wid, double resolution, double * Delay, double * Width)
 # GetDDGStepCoefficients(at_u32 mode, double * p1, double * p2)
 # GetDDGStepMode(at_u32 * mode)
-dllFunc('GetDetector', [OUTPUT(c_int), OUTPUT(c_int)], ['xpixels', 'ypixels'])
+dllFunc("GetDetector", [OUTPUT(c_int), OUTPUT(c_int)], ["xpixels", "ypixels"])
 # # GetDICameraInfo(void * info)
-dllFunc('GetEMAdvanced', [OUTPUT(c_int)], ['state'])
-dllFunc('GetEMCCDGain', [OUTPUT(c_int)], [' gain'])
-dllFunc('GetEMGainRange', [OUTPUT(c_int), OUTPUT(c_int)], ['low', 'high'])
-dllFunc('GetExternalTriggerTermination', [OUTPUT(at_u32)], ['puiTermination'])
-dllFunc('GetFastestRecommendedVSSpeed', [OUTPUT(c_int), OUTPUT(c_float)],
-                                        ['index', 'speed'])
+dllFunc("GetEMAdvanced", [OUTPUT(c_int)], ["state"])
+dllFunc("GetEMCCDGain", [OUTPUT(c_int)], [" gain"])
+dllFunc("GetEMGainRange", [OUTPUT(c_int), OUTPUT(c_int)], ["low", "high"])
+dllFunc("GetExternalTriggerTermination", [OUTPUT(at_u32)], ["puiTermination"])
+dllFunc(
+    "GetFastestRecommendedVSSpeed",
+    [OUTPUT(c_int), OUTPUT(c_float)],
+    ["index", "speed"],
+)
 # # GetFIFOUsage(int * FIFOusage)
-dllFunc('GetFilterMode', [OUTPUT(c_int)], ['mode'])
-dllFunc('GetFKExposureTime', [OUTPUT(c_float)], ['time'])
+dllFunc("GetFilterMode", [OUTPUT(c_int)], ["mode"])
+dllFunc("GetFKExposureTime", [OUTPUT(c_float)], ["time"])
 # # GetFKVShiftSpeed(int index, int * speed)
-dllFunc('GetFKVShiftSpeedF', [c_int, OUTPUT(c_float)], ['index', 'speed'])
-dllFunc('GetFrontEndStatus', [OUTPUT(c_int)], ['piFlag'])
-dllFunc('GetGateMode', [OUTPUT(c_int)], ['piGatemode'])
-dllFunc('GetHardwareVersion', [OUTPUT(c_uint) for i in range(6)],
-                              ['PCB', 'Decode', 'dummy1', 'dummy2',
-                               'CameraFirmwareVersion', 'CameraFirmwareBuild'])
-dllFunc('GetHeadModel', [OUTSTRING], ['name'])
+dllFunc("GetFKVShiftSpeedF", [c_int, OUTPUT(c_float)], ["index", "speed"])
+dllFunc("GetFrontEndStatus", [OUTPUT(c_int)], ["piFlag"])
+dllFunc("GetGateMode", [OUTPUT(c_int)], ["piGatemode"])
+dllFunc(
+    "GetHardwareVersion",
+    [OUTPUT(c_uint) for i in range(6)],
+    [
+        "PCB",
+        "Decode",
+        "dummy1",
+        "dummy2",
+        "CameraFirmwareVersion",
+        "CameraFirmwareBuild",
+    ],
+)
+dllFunc("GetHeadModel", [OUTSTRING], ["name"])
 # # GetHorizontalSpeed(int index, int * speed)
-dllFunc('GetHSSpeed', [c_int, c_int, c_int, OUTPUT(c_float)],
-                      ['channel', 'typ', 'index', 'speed'])
-dllFunc('GetHVflag', [OUTPUT(c_int)], ['bFlag'])
+dllFunc(
+    "GetHSSpeed",
+    [c_int, c_int, c_int, OUTPUT(c_float)],
+    ["channel", "typ", "index", "speed"],
+)
+dllFunc("GetHVflag", [OUTPUT(c_int)], ["bFlag"])
 # # GetID(int devNum, int * id)
-dllFunc('GetImageFlip', [OUTPUT(c_int), OUTPUT(c_int)],
-                        ['iHFlip', 'iVFlip'])
-dllFunc('GetImageRotate', [OUTPUT(c_int)], ['Rotate'])
-dllFunc('GetImages', [c_long, c_long, OUTARR(at_32), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
-                     ['first','last', 'arr', 'size', 'validfirst', 'validlast'])
-dllFunc('GetImages16', [c_long, c_long, OUTARR(WORD), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
-                       ['first','last', 'arr', 'size', 'validfirst', 'validlast'])
-dllFunc('GetImagesPerDMA', [OUTPUT(c_ulong)], ['images'])
+dllFunc("GetImageFlip", [OUTPUT(c_int), OUTPUT(c_int)], ["iHFlip", "iVFlip"])
+dllFunc("GetImageRotate", [OUTPUT(c_int)], ["Rotate"])
+dllFunc(
+    "GetImages",
+    [
+        c_long,
+        c_long,
+        OUTARR(at_32),
+        OUTARRSIZE,
+        OUTPUT(c_long),
+        OUTPUT(c_long),
+    ],
+    ["first", "last", "arr", "size", "validfirst", "validlast"],
+)
+dllFunc(
+    "GetImages16",
+    [c_long, c_long, OUTARR(WORD), OUTARRSIZE, OUTPUT(c_long), OUTPUT(c_long)],
+    ["first", "last", "arr", "size", "validfirst", "validlast"],
+)
+dllFunc("GetImagesPerDMA", [OUTPUT(c_ulong)], ["images"])
 # # GetIRQ(int * IRQ)
-dllFunc('GetKeepCleanTime', [OUTPUT(c_float)], ['KeepCleanTime'])
-dllFunc('GetMaximumBinning', [c_int, c_int, OUTPUT(c_int)],
-                             ['ReadMode', 'HorzVert', 'MaxBinning'])
-dllFunc('GetMaximumExposure', [OUTPUT(c_float)], ['MaxExp'])
-dllFunc('GetMCPGain', [OUTPUT(c_int)], ['piGain'])
-dllFunc('GetMCPGainRange', [OUTPUT(c_int), OUTPUT(c_int)], ['iLow', 'iHigh'])
+dllFunc("GetKeepCleanTime", [OUTPUT(c_float)], ["KeepCleanTime"])
+dllFunc(
+    "GetMaximumBinning",
+    [c_int, c_int, OUTPUT(c_int)],
+    ["ReadMode", "HorzVert", "MaxBinning"],
+)
+dllFunc("GetMaximumExposure", [OUTPUT(c_float)], ["MaxExp"])
+dllFunc("GetMCPGain", [OUTPUT(c_int)], ["piGain"])
+dllFunc("GetMCPGainRange", [OUTPUT(c_int), OUTPUT(c_int)], ["iLow", "iHigh"])
 # # GetMCPGainTable(int iNum, int * piGain, float * pfPhotoepc)
-dllFunc('GetMCPVoltage', [OUTPUT(c_int)], ['iVoltage'])
-dllFunc('GetMinimumImageLength', [OUTPUT(c_int)], ['MinImageLength'])
+dllFunc("GetMCPVoltage", [OUTPUT(c_int)], ["iVoltage"])
+dllFunc("GetMinimumImageLength", [OUTPUT(c_int)], ["MinImageLength"])
 # # GetMinimumNumberInSeries(int * number)
-dllFunc('GetMostRecentColorImage16', [OUTARRSIZE, c_int, OUTARR(WORD), OUTARR(WORD), OUTARR(WORD)],
-                                     ['size', 'algorithm', 'red', 'green', 'blue'])
-dllFunc('GetMostRecentImage', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
-dllFunc('GetMostRecentImage16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
+dllFunc(
+    "GetMostRecentColorImage16",
+    [OUTARRSIZE, c_int, OUTARR(WORD), OUTARR(WORD), OUTARR(WORD)],
+    ["size", "algorithm", "red", "green", "blue"],
+)
+dllFunc("GetMostRecentImage", [OUTARR(at_32), OUTARRSIZE], ["arr", "size"])
+dllFunc("GetMostRecentImage16", [OUTARR(WORD), OUTARRSIZE], ["arr", "size"])
 # # GetMSTimingsData(SYSTEMTIME * TimeOfStart, float * pfDifferences, int inoOfImages)
-dllFunc('GetMetaDataInfo', [OUTPUT(SYSTEMTIME), OUTPUT(c_float), c_uint],
-                           ['TimeOfStart', 'TimeFromStart', 'index'])
+dllFunc(
+    "GetMetaDataInfo",
+    [OUTPUT(SYSTEMTIME), OUTPUT(c_float), c_uint],
+    ["TimeOfStart", "TimeFromStart", "index"],
+)
 # # GetMSTimingsEnabled(void)
 # # GetNewData(at_32 * arr, unsigned long size)
 # # GetNewData16(WORD * arr, unsigned long size)
 # # GetNewData8(unsigned char * arr, unsigned long size)
 # # GetNewFloatData(float * arr, unsigned long size)
-dllFunc('GetNumberADChannels', [OUTPUT(c_int)], ['channels'])
-dllFunc('GetNumberAmp', [OUTPUT(c_int)], ['amp'])
-dllFunc('GetNumberAvailableImages', [OUTPUT(at_32), OUTPUT(at_32)],
-                                    ['first', 'last'])
-dllFunc('GetNumberDDGExternalOutputs', [OUTPUT(at_u32)], ['puiCount'])
+dllFunc("GetNumberADChannels", [OUTPUT(c_int)], ["channels"])
+dllFunc("GetNumberAmp", [OUTPUT(c_int)], ["amp"])
+dllFunc(
+    "GetNumberAvailableImages",
+    [OUTPUT(at_32), OUTPUT(at_32)],
+    ["first", "last"],
+)
+dllFunc("GetNumberDDGExternalOutputs", [OUTPUT(at_u32)], ["puiCount"])
 # # GetNumberDevices(int * numDevs)
-dllFunc('GetNumberFKVShiftSpeeds', [OUTPUT(c_int)], ['number'])
+dllFunc("GetNumberFKVShiftSpeeds", [OUTPUT(c_int)], ["number"])
 # # GetNumberHorizontalSpeeds(int * number)
-dllFunc('GetNumberHSSpeeds', [c_int, c_int, OUTPUT(c_int)],
-                             ['channel', 'typ', 'speeds'])
-dllFunc('GetNumberNewImages', [OUTPUT(c_long), OUTPUT(c_long)], ['first', 'last'])
-dllFunc('GetNumberPhotonCountingDivisions', [OUTPUT(at_u32)], ['noOfDivisions'])
-dllFunc('GetNumberPreAmpGains', [OUTPUT(c_int)], ['noGains'])
-dllFunc('GetNumberRingExposureTimes', [OUTPUT(c_int)], ['ipnumTimes'])
-dllFunc('GetNumberIO', [OUTPUT(c_int)], ['iNumber'])
+dllFunc(
+    "GetNumberHSSpeeds",
+    [c_int, c_int, OUTPUT(c_int)],
+    ["channel", "typ", "speeds"],
+)
+dllFunc(
+    "GetNumberNewImages", [OUTPUT(c_long), OUTPUT(c_long)], ["first", "last"]
+)
+dllFunc(
+    "GetNumberPhotonCountingDivisions", [OUTPUT(at_u32)], ["noOfDivisions"]
+)
+dllFunc("GetNumberPreAmpGains", [OUTPUT(c_int)], ["noGains"])
+dllFunc("GetNumberRingExposureTimes", [OUTPUT(c_int)], ["ipnumTimes"])
+dllFunc("GetNumberIO", [OUTPUT(c_int)], ["iNumber"])
 # # GetNumberVerticalSpeeds(int * number)
-dllFunc('GetNumberVSAmplitudes', [OUTPUT(c_int)], ['number'])
-dllFunc('GetNumberVSSpeeds', [OUTPUT(c_int)], ['speeds'])
-dllFunc('GetOldestImage', [OUTARR(at_32), OUTARRSIZE], ['arr', 'size'])
-dllFunc('GetOldestImage16', [OUTARR(WORD), OUTARRSIZE], ['arr', 'size'])
-dllFunc('GetPhosphorStatus', [OUTPUT(c_int)], ['piFlag'])
+dllFunc("GetNumberVSAmplitudes", [OUTPUT(c_int)], ["number"])
+dllFunc("GetNumberVSSpeeds", [OUTPUT(c_int)], ["speeds"])
+dllFunc("GetOldestImage", [OUTARR(at_32), OUTARRSIZE], ["arr", "size"])
+dllFunc("GetOldestImage16", [OUTARR(WORD), OUTARRSIZE], ["arr", "size"])
+dllFunc("GetPhosphorStatus", [OUTPUT(c_int)], ["piFlag"])
 # # GetPhysicalDMAAddress(unsigned long * Address1, unsigned long * Address2)
-dllFunc('GetPixelSize', [OUTPUT(c_float), OUTPUT(c_float)], ['xSize', 'ySize'])
-dllFunc('GetPreAmpGain', [c_int, OUTPUT(c_float)], ['index', 'gain'])
-dllFunc('GetPreAmpGainText', [c_int , OUTSTRING, OUTSTRLEN],
-                             ['index', 'name', 'length'])
-dllFunc('GetDualExposureTimes', [OUTPUT(c_float), OUTPUT(c_float)],
-                                ['exposure1', 'exposure2'])
-dllFunc('GetQE', [STRING, c_float, c_uint, OUTPUT(c_float)],
-                 ['sensor', 'wavelength', 'mode', 'QE'])
-dllFunc('GetReadOutTime', [OUTPUT(c_float)], ['ReadOutTime'])
+dllFunc("GetPixelSize", [OUTPUT(c_float), OUTPUT(c_float)], ["xSize", "ySize"])
+dllFunc("GetPreAmpGain", [c_int, OUTPUT(c_float)], ["index", "gain"])
+dllFunc(
+    "GetPreAmpGainText",
+    [c_int, OUTSTRING, OUTSTRLEN],
+    ["index", "name", "length"],
+)
+dllFunc(
+    "GetDualExposureTimes",
+    [OUTPUT(c_float), OUTPUT(c_float)],
+    ["exposure1", "exposure2"],
+)
+dllFunc(
+    "GetQE",
+    [STRING, c_float, c_uint, OUTPUT(c_float)],
+    ["sensor", "wavelength", "mode", "QE"],
+)
+dllFunc("GetReadOutTime", [OUTPUT(c_float)], ["ReadOutTime"])
 # # GetRegisterDump(int * mode)
-dllFunc('GetRingExposureRange', [OUTPUT(c_float), OUTPUT(c_float)],
-                                ['Min', 'Max'])
+dllFunc(
+    "GetRingExposureRange", [OUTPUT(c_float), OUTPUT(c_float)], ["Min", "Max"]
+)
 # # GetSDK3Handle(int * Handle)
-dllFunc('GetSensitivity', [c_int, c_int, c_int, c_int, OUTPUT(c_float)],
-                          ['channel', 'horzShift', 'amplifier', 'pa', 'sensitivity'])
-dllFunc('GetShutterMinTimes', [OUTPUT(c_int), OUTPUT(c_int)],
-                              ['minclosingtime', 'minopeningtime'])
-dllFunc('GetSizeOfCircularBuffer', [OUTPUT(c_long)], ['index'])
+dllFunc(
+    "GetSensitivity",
+    [c_int, c_int, c_int, c_int, OUTPUT(c_float)],
+    ["channel", "horzShift", "amplifier", "pa", "sensitivity"],
+)
+dllFunc(
+    "GetShutterMinTimes",
+    [OUTPUT(c_int), OUTPUT(c_int)],
+    ["minclosingtime", "minopeningtime"],
+)
+dllFunc("GetSizeOfCircularBuffer", [OUTPUT(c_long)], ["index"])
 # # GetSlotBusDeviceFunction(DWORD * dwslot, DWORD * dwBus, DWORD * dwDevice, DWORD * dwFunction)
-dllFunc('GetSoftwareVersion', [OUTPUT(c_uint) for i in range(6)],
-                              ['eprom', 'coffile', 'vxdrev', 'vxdver', 'dllrev', 'dllver'])
+dllFunc(
+    "GetSoftwareVersion",
+    [OUTPUT(c_uint) for i in range(6)],
+    ["eprom", "coffile", "vxdrev", "vxdver", "dllrev", "dllver"],
+)
 # # GetSpoolProgress(long * index)
 # # GetStartUpTime(float * time)
-dllFunc('GetStatus', [OUTPUT(c_int)], ['status'])
-dllFunc('GetTECStatus', [OUTPUT(c_int)], ['piFlag'])
-dllFunc('GetTemperature', [OUTPUT(c_int)], ['temperature'], True)
-dllFunc('GetTemperatureF', [OUTPUT(c_float)], ['temperature'], True)
-dllFunc('GetTemperatureRange', [OUTPUT(c_int), OUTPUT(c_int)],
-                               ['mintemp', 'maxtemp'])
-## Reserved function seems to be incomplete - only populates first parameter with Ixon Ultra.
-#dllFunc('GetTemperatureStatus', [OUTPUT(c_float) for i in range(4)],
+dllFunc("GetStatus", [OUTPUT(c_int)], ["status"])
+dllFunc("GetTECStatus", [OUTPUT(c_int)], ["piFlag"])
+dllFunc("GetTemperature", [OUTPUT(c_int)], ["temperature"], True)
+dllFunc("GetTemperatureF", [OUTPUT(c_float)], ["temperature"], True)
+dllFunc(
+    "GetTemperatureRange",
+    [OUTPUT(c_int), OUTPUT(c_int)],
+    ["mintemp", "maxtemp"],
+)
+# Reserved function seems to be incomplete - only populates first parameter with Ixon Ultra.
+# dllFunc('GetTemperatureStatus', [OUTPUT(c_float) for i in range(4)],
 #                                ['SensorTemp', 'TargetTemp', 'AmbientTemp', 'CoolerVolts'], True)
-dllFunc('GetTotalNumberImagesAcquired', [OUTPUT(c_long)], ['index'])
-dllFunc('GetIODirection', [c_int, OUTPUT(c_int)], ['index', 'iDirection'])
-dllFunc('GetIOLevel', [c_int, OUTPUT(c_int)], ['index', 'iLevel'])
-dllFunc('GetVersionInfo', [AT_VersionInfoId, OUTSTRING, OUTSTRLEN],
-                          ['arr', 'szVersionInfo', 'ui32BufferLen'])
+dllFunc("GetTotalNumberImagesAcquired", [OUTPUT(c_long)], ["index"])
+dllFunc("GetIODirection", [c_int, OUTPUT(c_int)], ["index", "iDirection"])
+dllFunc("GetIOLevel", [c_int, OUTPUT(c_int)], ["index", "iLevel"])
+dllFunc(
+    "GetVersionInfo",
+    [AT_VersionInfoId, OUTSTRING, OUTSTRLEN],
+    ["arr", "szVersionInfo", "ui32BufferLen"],
+)
 # # GetVerticalSpeed(int index, int * speed)
 # # GetVirtualDMAAddress(void ** Address1, void ** Address2)
-dllFunc('GetVSAmplitudeString', [c_int, OUTSTRING], ['index', 'text'])
-dllFunc('GetVSAmplitudeFromString', [STRING, OUTPUT(c_int)], ['text', 'index'])
-dllFunc('GetVSAmplitudeValue', [c_int, OUTPUT(c_int)], ['index', 'value'])
-dllFunc('GetVSSpeed', [c_int, OUTPUT(c_float)], ['index', 'speed'])
+dllFunc("GetVSAmplitudeString", [c_int, OUTSTRING], ["index", "text"])
+dllFunc("GetVSAmplitudeFromString", [STRING, OUTPUT(c_int)], ["text", "index"])
+dllFunc("GetVSAmplitudeValue", [c_int, OUTPUT(c_int)], ["index", "value"])
+dllFunc("GetVSSpeed", [c_int, OUTPUT(c_float)], ["index", "speed"])
 # GPIBReceive(int id, short address, char * text, int size)
 # GPIBSend(int id, short address, char * text)
 # I2CBurstRead(BYTE i2cAddress, long nBytes, BYTE * data)
@@ -870,18 +1041,21 @@ dllFunc('GetVSSpeed', [c_int, OUTPUT(c_float)], ['index', 'speed'])
 # I2CWrite(BYTE deviceID, BYTE intAddress, BYTE data)
 # #'IdAndorDll(void)
 # InAuxPort(int port, int * state)
-dllFunc('Initialize', [STRING], ['dir'])
+dllFunc("Initialize", [STRING], ["dir"])
 # #'InitializeDevice(char * dir)
-dllFunc('IsAmplifierAvailable', [c_int], ['iamp'], True)
-dllFunc('IsCoolerOn', [OUTPUT(c_int)], ['iCoolerStatus'])
-dllFunc('IsCountConvertModeAvailable', [c_int], ['mode'], True)
-dllFunc('IsInternalMechanicalShutter', [OUTPUT(c_int)], ['InternalShutter'])
-dllFunc('IsPreAmpGainAvailable', [c_int, c_int, c_int, c_int, OUTPUT(c_int)],
-                                 ['channel', 'amplifier', 'index', 'pa', 'status'])
-dllFunc('IsTriggerModeAvailable', [c_int], ['iTriggerMode'], True)
+dllFunc("IsAmplifierAvailable", [c_int], ["iamp"], True)
+dllFunc("IsCoolerOn", [OUTPUT(c_int)], ["iCoolerStatus"])
+dllFunc("IsCountConvertModeAvailable", [c_int], ["mode"], True)
+dllFunc("IsInternalMechanicalShutter", [OUTPUT(c_int)], ["InternalShutter"])
+dllFunc(
+    "IsPreAmpGainAvailable",
+    [c_int, c_int, c_int, c_int, OUTPUT(c_int)],
+    ["channel", "amplifier", "index", "pa", "status"],
+)
+dllFunc("IsTriggerModeAvailable", [c_int], ["iTriggerMode"], True)
 # #'Merge(const at_32 * arr, long nOrder, long nPoint, long nPixel, float * coeff, long fit, long hbin, at_32 * output, float * start, float * step_Renamed)
 # OutAuxPort(int port, int state)
-dllFunc('PrepareAcquisition', [], [])
+dllFunc("PrepareAcquisition", [], [])
 # SaveAsBmp(char * path, char * palette, long ymin, long ymax)
 # SaveAsCommentedSif(char * path, char * comment)
 # SaveAsEDF(char * szPath, int iMode)
@@ -894,29 +1068,33 @@ dllFunc('PrepareAcquisition', [], [])
 # #'SaveEEPROMToFile(char * cFileName)
 # #'SaveToClipBoard(char * palette)
 # #'SelectDevice(int devNum)
-dllFunc('SendSoftwareTrigger', [], [])
-dllFunc('SetAccumulationCycleTime', [c_float], ['time'])
+dllFunc("SendSoftwareTrigger", [], [])
+dllFunc("SetAccumulationCycleTime", [c_float], ["time"])
 # SetAcqStatusEvent(HANDLE statusEvent)
-dllFunc('SetAcquisitionMode', [c_int], ['mode'])
+dllFunc("SetAcquisitionMode", [c_int], ["mode"])
 # #'SetAcquisitionType(int typ)
-dllFunc('SetADChannel', [c_int], ['channel'])
-dllFunc('SetAdvancedTriggerModeState', [c_int], ['iState'])
+dllFunc("SetADChannel", [c_int], ["channel"])
+dllFunc("SetAdvancedTriggerModeState", [c_int], ["iState"])
 # #'SetBackground(at_32 * arr, unsigned long size)
-dllFunc('SetBaselineClamp', [c_int], ['state'])
-dllFunc('SetBaselineOffset', [c_int], ['offset'])
-dllFunc('SetCameraLinkMode', [c_int], ['mode'])
-dllFunc('SetCameraStatusEnable', [DWORD], ['Enable'])
-dllFunc('SetChargeShifting', [c_uint, c_uint], ['NumberRows', 'NumberRepeats'])
-dllFunc('SetComplexImage', [c_uint, POINTER(c_int)], ['numAreas', 'areas'])
-dllFunc('SetCoolerMode', [c_int], ['mode'])
-dllFunc('SetCountConvertMode', [c_int], ['Mode'])
-dllFunc('SetCountConvertWavelength', [c_float], ['wavelength'])
-dllFunc('SetCropMode', [c_int, c_int, c_int], ['active', 'cropHeight', 'reserved'])
-dllFunc('SetCurrentCamera', [c_long], ['cameraHandle'])
-dllFunc('SetCustomTrackHBin', [c_int], ['bin'])
+dllFunc("SetBaselineClamp", [c_int], ["state"])
+dllFunc("SetBaselineOffset", [c_int], ["offset"])
+dllFunc("SetCameraLinkMode", [c_int], ["mode"])
+dllFunc("SetCameraStatusEnable", [DWORD], ["Enable"])
+dllFunc("SetChargeShifting", [c_uint, c_uint], ["NumberRows", "NumberRepeats"])
+dllFunc("SetComplexImage", [c_uint, POINTER(c_int)], ["numAreas", "areas"])
+dllFunc("SetCoolerMode", [c_int], ["mode"])
+dllFunc("SetCountConvertMode", [c_int], ["Mode"])
+dllFunc("SetCountConvertWavelength", [c_float], ["wavelength"])
+dllFunc(
+    "SetCropMode", [c_int, c_int, c_int], ["active", "cropHeight", "reserved"]
+)
+dllFunc("SetCurrentCamera", [c_long], ["cameraHandle"])
+dllFunc("SetCustomTrackHBin", [c_int], ["bin"])
 # #'SetDataType(int typ)
-dllFunc('SetDACOutput', [c_int, c_int, c_int], ['iOption', 'iResolution', 'iValue'])
-dllFunc('SetDACOutputScale', [c_int], ['iScale'])
+dllFunc(
+    "SetDACOutput", [c_int, c_int, c_int], ["iOption", "iResolution", "iValue"]
+)
+dllFunc("SetDACOutputScale", [c_int], ["iScale"])
 # #'SetDDGAddress(BYTE t0, BYTE t1, BYTE t2, BYTE t3, BYTE address)
 # SetDDGExternalOutputEnabled(at_u32 uiIndex, at_u32 uiEnabled)
 # SetDDGExternalOutputPolarity(at_u32 uiIndex, at_u32 uiPolarity)
@@ -947,109 +1125,138 @@ dllFunc('SetDACOutputScale', [c_int], ['iScale'])
 # SetDelayGenerator(int board, short address, int typ)
 # SetDMAParameters(int MaxImagesPerDMA, float SecondsPerDMA)
 # SetDriverEvent(HANDLE driverEvent)
-dllFunc('SetEMAdvanced', [c_int], ['state'])
-dllFunc('SetEMCCDGain', [c_int], ['gain'])
+dllFunc("SetEMAdvanced", [c_int], ["state"])
+dllFunc("SetEMCCDGain", [c_int], ["gain"])
 # #'SetEMClockCompensation(int EMClockCompensationFlag)
-dllFunc('SetEMGainMode', [c_int], ['mode'])
-dllFunc('SetExposureTime', [c_float], ['time'])
-dllFunc('SetExternalTriggerTermination', [at_u32], ['uiTermination'])
-dllFunc('SetFanMode', [c_int], ['mode'])
-dllFunc('SetFastExtTrigger', [c_int], ['mode'])
-dllFunc('SetFastKinetics', [c_int, c_int, c_float, c_int, c_int, c_int],
-                           ['exposedRows', 'seriesLength', 'time', 'mode',
-                            'hbin', 'vbin'])
-dllFunc('SetFastKineticsEx', [c_int, c_int, c_float, c_int, c_int, c_int, c_int],
-                             ['exposedRows', 'seriesLength', 'time', 'mode',
-                              'hbin', 'vbin', 'offset'])
-dllFunc('SetFilterMode', [c_int], ['mode'])
+dllFunc("SetEMGainMode", [c_int], ["mode"])
+dllFunc("SetExposureTime", [c_float], ["time"])
+dllFunc("SetExternalTriggerTermination", [at_u32], ["uiTermination"])
+dllFunc("SetFanMode", [c_int], ["mode"])
+dllFunc("SetFastExtTrigger", [c_int], ["mode"])
+dllFunc(
+    "SetFastKinetics",
+    [c_int, c_int, c_float, c_int, c_int, c_int],
+    ["exposedRows", "seriesLength", "time", "mode", "hbin", "vbin"],
+)
+dllFunc(
+    "SetFastKineticsEx",
+    [c_int, c_int, c_float, c_int, c_int, c_int, c_int],
+    ["exposedRows", "seriesLength", "time", "mode", "hbin", "vbin", "offset"],
+)
+dllFunc("SetFilterMode", [c_int], ["mode"])
 # #'SetFilterParameters(int width, float sensitivity, int range, float accept, int smooth, int noise)
-dllFunc('SetFKVShiftSpeed', [c_int], ['index'])
+dllFunc("SetFKVShiftSpeed", [c_int], ["index"])
 # #'SetFPDP(int state)
-dllFunc('SetFrameTransferMode', [c_int], ['mode'])
+dllFunc("SetFrameTransferMode", [c_int], ["mode"])
 # SetFrontEndEvent(HANDLE driverEvent)
 # #'SetFullImage(int hbin, int vbin)
-dllFunc('SetFVBHBin', [c_int], ['bin'])
+dllFunc("SetFVBHBin", [c_int], ["bin"])
 # #'SetGain(int gain)
-dllFunc('SetGate', [c_float, c_float, c_float],
-                   ['delay', 'width', 'stepRenamed'])
-dllFunc('SetGateMode',[c_int], ['gatemode'])
-dllFunc('SetHighCapacity', [c_int], ['state'])
+dllFunc(
+    "SetGate", [c_float, c_float, c_float], ["delay", "width", "stepRenamed"]
+)
+dllFunc("SetGateMode", [c_int], ["gatemode"])
+dllFunc("SetHighCapacity", [c_int], ["state"])
 # #'SetHorizontalSpeed(int index)
-dllFunc('SetHSSpeed', [c_int, c_int], ['typ', 'index'])
-dllFunc('SetImage', [c_int, c_int, c_int, c_int, c_int, c_int],
-                    ['bnin', 'vbin', 'hstar', 'hend', 'vstart', 'vend'])
-dllFunc('SetImageFlip', [c_int, c_int],['iHFlip', 'iVFlip'])
-dllFunc('SetImageRotate', [c_int], ['iRotate'])
-dllFunc('SetIsolatedCropMode', [c_int, c_int, c_int, c_int, c_int],
-                               ['active', 'cropheight', 'cropwidth', 'vbin', 'hbin'])
-dllFunc('SetKineticCycleTime', [c_float], ['time'])
-dllFunc('SetMCPGain', [c_int], ['gain'])
-dllFunc('SetMCPGating', [c_int], ['gating'])
+dllFunc("SetHSSpeed", [c_int, c_int], ["typ", "index"])
+dllFunc(
+    "SetImage",
+    [c_int, c_int, c_int, c_int, c_int, c_int],
+    ["bnin", "vbin", "hstar", "hend", "vstart", "vend"],
+)
+dllFunc("SetImageFlip", [c_int, c_int], ["iHFlip", "iVFlip"])
+dllFunc("SetImageRotate", [c_int], ["iRotate"])
+dllFunc(
+    "SetIsolatedCropMode",
+    [c_int, c_int, c_int, c_int, c_int],
+    ["active", "cropheight", "cropwidth", "vbin", "hbin"],
+)
+dllFunc("SetKineticCycleTime", [c_float], ["time"])
+dllFunc("SetMCPGain", [c_int], ["gain"])
+dllFunc("SetMCPGating", [c_int], ["gating"])
 # #'SetMessageWindow(HWND wnd)' # reser)
-dllFunc('SetMetaData', [c_int], ['state'])
+dllFunc("SetMetaData", [c_int], ["state"])
 # SetMultiTrack(int number, int height, int offset, int * bottom, int * gap)
 # SetMultiTrackHBin(int bin)
 # SetMultiTrackHRange(int iStart, int iEnd)
 # #'SetMultiTrackScan(int trackHeight, int numberTracks, int iSIHStart, int iSIHEnd, int trackHBinning, int trackVBinning, int trackGap, int trackOffset, int trackSkip, int numberSubFrames)
 # #'SetNextAddress(at_32 * data, long lowAdd, long highAdd, long length, long physical)
 # #'SetNextAddress16(at_32 * data, long lowAdd, long highAdd, long length, long physical)
-dllFunc('SetNumberAccumulations', [c_int], ['number'])
-dllFunc('SetNumberKinetics', [c_int], ['number'])
-dllFunc('SetNumberPrescans', [c_int], ['iNumber'])
-dllFunc('SetOutputAmplifier', [c_int], ['typ'])
-dllFunc('SetOverlapMode', [c_int], ['mode'])
-dllFunc('SetPCIMode', [c_int, c_int], ['mode', 'value'])
-dllFunc('SetPhotonCounting', [c_int], ['state'])
-dllFunc('SetPhotonCountingThreshold', [c_long, c_long],  ['min', 'max'])
+dllFunc("SetNumberAccumulations", [c_int], ["number"])
+dllFunc("SetNumberKinetics", [c_int], ["number"])
+dllFunc("SetNumberPrescans", [c_int], ["iNumber"])
+dllFunc("SetOutputAmplifier", [c_int], ["typ"])
+dllFunc("SetOverlapMode", [c_int], ["mode"])
+dllFunc("SetPCIMode", [c_int, c_int], ["mode", "value"])
+dllFunc("SetPhotonCounting", [c_int], ["state"])
+dllFunc("SetPhotonCountingThreshold", [c_long, c_long], ["min", "max"])
 # SetPhosphorEvent(HANDLE driverEvent)
-dllFunc('SetPhotonCountingDivisions', [at_u32, at_32],
-                                      ['noOfDivisions', 'divisions'])
+dllFunc(
+    "SetPhotonCountingDivisions",
+    [at_u32, at_32],
+    ["noOfDivisions", "divisions"],
+)
 # #'SetPixelMode(int bitdepth, int colormode)
-dllFunc('SetPreAmpGain', [c_int], ['index'])
-dllFunc('SetDualExposureTimes', [c_float, c_float], ['expTime1', 'expTime2'])
-dllFunc('SetDualExposureMode', [c_int],  ['mode'])
-dllFunc('SetRandomTracks', [c_int, c_int], ['numTracks', 'areas'])
-dllFunc('SetReadMode', [c_int], ['mode'])
+dllFunc("SetPreAmpGain", [c_int], ["index"])
+dllFunc("SetDualExposureTimes", [c_float, c_float], ["expTime1", "expTime2"])
+dllFunc("SetDualExposureMode", [c_int], ["mode"])
+dllFunc("SetRandomTracks", [c_int, c_int], ["numTracks", "areas"])
+dllFunc("SetReadMode", [c_int], ["mode"])
 # #'SetRegisterDump(int mode)
-dllFunc('SetRingExposureTimes', [c_int, c_float], ['numTimes', 'times'])
+dllFunc("SetRingExposureTimes", [c_int, c_float], ["numTimes", "times"])
 # SetSaturationEvent(HANDLE saturationEvent)
-dllFunc('SetShutter', [c_int, c_int, c_int, c_int],
-                      ['typ', 'mode', 'closingtime', 'openingtime'])
-dllFunc('SetShutterEx', [c_int, c_int, c_int, c_int, c_int],
-                        ['typ', 'mode', 'closingtime', 'openingtime', 'extmode'])
+dllFunc(
+    "SetShutter",
+    [c_int, c_int, c_int, c_int],
+    ["typ", "mode", "closingtime", "openingtime"],
+)
+dllFunc(
+    "SetShutterEx",
+    [c_int, c_int, c_int, c_int, c_int],
+    ["typ", "mode", "closingtime", "openingtime", "extmode"],
+)
 # #'SetShutters(int typ, int mode, int closingtime, int openingtime, int exttype, int extmode, int dummy1, int dummy2)
-dllFunc('SetSifComment', [STRING], ['comment'])
-dllFunc('SetSingleTrack', [c_int, c_int], ['centre', 'height'])
-dllFunc('SetSingleTrackHBin', [c_int], ['bin'])
-dllFunc('SetSpool', [c_int, c_int, STRING, c_int],
-                    ['active', 'method', 'path', 'framebuffersize'])
-dllFunc('SetSpoolThreadCount', [c_int], ['count'])
+dllFunc("SetSifComment", [STRING], ["comment"])
+dllFunc("SetSingleTrack", [c_int, c_int], ["centre", "height"])
+dllFunc("SetSingleTrackHBin", [c_int], ["bin"])
+dllFunc(
+    "SetSpool",
+    [c_int, c_int, STRING, c_int],
+    ["active", "method", "path", "framebuffersize"],
+)
+dllFunc("SetSpoolThreadCount", [c_int], ["count"])
 # #'SetStorageMode(long mode)
 # SetTECEvent(HANDLE driverEvent)
-dllFunc('SetTemperature', [c_int], ['temperature'])
+dllFunc("SetTemperature", [c_int], ["temperature"])
 # #'SetTemperatureEvent(HANDLE temperatureEvent)
-dllFunc('SetTriggerMode', [c_int], ['mode'])
-dllFunc('SetTriggerInvert',  [c_int], ['mode'])
-dllFunc('GetTriggerLevelRange', [OUTPUT(c_float), OUTPUT(c_float)],
-                                ['minimum', 'maximum'])
-dllFunc('SetTriggerLevel', [c_float], ['f_level'])
-dllFunc('SetIODirection', [c_int, c_int], ['index', 'iDirection'])
-dllFunc('SetIOLevel', [c_int , c_int], ['index', 'iLevel'])
+dllFunc("SetTriggerMode", [c_int], ["mode"])
+dllFunc("SetTriggerInvert", [c_int], ["mode"])
+dllFunc(
+    "GetTriggerLevelRange",
+    [OUTPUT(c_float), OUTPUT(c_float)],
+    ["minimum", "maximum"],
+)
+dllFunc("SetTriggerLevel", [c_float], ["f_level"])
+dllFunc("SetIODirection", [c_int, c_int], ["index", "iDirection"])
+dllFunc("SetIOLevel", [c_int, c_int], ["index", "iLevel"])
 # #'SetUserEvent(HANDLE userEvent)
 # #'SetUSGenomics(long width, long height)
 # #'SetVerticalRowBuffer(int rows)
 # #'SetVerticalSpeed(int index)
 # #'SetVirtualChip(int state)
-dllFunc('SetVSAmplitude', [c_int], ['index'])
-dllFunc('SetVSSpeed', [c_int], ['index'])
-dllFunc('ShutDown', [], [])
-dllFunc('StartAcquisition', [], [])
+dllFunc("SetVSAmplitude", [c_int], ["index"])
+dllFunc("SetVSSpeed", [c_int], ["index"])
+dllFunc("ShutDown", [], [])
+dllFunc("StartAcquisition", [], [])
 # #'UnMapPhysicalAddress(void)
-dllFunc('WaitForAcquisition', [], [])
-dllFunc('WaitForAcquisitionByHandle', [c_long], ['cameraHandle'])
-dllFunc('WaitForAcquisitionByHandleTimeOut', [c_long, c_int],
-                                             ['cameraHandle', 'iTimeOutMs'])
-dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
+dllFunc("WaitForAcquisition", [], [])
+dllFunc("WaitForAcquisitionByHandle", [c_long], ["cameraHandle"])
+dllFunc(
+    "WaitForAcquisitionByHandleTimeOut",
+    [c_long, c_int],
+    ["cameraHandle", "iTimeOutMs"],
+)
+dllFunc("WaitForAcquisitionTimeOut", [c_int], ["iTimeOutMs"])
 # WhiteBalance(WORD * wRed, WORD * wGreen, WORD * wBlue, float * fRelR, float * fRelB, WhiteBalanceInfo * info)
 # OA_Initialize(const char * const pcFilename, unsigned int uiFileNameLen)
 # OA_EnableMode(const char * const pcModeName)
@@ -1083,11 +1290,10 @@ dllFunc('WaitForAcquisitionTimeOut', [c_int], ['iTimeOutMs'])
 # PostProcessPhotonCounting(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iNumframes, int iNumberOfThresholds, float * pfThreshold, int iHeight, int iWidth)
 # #'PostProcessDataAveraging(at_32 * pInputImage, at_32 * pOutputImage, int iOutputBufferSize, int iNumImages, int iAveragingFilterMode, int iHeight, int iWidth, int iFrameCount, int iAveragingFactor)
 
-# Enums from documentation
-from enum import Enum, IntEnum
 
 class TriggerMode(IntEnum):
     """Camera trigger modes"""
+
     INTERNAL = 0
     EXTERNAL = 1
     EXT_START = 6
@@ -1098,6 +1304,7 @@ class TriggerMode(IntEnum):
 
 class AcquisitionMode(IntEnum):
     """Acquisition modes."""
+
     SINGLE = 1
     ACCUMULATE = 2
     KINETICS = 3
@@ -1107,6 +1314,7 @@ class AcquisitionMode(IntEnum):
 
 class ReadMode(IntEnum):
     """Chip readout modes. Currently, only IMAGE is supported."""
+
     FULLVERTICALBINNING = 0
     MULTITRACK = 1
     RANDOMTRACK = 2
@@ -1114,12 +1322,13 @@ class ReadMode(IntEnum):
     IMAGE = 4
 
 
-class ReadoutMode():
+class ReadoutMode:
     """A combination of channel, amplifier and speed settings."""
+
     def __init__(self, channel, amplifier, hs_index, speed):
-        self.channel = channel # Channel index
-        self.amp = amplifier # Amplifier enum
-        self.hsindex = hs_index # HS speed index
+        self.channel = channel  # Channel index
+        self.amp = amplifier  # Amplifier enum
+        self.hsindex = hs_index  # HS speed index
         self.speed = speed  # Shift frequency in MHz
 
     def __str__(self):
@@ -1130,18 +1339,33 @@ class ReadoutMode():
         return "{} {} CH{:.0f}".format(self.amp.name, speedstr, self.channel)
 
 
-from threading import Lock
-from microscope import devices
-from microscope.devices import keep_acquiring, Binning, ROI
-import time
-
 # A lock on the DLL used to ensure DLL calls act on the correct device.
 _dll_lock = Lock()
 
 
-class AndorAtmcd(devices.FloatingDeviceMixin,
-                 devices.CameraDevice):
-    """ Implements CameraDevice interface for Andor ATMCD library."""
+ATMCD_MODE_TO_TRIGGER = {
+    TriggerMode.EXTERNAL: (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.ONCE,
+    ),
+    TriggerMode.BULB: (
+        microscope.TriggerType.RISING_EDGE,
+        microscope.TriggerMode.BULB,
+    ),
+    TriggerMode.SOFTWARE: (
+        microscope.TriggerType.SOFTWARE,
+        microscope.TriggerMode.ONCE,
+    ),
+}
+
+TRIGGER_TO_ATMCD_MODE = {v: k for k, v in ATMCD_MODE_TO_TRIGGER.items()}
+
+
+class AndorAtmcd(
+    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
+):
+    """Implements CameraDevice interface for Andor ATMCD library."""
+
     def __init__(self, index=0, **kwargs):
         super().__init__(index=index, **kwargs)
         # Recursion depth for context manager behaviour.
@@ -1151,13 +1375,16 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         # The following parameters will be populated after hardware init.
         self._roi = None
         self._binning = None
+        self.initialize()
 
     def _bind(self, fn):
         """Binds unbound SDK functions to this camera."""
+
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             with self:
                 return fn(*args, **kwargs)
+
         return wrapper
 
     def __enter__(self):
@@ -1176,7 +1403,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Context manager exit code."""
-        self ._rdepth -= 1
+        self._rdepth -= 1
         if self._rdepth == 0:
             _dll_lock.release()
 
@@ -1195,7 +1422,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def abort(self):
         """Abort acquisition."""
-        _logger.debug('Disabling acquisition.')
+        _logger.debug("Disabling acquisition.")
         try:
             with self:
                 AbortAcquisition()
@@ -1213,63 +1440,73 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
 
     def initialize(self):
         """Initialize the library and hardware and create Setting objects."""
-        _logger.info('Initializing ...')
+        _logger.info("Initializing ...")
         num_cams = GetAvailableCameras()
         if self._index >= num_cams:
-            msg = "Requested camera %d, but only found %d cameras" % (self._index, num_cams)
-            raise Exception(msg)
+            msg = "Requested camera %d, but only found %d cameras" % (
+                self._index,
+                num_cams,
+            )
+            raise microscope.InitialiseError(msg)
         self._handle = GetCameraHandle(self._index)
 
         with self:
             # Initialize the library and connect to camera.
-            Initialize(b'')
+            Initialize(b"")
             # Initialise ROI to full sensor area and binning to single-pixel.
-            self._set_roi(ROI(0,0,0,0))
-            self._set_binning(Binning(1,1))
+            self._set_roi(microscope.ROI(0, 0, 0, 0))
+            self._set_binning(microscope.Binning(1, 1))
             # Check info bits to see if initialization successful.
             info = GetCameraInformation(self._index)
-            if not info & 1<<2:
-                raise Exception("... initialization failed.")
+            if not info & 1 << 2:
+                raise microscope.InitialiseError("... initialization failed.")
             self._caps = GetCapabilities()
             model = GetHeadModel()
             serial = self.get_id()
             # Populate amplifiers
             if GetNumberAmp() > 1:
                 if self._caps.ulCameraType == AC_CAMERATYPE_CLARA:
-                    self.amplifiers = IntEnum('Amplifiers', ( ('CONVENTIONAL', 0),
-                                                           ('EXTENDED_NIR', 1) ))
+                    self.amplifiers = IntEnum(
+                        "Amplifiers",
+                        (("CONVENTIONAL", 0), ("EXTENDED_NIR", 1)),
+                    )
                 else:
-                    self.amplifiers = IntEnum('Amplifiers', ( ('EMCCD', 0),
-                                                           ('CONVENTIONAL', 1) ))
+                    self.amplifiers = IntEnum(
+                        "Amplifiers", (("EMCCD", 0), ("CONVENTIONAL", 1))
+                    )
             # Populate readout modes
             self._readout_modes = []
             for ch in range(GetNumberADChannels()):
                 for amp in self.amplifiers:
                     for s in range(GetNumberHSSpeeds(ch, amp.value)):
                         speed = GetHSSpeed(ch, amp.value, s)
-                        self._readout_modes.append(ReadoutMode(ch, amp, s, speed))
+                        self._readout_modes.append(
+                            ReadoutMode(ch, amp, s, speed)
+                        )
             _logger.info("... initilized %s s/n %s", model, serial)
-        ## Add settings. Some are write-only, so we set defaults here.
+        # Add settings. Some are write-only, so we set defaults here.
         # Mode
-        name = 'readout mode'
+        name = "readout mode"
         if self._readout_modes:
-            self.add_setting(name, 'enum',
-                             None,
-                             self._set_readout_mode,
-                             lambda: [str(mode) for mode in self._readout_modes])
+            self.add_setting(
+                name,
+                "enum",
+                None,
+                self._set_readout_mode,
+                lambda: [str(mode) for mode in self._readout_modes],
+            )
             self.set_setting(name, 0)
         # TriggerMode
-        name = 'TriggerMode'
-        self.add_setting(name, 'enum',
-                         None,
-                         self._bind(SetTriggerMode),
-                         TriggerMode)
+        name = "TriggerMode"
+        self.add_setting(
+            name, "enum", None, self._bind(SetTriggerMode), TriggerMode
+        )
         if self._caps.ulTriggerModes & AC_TRIGGERMODE_EXTERNAL:
             self.set_setting(name, TriggerMode.EXTERNAL)
         elif self._caps.ulTriggerModes & AC_TRIGGERMODE_CONTINUOUS:
             self.set_setting(name, TriggerMode.SOFTWARE)
         # Gain - device will use either EMGain or MCPGain
-        name = 'gain'
+        name = "gain"
         getter, setter, vrange = None, None, None
         if self._caps.ulGetFunctions & AC_GETFUNCTION_EMCCDGAIN:
             getter = self._bind(GetEMCCDGain)
@@ -1282,85 +1519,81 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             setter = self._bind(SetMCPGain)
             vrange = self._bind(GetMCPGainRange)
         if getter or setter:
-            self.add_setting(name, 'int', getter, setter, vrange, setter is None)
+            self.add_setting(name, "int", getter, setter, vrange)
         # Temperature
-        name = 'TemperatureSetPoint'
+        name = "TemperatureSetPoint"
         getter, setter, vrange = None, None, None
         if self._caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE:
             setter = self._bind(SetTemperature)
         if self._caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE:
             vrange = self._bind(GetTemperatureRange)
         if setter:
-            self.add_setting(name, 'int', None, setter, vrange, setter is None)
+            self.add_setting(name, "int", None, setter, vrange)
         # Set a conservative default temperature set-point.
         self.set_setting(name, -20)
         # Fan control
-        name = 'Temperature'
-        self.add_setting(name, 'int', self.get_sensor_temperature, None, (None, None), True)
-        name = 'Fan mode'
-        self.add_setting(name, 'enum',
-                         None, # Can't query fan mode
-                         self._bind(SetFanMode),
-                         {0:'full', 1:'low', 2:'off'}
-                         )
+        name = "Temperature"
+        self.add_setting(
+            name, "int", self._get_sensor_temperature, None, (None, None)
+        )
+        name = "Fan mode"
+        self.add_setting(
+            name,
+            "enum",
+            None,  # Can't query fan mode
+            self._bind(SetFanMode),
+            {0: "full", 1: "low", 2: "off"},
+        )
         # Cooler control
-        name = 'Cooler Enabled'
-        self.add_setting(name, 'bool',
-                         None,
-                         self._set_cooler_state,
-                         None)
+        name = "Cooler Enabled"
+        self.add_setting(name, "bool", None, self._set_cooler_state, None)
         self.set_setting(name, True)
         # Binning
-        name = 'Binning'
-        self.add_setting(name, 'tuple',
-                         self.get_binning,
-                         self.set_binning,
-                         None)
+        name = "Binning"
+        self.add_setting(
+            name, "tuple", self.get_binning, self.set_binning, None
+        )
         # Roi
-        name = 'Roi'
-        self.add_setting(name, 'tuple',
-                         self.get_roi,
-                         lambda roi: self.set_roi(*roi),
-                         None)
+        name = "Roi"
+        self.add_setting(
+            name, "tuple", self.get_roi, lambda roi: self.set_roi(*roi), None
+        )
         # BaselineClamp
-        name = 'BaselineClamp'
+        name = "BaselineClamp"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP:
-            self.add_setting(name, 'bool',
-                             None,
-                             self._bind(SetBaselineClamp),
-                             None)
+            self.add_setting(
+                name, "bool", None, self._bind(SetBaselineClamp), None
+            )
             self.set_setting(name, False)
         # BaselineOffset
-        name = 'BaselineOffset'
+        name = "BaselineOffset"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET:
-            self.add_setting(name, 'int',
-                             None,
-                             self._bind(SetBaselineOffset),
-                             (-1000, 1000))
+            self.add_setting(
+                name, "int", None, self._bind(SetBaselineOffset), (-1000, 1000)
+            )
             self.set_setting(name, 0)
         # EMAdvanced
-        name = 'EMAdvanced'
+        name = "EMAdvanced"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_EMADVANCED:
-            self.add_setting(name, 'bool',
-                             None,
-                             self._bind(SetEMAdvanced),
-                             None)
+            self.add_setting(
+                name, "bool", None, self._bind(SetEMAdvanced), None
+            )
             self.set_setting(name, False)
         # GateMode
-        name = 'GateMode'
+        name = "GateMode"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_GATEMODE:
-            vrange = range(0, [5,6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR])
-            self.add_setting(name, 'int',
-                             None,
-                             self._bind(SetGateMode),
-                             vrange)
+            vrange = range(
+                0, [5, 6][self._caps.ulCameraType & AC_CAMERATYPE_ISTAR]
+            )
+            self.add_setting(
+                name, "int", None, self._bind(SetGateMode), vrange
+            )
         # HighCapacity
-        name = 'HighCapacity'
+        name = "HighCapacity"
         if self._caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY:
-            self.add_setting(name, 'bool',
-                             None,
-                             self._bind(SetHighCapacity),
-                             None)
+            self.add_setting(
+                name, "bool", None, self._bind(SetHighCapacity), None
+            )
 
     def _fetch_data(self):
         """Poll for data and return it, with minimal processing.
@@ -1386,7 +1619,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             return GetCameraSerialNumber()
 
-    def _on_shutdown(self):
+    def _do_shutdown(self) -> None:
         """Warm up the sensor then shut down the camera.
 
         This may take some time, so we should ensure that the _dll_lock is
@@ -1395,8 +1628,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             CoolerOFF()
 
-        _logger.info('Waiting for temperature to rise above -20C'
-                     ' before shutdown ...')
+        _logger.info(
+            "Waiting for temperature to rise above -20C" " before shutdown ..."
+        )
 
         while True:
             # Check temperature then release lock.
@@ -1412,11 +1646,11 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             ShutDown()
 
-    def _on_disable(self):
+    def _do_disable(self):
         """Call abort to stop acquisition."""
         self.abort()
 
-    def _on_enable(self):
+    def _do_enable(self):
         """Enter data acquisition state."""
         if self._acquiring:
             self.abort()
@@ -1426,39 +1660,48 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
             SetReadMode(ReadMode.IMAGE)
             x, y = GetDetector()
             self._set_image()
-            if not IsTriggerModeAvailable(self.get_setting('TriggerMode')):
-                raise AtmcdException("Trigger mode is not valid.")
+            if not IsTriggerModeAvailable(self.get_setting("TriggerMode")):
+                raise microscope.UnsupportedFeatureError(
+                    "Trigger mode is not valid."
+                )
             StartAcquisition()
         return True
 
     def _set_image(self):
         """Set ROI and binning prior to acquisition."""
-        binning = self._binning  # Binning is mode-dependent, so not validated yet.
-        roi = self._roi # ROI validated in _set_roi, so should be OK
+        binning = (
+            self._binning
+        )  # Binning is mode-dependent, so not validated yet.
+        roi = self._roi  # ROI validated in _set_roi, so should be OK
         with self:
             try:
-                SetImage(binning.h, binning.v,
-                         roi.left, roi.left + roi.width-1,
-                         roi.top, roi.top + roi.height-1)
+                SetImage(
+                    binning.h,
+                    binning.v,
+                    roi.left,
+                    roi.left + roi.width - 1,
+                    roi.top,
+                    roi.top + roi.height - 1,
+                )
             except AtmcdException as e:
                 if e.status == DRV_P1INVALID:
-                    out_e = Exception("Horizontal binning invalid.")
+                    out_e = ValueError("Horizontal binning invalid.")
                 elif e.status == DRV_P2INVALID:
-                    e = Exception("Vertical binning invalid.")
+                    e = ValueError("Vertical binning invalid.")
                 elif e.status == DRV_P3INVALID:
-                    out_e = Exception("roi.left invalid.")
+                    out_e = ValueError("roi.left invalid.")
                 elif e.status == DRV_P4INVALID:
-                    out_e = Exception("roi.width invalid.")
+                    out_e = ValueError("roi.width invalid.")
                 elif e.status == DRV_P5INVALID:
-                    out_e = Exception("roi.top invalid.")
+                    out_e = ValueError("roi.top invalid.")
                 elif e.status == DRV_P6INVALID:
-                    out_e = Exception("roi.height invalid.")
+                    out_e = ValueError("roi.height invalid.")
                 else:
-                    out_e = incoming
+                    out_e = e
                 # Just raise the descriptive exception, not the chain.
                 raise out_e from None
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def set_exposure_time(self, value):
         """Set exposure time."""
         with self:
@@ -1475,7 +1718,11 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             exposure, accumulate, kinetic = GetAcquisitionTimings()
             readout = GetReadOutTime()
-        return exposure + readout
+            # IMD 20210422 DeepSIM timing is wrong as the keepclear cycles are
+            # not accounted for.
+            # return exposure + readout
+            # This appears to allow the correct time between trigger pulses.
+            return kinetic
 
     def _set_readout_mode(self, mode_index):
         """Configure channel, amplifier and VS-speed."""
@@ -1496,23 +1743,39 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         with self:
             return GetDetector()
 
-    def get_sensor_temperature(self):
+    def _get_sensor_temperature(self):
         """Return the sensor temperature."""
         with self:
             return GetTemperature()[1]
 
-    def get_trigger_type(self):
-        """Return the microscope.devices trigger type."""
-        trig = self.get_setting('TriggerMode')
-        if trig == TriggerMode.BULB:
-            return devices.TRIGGER_DURATION
-        elif trig == TriggerMode.SOFTWARE:
-            return devices.TRIGGER_SOFT
-        else:
-            return devices.TRIGGER_BEFORE
-
     def soft_trigger(self):
-        """Send a software trigger signal."""
+        """Send a software trigger signal.
+
+        Deprecated, use trigger().
+        """
+        with self:
+            SendSoftwareTrigger()
+
+    @property
+    def trigger_mode(self) -> microscope.TriggerMode:
+        return ATMCD_MODE_TO_TRIGGER[self.get_setting("TriggerMode")][1]
+
+    @property
+    def trigger_type(self) -> microscope.TriggerType:
+        return ATMCD_MODE_TO_TRIGGER[self.get_setting("TriggerMode")][0]
+
+    def set_trigger(
+        self, ttype: microscope.TriggerType, tmode: microscope.TriggerMode
+    ) -> None:
+        try:
+            atmcd_mode = TRIGGER_TO_ATMCD_MODE[(ttype, tmode)]
+        except KeyError:
+            raise microscope.UnsupportedFeatureError(
+                "no ATMCD mode for %s and %s" % (ttype, tmode)
+            )
+        self.set_setting("TriggerMode", atmcd_mode)
+
+    def _do_trigger(self) -> None:
         with self:
             SendSoftwareTrigger()
 
@@ -1520,7 +1783,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Return the binning setting."""
         return self._binning
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_binning(self, binning):
         """Set horizontal and vertical binning. Default to single pixel."""
         self._binning = binning
@@ -1530,7 +1793,7 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         """Return the current ROI setting."""
         return self._roi
 
-    @keep_acquiring
+    @microscope.abc.keep_acquiring
     def _set_roi(self, roi):
         """Set the ROI, defaulting to full sensor area."""
         with self:
@@ -1539,7 +1802,9 @@ class AndorAtmcd(devices.FloatingDeviceMixin,
         top = roi.top or 1
         width = roi.width or x
         height = roi.height or y
-        if any([left < 1, top < 1, left+width-1 > x, top+height-1 > y]):
+        if any(
+            [left < 1, top < 1, left + width - 1 > x, top + height - 1 > y]
+        ):
             return False
-        self._roi = ROI(left, top, width, height)
+        self._roi = microscope.ROI(left, top, width, height)
         return True
