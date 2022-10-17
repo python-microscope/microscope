@@ -112,9 +112,11 @@ class _LudlController:
             # We do not use the general get_description() here because
             # if this is not a ProScan device it would never reach the
             # '\rEND\r' that signals the end of the description.
-            self.command(b'RCONFIG')
-            answer = self.read_multiline()
-
+            try:
+                self.command(b'RCONFIG')
+                answer = self.read_multiline()
+            except:
+                print("Unable to read configuration. Is Ludl connected?")
             # parse config responce which tells us what devices are present
             # on this controller.
 
