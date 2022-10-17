@@ -117,7 +117,7 @@ class _LudlController:
                 answer = self.read_multiline()
             except:
                 print("Unable to read configuration. Is Ludl connected?")
-                return()
+                return
             # parse config responce which tells us what devices are present
             # on this controller.
 
