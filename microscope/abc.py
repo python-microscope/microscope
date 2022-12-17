@@ -1468,7 +1468,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-
     @abc.abstractmethod
     def may_move_on_enable(self) -> bool:
         """Whether calling :func:`enable` is likely to make the stage move.
@@ -1494,7 +1493,6 @@ class Stage(Device, metaclass=abc.ABCMeta):
 
         """
         raise NotImplementedError()
-
 
     @property
     def position(self) -> typing.Mapping[str, float]:

@@ -188,9 +188,7 @@ class PiCamera(microscope.abc.Camera):
         if self._acquiring:
             self._acquiring = False
 
-    def set_trigger(
-        self, ttype: TriggerType, tmode: TriggerMode
-    ) -> None:
+    def set_trigger(self, ttype: TriggerType, tmode: TriggerMode) -> None:
         if ttype == self._trigger_type:
             return
         elif ttype == TriggerType.SOFTWARE:

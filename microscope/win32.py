@@ -100,9 +100,9 @@ class MicroscopeWindowsService(win32serviceutil.ServiceFramework):
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
 
         from microscope.device_server import (
+            DeviceServerOptions,
             serve_devices,
             validate_devices,
-            DeviceServerOptions,
         )
 
         options = DeviceServerOptions(
