@@ -138,8 +138,17 @@ def simulated_setup_from_image(
                    conf={'filepath': path_to_image_file}),
         ]
     """
-    PIL.Image.MAX_IMAGE_PIXELS = None
-    image = np.array(PIL.Image.open(filepath))
+    # PIL will error if trying to open very large images to avoid
+    # decompression bomb DOS attack.  However, this is used to fake a
+    # stage and will really have very very large images, so remove
+    # remove the PIL limit temporarily.
+    original_pil_max_image_pixels = PIL.Image.MAX_IMAGE_PIXELS
+    try:
+        PIL.Image.MAX_IMAGE_PIXELS = None
+        image = np.array(PIL.Image.open(filepath))
+    finally:
+        PIL.Image.MAX_IMAGE_PIXELS = original_pil_max_image_pixels
+
     if len(image.shape) < 3:
         raise ValueError("not an RGB image")
 
