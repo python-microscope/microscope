@@ -441,7 +441,7 @@ class _LudlStage(microscope.abc.Stage):
 # Not yet implemented filterwheel or shutters as I dont have any on my system
 
 
-class ludlMC2000(microscope.abc.Controller):
+class LudlMC2000(microscope.abc.Controller):
     """Ludl MC 2000 controller.
 
     .. note::
