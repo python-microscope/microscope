@@ -28,6 +28,9 @@ Version 0.7.0 (upcoming)
     accidentally changed from "strobed" to "trig. first".  This has
     now been reversed.
 
+  * `SimulatedCamera` now takes an optional `sensor_shape` constructor
+    argument instead of always being 512x512 pixels.
+
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This
   version fixes that issue.
