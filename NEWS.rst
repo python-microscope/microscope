@@ -20,13 +20,21 @@ Version 0.7.0 (upcoming)
 
 * New devices supported:
 
-  * Toptica iChrome MLE
+  * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
+
+  * Raspberry Pi picam (:class:`microscope.cameras.picam.Picamera`)
+
+  * Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
 
 * Device specific changes:
 
-  * `PVCamera`: in version 0.6.0 the default PVCAM trigger mode was
-    accidentally changed from "strobed" to "trig. first".  This has
-    now been reversed.
+  * `PVCamera`:
+
+    * In version 0.6.0 the default PVCAM trigger mode was accidentally
+      changed from "strobed" to "trig. first".  This has now been
+      reversed.
+
+    * 8-bit acquisition mode now works.
 
   * `SimulatedCamera` now takes an optional `sensor_shape` constructor
     argument instead of always being 512x512 pixels.
