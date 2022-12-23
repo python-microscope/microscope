@@ -37,12 +37,14 @@ constructs the device instance required to run the tests.
 
 import unittest
 import unittest.mock
+from queue import Queue
 
 import numpy
 
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 from microscope import simulators
+from microscope.simulators.stage_aware_camera import StageAwareCamera
 
 
 class TestSerialMock(unittest.TestCase):
@@ -423,20 +425,20 @@ class TestDummyCamera(unittest.TestCase, CameraTests):
 
 class TestImageGenerator(unittest.TestCase):
     def test_non_square_patterns_shape(self):
-        # TODO: we should also be testing this via the camera but the
-        # TestCamera is only square.  In the mean time, we only test
-        # directly the _ImageGenerator.
         width = 16
         height = 32
-        generator = simulators._ImageGenerator()
-        patterns = list(generator.get_methods())
-        for i, pattern in enumerate(patterns):
-            with self.subTest(pattern):
-                generator.set_method(i)
-                array = generator.get_image(width, height, 0, 255)
+        camera = simulators.SimulatedCamera(sensor_shape=(width, height))
+        buf = Queue()
+        camera.set_client(buf)
+        camera.enable()
+        for idx, name in camera.describe_setting("image pattern")["values"]:
+            with self.subTest(name):
+                camera.set_setting("image pattern", idx)
+                camera.trigger()
+                image = buf.get()
                 # In matplotlib, an M-wide by N-tall image has M columns
                 # and N rows, so a shape of (N, M)
-                self.assertEqual(array.shape, (height, width))
+                self.assertEqual(image.shape, (height, width))
 
 
 class TestDummyController(unittest.TestCase, ControllerTests):
