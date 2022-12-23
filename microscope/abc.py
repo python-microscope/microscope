@@ -605,25 +605,29 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
             self.enabled = False
             raise err
         if not result:
+            _logger.warning("Failed to enable but no error was raised")
             self.enabled = False
         else:
             self.enabled = True
-            # Set up data fetching
             if self._using_callback:
+                _logger.debug("Setup with callback, disabling fetch thread")
                 if self._fetch_thread:
                     self._fetch_thread_run = False
             else:
+                _logger.debug("Setting up fetch thread")
                 if not self._fetch_thread or not self._fetch_thread.is_alive():
                     self._fetch_thread = Thread(target=self._fetch_loop)
                     self._fetch_thread.daemon = True
                     self._fetch_thread.start()
-            if (
-                not self._dispatch_thread
-                or not self._dispatch_thread.is_alive()
-            ):
+
+            if self._dispatch_thread and self._dispatch_thread.is_alive():
+                _logger.debug("Found live dispatch thread.")
+            else:
+                _logger.debug("Setting up dispatch thread")
                 self._dispatch_thread = Thread(target=self._dispatch_loop)
                 self._dispatch_thread.daemon = True
                 self._dispatch_thread.start()
+
             _logger.debug("... enabled.")
 
     def disable(self) -> None:
@@ -635,8 +639,10 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         self.enabled = False
         if self._fetch_thread:
             if self._fetch_thread.is_alive():
+                _logger.debug("Found fetch thread alive. Joining.")
                 self._fetch_thread_run = False
                 self._fetch_thread.join()
+            _logger.debug("Fetch thread is dead.")
         super().disable()
 
     @abc.abstractmethod
@@ -651,7 +657,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         data is available, return `None`.
 
         """
-        return None
+        raise NotImplementedError()
 
     def _process_data(self, data):
         """Do any data processing and return data."""
@@ -659,6 +665,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
 
     def _send_data(self, client, data, timestamp):
         """Dispatch data to the client."""
+        _logger.debug("sending data to client")
         try:
             # Cockpit will send a client with receiveData and expects
             # two arguments (data and timestamp).  But we really want
@@ -684,8 +691,10 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     def _dispatch_loop(self) -> None:
         """Process data and send results to any client."""
         while True:
+            _logger.debug("Getting data from dispatch buffer")
             client, data, timestamp = self._dispatch_buffer.get(block=True)
             if client not in self._liveClients:
+                _logger.debug("Client not in liveClients so ignoring data.")
                 continue
             err = None
             if isinstance(data, Exception):
@@ -712,6 +721,7 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
         self._fetch_thread_run = True
 
         while self._fetch_thread_run:
+            _logger.debug("Fetching data from device.")
             try:
                 data = self._fetch_data()
             except Exception as e:
@@ -722,10 +732,12 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
                 self._put(e, timestamp)
                 data = None
             if data is not None:
+                _logger.debug("Fetch data to be put into dispatch buffer.")
                 # TODO Add support for timestamp from hardware.
                 timestamp = time.time()
                 self._put(data, timestamp)
             else:
+                _logger.debug("Fetched no data from device.")
                 time.sleep(0.001)
 
     @property
