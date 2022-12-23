@@ -17,6 +17,7 @@ Cameras
 
 - Andor (:class:`microscope.cameras.andorsdk3.AndorSDK3` and
   :class:`microscope.cameras.atmcd.AndotAtmcd`)
+- Hamamatsu (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 - Photometrics (:class:`microscope.cameras.pvcam.PVCamera`)
 - QImaging (:class:`microscope.cameras.pvcam.PVCamera`)
 - Ximea (:class:`microscope.cameras.ximea.XimeaCamera`)

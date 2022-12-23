@@ -20,6 +20,8 @@ Version 0.7.0 (upcoming)
 
 * New devices supported:
 
+  * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
+
   * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
 
   * Raspberry Pi picam (:class:`microscope.cameras.picam.Picamera`)
