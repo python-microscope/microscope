@@ -154,8 +154,8 @@ def simulated_setup_from_image(
 
     stage = SimulatedStage(
         {
-            "x": microscope.AxisLimits(0, image.shape[0]),
-            "y": microscope.AxisLimits(0, image.shape[1]),
+            "x": microscope.AxisLimits(0, image.shape[1]),
+            "y": microscope.AxisLimits(0, image.shape[0]),
             "z": microscope.AxisLimits(-50, 50),
         }
     )
