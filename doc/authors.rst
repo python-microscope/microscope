@@ -10,9 +10,12 @@ Contributors
 The following people have contributed in the development of
 Microscope:
 
+- Danail Stoychev
 - David Miguel Susano Pinto
 - Ian Dobbie
 - Julio Mateos-Langerak
 - Mick Phillips
+- Nicholas Hall
+- Thomas Fish
 - Tiago Susano Pinto
 - 久保俊貴 (Toshiki Kubo)

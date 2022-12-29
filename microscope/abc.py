@@ -255,7 +255,7 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
         """Actual trigger of the device.
 
         Classes implementing this interface should implement this
-        method instead of `trigger`.
+        method instead of :meth:`trigger`.
 
         """
         raise NotImplementedError()
@@ -264,14 +264,14 @@ class TriggerTargetMixin(metaclass=abc.ABCMeta):
         """Trigger device.
 
         The actual effect is device type dependent.  For example, on a
-        `Camera` it triggers image acquisition while on a
+        ``Camera`` it triggers image acquisition while on a
         `DeformableMirror` it applies a queued pattern.  See
         documentation for the devices implementing this interface for
         details.
 
         Raises:
             microscope.IncompatibleStateError: if trigger type is not
-                set to `TriggerType.SOFTWARE`.
+                set to ``TriggerType.SOFTWARE``.
 
         """
         if self.trigger_type is not microscope.TriggerType.SOFTWARE:

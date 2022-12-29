@@ -41,7 +41,7 @@ from:
 
 - Python version
     Also include the python minor version number, i.e, Python 3.7.3 or
-    3.6.2.  On command line, this is the output of `python --version`.
+    3.6.2.  On command line, this is the output of ``python --version``.
 
 - Device, SDK, and firmware information
     Include the device model, revision number, and serial number.
@@ -90,7 +90,7 @@ Code format style
 
 Let us not discuss over code formatting style.  Code formatting is
 handled by `Black <https://black.readthedocs.io/>`_.  Simply run
-`black` at the root of the project after making changes and before
+``black`` at the root of the project after making changes and before
 making a commit:
 
 .. code-block:: shell
@@ -135,19 +135,19 @@ Some examples for changes:
 
 - limited to a method function:
 
-    `TheClassName.enable: fix for firmware older than Y (#98)`
+    ``TheClassName.enable: fix for firmware older than Y (#98)``
 
 - effecting multiple methods in a class:
 
-    `TheClassName: add support for very fancy feature (#99)`
+    ``TheClassName: add support for very fancy feature (#99)``
 
 - fixing a typo or obvious mistake on a previous commit:
 
-    `AndorAtmcd: pass index to super (fixup a16bef042a41)`
+    ``AndorAtmcd: pass index to super (fixup a16bef042a41)``
 
 - documentation only:
 
-    `doc: add example for multiple cameras with hardware triggering`
+    ``doc: add example for multiple cameras with hardware triggering``
 
 
 Test suite
@@ -160,7 +160,7 @@ some tests written.  They can be run with `tox
 configuration, so simply run ``tox`` at the root of the repository.
 
 All test units, as well as other tools for testing purposes, are part
-of the :mod:`microscope.testsuite` package.
+of the ``microscope.testsuite`` package.
 
 If your changes do not actually change a specific device, please
 include a test unit.
@@ -171,6 +171,6 @@ Copyright
 
 We do not request that copyright is assigned to us, you can remain the
 copyright holder of any contribution made.  However, please ensure
-that you are the copyright holder.  Depending on your contract, and
-even if you are a student, the copyright holder is likely to be your
+that you are the copyright holder.  Depending on your contract, even
+if you are a student, the copyright holder is likely to be your
 employer or university.  Ask your employer or PhD supervisor first.

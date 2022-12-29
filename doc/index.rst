@@ -29,17 +29,15 @@ different device types.  For example:
     # emitting light.
     from microscope.lights.sapphire import SapphireLaser
     laser = SapphireLaser(com="/dev/ttyS1")
-    laser.initialize()
     laser.power = .7  # initial laser power at 70%
     laser.enable()  # start emitting light
-    laser.power = laser.power / .3 # set laser power to 1/3
+    laser.power = laser.power / .3  # set laser power to 1/3
 
 
     # Connect to a Thorlabs filterwheel, query filter position, then
     # change filter.
-    from microscope.filterwheels.thorlabs import ThorlabsFW102C
-    filterwheel = ThorlabsFW102C(com="/dev/ttyS0")
-    filterwheel.initialize()
+    from microscope.filterwheels.thorlabs import ThorlabsFilterWheel
+    filterwheel = ThorlabsFilterWheel(com="/dev/ttyS0")
     print("Number of positions is %d" % filterwheel.n_positions)
     print("Current position is %d" % filterwheel.position)
     filterwheel.position = 3  # move in filter at position 3

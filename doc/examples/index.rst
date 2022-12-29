@@ -76,7 +76,7 @@ devices to be initialised.  It can be started with:
 
 .. code-block:: shell
 
-    python -m microscope.device_server PATH-TO-CONFIG-FILE
+    python3 -m microscope.device_server PATH-TO-CONFIG-FILE
 
 The device server configuration file is a Python script that defines a
 ``DEVICES`` list.  Each element in the list corresponds to one
@@ -95,7 +95,7 @@ device.  For example::
     # accessible.  If everything is on the same computer, then host will
     # be '127.0.0.1'.  If devices are to be available on the network,
     # then it will be the IP address on that network.
-    host = '127.0.0.1'
+    host = "127.0.0.1"
 
     # Each element in the DEVICES list identifies a device that will be
     # served on the network.  Each device is defined like so:
@@ -137,8 +137,9 @@ support development by providing a fake device for testing purposes.
     )
 
     DEVICES = [
-      device(SimulatedCamera, '127.0.0.1', 8005),
-      device(SimulatedLightSource, '127.0.0.1', 8006),
-      device(SimulatedFilterWheel, '127.0.0.1', 8007,
+      device(SimulatedCamera, "127.0.0.1", 8005,
+             {"sensor_shape": (512, 512)}),
+      device(SimulatedLightSource, "127.0.0.1", 8006),
+      device(SimulatedFilterWheel, "127.0.0.1", 8007,
              {"positions": 6}),
     ]

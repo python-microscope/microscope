@@ -112,13 +112,15 @@ if has_sphinx:
                 + [
                     "--separate",  # each module on its own page
                     "--module-first",
+                    "--tocfile",
+                    "index",
                     "--output-dir",
                     "doc/api",
                     "microscope",
                     # exclude win32 so docs will build on other platforms
                     "microscope/win32.py",
-                    # exclude the test unit modules
-                    "microscope/testsuite/test_*",
+                    # exclude the testsuite
+                    "microscope/testsuite/",
                     # exclude the deprecated devices and deviceserver that
                     # are kept for backwards compatibility only.
                     "microscope/devices.py",

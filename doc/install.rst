@@ -14,7 +14,7 @@ Microscope is available on the Python Package Index (PyPI) and can be
 <https://packaging.python.org/tutorials/installing-packages/>`_.  The
 short version of it is "use pip"::
 
-    pip install microscope
+    python3 -m pip install microscope
 
 You need to have Python and pip already installed on your system.
 

@@ -17,43 +17,57 @@ sys.path.insert(0, "../microscope")
 
 # This should ve read from setup.py.  Maybe we should use
 # pkg_resources to avoid duplication?
-author = "Micron Oxford"
+author = ""
 project = "Microscope"
 
 copyright = "%s, %s" % (datetime.datetime.now().year, author)
 
 master_doc = "index"
-nitpicky = True
+# nitpicky = True
 
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
 ]
 
+# Configuration for sphinx.ext.autodoc
 autodoc_mock_imports = [
-    # "microscope._wrappers",
+    "microscope._wrappers",
+    "microscope.cameras._SDK3",  # should go into microscope._wrappers
     "picamera",
     "picamera.array",
-    "RPi"
+    "RPi",
+    "servicemanager",
+    "win32service",
+    "win32serviceutil",
 ]
 
-# Configuration for sphinx.ext.todo
-todo_include_todos = True
+# Configuration for sphinx.ext.intersphinx
+intersphinx_mapping = {
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pyro4": ("https://pyro4.readthedocs.io/en/stable/", None),
+    "pyserial": ("https://pyserial.readthedocs.io/en/latest/", None),
+    "python": ("https://docs.python.org/3", None),
+}
 
 # Configuration for sphinx.ext.napoleon
 napoleon_google_docstring = True
 napoleon_include_private_with_doc = True
-napoleon_include_special_with_doc = True
+napoleon_include_special_with_doc = False
+
+# Configuration for sphinx.ext.todo
+todo_include_todos = True
 
 
 #
 # Options for HTML output
 #
 
-html_theme = "agogo"
+# html_theme = "agogo"
 html_static_path = ["_static"]
 html_title = "Python Microscope documentation"
 html_short_title = "import microscope"

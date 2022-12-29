@@ -20,7 +20,7 @@
 """Hamamatsu cameras.
 
 Hamamatsu cameras are supported through `DCAM-API
-<https://dcam-api.com/`>_, Hamamatsu's library for all of its digital
+<https://dcam-api.com/>`_, Hamamatsu's library for all of its digital
 cameras.  DCAM-API needs to be installed.  It can be downloaded from
 its website.  There is a Linux version mentioned on their website but
 is not listed for download, you will need to request it from the
@@ -29,13 +29,13 @@ vendor.
 Helper commands
 ===============
 
-This module has the `list-devices` and `list-properties` commands to
-help in debugging.  `list-devices` lists all Hamamatsu devices and
-their device ID as required to construct `HamamatsuCamera` while
-`list-properties` lists all the properties and their values for a
-given camera.
+This module has the ``list-devices`` and ``list-properties`` commands
+to help in debugging.  ``list-devices`` lists all Hamamatsu devices
+and their device ID as required to construct :class:`.HamamatsuCamera`
+while ``list-properties`` lists all the properties and their values
+for a given camera.
 
-See `python -m microscope.cameras.hamamatsu -h` for details.
+Run ``python -m microscope.cameras.hamamatsu -h`` for details.
 
 """
 
@@ -263,15 +263,15 @@ class HamamatsuCamera(microscope.abc.Camera):
     """Hamamatsu Camera.
 
     Args:
-        camera_id: This is the `DCAM_IDSTR_CAMERAID` value, all of the
-            characters including `S/N: ` or similar if it is present.
-            This value will be the serial number if it can be
-            retrieved from the device.  If not, it will be a bus
-            specific string, e.g. "COM1".
+        camera_id: This is the ``DCAM_IDSTR_CAMERAID`` value, all of
+            the characters including ``S/N:`` or similar if it is
+            present.  This value will be the serial number if it can
+            be retrieved from the device.  If not, it will be a bus
+            specific string, e.g. ``"COM1"``.
 
             The expected value can be obtained for all available
-            devices running `python -m microscope.cameras.hamamatsu
-            list-devices`
+            devices running ``python -m microscope.cameras.hamamatsu
+            list-devices``.
 
     """
 

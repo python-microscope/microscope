@@ -52,10 +52,10 @@ class IncompatibleStateError(DeviceError):
 
     This exception is raised when the device is in a state
     incompatible with an attempted operation, e.g., calling
-    :mod:`TriggerTargetMixin.trigger` on a device that is set for
-    hardware triggers.  The subclass `DisabledDeviceError` provides an
-    exception specific to the case where the issue is the device being
-    disabled.
+    :mod:`trigger <microscope.abc.TriggerTargetMixin.trigger>` on a
+    device that is set for hardware triggers.  The subclass
+    `DisabledDeviceError` provides an exception specific to the case
+    where the issue is the device being disabled.
 
     .. note::
 

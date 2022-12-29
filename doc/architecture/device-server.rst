@@ -35,10 +35,10 @@ series of advantages:
 
    add figures to explain device server (figure from the paper).
 
-The `device-server` program
-===========================
+The ``device-server`` program
+=============================
 
-The `device-server` program is part of the Microscope installation.
+The ``device-server`` program is part of the Microscope installation.
 It can started from the command line with a configuration file
 defining the devices to be served, like so:
 
@@ -46,7 +46,7 @@ defining the devices to be served, like so:
 
     device-server PATH-TO-CONFIGURATION-FILE
     # alternatively, if scripts were not installed:
-    python -m microscope.device_server PATH-TO-CONFIGURATION-FILE
+    python3 -m microscope.device_server PATH-TO-CONFIGURATION-FILE
 
 where the configuration file is a Python script that declares the
 devices to be constructed and served on its ``DEVICES`` attribute via
@@ -123,7 +123,7 @@ matter of knowing the device server URI:
 
     import Pyro4
 
-    proxy = Pyro4.Proxy('PYRO:SomeLaser@127.0.0.1:8000')
+    proxy = Pyro4.Proxy("PYRO:SomeLaser@127.0.0.1:8000")
     # use proxy as if it was an instance of the SomeLaser class
     proxy._pyroRelease()
 
@@ -135,9 +135,9 @@ devices it controls.
 Pyro configuration
 ------------------
 
-Pyro4 configuration is the singleton :obj:`Pyro4.config`.  If there's
-any special configuration wanted, this can be done on the
-`device-server` configuration file:
+Pyro4 configuration is the singleton ``Pyro4.config``.  If there's any
+special configuration wanted, this can be done on the
+``device-server`` configuration file:
 
 .. code-block:: python
 
@@ -155,7 +155,7 @@ any special configuration wanted, this can be done on the
         #...
     ]
 
-Importing the `microscope.device_server` will already change the Pyro
+Importing ``microscope.device_server`` will already change the Pyro
 configuration, namely it sets the `SERIALIZER` to use the pickle
 protocol.  Despite the security implications associated with it,
 pickle is the fastest of the protocols and one of the few capable of
@@ -170,10 +170,10 @@ device that can't be specified during object construction, and only
 after initialisation can it be identified.  This happens in some
 cameras and is an issue when more than one such device is present.
 For example, if there are two Andor CMOS cameras present, it is not
-possible to specify which one to use when constructing the `AndorSDK3`
-instance.  Only after the device has been initialised can we query its
-ID, typically the device serial number, and check if we obtained the
-one we want.  Like so:
+possible to specify which one to use when constructing the
+``AndorSDK3`` instance.  Only after the device has been initialised
+can we query its ID, typically the device serial number, and check if
+we obtained the one we want.  Like so:
 
 .. code-block:: python
 
@@ -190,7 +190,7 @@ one we want.  Like so:
 
 In the interest of keeping each camera on their own separate process,
 the above can't be used.  To address this, the device definition must
-specify the `uid` if the device class is a floating device.  Like so::
+specify ``uid`` if the device class is a floating device.  Like so::
 
     DEVICES = [
         device(AndorSDK3, "127.0.0.1", 8000, uid="20200910"),
@@ -199,8 +199,8 @@ specify the `uid` if the device class is a floating device.  Like so::
 
 The device server will then construct each device on its own process,
 and then serve them on the named port.  Two implication come out of
-this.  The first is that the `uid` *must* be specified, even if there
-is only such device present on the system.  The second is that all
+this.  The first is that ``uid`` *must* be specified, even if there is
+only such device present on the system.  The second is that all
 devices of that class *must* be present.
 
 .. _composite-devices:
@@ -211,11 +211,11 @@ Composite Devices
 A composite device is a device that internally makes use of another
 device to function.  These are typically not real hardware, they are
 an abstraction that merges multiple devices to provide something
-augmented.  For example, `ClarityCamera` is a camera that returns a
-processed image based on the settings of `AuroxClarity`.  Another
-example is the `StageAwareCamera` which is a dummy camera that returns
-a subsection of an image file based on the stage coordinates in order
-to mimic navigating a real sample.
+augmented.  For example, ``ClarityCamera`` is a camera that returns a
+processed image based on the settings of ``AuroxClarity``.  Another
+example is the ``StageAwareCamera`` which is a dummy camera that
+returns a subsection of an image file based on the stage coordinates
+in order to mimic navigating a real sample.
 
 If the multiple devices are on the same computer, it might be worth
 have them share the same process to avoid the inter process

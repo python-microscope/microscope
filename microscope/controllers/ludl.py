@@ -85,7 +85,6 @@ class _LudlController:
 
     Tested with MC2000 controller and xy stage.
 
-
     This class also implements the logic to parse and validate
     commands so it can be shared between multiple devices.
 
@@ -147,7 +146,7 @@ class _LudlController:
             self._serial.write(command + b"\r")
 
     def readline(self) -> bytes:
-        """Read a line from the device connection until '\n'."""
+        """Read a line from the device connection until ``\\n``."""
         with self._lock:
             return self._serial.read_until(b"\n")
 
@@ -178,8 +177,7 @@ class _LudlController:
                 continue
 
     def wait_until_idle(self) -> None:
-        """Keep sending the 'STATUS' comand until the respnce
-        returns b'0\r'"""
+        """Keep sending the ``STATUS`` comand until it responds ``0\\r``"""
         self._command_and_validate(b"STATUS", b"N")
 
     def _command_and_validate(self, command: bytes, expected: bytes) -> None:
@@ -209,14 +207,14 @@ class _LudlController:
         self.get_command(command)
 
     def move_by_relative_position(self, axis: bytes, delta: float) -> None:
-        """Send a realtive movement command to stated axis"""
+        """Send a relative movement command to stated axis"""
         axisname = AXIS_MAPPER[axis]
         self.move_command(
             bytes("MOVREL {0}={1}".format(axisname, str(delta)), "ascii")
         )
 
     def move_to_absolute_position(self, axis: bytes, pos: float) -> None:
-        """Send a realtive movement command to stated axis"""
+        """Send a relative movement command to stated axis"""
         axisname = AXIS_MAPPER[axis]
         self.move_command(
             bytes("MOVE {0}={1}".format(axisname, str(pos)), "ascii")
@@ -446,7 +444,8 @@ class LudlMC2000(microscope.abc.Controller):
 
     .. note::
 
-       The Ludl MC5000 can control a stage, filter wheels and shutters.
+       The Ludl MC2000 can control a stage, filter wheels, and
+       shutters but only the stage is currently implemented.
 
     """
 

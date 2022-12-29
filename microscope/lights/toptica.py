@@ -57,8 +57,8 @@ class _iBeamConnection:
 
     Args:
         port: port name (Windows) or path to port (everything else) to
-            connect to.  For example, `/dev/ttyS1`, `COM1`, or
-            `/dev/cuad1`.
+            connect to.  For example, ``/dev/ttyS1``, ``COM1``, or
+            `a/dev/cuad1``.
 
     """
 
@@ -116,11 +116,11 @@ class _iBeamConnection:
 
         The output of a command has the format::
 
-            \r\nANSWER\r\n[OK]\r\n
+            \\r\\nANSWER\\r\\n[OK]\\r\\n
 
-        The returned bytes only include `ANSWER` without its own final
-        `\r\n`.  This means that the return value might be an empty
-        array of bytes.
+        The returned bytes only include ``ANSWER`` without its own
+        final ``\\r\\n``.  This means that the return value might be
+        an empty array of bytes.
         """
         # We expect to be on 'talk usual' mode without prompt so each
         # command will end with [OK] on its own line.
