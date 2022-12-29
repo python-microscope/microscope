@@ -33,7 +33,12 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
-# autodoc_mock_imports = ["microscope._wrappers"]
+autodoc_mock_imports = [
+    # "microscope._wrappers",
+    "picamera",
+    "picamera.array",
+    "RPi"
+]
 
 # Configuration for sphinx.ext.todo
 todo_include_todos = True
