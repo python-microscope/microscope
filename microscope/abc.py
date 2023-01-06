@@ -868,11 +868,8 @@ class Camera(TriggerTargetMixin, DataDevice):
         """Return the current transform without readout transform."""
         return self._client_transform
 
-    def set_transform(self, transform):
-        """Combine provided transform with readout transform."""
-        if isinstance(transform, str):
-            transform = literal_eval(transform)
-        self._client_transform = transform
+    def _update_transform(self, transform):
+        """Update transform (after setting the client or readout transform)."""
         lr, ud, rot = (
             self._readout_transform[i] ^ transform[i] for i in range(3)
         )
@@ -881,10 +878,17 @@ class Camera(TriggerTargetMixin, DataDevice):
             ud = not ud
         self._transform = (lr, ud, rot)
 
+    def set_transform(self, transform):
+        """Set client transform and update resultant transform."""
+        if isinstance(transform, str):
+            transform = literal_eval(transform)
+        self._client_transform = transform
+        self._update_transform()
+
     def _set_readout_transform(self, new_transform):
-        """Update readout transform and update resultant transform."""
+        """Set readout transform and update resultant transform."""
         self._readout_transform = [bool(int(t)) for t in new_transform]
-        self.set_transform(self._client_transform)
+        self._update_transform()
 
     @abc.abstractmethod
     def set_exposure_time(self, value: float) -> None:
