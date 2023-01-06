@@ -1777,6 +1777,7 @@ class PVCamera(
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
         ro_ports = self._params[PARAM_READOUT_PORT].values
+        self._readout_mode = 0  # The index of the current readout mode
         self._readout_modes = []
         self._readout_mode_parameters = []
         for i, port in ro_ports.items():
@@ -1805,11 +1806,18 @@ class PVCamera(
                     {"port": i, "spdtab_index": j}
                 )
         # Set to default mode.
-        self.set_readout_mode(0)
+        self._set_readout_mode(self._readout_mode)
+        self.add_setting(
+            "readout mode",
+            "enum",
+            lambda: self._readout_mode,
+            self._set_readout_mode,
+            lambda: self._readout_modes,
+        )
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
     @microscope.abc.keep_acquiring
-    def set_readout_mode(self, index):
+    def _set_readout_mode(self, index):
         """Set the readout mode and transform."""
         params = self._readout_mode_parameters[index]
         self._params[PARAM_READOUT_PORT].set_value(params["port"])

@@ -18,6 +18,11 @@ Version 0.7.0 (upcoming)
   * The `Stage` ABC has a new method `may_move_on_enable` to hint
     whether calling `enable` will cause the stage to move.
 
+  * All cameras had a ``"readout mode"`` setting for most cameras only
+    had a ``"default"`` value was available.  This setting has been
+    removed from the base class and is now only kept by cameras that
+    actually make use of it, namely, ``PVCamera`` and ``AndorAtmcd``.
+
 * New devices supported:
 
   * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)

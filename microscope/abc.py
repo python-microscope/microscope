@@ -840,10 +840,6 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        # A list of readout mode descriptions.
-        self._readout_modes = ["default"]
-        # The index of the current readout mode.
-        self._readout_mode = 0
         # Transforms to apply to data (fliplr, flipud, rot90)
         # Transform to correct for readout order.
         self._readout_transform = (False, False, False)
@@ -858,13 +854,6 @@ class Camera(TriggerTargetMixin, DataDevice):
             lambda: Camera.ALLOWED_TRANSFORMS.index(self._transform),
             lambda index: self.set_transform(Camera.ALLOWED_TRANSFORMS[index]),
             Camera.ALLOWED_TRANSFORMS,
-        )
-        self.add_setting(
-            "readout mode",
-            "enum",
-            lambda: self._readout_mode,
-            self.set_readout_mode,
-            lambda: self._readout_modes,
         )
         self.add_setting("roi", "tuple", self.get_roi, self.set_roi, None)
 
@@ -884,10 +873,6 @@ class Camera(TriggerTargetMixin, DataDevice):
             (1, 1): lambda d: numpy.fliplr(numpy.flipud(d)),
         }[flips](data)
         return super()._process_data(data)
-
-    def set_readout_mode(self, description):
-        """Set the readout mode and _readout_transform."""
-        pass
 
     def get_transform(self):
         """Return the current transform without readout transform."""
