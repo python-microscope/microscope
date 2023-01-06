@@ -23,6 +23,9 @@ Version 0.7.0 (upcoming)
     removed from the base class and is now only kept by cameras that
     actually make use of it, namely, ``PVCamera`` and ``AndorAtmcd``.
 
+  * All filterwheels had a ``"position"`` setting which was redundant
+    with the related get/set methods.  The setting was been removed.
+
 * New devices supported:
 
   * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)

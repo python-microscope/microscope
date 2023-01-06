@@ -1265,16 +1265,6 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
                 "positions must be a positive number (was %d)" % positions
             )
         self._positions = positions
-        # The position as an integer.
-        # Deprecated: clients should call get_position and set_position;
-        # still exposed as a setting until cockpit uses set_position.
-        self.add_setting(
-            "position",
-            "int",
-            self.get_position,
-            self.set_position,
-            lambda: (0, self.get_num_positions()),
-        )
 
     @property
     def n_positions(self) -> int:
