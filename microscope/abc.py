@@ -29,7 +29,6 @@ import queue
 import threading
 import time
 import typing
-from ast import literal_eval
 from enum import EnumMeta
 from threading import Thread
 
@@ -864,7 +863,7 @@ class Camera(TriggerTargetMixin, DataDevice):
         }[flips](data)
         return super()._process_data(data)
 
-    def get_transform(self):
+    def get_transform(self) -> typing.Tuple[bool, bool, bool]:
         """Return the current transform without readout transform."""
         return self._client_transform
 
@@ -878,10 +877,8 @@ class Camera(TriggerTargetMixin, DataDevice):
             ud = not ud
         self._transform = (lr, ud, rot)
 
-    def set_transform(self, transform):
+    def set_transform(self, transform: typing.Tuple[bool, bool, bool]) -> None:
         """Set client transform and update resultant transform."""
-        if isinstance(transform, str):
-            transform = literal_eval(transform)
         self._client_transform = transform
         self._update_transform()
 
