@@ -836,8 +836,6 @@ class Camera(TriggerTargetMixin, DataDevice):
 
     """
 
-    ALLOWED_TRANSFORMS = [p for p in itertools.product(*3 * [[False, True]])]
-
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         # Transforms to apply to data (fliplr, flipud, rot90)
@@ -847,14 +845,6 @@ class Camera(TriggerTargetMixin, DataDevice):
         self._client_transform = (False, False, False)
         # Result of combining client and readout transforms
         self._transform = (False, False, False)
-        # A transform provided by the client.
-        self.add_setting(
-            "transform",
-            "enum",
-            lambda: Camera.ALLOWED_TRANSFORMS.index(self._transform),
-            lambda index: self.set_transform(Camera.ALLOWED_TRANSFORMS[index]),
-            Camera.ALLOWED_TRANSFORMS,
-        )
         self.add_setting("roi", "tuple", self.get_roi, self.set_roi, None)
 
     def _process_data(self, data):

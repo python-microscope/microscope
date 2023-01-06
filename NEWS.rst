@@ -23,6 +23,11 @@ Version 0.7.0 (upcoming)
     removed from the base class and is now only kept by cameras that
     actually make use of it, namely, ``PVCamera`` and ``AndorAtmcd``.
 
+  * All cameras had ``"transform"`` setting.  This has been removed.
+    Use the ``get_transform`` and ``set_transform`` methods instead.
+    The result may be different since the ``"transform"`` setting also
+    exposed any internal transformation after readout.
+
   * All filterwheels had a ``"position"`` setting which was redundant
     with the related get/set methods.  The setting was been removed.
 
