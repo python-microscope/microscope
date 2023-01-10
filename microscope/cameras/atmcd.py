@@ -1443,6 +1443,7 @@ class AndorAtmcd(
         """Initialize the library and hardware and create Setting objects."""
         _logger.info("Initializing ...")
         num_cams = GetAvailableCameras()
+        _logger.info("Found %d available cameras", num_cams)
         if self._index >= num_cams:
             msg = "Requested camera %d, but only found %d cameras" % (
                 self._index,
