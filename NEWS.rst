@@ -37,7 +37,7 @@ Version 0.7.0 (upcoming)
 
   * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
 
-  * Raspberry Pi picam (:class:`microscope.cameras.picam.PiCamera`)
+  * RaspberryPi camera (:class:`microscope.cameras.picamera.PiCamera`)
 
   * Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
 

@@ -20,7 +20,7 @@ Cameras
 - Hamamatsu (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 - Photometrics (:class:`microscope.cameras.pvcam.PVCamera`)
 - QImaging (:class:`microscope.cameras.pvcam.PVCamera`)
-- Raspberry Pi camera (:class:`microscope.cameras.picam.PiCamera`)
+- Raspberry Pi camera (:class:`microscope.cameras.picamera.PiCamera`)
 - Ximea (:class:`microscope.cameras.ximea.XimeaCamera`)
 
 Controllers
