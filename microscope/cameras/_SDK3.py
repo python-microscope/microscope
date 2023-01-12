@@ -33,7 +33,7 @@ AT_WC = ctypes.c_wchar
 
 _stdcall_libraries = {}
 
-if os.name in ("nt", "ce"):
+if os.name == "nt":  # is windows
     _stdcall_libraries["ATCORE"] = ctypes.WinDLL("atcore")
     _stdcall_libraries["ATUTIL"] = ctypes.WinDLL("atutility")
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
