@@ -1264,7 +1264,7 @@ class FilterWheel(Device, metaclass=abc.ABCMeta):
 
     @property
     def position(self) -> int:
-        """Number of wheel positions (zero-based)."""
+        """Filter Wheel position (zero-based)."""
         return self._do_get_position()
 
     @position.setter
