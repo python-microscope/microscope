@@ -112,6 +112,7 @@ class BaseTestServeDevices(unittest.TestCase):
         options = microscope.device_server.DeviceServerOptions(
             config_fpath="",
             logging_level=logging.INFO,
+            logging_dir="",
         )
         self.p = multiprocessing.Process(
             target=microscope.device_server.serve_devices,
@@ -274,6 +275,7 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
         microscope.device_server.DeviceServerOptions(
             config_fpath="",
             logging_level=logging.INFO,
+            logging_dir="",
         ),
         {"bar": "127.0.0.1"},
         {"bar": 8001},
@@ -307,6 +309,7 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
         microscope.device_server.DeviceServerOptions(
             config_fpath="",
             logging_level=logging.INFO,
+            logging_dir="",
         ),
         {},
         {},
