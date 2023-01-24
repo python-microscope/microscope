@@ -129,7 +129,14 @@ setuptools.setup(
     },
     packages=setuptools.find_packages(),
     python_requires=">=3.7",
-    install_requires=["Pillow", "Pyro4", "hidapi", "numpy", "pyserial"],
+    install_requires=[
+        "Pillow",
+        "Pyro4",
+        "hidapi",
+        "numpy",
+        "pyserial",
+        "scipy",
+    ],
     extras_require={"GUI": ["PySide2"]},
     entry_points={
         "console_scripts": [
