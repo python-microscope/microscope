@@ -47,8 +47,7 @@ import time
 import typing
 from collections.abc import Iterable
 from dataclasses import dataclass
-from logging import StreamHandler
-from logging.handlers import RotatingFileHandler
+from logging import FileHandler, StreamHandler
 from threading import Thread
 
 import Pyro4
@@ -353,7 +352,7 @@ class DeviceServer(multiprocessing.Process):
 
         pyro_daemon = Pyro4.Daemon(port=port, host=host)
 
-        log_handler = RotatingFileHandler(
+        log_handler = FileHandler(
             os.path.join(
                 self._options.logging_dir,
                 "%s_%s_%s.log" % (cls_name, host, port),
@@ -407,7 +406,7 @@ def serve_devices(devices, options: DeviceServerOptions, exit_event=None):
 
     root_logger = logging.getLogger()
 
-    log_handler = RotatingFileHandler("__MAIN__.log")
+    log_handler = FileHandler("__MAIN__.log")
     log_handler.setFormatter(_create_log_formatter("device-server"))
     root_logger.addHandler(log_handler)
 

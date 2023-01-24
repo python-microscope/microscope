@@ -84,7 +84,7 @@ def _patch_out_device_server_logs(func):
         return logging.NullHandler()
 
     no_file = unittest.mock.patch(
-        "microscope.device_server.RotatingFileHandler", null_logs
+        "microscope.device_server.FileHandler", null_logs
     )
     no_stream = unittest.mock.patch(
         "microscope.device_server.StreamHandler", null_logs
