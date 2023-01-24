@@ -38,6 +38,7 @@ legacy_tox_ini = """
 [tox]
 envlist = py
 [testenv]
+description = run whole test suite
 commands = python -m unittest discover \
   --start-directory microscope/testsuite \
   --verbose
