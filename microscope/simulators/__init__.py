@@ -2,6 +2,7 @@
 
 ## Copyright (C) 2020 David Miguel Susano Pinto <carandraug@gmail.com>
 ## Copyright (C) 2020 Mick Phillips <mick.phillips@gmail.com>
+## Copyright (C) 2022 Ian Dobbie <ian.dobbie@gmail.com>
 ##
 ## This file is part of Microscope.
 ##
@@ -479,3 +480,38 @@ class SimulatedStage(microscope.abc.Stage):
     def move_to(self, position: typing.Mapping[str, float]) -> None:
         for name, pos in position.items():
             self.axes[name].move_to(pos)
+
+class SimulatedDigitalIO(microscope.abc.DigitalIO):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._cache=[None]*self._numLines
+
+    def set_IO_state(self, line: int, state: bool) -> None:
+        _logger.info("Line %d set IO state %s"% (line,str(state)))
+        self._IOMap[line] = state
+        if not state:
+            #this is an input so needs to have a definite value,
+            #default to False if not already set. If set leave alone
+            if self._cache[line]== None:
+                self._cache[line]=False
+
+    def get_IO_state(self, line: int) -> bool:
+        return(self._IOMap[line])
+
+    def write_line(self,line: int, state: bool):
+        _logger.info("Line %d set IO state %s"% (line,str(state)))
+        self._cache[line]=state
+        
+    def read_line(self,line: int) -> bool:
+        _logger.info("Line %d returns %s" % (line,str(self._cache[line])))
+        return self._cache[line]
+
+    def _do_shutdown(self) -> None:
+        pass
+
+
+#DIO still to do:
+# raise exception if writing to a read line and vis-versa
+# raise exception if line <0 or line>num_lines
+# read all lines to return True,Flase if readable and None if an output
+#
