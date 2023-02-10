@@ -1636,7 +1636,7 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
             line: the line to be set
             output: the level True for high and Flase for low."""
         
-       raise NotImplementedError()
+        raise NotImplementedError()
 
     @abc.abstractmethod    
     def write_all_lines(self,ouput_array):
