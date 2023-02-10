@@ -1580,7 +1580,6 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
         # true is output, start with all lines defined for output. 
         self._IOMap = [True]*self._numLines
   
-    @abc.abstractmethod
     def get_num_lines(self):
         """Returns the number of Io lines present in this instance"""
         return self._numLines
@@ -1604,7 +1603,6 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
         Return value is True for Output and False for Input"""
         raise NotImplementedError()
 
-    @abc.abstractmethod    
     def set_all_IO_state(self, stateArray):
         """Sets the state of all lines to either Input or Output
         Args:
@@ -1616,7 +1614,6 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
                 self.set_IO_state(i,state)
             
 
-    @abc.abstractmethod    
     def get_all_IO_state(self):
         """Returns the state of a all Digital line, either Output or Input
 
@@ -1638,7 +1635,6 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
         
         raise NotImplementedError()
 
-    @abc.abstractmethod    
     def write_all_lines(self,ouput_array):
         """Sets the output level of every output line.
 
@@ -1662,7 +1658,6 @@ class DigitalIO(Device, metaclass=abc.ABCMeta):
         Return: A boolean of the line state"""
         raise NotImplementedError()
 
-    @abc.abstractmethod    
     def read_all_lines(self):
         """Read all the input lines.
         Return: Boolean Array with outline enteries set to None."""
