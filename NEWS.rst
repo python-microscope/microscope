@@ -33,6 +33,10 @@ Version 0.7.0 (upcoming)
 
 * New devices supported:
 
+  * Added a DigitalIO device type
+    * Implemented a simulated DigitalIO device (:class:`microscope.simulations.SimulatedDigitalIO`)
+    * Implemented a concrete DigitalIO device on a Raspberry Pi (:class:`microscope.digitalio.raspberrypi.RPiDIO`)
+    
   * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 
   * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
@@ -40,7 +44,7 @@ Version 0.7.0 (upcoming)
   * RaspberryPi camera (:class:`microscope.cameras.picamera.PiCamera`)
 
   * Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
-
+  
 * Device specific changes:
 
   * `PVCamera`:

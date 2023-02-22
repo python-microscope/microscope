@@ -481,36 +481,55 @@ class SimulatedStage(microscope.abc.Stage):
         for name, pos in position.items():
             self.axes[name].move_to(pos)
 
+
 class SimulatedDigitalIO(microscope.abc.DigitalIO):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._cache=[None]*self._numLines
+        self._cache = [None] * self._numLines
+        self.testinput = False
+        self.inputtime = time.time()
 
     def set_IO_state(self, line: int, state: bool) -> None:
-        _logger.info("Line %d set IO state %s"% (line,str(state)))
+        _logger.info("Line %d set IO state %s" % (line, str(state)))
         self._IOMap[line] = state
         if not state:
-            #this is an input so needs to have a definite value,
-            #default to False if not already set. If set leave alone
-            if self._cache[line]== None:
-                self._cache[line]=False
+            # this is an input so needs to have a definite value,
+            # default to False if not already set. If set leave alone
+            if self._cache[line] == None:
+                self._cache[line] = False
 
     def get_IO_state(self, line: int) -> bool:
-        return(self._IOMap[line])
+        return self._IOMap[line]
 
-    def write_line(self,line: int, state: bool):
-        _logger.info("Line %d set IO state %s"% (line,str(state)))
-        self._cache[line]=state
-        
-    def read_line(self,line: int) -> bool:
-        _logger.info("Line %d returns %s" % (line,str(self._cache[line])))
+    def write_line(self, line: int, state: bool):
+        _logger.debug("Line %d set IO state %s" % (line, str(state)))
+        self._cache[line] = state
+
+    def read_line(self, line: int) -> bool:
+        _logger.debug("Line %d returns %s" % (line, str(self._cache[line])))
         return self._cache[line]
 
     def _do_shutdown(self) -> None:
         pass
 
+    # functions required as we are DataDevice returning data to the server.
+    def _fetch_data(self):
+        if (time.time() - self.inputtime) > 5.0:
+            self.testinput = not self.testinput
+            self.inputtime = time.time()
+            _logger.debug("Line %d returns %s" % (3, self.testinput))
+            self._cache[3] = self.testinput
+            return (3, self.testinput)
+        return None
 
-#DIO still to do:
+    def abort(self):
+        pass
+
+    def _do_enable(self):
+        return True
+
+
+# DIO still to do:
 # raise exception if writing to a read line and vis-versa
 # raise exception if line <0 or line>num_lines
 # read all lines to return True,Flase if readable and None if an output

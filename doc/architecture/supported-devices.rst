@@ -67,6 +67,11 @@ Stages
 - Ludl (:class:`microscope.controllers.ludl.LudlMC2000`)
 - Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 
+DigitalIO
+=========
+
+- Raspberry Pi (:class:`microsocpe.digitalio.raspberrypi`)
+
 Other
 =====
 

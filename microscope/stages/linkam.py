@@ -1453,7 +1453,7 @@ class LinkamCMS(_LinkamMDSMixin, _LinkamBase):
         self.get_value(_StageValueType.CmsStatus, result=self._cmsstatus)
         self.get_value(_StageValueType.CmsError, result=self._cmserror)
         # Update the refill timers.
-        for (key, flagname) in self._refill_map.items():
+        for key, flagname in self._refill_map.items():
             tracker = self._refills[key]
             is_refilling = getattr(self._cmsstatus.flags, flagname)
             if is_refilling and not tracker.refilling:

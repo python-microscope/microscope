@@ -142,6 +142,7 @@ SDK_NAMES = {
     "_vertically_centre_aoi": "VerticallyCentreAOI",
 }
 
+
 # Wrapper to ensure feature is readable.
 def readable_wrapper(func):
     def wrapper(self, *args, **kwargs):

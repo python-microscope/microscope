@@ -685,6 +685,7 @@ else:
 ### Functions ###
 STRING = ctypes.c_char_p
 
+
 # classes so that we do some magic and automatically add byrefs etc ... can classify outputs
 # (Nicked from PYME's Ixon wrapper.)
 class _meta:
@@ -1691,6 +1692,7 @@ class PVCamera(
         _logger.info("Initializing %s", self._pv_name)
         self.handle = _cam_open(self._pv_name, OPEN_EXCLUSIVE)
         PVCamera.open_cameras.append(self.handle)
+
         # Set up event callbacks. Tried to use the resume callback to reinit camera
         # after power loss, but any attempt to close/reopen the camera or deinit the
         # DLL throws a Windows Error 0xE06D7363.
@@ -1717,7 +1719,7 @@ class PVCamera(
         )
         # Repopulate _params.
         self._params = {}
-        for (param_id, name) in _param_to_name.items():
+        for param_id, name in _param_to_name.items():
             try:
                 p = PVParam.factory(self, param_id)
             except:

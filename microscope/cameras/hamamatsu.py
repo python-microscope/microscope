@@ -499,7 +499,6 @@ class HamamatsuCamera(microscope.abc.Camera):
     def _init_method_get_prop_values(
         self, prop_attr: dcam.PROP_ATTR
     ) -> typing.Dict[int, str]:
-
         strbuf = ctypes.create_string_buffer(64)
         vtxt = _create_struct_with_cbSize(dcam.PROP_VALUETEXT)
         vtxt.iProp = prop_attr.iProp

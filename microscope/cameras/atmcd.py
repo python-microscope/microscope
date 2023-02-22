@@ -99,6 +99,8 @@ at_64 = c_longlong
 at_u64 = c_ulonglong
 
 """Version Information Definitions"""
+
+
 # Version information enumeration
 class AT_VersionInfoId(c_int):
     pass
@@ -114,6 +116,8 @@ AT_VERSION_INFO_LEN = 80
 AT_CONTROLLER_CARD_MODEL_LEN = 80
 
 """DDG Lite Definitions"""
+
+
 # Channel enumeration
 class AT_DDGLiteChannelId(c_int):
     pass
@@ -501,6 +505,7 @@ for attrib_name in dir(sys.modules[__name__]):
     if attrib_name.startswith("DRV_"):
         status_codes.update({eval(attrib_name): attrib_name})
 
+
 # The lookup function.
 def lookup_status(code):
     key = code[0] if type(code) is list else code
@@ -512,6 +517,7 @@ def lookup_status(code):
 
 # The following DLL-wrapping classes are largely lifted from David Baddeley's
 # SDK3 wrapper, with some modifications and additions.
+
 
 # Classes used to handle outputs and parameters that need buffers.
 class _meta:
