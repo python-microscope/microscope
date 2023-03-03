@@ -1668,3 +1668,33 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
         for i in range(self._numLines):
             readarray[i] = self.read_line(i)
         return readarray
+
+
+class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
+    """ABC for Value logging device.
+
+    Value logging Devices utilise the DataDevice infrastrucrure to send
+    values to a receiving client. A typical example of data is temperature
+    measurements.
+
+    Args:
+        numSensors: total number of measurements.
+
+    """
+
+    def __init__(self, numSensors: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+        if numSensors < 1:
+            raise ValueError(
+                "NumSensors must be a positive number (was %d)" % numSensors
+            )
+        self._numSensors = numSensors
+
+    @abc.abstractmethod
+    def initialize(self):
+        """Inialize sensors to start sending data back."""
+        raise NotImplementedError()
+
+    def get_num_sensors(self):
+        """Returns the number of sensors lines present in this instance"""
+        return self._numSensors

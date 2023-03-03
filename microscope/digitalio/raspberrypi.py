@@ -29,7 +29,6 @@ import time
 import typing
 import logging
 import queue
-
 import microscope.abc
 
 import RPi.GPIO as GPIO
@@ -102,9 +101,7 @@ class RPiDIO(microscope.abc.DigitalIO):
     def HW_trigger(self, pin):
         state = GPIO.input(pin)
         line = self._gpioMap.index(pin)
-        print(pin, state, line)
         self.inputQ.put((line, state))
-        print(self.inputQ.empty())
 
     def get_IO_state(self, line: int) -> bool:
         # returns
@@ -148,7 +145,6 @@ class RPiDIO(microscope.abc.DigitalIO):
         if self.inputQ.empty():
             return None
         (line, state) = self.inputQ.get()
-        # print(self.inputQ.get())
         _logger.info("Line %d chnaged to %s" % (line, str(state)))
         return (line, state)
 
