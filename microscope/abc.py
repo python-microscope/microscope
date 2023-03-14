@@ -1562,12 +1562,12 @@ class Stage(Device, metaclass=abc.ABCMeta):
 class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
     """ABC for digital IO devices.
 
-    Digital IO devices (DIO) have a num,ber of digital lines that can
-    be for output, or optionally input and can switch between a on and
-    off state.
+    Digital IO devices (DIO) have a number of digital lines that can
+    be for output, or optionally input, and can switch between an On
+    and Off state.
 
     Args:
-        numLines: total number of digital lines numberes 0 to n-1.
+        numLines: total number of digital lines numbers 0 to n-1.
 
     """
 
@@ -1584,44 +1584,52 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
         self._IOMap = [True] * self._numLines
 
     def get_num_lines(self):
-        """Returns the number of Io lines present in this instance"""
+        """Returns the number of IO lines present in this device."""
         return self._numLines
 
     @abc.abstractmethod
     def set_IO_state(self, line: int, state: bool):
-        """Sets the state of a single Digital line to either Output or Input
+        """Sets the state of a single digital line to either Output or Input.
 
         Args:
-            line: The line to have its mode set.
-
-            state: True for Output or False for Input."""
+            line: the line to have its mode set.
+            state: ``True`` for Output or ``False`` for Input.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def get_IO_state(self, line):
-        """Returns the state of a single Digital line, either Output or Input
+        """Returns the state of a single digital line, either Output or Input.
 
         Args:
             line: The line to have its mode set.
-        Return value is True for Output and False for Input"""
+
+        Returns:
+            Value is ``True`` for Output and ``False`` for Input.
+        """
         raise NotImplementedError()
 
     def set_all_IO_state(self, stateArray):
         """Sets the state of all lines to either Input or Output
+
         Args:
             line: The line to have its mode set.
-            stateArray: Boolean array for the lines, True in output False
-                        is Input"""
+            stateArray: Boolean array for the lines, ``True`` in
+                output ``False`` is Input.
+
+        """
         for i, state in enumerate(stateArray):
             # set each line as defined in stateArray
             self.set_IO_state(i, state)
 
     def get_all_IO_state(self):
-        """Returns the state of a all Digital line, either Output or Input
+        """Returns the state of a all digital line, either Output or Input.
 
-        Returns a boolean array one entry for each line,
-        True for Output and False for Input"""
+        Returns:
+            A boolean array one entry for each line, ``True`` for
+            Output and ``False`` for Input.
 
+        """
         stateArray = [None] * self._numLines
         for i in range(self._numLines):
             stateArray[i] = self.get_IO_state(i)
@@ -1633,7 +1641,8 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
 
         Args:
             line: the line to be set
-            output: the level True for high and Flase for low."""
+            output: the level ``True`` for high and ``False`` for low.
+        """
 
         raise NotImplementedError()
 
@@ -1641,10 +1650,10 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
         """Sets the output level of every output line.
 
         Args:
-            output_array: Boolean array of output states True for high,
-                          False for low, array entries for lines set
-                          as inputs are ignored."""
-
+            output_array: Boolean array of output states ``True`` for
+                high, ``False`` for low, array entries for lines set
+                as inputs are ignored.
+        """
         if len(ouput_array) != self._numLines:
             raise ("Output array must be numLines in length")
         for i in range(self._numLines):
@@ -1655,15 +1664,21 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def read_line(self, line):
         """Read a single input line.
+
         Args:
             line: the line to read
-        Return: A boolean of the line state"""
+
+        Returns:
+            A boolean of the line state.
+        """
         raise NotImplementedError()
 
     def read_all_lines(self):
         """Read all the input lines.
-        Return: Boolean Array with outline enteries set to None."""
 
+        Returns:
+            Boolean array with outline entries set to ``None``.
+        """
         readarray = [None] * self._numLines
         for i in range(self._numLines):
             readarray[i] = self.read_line(i)
@@ -1673,15 +1688,14 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
 class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
     """ABC for Value logging device.
 
-    Value logging Devices utilise the DataDevice infrastrucrure to send
-    values to a receiving client. A typical example of data is temperature
-    measurements.
+    Value logging devices utilise the :class:`DataDevice`
+    infrastrucrure to send values to a receiving client.  A typical
+    example of data is temperature measurements.
 
     Args:
         numSensors: total number of measurements.
 
     """
-
     def __init__(self, numSensors: int, **kwargs) -> None:
         super().__init__(**kwargs)
         if numSensors < 1:
@@ -1696,5 +1710,5 @@ class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     def get_num_sensors(self):
-        """Returns the number of sensors lines present in this instance"""
+        """Returns the number of sensors lines present in this instance."""
         return self._numSensors
