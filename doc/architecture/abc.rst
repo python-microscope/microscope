@@ -38,8 +38,8 @@ There is an additional special device class
 :class:`microsope.abc.DataDevice` which defines a class that has the
 ability to asynchronously send data back to the calling
 connection. This is used for situations like cameras and asynchronous
-communication such as digital input signals. 
-      
+communication such as digital input signals.
+
 The actual concrete classes, those which provide actual control over
 the devices, are listed on the section :ref:`supported-devices`.
 

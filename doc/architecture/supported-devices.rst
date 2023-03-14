@@ -76,8 +76,8 @@ DigitalIO
 ValueLogger
 ===========
 
-- Raspberry Pi (:class:`microsocpe.valuelogger.raspberrypi`)
-  includes support for the MCP9808 and TSYS01 I2C temperature sensors
+- Raspberry Pi (:class:`microsocpe.valuelogger.raspberrypi`) includes
+  support for the MCP9808 and TSYS01 I2C temperature sensors
 
 
 Other
