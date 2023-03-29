@@ -619,8 +619,9 @@ def main(argv: typing.Sequence[str]) -> int:
 
     root_logger.addFilter(Filter())
 
+    devices = validate_devices(options.config_fpath)
+
     with os.add_dll_directory(os.path.dirname(__file__)):
-        devices = validate_devices(options.config_fpath)
         serve_devices(devices, options)
 
     return 0
