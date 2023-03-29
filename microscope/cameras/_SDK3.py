@@ -20,10 +20,9 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import ctypes
-import os
-import sys
 from ctypes import POINTER, c_double, c_int, c_uint, c_void_p
 
+from microscope._utils import load_library
 
 #### typedefs
 AT_H = ctypes.c_int
@@ -32,19 +31,12 @@ AT_64 = ctypes.c_int64
 AT_U8 = ctypes.c_uint8
 AT_WC = ctypes.c_wchar
 
-_stdcall_libraries = {}
+_stdcall_libraries = {
+    "ATCORE": load_library(windows_file="atcore", unix_file="atcore.so"),
+    "ATUTIL": load_library(windows_file="atutility", unix_file="atutility.so")
+}
 
-if os.name in ("nt", "ce"):
-    kwargs = {}
-    if sys.version_info >= (3, 8):
-        kwargs["winmode"] = 0
-    _stdcall_libraries["ATCORE"] = ctypes.WinDLL("atcore", **kwargs)
-    _stdcall_libraries["ATUTIL"] = ctypes.WinDLL("atutility", **kwargs)
-    CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
-else:
-    _stdcall_libraries["ATCORE"] = ctypes.CDLL("atcore.so")
-    _stdcall_libraries["ATUTIL"] = ctypes.CDLL("atutility.so")
-    CALLBACKTYPE = ctypes.CFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
+CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 
 #### Defines
 errorCodes = {}

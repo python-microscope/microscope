@@ -19,11 +19,23 @@
 
 import threading
 import typing
+import os
+import sys
+import ctypes
 
 import serial
 
 import microscope
 import microscope.abc
+
+def load_library(windows_file=None, unix_file=None):
+    if windows_file is not None and os.name in ("nt", "ce"):
+        kwargs = {}
+        if sys.version_info >= (3, 8):
+            kwargs["winmode"] = 0
+        return ctypes.WinDLL(windows_file, **kwargs)
+    elif unix_file is not None:
+        return ctypes.CDLL(unix_file)
 
 
 # Both pySerial and serial distribution packages install an import

@@ -21,14 +21,11 @@
 """
 
 import ctypes
-import sys
+
+from microscope._utils import load_library
 
 # Vendor only supports Windows
-kwargs = {}
-if sys.version_info >= (3, 8):
-    kwargs["winmode"] = 0
-SDK = ctypes.WinDLL("mirao52e", **kwargs)
-
+SDK = load_library(windows_file="mirao52e")
 
 TRUE = 1  # TRUE MroBoolean value
 FALSE = 0  # FALSE MroBoolean value

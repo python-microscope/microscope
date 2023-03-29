@@ -21,20 +21,11 @@
 """
 
 import ctypes
-import os
-import sys
 from ctypes import c_char, c_char_p, c_double, c_int, c_uint, c_uint32
+from microscope._utils import load_library
 
-
-if os.name == "nt":  # is windows
-    kwargs = {}
-    if sys.version_info >= (3, 8):
-        kwargs["winmode"] = 0
-    # Not actually tested yet
-    SDK = ctypes.WinDLL("BMC2", **kwargs)
-else:
-    SDK = ctypes.CDLL("libBMC.so.3")
-
+# Not actually tested BMC2 yet
+SDK = load_library(windows_file="BMC2", unix_file="libBMC.so.3")
 
 # Definitions from BMCDefs.h
 MAX_PATH = 260

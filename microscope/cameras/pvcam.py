@@ -146,6 +146,7 @@ import Pyro4
 
 import microscope
 import microscope.abc
+from microscope._utils import load_library
 
 
 _logger = logging.getLogger(__name__)
@@ -674,17 +675,12 @@ class md_frame(ctypes.Structure):
         ("roiCount", uns16),
     ]
 
+def _load_lib():
+    _dllsuffix = platform.architecture()[0].rstrip("bit")
+    return load_library(windows_file="pvcam" + _dllsuffix, unix_file="pvcam.so")
 
-if os.name == "nt":  # is windows
-    kwargs = {}
-    if sys.version_info >= (3, 8):
-        kwargs["winmode"] = 0
-    if platform.architecture()[0] == "32bit":
-        _lib = ctypes.WinDLL("pvcam32", **kwargs)
-    else:
-        _lib = ctypes.WinDLL("pvcam64", **kwargs)
-else:
-    _lib = ctypes.CDLL("pvcam.so")
+_lib = _load_lib()
+
 
 ### Functions ###
 STRING = ctypes.c_char_p
