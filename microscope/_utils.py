@@ -29,13 +29,17 @@ import microscope
 import microscope.abc
 
 def load_library(windows_file=None, unix_file=None):
-    if windows_file is not None and os.name in ("nt", "ce"):
-        kwargs = {}
+    kwargs = {}
+    if windows_file is not None and os.name == "nt":
+        dll = windows_file
         if sys.version_info >= (3, 8):
             kwargs["winmode"] = 0
-        return ctypes.WinDLL(windows_file, **kwargs)
     elif unix_file is not None:
-        return ctypes.CDLL(unix_file)
+        dll = unix_file
+    else:
+        raise OSError("Unable to laod DLL")
+
+    return ctypes.CDLL(dll, **kwargs)
 
 
 # Both pySerial and serial distribution packages install an import
