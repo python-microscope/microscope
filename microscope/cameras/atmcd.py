@@ -88,7 +88,10 @@ if arch == "32bit":
 else:
     _dllName = "atmcd64d"
 if os.name in ("nt", "ce"):
-    _dll = ctypes.WinDLL(_dllName, winmode=0)
+    kwargs = {}
+    if sys.version_info > (3, 7):
+        kwargs["winmode"] = 0
+    _dll = ctypes.WinDLL(_dllName, **kwargs)
 else:
     _dll = ctypes.CDLL(_dllName + ".so")
 

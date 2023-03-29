@@ -42,6 +42,7 @@ import ctypes
 import datetime
 import os
 import os.path
+import sys
 import threading
 import time
 from ctypes import POINTER, byref
@@ -975,7 +976,10 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
     def init_sdk():
         """Initialise the SDK and set up event callbacks"""
         try:
-            __class__._lib = ctypes.WinDLL("LinkamSDK.dll", winmode=0)
+            kwargs = {}
+            if sys.version_info > (3, 7):
+                kwargs["winmode"] = 0
+            __class__._lib = ctypes.WinDLL("LinkamSDK.dll", **kwargs)
         except:
             # Not tested
             __class__._lib = ctypes.CDLL("libLinkamSDK.so")

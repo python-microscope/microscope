@@ -22,11 +22,15 @@
 
 import ctypes
 import os
+import sys
 from ctypes import c_char_p, c_double, c_int, c_size_t, c_uint32
 
 
 if os.name in ("nt", "ce"):
-    SDK = ctypes.WinDLL("ASDK", winmode=0)
+    kwargs = {}
+    if sys.version_info > (3, 7):
+        kwargs["winmode"] = 0
+    SDK = ctypes.WinDLL("ASDK", **kwargs)
 else:
     _libname = "libasdk.so"  # Not actually tested yet
 

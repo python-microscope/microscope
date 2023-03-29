@@ -22,12 +22,16 @@
 
 import ctypes
 import os
+import sys
 from ctypes import c_char, c_char_p, c_double, c_int, c_uint, c_uint32
 
 
 if os.name == "nt":  # is windows
+    kwargs = {}
+    if sys.version_info > (3, 7):
+        kwargs["winmode"] = 0
     # Not actually tested yet
-    SDK = ctypes.WinDLL("BMC2", winmode=0)
+    SDK = ctypes.WinDLL("BMC2", **kwargs)
 else:
     SDK = ctypes.CDLL("libBMC.so.3")
 
