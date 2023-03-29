@@ -89,7 +89,7 @@ else:
     _dllName = "atmcd64d"
 if os.name in ("nt", "ce"):
     kwargs = {}
-    if sys.version_info > (3, 7):
+    if sys.version_info >= (3, 8):
         kwargs["winmode"] = 0
     _dll = ctypes.WinDLL(_dllName, **kwargs)
 else:

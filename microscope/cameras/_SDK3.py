@@ -36,7 +36,7 @@ _stdcall_libraries = {}
 
 if os.name in ("nt", "ce"):
     kwargs = {}
-    if sys.version_info > (3, 7):
+    if sys.version_info >= (3, 8):
         kwargs["winmode"] = 0
     _stdcall_libraries["ATCORE"] = ctypes.WinDLL("atcore", **kwargs)
     _stdcall_libraries["ATUTIL"] = ctypes.WinDLL("atutility", **kwargs)

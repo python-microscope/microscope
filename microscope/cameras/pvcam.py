@@ -677,7 +677,7 @@ class md_frame(ctypes.Structure):
 
 if os.name == "nt":  # is windows
     kwargs = {}
-    if sys.version_info > (3, 7):
+    if sys.version_info >= (3, 8):
         kwargs["winmode"] = 0
     if platform.architecture()[0] == "32bit":
         _lib = ctypes.WinDLL("pvcam32", **kwargs)

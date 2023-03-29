@@ -25,7 +25,7 @@ import sys
 
 # Vendor only supports Windows
 kwargs = {}
-if sys.version_info > (3, 7):
+if sys.version_info >= (3, 8):
     kwargs["winmode"] = 0
 SDK = ctypes.WinDLL("mirao52e", **kwargs)
 

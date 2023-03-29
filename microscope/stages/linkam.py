@@ -977,7 +977,7 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
         """Initialise the SDK and set up event callbacks"""
         try:
             kwargs = {}
-            if sys.version_info > (3, 7):
+            if sys.version_info >= (3, 8):
                 kwargs["winmode"] = 0
             __class__._lib = ctypes.WinDLL("LinkamSDK.dll", **kwargs)
         except:
