@@ -21,9 +21,10 @@ Connecting to the Device
 Once the class is known its documentation will state the arguments
 required to construct the device instance and connect to it.  For
 devices controlled over a serial channel the argument is typically the
-port name of its address, e.g., `/dev/ttyS0` on GNU/Linux or `COM1` on
-Windows.  For other devices the argument is typically the serial
-number (this is typically printed on a label on the physical device).
+port name of its address, e.g., ``/dev/ttyS0`` on GNU/Linux or
+``COM1`` on Windows.  For other devices the argument is typically the
+serial number (this is typically printed on a label on the physical
+device).
 
 .. code-block:: python
 
@@ -141,8 +142,8 @@ of names to instances of other device classes.
 
 .. code-block:: python
 
-    cyan_led = controller.devices['CYAN']
-    red_laser = controller.devices['RED']
+    cyan_led = controller.devices["CYAN"]
+    red_laser = controller.devices["RED"]
 
 The class documentation will include details on the names of the
 controller device.

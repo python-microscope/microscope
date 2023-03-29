@@ -674,7 +674,7 @@ class md_frame(ctypes.Structure):
     ]
 
 
-if os.name in ("nt", "ce"):
+if os.name == "nt":  # is windows
     if platform.architecture()[0] == "32bit":
         _lib = ctypes.WinDLL("pvcam32")
     else:
@@ -839,7 +839,15 @@ dllFunc(
     ["can_num", "cam_name"],
     buf_len=CAM_NAME_LEN,
 )
-dllFunc("pl_cam_get_total", [OUTPUT(int16),], ["total_cams",])
+dllFunc(
+    "pl_cam_get_total",
+    [
+        OUTPUT(int16),
+    ],
+    [
+        "total_cams",
+    ],
+)
 dllFunc(
     "pl_cam_open",
     [STRING, OUTPUT(int16), int16],
@@ -890,7 +898,13 @@ dllFunc(
     [int16, uns32, uns32, OUTPUT(uns32)],
     ["hcam", "param_id", "index", "length"],
 )
-dllFunc("pl_pp_reset", [int16,], ["hcam"])
+dllFunc(
+    "pl_pp_reset",
+    [
+        int16,
+    ],
+    ["hcam"],
+)
 dllFunc(
     "pl_create_smart_stream_struct",
     [OUTPUT(smart_stream_type), uns16],
@@ -898,16 +912,28 @@ dllFunc(
 )
 dllFunc(
     "pl_release_smart_stream_struct",
-    [ctypes.POINTER(smart_stream_type),],
-    ["pSmtStruct",],
+    [
+        ctypes.POINTER(smart_stream_type),
+    ],
+    [
+        "pSmtStruct",
+    ],
 )
 dllFunc(
-    "pl_create_frame_info_struct", [OUTPUT(FRAME_INFO),], ["pNewFrameInfo"]
+    "pl_create_frame_info_struct",
+    [
+        OUTPUT(FRAME_INFO),
+    ],
+    ["pNewFrameInfo"],
 )
 dllFunc(
     "pl_release_frame_info_struct",
-    [ctypes.POINTER(FRAME_INFO),],
-    ["pFrameInfoToDel",],
+    [
+        ctypes.POINTER(FRAME_INFO),
+    ],
+    [
+        "pFrameInfoToDel",
+    ],
 )
 dllFunc("pl_exp_abort", [int16, int16], ["hcam", "cam_state"])
 dllFunc(
@@ -1146,13 +1172,19 @@ TRIGGER_MODES = {
 
 PV_MODE_TO_TRIGGER = {
     TRIG_SOFT: (microscope.TriggerType.SOFTWARE, microscope.TriggerMode.ONCE),
+    # Microscope and PVCam use mode strobe for very different things,
+    # check with the PVCam manual carefully.  PVCam's STROBED_MODE
+    # means that one external trigger starts *each* exposure in a
+    # sequence, which maps to Microscope trigger mode ONCE.  PVCam's
+    # TRIGGER_FIRST_MODE means that one external trigger signals the
+    # start of a sequence.
     TRIG_FIRST: (
         microscope.TriggerType.RISING_EDGE,
-        microscope.TriggerMode.ONCE,
+        microscope.TriggerMode.START,
     ),
     TRIG_STROBED: (
         microscope.TriggerType.RISING_EDGE,
-        microscope.TriggerMode.STROBE,
+        microscope.TriggerMode.ONCE,
     ),
     TRIG_BULB: (
         microscope.TriggerType.RISING_EDGE,
@@ -1370,7 +1402,8 @@ class PVStringParam(PVParam):
 
 
 class PVCamera(
-    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.Camera,
 ):
     """Implements the CameraDevice interface for the pvcam library."""
 
@@ -1495,7 +1528,7 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype=buffer_dtype),
+                np.empty(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
         else:
@@ -1532,7 +1565,7 @@ class PVCamera(
                 self.roi.width // self.binning.h,
             )
             self._buffer = np.require(
-                np.zeros(buffer_shape, dtype=buffer_dtype),
+                np.empty(buffer_shape, dtype=buffer_dtype),
                 requirements=["C_CONTIGUOUS", "ALIGNED", "OWNDATA"],
             )
             nbytes = _exp_setup_cont(
@@ -1744,6 +1777,7 @@ class PVCamera(
         # Populate readout modes by iterating over readout ports and speed
         # table entries.
         ro_ports = self._params[PARAM_READOUT_PORT].values
+        self._readout_mode = 0  # The index of the current readout mode
         self._readout_modes = []
         self._readout_mode_parameters = []
         for i, port in ro_ports.items():
@@ -1772,11 +1806,18 @@ class PVCamera(
                     {"port": i, "spdtab_index": j}
                 )
         # Set to default mode.
-        self.set_readout_mode(0)
+        self._set_readout_mode(self._readout_mode)
+        self.add_setting(
+            "readout mode",
+            "enum",
+            lambda: self._readout_mode,
+            self._set_readout_mode,
+            lambda: self._readout_modes,
+        )
         self._params[PARAM_CLEAR_MODE].set_value(CLEAR_PRE_EXPOSURE_POST_SEQ)
 
     @microscope.abc.keep_acquiring
-    def set_readout_mode(self, index):
+    def _set_readout_mode(self, index):
         """Set the readout mode and transform."""
         params = self._readout_mode_parameters[index]
         self._params[PARAM_READOUT_PORT].set_value(params["port"])

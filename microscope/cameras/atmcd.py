@@ -87,7 +87,7 @@ if arch == "32bit":
     _dllName = "atmcd32d"
 else:
     _dllName = "atmcd64d"
-if os.name in ("nt", "ce"):
+if os.name == "nt":  # is windows
     _dll = ctypes.WinDLL(_dllName)
 else:
     _dll = ctypes.CDLL(_dllName + ".so")
@@ -1362,7 +1362,8 @@ TRIGGER_TO_ATMCD_MODE = {v: k for k, v in ATMCD_MODE_TO_TRIGGER.items()}
 
 
 class AndorAtmcd(
-    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.Camera,
 ):
     """Implements CameraDevice interface for Andor ATMCD library."""
 
@@ -1442,6 +1443,7 @@ class AndorAtmcd(
         """Initialize the library and hardware and create Setting objects."""
         _logger.info("Initializing ...")
         num_cams = GetAvailableCameras()
+        _logger.info("Found %d available cameras", num_cams)
         if self._index >= num_cams:
             msg = "Requested camera %d, but only found %d cameras" % (
                 self._index,

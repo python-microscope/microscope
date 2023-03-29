@@ -59,7 +59,7 @@ _SPACE_CODE = ord(b" ")
 
 
 class _ZaberReply:
-    """Wraps a Zaber reply to easily index its multiple fields. """
+    """Wraps a Zaber reply to easily index its multiple fields."""
 
     def __init__(self, data: bytes) -> None:
         self._data = data
@@ -346,23 +346,28 @@ class _ZaberStage(microscope.abc.Stage):
             self._dev_conn.home()
         return True
 
+    def may_move_on_enable(self) -> bool:
+        return not self._dev_conn.been_homed()
+
     @property
     def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
     def move_by(self, delta: typing.Mapping[str, float]) -> None:
-        """Move specified axes by the specified distance. """
+        """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
-                int(axis_name), int(axis_delta),
+                int(axis_name),
+                int(axis_delta),
             )
         self._dev_conn.wait_until_idle()
 
     def move_to(self, position: typing.Mapping[str, float]) -> None:
-        """Move specified axes by the specified distance. """
+        """Move specified axes by the specified distance."""
         for axis_name, axis_position in position.items():
             self._dev_conn.move_to_absolute_position(
-                int(axis_name), int(axis_position),
+                int(axis_name),
+                int(axis_position),
             )
         self._dev_conn.wait_until_idle()
 
@@ -441,7 +446,11 @@ class _ZaberLED(
             )
             value = float(reply.response)
             self.add_setting(
-                our_name, "float", lambda x=value: x, None, values=tuple(),
+                our_name,
+                "float",
+                lambda x=value: x,
+                None,
+                values=tuple(),
             )
 
     def _do_shutdown(self) -> None:

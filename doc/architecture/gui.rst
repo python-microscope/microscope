@@ -19,7 +19,7 @@ Still, during development, both of the microscope and support for new
 modules, a GUI can be useful.  For example, check what a camera is
 acquiring, emitting light, checking if all methods are working as
 expected.  For this purpose, there is the ``microscope-gui`` program
-as well as a :mod:``microscope.gui`` module with Qt widgets.
+as well as a :mod:`microscope.gui` module with Qt widgets.
 
 The ``microscope-gui`` program provides a minimal GUI for each device
 type.  It requires the device server.  For example:

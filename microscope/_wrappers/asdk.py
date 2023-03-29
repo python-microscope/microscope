@@ -25,11 +25,12 @@ import os
 from ctypes import c_char_p, c_double, c_int, c_size_t, c_uint32
 
 
-if os.name in ("nt", "ce"):
-    SDK = ctypes.WinDLL("ASDK")
+if os.name == "nt":  # is windows
+    _libname = "ASDK"
 else:
-    # Not actually tested yet
-    SDK = ctypes.CDLL("libasdk.so")
+    _libname = "libasdk.so"  # Not actually tested yet
+
+SDK = ctypes.CDLL(_libname)
 
 
 class DM(ctypes.Structure):
