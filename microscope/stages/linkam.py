@@ -974,9 +974,10 @@ class _LinkamBase(microscope.abc.FloatingDeviceMixin, microscope.abc.Device):
     @staticmethod
     def init_sdk():
         """Initialise the SDK and set up event callbacks"""
-        if os.name == "nt":  # is windows
-            __class__._lib = ctypes.CDLL("LinkamSDK.dll")
-        else:  # assuming Linux.  Not tested.
+        try:
+            __class__._lib = ctypes.WinDLL("LinkamSDK.dll", winmode=0)
+        except:
+            # Not tested
             __class__._lib = ctypes.CDLL("libLinkamSDK.so")
         _lib = __class__._lib
         """Initialise the SDK, and create and set the callbacks."""

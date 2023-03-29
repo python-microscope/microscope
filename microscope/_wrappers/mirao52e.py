@@ -24,7 +24,7 @@ import ctypes
 
 
 # Vendor only supports Windows
-SDK = ctypes.WinDLL("mirao52e")
+SDK = ctypes.WinDLL("mirao52e", winmode=0)
 
 
 TRUE = 1  # TRUE MroBoolean value
