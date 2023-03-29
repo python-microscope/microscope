@@ -619,7 +619,7 @@ def main(argv: typing.Sequence[str]) -> int:
 
     root_logger.addFilter(Filter())
 
-    with os.add_dll_directory(os.path.dirname(__file__)):
+    with os.add_dll_directory(os.path.dirname(os.path.abspath(__file__))):
         devices = validate_devices(options.config_fpath)
         serve_devices(devices, options)
 
