@@ -101,7 +101,7 @@ controlled via some vendor provided SDK.  In these cases, adding
 support for such device means:
 
 1. find the C library for the SDK;
-2. create a :mod:`ctypes` wrapper to it under `microscope._wrappers`;
+2. create a ``ctypes`` wrapper to it under ``microscope._wrappers``;
 3. use the wrapper to add support for the new device, possibly with an
    intermediary wrapper.
 
@@ -131,11 +131,11 @@ ctypes wrapper
 --------------
 
 For each library file create one Python file with the same name under
-`microscope._wrappers`.  Each of those files should load the library,
-declare required constants and structures, and finally declare the
-function prototypes with the required argument types and return
-values.  Take a look at the existing wrappers for examples but here's
-some tips to write a new one:
+``microscope._wrappers``.  Each of those files should load the
+library, declare required constants and structures, and finally
+declare the function prototypes with the required argument types and
+return values.  Take a look at the existing wrappers for examples but
+here's some tips to write a new one:
 
 1. Keep the wrapper as thinner as possible.  Namely, do not have
    functions automatically check the return value or convert types.
@@ -238,8 +238,8 @@ Tips to implement support for a new device
 6. Use `type annotations <https://docs.python.org/3/library/typing.html>`__.
 
 7. When all is done and support for a new device is merged, do not
-   forget to make reference to it on the `NEWS.rst` and
-   `doc/architecture/supported-devices.rst` files.
+   forget to make reference to it on the ``NEWS.rst`` and
+   ``doc/architecture/supported-devices.rst`` files.
 
 Vendor issues
 -------------

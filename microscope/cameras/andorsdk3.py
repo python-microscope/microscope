@@ -206,7 +206,8 @@ INVALIDATES_BUFFERS = [
 
 
 class AndorSDK3(
-    microscope.abc.FloatingDeviceMixin, microscope.abc.Camera,
+    microscope.abc.FloatingDeviceMixin,
+    microscope.abc.Camera,
 ):
     SDK_INITIALIZED = False
 

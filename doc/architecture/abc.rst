@@ -93,8 +93,8 @@ few reasons not to.  First, many classes support a wide range of
 models, for example, ``AndorSDK3`` supports all of Andor CMOS cameras,
 and different models have different settings which would lead to
 multiple classes with different sets of methods.  Second, some of
-those settings would clash with the ABC, for example, `"AndorAtmcd"`
-devices might have a `"Binning"` setting which could clash with the
+those settings would clash with the ABC, for example, ``AndorAtmcd``
+devices might have a ``"Binning"`` setting which could clash with the
 ``binning`` property.  Finally, using ``get_setting`` and
 ``set_setting`` clearly declares the use of methods that are not part
 of the interface and reminds the implications that come with it.

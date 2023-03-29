@@ -77,6 +77,7 @@ _logger = logging.getLogger(__name__)
 # code so we can use while handling exceptions.
 _XI_TIMEOUT = 10
 _XI_NOT_SUPPORTED = 12
+_XI_NOT_IMPLEMENTED = 26
 _XI_ACQUISITION_STOPED = 45
 _XI_UNKNOWN_PARAM = 100
 
@@ -312,7 +313,15 @@ class XimeaCamera(microscope.abc.Camera):
             try:
                 get_temp_method()
             except xiapi.Xi_error as err:
-                if err.status != _XI_NOT_SUPPORTED:
+                # Depending on XiAPI version, camera model, and
+                # selected sensor, we might get any of these errors as
+                # meaning that it's not available.  See
+                # https://github.com/python-microscope/vendor-issues/issues/6
+                if err.status not in [
+                    _XI_NOT_SUPPORTED,
+                    _XI_NOT_IMPLEMENTED,
+                    _XI_UNKNOWN_PARAM,
+                ]:
                     raise
             else:
                 self.add_setting(

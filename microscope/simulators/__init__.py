@@ -29,6 +29,7 @@ import logging
 import random
 import time
 import typing
+from typing import Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -138,7 +139,7 @@ class _ImageGenerator:
         y0 = np.random.randint(h)
         xx, yy = np.meshgrid(range(w), range(h))
         return dark + light * np.exp(
-            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * sigma ** 2)
+            -((xx - x0) ** 2 + (yy - y0) ** 2) / (2 * sigma**2)
         )
 
     def sawtooth(self, w, h, dark, light):
@@ -154,10 +155,11 @@ class _ImageGenerator:
 class SimulatedCamera(
     microscope._utils.OnlyTriggersOnceOnSoftwareMixin, microscope.abc.Camera
 ):
-    def __init__(self, **kwargs):
+    def __init__(self, sensor_shape: Tuple[int, int] = (512, 512), **kwargs):
         super().__init__(**kwargs)
         # Binning and ROI
-        self._roi = microscope.ROI(0, 0, 512, 512)
+        self._sensor_shape = sensor_shape
+        self._roi = microscope.ROI(0, 0, *sensor_shape)
         self._binning = microscope.Binning(1, 1)
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
@@ -278,7 +280,7 @@ class SimulatedCamera(
         return self._exposure_time
 
     def _get_sensor_shape(self):
-        return (512, 512)
+        return self._sensor_shape
 
     def soft_trigger(self):
         # deprecated, use self.trigger()
@@ -462,6 +464,9 @@ class SimulatedStage(microscope.abc.Stage):
 
     def _do_shutdown(self) -> None:
         pass
+
+    def may_move_on_enable(self) -> bool:
+        return False
 
     @property
     def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:

@@ -22,8 +22,7 @@ import typing
 
 
 class MicroscopeError(Exception):
-    """Base class for Python Microscope exceptions.
-    """
+    """Base class for Python Microscope exceptions."""
 
     pass
 
@@ -53,10 +52,10 @@ class IncompatibleStateError(DeviceError):
 
     This exception is raised when the device is in a state
     incompatible with an attempted operation, e.g., calling
-    :mod:`TriggerTargetMixin.trigger` on a device that is set for
-    hardware triggers.  The subclass `DisabledDeviceError` provides an
-    exception specific to the case where the issue is the device being
-    disabled.
+    :mod:`trigger <microscope.abc.TriggerTargetMixin.trigger>` on a
+    device that is set for hardware triggers.  The subclass
+    `DisabledDeviceError` provides an exception specific to the case
+    where the issue is the device being disabled.
 
     .. note::
 
@@ -136,7 +135,7 @@ class AxisLimits(typing.NamedTuple):
 
 
 class Binning(typing.NamedTuple):
-    """A tuple containing parameters for horizontal and vertical binning. """
+    """A tuple containing parameters for horizontal and vertical binning."""
 
     h: int
     v: int

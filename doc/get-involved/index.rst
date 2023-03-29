@@ -21,4 +21,5 @@ development.
 
    dev-install
    hacking
+   maintaining
    new-device

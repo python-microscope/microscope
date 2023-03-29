@@ -44,7 +44,7 @@ class CoboltLaser(
 
     """
 
-    def __init__(self, com=None, baud=115200, timeout=0.01, **kwargs):
+    def __init__(self, com=None, baud=115200, timeout=0.1, **kwargs):
         super().__init__(**kwargs)
         self.connection = serial.Serial(
             port=com,

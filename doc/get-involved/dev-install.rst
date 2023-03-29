@@ -16,14 +16,14 @@ the current development version of Microscope:
 .. code-block:: shell
 
     git clone https://github.com/python-microscope/microscope.git
-    pip install microscope/
+    python3 -m pip install microscope/
 
 Consider using editable mode if you plan to make changes to the
 project:
 
 .. code-block:: shell
 
-    pip install --editable microscope/
+    python3 -m pip install --editable microscope/
 
 Multiple Microscope versions
 ----------------------------
@@ -46,4 +46,4 @@ deformable mirror::
   git remote add toshiki https://github.com/toshikikubo/microscope.git
   git fetch toshiki
   git checkout toshiki/mirao52e
-  pip install ./
+  python3 -m pip install ./

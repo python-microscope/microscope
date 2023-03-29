@@ -13,6 +13,47 @@ Version 0.7.0 (upcoming)
     `Camera.get_trigger_type` does not return the same as
     `Camera.trigger_type` property.
 
+* Changes to device ABCs:
+
+  * The `Stage` ABC has a new method `may_move_on_enable` to hint
+    whether calling `enable` will cause the stage to move.
+
+  * All cameras had a ``"readout mode"`` setting for most cameras only
+    had a ``"default"`` value was available.  This setting has been
+    removed from the base class and is now only kept by cameras that
+    actually make use of it, namely, ``PVCamera`` and ``AndorAtmcd``.
+
+  * All cameras had ``"transform"`` setting.  This has been removed.
+    Use the ``get_transform`` and ``set_transform`` methods instead.
+    The result may be different since the ``"transform"`` setting also
+    exposed any internal transformation after readout.
+
+  * All filterwheels had a ``"position"`` setting which was redundant
+    with the related get/set methods.  The setting was been removed.
+
+* New devices supported:
+
+  * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
+
+  * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
+
+  * RaspberryPi camera (:class:`microscope.cameras.picamera.PiCamera`)
+
+  * Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
+
+* Device specific changes:
+
+  * `PVCamera`:
+
+    * In version 0.6.0 the default PVCAM trigger mode was accidentally
+      changed from "strobed" to "trig. first".  This has now been
+      reversed.
+
+    * 8-bit acquisition mode now works.
+
+  * `SimulatedCamera` now takes an optional `sensor_shape` constructor
+    argument instead of always being 512x512 pixels.
+
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This
   version fixes that issue.

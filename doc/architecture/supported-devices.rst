@@ -16,17 +16,22 @@ Cameras
 =======
 
 - Andor (:class:`microscope.cameras.andorsdk3.AndorSDK3` and
-  :class:`microscope.cameras.atmcd.AndotAtmcd`)
+  :class:`microscope.cameras.atmcd.AndorAtmcd`)
+- Hamamatsu (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 - Photometrics (:class:`microscope.cameras.pvcam.PVCamera`)
 - QImaging (:class:`microscope.cameras.pvcam.PVCamera`)
+- Raspberry Pi camera (:class:`microscope.cameras.picamera.PiCamera`)
 - Ximea (:class:`microscope.cameras.ximea.XimeaCamera`)
 
 Controllers
 ===========
 
 - CoolLED (:class:`microscope.controllers.coolled.CoolLED`)
+- Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
+- Lumencor Spectra III light engine
+  (:class:`microscope.controllers.lumencor.SpectraIIILightEngine`)
 - Prior ProScan III (:class:`microscope.controllers.prior.ProScanIII`)
-- Lumencor Spectra III light engine (:class:`microscope.controllers.lumencor.SpectraIIILightEngine`)
+- Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
 - Zaber daisy chain devices
   (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 - Zaber LED controller (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
@@ -58,6 +63,8 @@ Light Sources
 Stages
 ======
 
+- Linkam CMS196 (:class:`microscope.stages.linkam.LinkamCMS`)
+- Ludl (:class:`microscope.controllers.ludl.LudlMC2000`)
 - Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 
 Other

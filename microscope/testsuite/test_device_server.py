@@ -110,7 +110,8 @@ class BaseTestServeDevices(unittest.TestCase):
     @_patch_out_device_server_logs
     def setUp(self):
         options = microscope.device_server.DeviceServerOptions(
-            config_fpath="", logging_level=logging.INFO,
+            config_fpath="",
+            logging_level=logging.INFO,
         )
         self.p = multiprocessing.Process(
             target=microscope.device_server.serve_devices,
@@ -271,7 +272,8 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
             uid="bar",
         ),
         microscope.device_server.DeviceServerOptions(
-            config_fpath="", logging_level=logging.INFO,
+            config_fpath="",
+            logging_level=logging.INFO,
         ),
         {"bar": "127.0.0.1"},
         {"bar": 8001},
@@ -279,7 +281,7 @@ class TestServingFloatingDevicesWithWrongUID(BaseTestDeviceServer):
     ]
 
     def test_fail_with_wrong_uid(self):
-        """DeviceServer fails if it gets a FloatingDevice with another UID """
+        """DeviceServer fails if it gets a FloatingDevice with another UID"""
         self.assertFalse(
             self.process.is_alive(),
             "expected DeviceServer to have errored and be dead",
@@ -303,7 +305,8 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
             8001,
         ),
         microscope.device_server.DeviceServerOptions(
-            config_fpath="", logging_level=logging.INFO,
+            config_fpath="",
+            logging_level=logging.INFO,
         ),
         {},
         {},

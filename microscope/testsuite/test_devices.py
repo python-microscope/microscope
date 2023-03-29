@@ -37,12 +37,15 @@ constructs the device instance required to run the tests.
 
 import unittest
 import unittest.mock
+from queue import Queue
 
 import numpy
 
+import microscope
 import microscope.testsuite.devices as dummies
 import microscope.testsuite.mock_devices as mocks
 from microscope import simulators
+from microscope.simulators.stage_aware_camera import StageAwareCamera
 
 
 class TestSerialMock(unittest.TestCase):
@@ -423,20 +426,55 @@ class TestDummyCamera(unittest.TestCase, CameraTests):
 
 class TestImageGenerator(unittest.TestCase):
     def test_non_square_patterns_shape(self):
-        # TODO: we should also be testing this via the camera but the
-        # TestCamera is only square.  In the mean time, we only test
-        # directly the _ImageGenerator.
         width = 16
         height = 32
-        generator = simulators._ImageGenerator()
-        patterns = list(generator.get_methods())
-        for i, pattern in enumerate(patterns):
-            with self.subTest(pattern):
-                generator.set_method(i)
-                array = generator.get_image(width, height, 0, 255)
+        camera = simulators.SimulatedCamera(sensor_shape=(width, height))
+        buf = Queue()
+        camera.set_client(buf)
+        camera.enable()
+        for idx, name in camera.describe_setting("image pattern")["values"]:
+            with self.subTest(name):
+                camera.set_setting("image pattern", idx)
+                camera.trigger()
+                image = buf.get()
                 # In matplotlib, an M-wide by N-tall image has M columns
                 # and N rows, so a shape of (N, M)
-                self.assertEqual(array.shape, (height, width))
+                self.assertEqual(image.shape, (height, width))
+
+
+class TestStageAwareCamera(unittest.TestCase, CameraTests):
+    def setUp(self):
+        image = numpy.full((3000, 1500, 1), 42, dtype=numpy.uint8)
+        self.sensor_shape = (128, 128)
+        self.stage = simulators.SimulatedStage(
+            {
+                "x": microscope.AxisLimits(0, image.shape[1]),
+                "y": microscope.AxisLimits(0, image.shape[0]),
+                "z": microscope.AxisLimits(-50, 50),
+            }
+        )
+        self.stage.enable()
+        self.filterwheel = simulators.SimulatedFilterWheel(positions=1)
+        self.device = StageAwareCamera(
+            image, self.stage, self.filterwheel, sensor_shape=self.sensor_shape
+        )
+        self.buffer = Queue()
+        self.device.set_client(self.buffer)
+        self.device.enable()
+
+    def test_image_limits(self):
+        limits = self.stage.limits
+        for x, y in [
+            (limits["x"].lower, limits["y"].lower),
+            (limits["x"].lower, limits["y"].upper),
+            (limits["x"].upper, limits["y"].lower),
+            (limits["x"].upper, limits["y"].upper),
+        ]:
+            with self.subTest("limit x=%d and y=%d" % (x, y)):
+                self.stage.move_to({"x": x, "y": y})
+                self.device.trigger()
+                img = self.buffer.get()
+                self.assertEqual(img.shape, self.sensor_shape)
 
 
 class TestDummyController(unittest.TestCase, ControllerTests):
