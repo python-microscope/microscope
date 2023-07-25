@@ -551,17 +551,20 @@ class SimulatedValueLogger(microscope.abc.ValueLogger):
     # functions required as we are DataDevice returning data to the server.
     def _fetch_data(self):
         if (time.time() - self.lastDataTime) > 5.0:
-            for i in range(self._numSensors):
-                self._cache[i] = (
-                    19.5
-                    + i
-                    + 5 * math.sin(self.lastDataTime / 100)
-                    + random.random()
-                )
-                _logger.debug("Sensors %d returns %s" % (i, self._cache[i]))
             self.lastDataTime = time.time()
-            return self._cache
+            return self.getValues()
         return None
+
+    def getValues(self):
+        for i in range(self._numSensors):
+            self._cache[i] = (
+                19.5
+                + i
+                + 5 * math.sin(self.lastDataTime / 100)
+                + random.random()
+            )
+            _logger.debug("Sensors %d returns %s" % (i, self._cache[i]))
+        return self._cache
 
     def abort(self):
         pass

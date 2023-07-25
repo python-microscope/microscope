@@ -1696,13 +1696,17 @@ class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
         numSensors: total number of measurements.
 
     """
-    def __init__(self, numSensors: int, **kwargs) -> None:
+
+    def __init__(self, numSensors: int, pullData: bool, **kwargs) -> None:
         super().__init__(**kwargs)
         if numSensors < 1:
             raise ValueError(
                 "NumSensors must be a positive number (was %d)" % numSensors
             )
         self._numSensors = numSensors
+        #if pull data is True data will be pulled from the server if False
+        # data will be pushed from microsocpe (default)
+        self.pullData = pullData
 
     @abc.abstractmethod
     def initialize(self):
@@ -1712,3 +1716,8 @@ class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
     def get_num_sensors(self):
         """Returns the number of sensors lines present in this instance."""
         return self._numSensors
+
+    @abc.abstractmethod
+    def getValues(self):
+        """Returns values from all sensors"""
+        raise NotImplementedError()
