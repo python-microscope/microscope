@@ -34,11 +34,13 @@ import ctypes
 import enum
 import os
 
+import microscope._utils
+
 
 if os.name == "nt":
-    _LIB = ctypes.WinDLL("dcamapi")
+    _LIB = microscope._utils.library_loader("dcamapi", ctypes.WinDLL)
 else:
-    _LIB = ctypes.CDLL("libdcamapi.so")
+    _LIB = microscope._utils.library_loader("libdcamapi.so", ctypes.CDLL)
 
 
 if os.name == "nt":

@@ -23,6 +23,8 @@ import ctypes
 import os
 from ctypes import POINTER, c_double, c_int, c_uint, c_void_p
 
+import microscope._utils
+
 
 #### typedefs
 AT_H = ctypes.c_int
@@ -34,12 +36,20 @@ AT_WC = ctypes.c_wchar
 _stdcall_libraries = {}
 
 if os.name == "nt":  # is windows
-    _stdcall_libraries["ATCORE"] = ctypes.WinDLL("atcore")
-    _stdcall_libraries["ATUTIL"] = ctypes.WinDLL("atutility")
+    _stdcall_libraries["ATCORE"] = microscope._utils.library_loader(
+        "atcore", ctypes.WinDLL
+    )
+    _stdcall_libraries["ATUTIL"] = microscope._utils.library_loader(
+        "atutility", ctypes.WinDLL
+    )
     CALLBACKTYPE = ctypes.WINFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 else:
-    _stdcall_libraries["ATCORE"] = ctypes.CDLL("atcore.so")
-    _stdcall_libraries["ATUTIL"] = ctypes.CDLL("atutility.so")
+    _stdcall_libraries["ATCORE"] = microscope._utils.library_loader(
+        "atcore.so"
+    )
+    _stdcall_libraries["ATUTIL"] = microscope._utils.library_loader(
+        "atutility.so"
+    )
     CALLBACKTYPE = ctypes.CFUNCTYPE(c_int, AT_H, POINTER(AT_WC), c_void_p)
 
 #### Defines

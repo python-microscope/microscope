@@ -67,6 +67,11 @@ Version 0.7.0 (upcoming)
 
 * Microscope is now dependent on Python 3.7 or later.
 
+* Python 3.8 changed the default DLL search path in Windows which
+  caused all cameras, deformable mirrors, and Linkam stage to fail to
+  load.  This version restores the use of Windows standard search
+  path.
+
 
 Version 0.6.0 (2021/01/14)
 --------------------------

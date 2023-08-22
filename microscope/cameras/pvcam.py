@@ -144,6 +144,7 @@ import numpy as np
 import Pyro4
 
 import microscope
+import microscope._utils
 import microscope.abc
 
 
@@ -676,11 +677,12 @@ class md_frame(ctypes.Structure):
 
 if os.name == "nt":  # is windows
     if platform.architecture()[0] == "32bit":
-        _lib = ctypes.WinDLL("pvcam32")
+        _lib = microscope._utils.library_loader("pvcam32", ctypes.WinDLL)
     else:
-        _lib = ctypes.WinDLL("pvcam64")
+        _lib = microscope._utils.library_loader("pvcam64", ctypes.WinDLL)
 else:
-    _lib = ctypes.CDLL("pvcam.so")
+    _lib = microscope._utils.library_loader("pvcam.so")
+
 
 ### Functions ###
 STRING = ctypes.c_char_p
