@@ -203,10 +203,10 @@ class _LudlController:
         self._command_and_validate(command, b"N")
         #
         # No Following is not true as Cockpit expects moves to happen
-        # before the return. 
+        # before the return.
         # actully beter to just issue the move command and rely on
         # other process to check position
-        #self.get_command(command)
+        # self.get_command(command)
 
     def move_by_relative_position(self, axis: bytes, delta: float) -> None:
         """Send a relative movement command to stated axis"""

@@ -1704,7 +1704,7 @@ class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
                 "NumSensors must be a positive number (was %d)" % numSensors
             )
         self._numSensors = numSensors
-        #if pull data is True data will be pulled from the server if False
+        # If pull data is True data will be pulled from the server if False
         # data will be pushed from microsocpe (default)
         self.pullData = pullData
 

@@ -265,8 +265,13 @@ class PiCamera(microscope.abc.Camera):
         if self._acquiring:
             with picamera.array.PiYUVArray(self.camera) as output:
                 self.camera.capture(output, format="yuv", use_video_port=False)
-                self._queue.put(output.array[self.roi[1]:self.roi[1]+self.roi[3],
-                                             self.roi[0]:self.roi[0]+self.roi[2], 0])
+                self._queue.put(
+                    output.array[
+                        self.roi[1] : self.roi[1] + self.roi[3],
+                        self.roi[0] : self.roi[0] + self.roi[2],
+                        0,
+                    ]
+                )
 
 
 # ongoing implemetation notes

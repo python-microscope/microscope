@@ -27,9 +27,9 @@ hardware behaviour.  They implement the different ABC.
 """
 
 import logging
+import math
 import random
 import time
-import math
 import typing
 from typing import Tuple
 

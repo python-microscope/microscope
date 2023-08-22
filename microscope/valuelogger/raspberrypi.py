@@ -23,18 +23,20 @@
 """
 
 import contextlib
+import logging
+import queue
 import re
 import threading
 import time
 import typing
-import logging
-import queue
+
 import Adafruit_MCP9808.MCP9808 as MCP9808
+
+import microscope.abc
+
 
 # library for TSYS01 sensor
 # import TSYS01.TSYS01 as TSYS01
-
-import microscope.abc
 
 
 # Support for async digital IO control on the Raspberryy Pi.

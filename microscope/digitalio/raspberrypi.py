@@ -23,15 +23,16 @@
 """
 
 import contextlib
+import logging
+import queue
 import re
 import threading
 import time
 import typing
-import logging
-import queue
-import microscope.abc
 
 import RPi.GPIO as GPIO
+
+import microscope.abc
 
 
 # Support for async digital IO control on the Raspberryy Pi.
