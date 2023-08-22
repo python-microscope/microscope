@@ -267,8 +267,8 @@ class PiCamera(microscope.abc.Camera):
                 self.camera.capture(output, format="yuv", use_video_port=False)
                 self._queue.put(
                     output.array[
-                        self.roi[1] : self.roi[1] + self.roi[3],
-                        self.roi[0] : self.roi[0] + self.roi[2],
+                        self.roi.top : self.roi.top + self.roi.height,
+                        self.roi.left : self.roi.left + self.roi.width,
                         0,
                     ]
                 )
