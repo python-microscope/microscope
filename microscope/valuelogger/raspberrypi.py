@@ -30,13 +30,23 @@ import threading
 import time
 import typing
 
-import Adafruit_MCP9808.MCP9808 as MCP9808
+
+try:
+    from Adafruit_MCP9808 import MCP9808
+
+    has_MCP9808 = True
+except ModuleNotFoundError:
+    has_MCP9808 = False
+
+try:
+    from TSYS01 import TSYS01
+
+    has_TSYS01 = True
+except ModuleNotFoundError:
+    has_TSYS01 = False
+
 
 import microscope.abc
-
-
-# library for TSYS01 sensor
-# import TSYS01.TSYS01 as TSYS01
 
 
 # Support for async digital IO control on the Raspberryy Pi.
@@ -64,11 +74,19 @@ class RPiValueLogger(microscope.abc.ValueLogger):
                 "adding sensor: " + sensor_type + " Adress: %d " % i2c_address
             )
             if sensor_type == "MCP9808":
+                if not has_MCP9808:
+                    raise microscope.LibraryLoadError(
+                        "Adafruit_MCP9808 Python package not found"
+                    )
                 self._sensors.append(MCP9808.MCP9808(address=i2c_address))
                 # starts the last one added
                 self._sensors[-1].begin()
                 print(self._sensors[-1].readTempC())
             elif sensor_type == "TSYS01":
+                if not has_TSYS01:
+                    raise microscope.LibraryLoadError(
+                        "TSYS01 Python package not found"
+                    )
                 self._sensors.append(TSYS01.TSYS01(address=i2c_address))
                 print(self._sensors[-1].readTempC())
             self.initialize()
