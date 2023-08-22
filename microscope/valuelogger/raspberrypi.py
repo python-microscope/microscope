@@ -181,3 +181,19 @@ class RPiValueLogger(microscope.abc.ValueLogger):
                     "Temperature-%s =  %s" % (i, self.temperature[i])
                 )
             self.inputQ.put(self.temperature)
+
+    def getValues(self):
+        """Reads all sensor values for running the value logger in remote 
+        pull mode"""
+
+        if len(self._sensors) == 0:
+            return ()
+
+        self.temperature = [None] * len(self._sensors)
+
+        for i in range(len(self._sensors)):
+            try:
+                self.temprature[i] = self._sensors[i].readTempC()
+            except:
+                raise Exception('Unable to read temparture value')
+        return self.temprature
