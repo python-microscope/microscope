@@ -67,7 +67,7 @@ def library_loader(
     # restores the use of the standard search path.  See issue #235.
     if (
         os.name == "nt"
-        and sys.version_info >= (3.8)
+        and sys.version_info >= (3, 8)
         and "winmode" not in kwargs
     ):
         winmode_kwargs = {"winmode": 0}
