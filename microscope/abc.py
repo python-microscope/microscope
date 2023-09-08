@@ -1658,7 +1658,7 @@ class DigitalIO(DataDevice, metaclass=abc.ABCMeta):
             raise ("Output array must be numLines in length")
         for i in range(self._numLines):
             # set line i to the IOMap entry, true for output false for input.
-            if not self._IOMap[i]:
+            if self._IOMap[i]:
                 self.write_line(i, ouput_array[i])
 
     @abc.abstractmethod
