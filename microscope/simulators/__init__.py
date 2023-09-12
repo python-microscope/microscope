@@ -44,6 +44,12 @@ import microscope.abc
 _logger = logging.getLogger(__name__)
 
 
+## PIL 9.2 deprecated ImageFont.getsize and PIL 10.0 removed it in
+## favour of ImageFont.getbbox.  When we can require PIL>=9.2, we can
+## remove this (issue #282)
+_IMAGEFONT_HAS_GETBBOX = hasattr(ImageFont.ImageFont, "getbbox")
+
+
 def _theta_generator():
     """A generator that yields values between 0 and 2*pi"""
     TWOPI = 2 * np.pi
@@ -105,7 +111,11 @@ class _ImageGenerator:
         data = m(width, height, dark, light).astype(d)
         if self.numbering and index is not None:
             text = "%d" % index
-            size = tuple(d + 2 for d in self._font.getsize(text))
+            if _IMAGEFONT_HAS_GETBBOX:
+                size = self._font.getbbox(text)[2:]
+            else:
+                size = self._font.getsize(text)
+            size = tuple(d + 2 for d in size)  # padding
             img = Image.new("L", size)
             ctx = ImageDraw.Draw(img)
             ctx.text((1, 1), text, fill=light)
