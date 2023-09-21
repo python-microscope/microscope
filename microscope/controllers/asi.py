@@ -199,7 +199,6 @@ class _ASIController:
     def command(self, command: bytes) -> None:
         """Send command to device."""
         with self._lock:
-            print("send %s", command)
             self._serial.write(command + b"\r")
 
     def readline(self) -> bytes:
@@ -207,7 +206,6 @@ class _ASIController:
         with self._lock:
             line = self._serial.read_until(b"\r")
             #            _logger.warning
-            print("read line %s" % line)
             return line
 
     def read_multiline(self):
