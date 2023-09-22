@@ -26,6 +26,7 @@ Cameras
 Controllers
 ===========
 
+- ASI MS2000 (:class:`microscope.controllers.asi.ASIMS2000`)
 - CoolLED (:class:`microscope.controllers.coolled.CoolLED`)
 - Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
 - Lumencor Spectra III light engine
