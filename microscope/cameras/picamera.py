@@ -131,7 +131,11 @@ class PiCamera(microscope.abc.Camera):
         """Function called by GPIO interupt, needs to trigger image capture"""
         with picamera.array.PiYUVArray(self.camera) as output:
             self.camera.capture(output, format="yuv", use_video_port=False)
-            self._queue.put(output.array[:, :, 0])
+            self._queue.put(
+                output.array[
+                    self.roi.top : self.roi.top + self.roi.height,
+                    self.roi.left : self.roi.left + self.roi.width,
+                    0,])
 
     def _fetch_data(self):
         if self._queue.qsize() is not 0:
@@ -161,7 +165,7 @@ class PiCamera(microscope.abc.Camera):
         self.set_awb_mode(0)  # set auto white balance to off
         self._get_sensor_shape()
         #default to full image at init. 
-        self._set_roi(ROI(0, 0, self.self.camera.resolution.width,
+        self._set_roi(ROI(0, 0, self.camera.resolution.width,
                           self.camera.resolution.height))
 
 
@@ -239,6 +243,13 @@ class PiCamera(microscope.abc.Camera):
         GPIO.output(GPIO_CAMLED, state)
 
     def set_exposure_time(self, value):
+        # frame rate has to be adjusted as well as max exposure time is
+        # 1/framerate.
+        #picam v1.3 I have has limit 1/6 to 90 fps
+        #exposure time can be shorter than frame rate bound but not longer
+        value = min(value, 6.0)
+        fr = max(value, 1.0/90.0)
+        self.set_framerate(1.0/fr)
         # exposure times are set in us.
         self.camera.shutter_speed = int(value * 1.0e6)
 
@@ -249,8 +260,21 @@ class PiCamera(microscope.abc.Camera):
     def get_cycle_time(self):
         # fudge to make it work initially
         # exposure times are in us, so multiple by 1E-6 to get seconds.
-        return self.camera.exposure_speed * 1.0e-6 + 0.1
+        # pi 4 camera module v 1.3 minimum reliable time to capture and
+        # download a frame appears to be .7 s.
+        return self.camera.exposure_speed * 1.0e-6 + 0.7
 
+
+    def get_framerate(self):
+         return(float(self.camera.framerate))
+
+    
+    def set_framerate(self, rate):
+ #       rate= max (rate, self.camera.framerate_range.low)
+ #       rate= min (rate, self.camera.framerate_range.high)
+        self.camera.framerate = rate
+        return(float(self.camera.framerate))
+    
     def _get_sensor_shape(self):
         if self.camversion == "ov5647":  # picam version 1
             self.camera.resolution = (2592, 1944)
@@ -292,7 +316,9 @@ class PiCamera(microscope.abc.Camera):
 # should be able to use rotation and hflip to set specific output image
 # rotations
 
-# roi's can be set with the zoom function, default is (0,0,1,1) meaning all the data.
+# roi's can be set with the zoom function, default is (0,0,1,1)
+# meaning all the data. However this is no help as the grab is still
+# just as slow
 
 # Need to setup a buffer for harware triggered data aquisition so we can
 # call the acquisition and then download the data at our leasure

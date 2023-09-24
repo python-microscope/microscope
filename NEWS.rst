@@ -32,17 +32,23 @@ Version 0.7.0 (upcoming)
     with the related get/set methods.  The setting was been removed.
 
   * New :class:`ValueLogger <microscope.abc.ValueLogger>` ABC for
-    devices with a series of sensors.
+    devices with a series of sensors. Simulation and Raspberry Pi
+    implementations for MCP9808 and TSYS01 temparture sensors.
 
-  * New :class:`DigitalIO <microscope.abc.DigitalIO>` ABC.
+  * New :class:`DigitalIO <microscope.abc.DigitalIO>` ABC. Added
+    simulation device and Raspberry Pi implmentation.
 
 * New devices supported:
 
+  * ASI MS 2000 controller (:class:`microscope.controllers.asi.ASIMS2000`)
+  
+  * RaspberryPi as a valuelogger (:class:`microscope.valuelogger.RPiValueLogger`)
+    
   * RaspberryPi as Digital IO (:class:`microscope.digitalio.raspberrypi.RPiDIO`)
 
   * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 
-  * Ludl MC 2000 (:class:`microscope.controllers.ludl.LudlMC2000`)
+  * Ludl MC 2000 controller (:class:`microscope.controllers.ludl.LudlMC2000`)
 
   * RaspberryPi camera (:class:`microscope.cameras.picamera.PiCamera`)
 
