@@ -135,7 +135,9 @@ class PiCamera(microscope.abc.Camera):
                 output.array[
                     self.roi.top : self.roi.top + self.roi.height,
                     self.roi.left : self.roi.left + self.roi.width,
-                    0,])
+                    0,
+                ]
+            )
 
     def _fetch_data(self):
         if self._queue.qsize() is not 0:
@@ -164,10 +166,15 @@ class PiCamera(microscope.abc.Camera):
         self.setLED(False)
         self.set_awb_mode(0)  # set auto white balance to off
         self._get_sensor_shape()
-        #default to full image at init. 
-        self._set_roi(ROI(0, 0, self.camera.resolution.width,
-                          self.camera.resolution.height))
-
+        # default to full image at init.
+        self._set_roi(
+            ROI(
+                0,
+                0,
+                self.camera.resolution.width,
+                self.camera.resolution.height,
+            )
+        )
 
     def make_safe(self):
         if self._acquiring:
@@ -245,11 +252,11 @@ class PiCamera(microscope.abc.Camera):
     def set_exposure_time(self, value):
         # frame rate has to be adjusted as well as max exposure time is
         # 1/framerate.
-        #picam v1.3 I have has limit 1/6 to 90 fps
-        #exposure time can be shorter than frame rate bound but not longer
+        # picam v1.3 I have has limit 1/6 to 90 fps
+        # exposure time can be shorter than frame rate bound but not longer
         value = min(value, 6.0)
-        fr = max(value, 1.0/90.0)
-        self.set_framerate(1.0/fr)
+        fr = max(value, 1.0 / 90.0)
+        self.set_framerate(1.0 / fr)
         # exposure times are set in us.
         self.camera.shutter_speed = int(value * 1.0e6)
 
@@ -264,17 +271,15 @@ class PiCamera(microscope.abc.Camera):
         # download a frame appears to be .7 s.
         return self.camera.exposure_speed * 1.0e-6 + 0.7
 
-
     def get_framerate(self):
-         return(float(self.camera.framerate))
+        return float(self.camera.framerate)
 
-    
     def set_framerate(self, rate):
- #       rate= max (rate, self.camera.framerate_range.low)
- #       rate= min (rate, self.camera.framerate_range.high)
+        #       rate= max (rate, self.camera.framerate_range.low)
+        #       rate= min (rate, self.camera.framerate_range.high)
         self.camera.framerate = rate
-        return(float(self.camera.framerate))
-    
+        return float(self.camera.framerate)
+
     def _get_sensor_shape(self):
         if self.camversion == "ov5647":  # picam version 1
             self.camera.resolution = (2592, 1944)
@@ -282,15 +287,15 @@ class PiCamera(microscope.abc.Camera):
         res = self.camera.resolution
         return (res.width, res.height)
 
-    def zoom(self,roi):
-        #picamera zoom parameter returns an roi but defined as floats and not
-        #in pixels
-        x=roi[0]/self.camera.resolution.width
-        width=(roi[2])/self.camera.resolution.width
-        y=roi[1]/self.camera.resolution.height
-        height=(roi[3])/self.camera.resolution.height
-        print("using roi to set zoom",roi,(x,y,width,height))
-        self.camera.zoom=(x,y,width,height)
+    def zoom(self, roi):
+        # picamera zoom parameter returns an roi but defined as floats and not
+        # in pixels
+        x = roi[0] / self.camera.resolution.width
+        width = (roi[2]) / self.camera.resolution.width
+        y = roi[1] / self.camera.resolution.height
+        height = (roi[3]) / self.camera.resolution.height
+        print("using roi to set zoom", roi, (x, y, width, height))
+        self.camera.zoom = (x, y, width, height)
 
     def _do_trigger(self):
         self.soft_trigger()
