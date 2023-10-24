@@ -27,11 +27,13 @@ import re
 import threading
 import time
 import typing
+import logging
 
 import serial
 
 import microscope.abc
 
+_logger = logging.getLogger(__name__)
 
 # Started to develop by copying from the ludl driver.
 # no support for filter, shutters, or slide loader as I dont have hardware
@@ -137,7 +139,29 @@ AXIS_MAPPER = {
 }
 
 
-class _ASIController:
+def parse_info(info: bytes) -> typing.Mapping[str, str]:
+    info = info.decode().strip()
+
+    items = []
+    for line in info.split('\r'):
+        items.append(line[:33].strip())
+        items.append(line[33:].strip())
+
+    pattern = "(?P<name>.*):\s*((?P<value>\S+)(\s+)?(?P<command>[[].*[]])?(\s+)?(?P<units>.*)?)$"
+
+    settings = {}
+    for item in items:
+        match = re.search(pattern, item)
+        settings[match.group('name').strip()] = {
+            'value': match.group('value'),
+            'command': None if not match.group('command') else match.group('command')[1:-1],
+            'units': match.group('units') if len(match.group('units')) else None,
+        }
+
+    return settings
+
+
+class _ASIMotionController:
     """Connection to a ASI Controller and wrapper to its commands.
 
     Tested with MS2000 controller and xy stage.
@@ -156,7 +180,7 @@ class _ASIController:
             baudrate=baudrate,
             timeout=timeout,
             bytesize=serial.EIGHTBITS,
-            stopbits=serial.STOPBITS_TWO,
+            stopbits=serial.STOPBITS_ONE,
             parity=serial.PARITY_NONE,
             xonxoff=False,
             rtscts=False,
@@ -168,9 +192,17 @@ class _ASIController:
             # We do not use the general get_description() here because
             # if this is not a ProScan device it would never reach the
             # '\rEND\r' that signals the end of the description.
+            self.axis_info = {}
             try:
-                self.command(b"INFO X")
-                answer = self.read_multiline()
+                for i, axis in AXIS_MAPPER.items():
+                    self.command(f"INFO {axis}".encode())
+                    answer = self._serial.read_all()
+                    if len(answer) == 0:
+                        _logger.info(f"Axis {axis} not present")
+                        continue
+                    _logger.info(f"Axis {axis} present")
+                    self.axis_info[axis] = parse_info(answer)
+
             except:
                 print(
                     "Unable to read configuration. Is ASI controller connected?"
@@ -179,16 +211,6 @@ class _ASIController:
             # parse config responce which tells us what devices are present
             # on this controller.
 
-            self._devlist = {}
-
-            for line in answer[4:-1]:
-                # loop through lines 4 to second last one which are devices
-                # present on this controller
-                devinfo = re.split(r"\s{2,}", line.decode("ascii"))
-                # dev address,label,id,description, type
-                self._devlist[devinfo[0]] = devinfo[1:]
-
-    #            print(answer)
 
     def is_busy(self):
         pass
@@ -335,7 +357,7 @@ class _ASIController:
 
 
 class _ASIStageAxis(microscope.abc.StageAxis):
-    def __init__(self, dev_conn: _ASIController, axis: str) -> None:
+    def __init__(self, dev_conn: _ASIMotionController, axis: str) -> None:
         super().__init__()
         self._dev_conn = dev_conn
         self._axis = axis
@@ -405,7 +427,7 @@ class _ASIStageAxis(microscope.abc.StageAxis):
 
 
 class _ASIStage(microscope.abc.Stage):
-    def __init__(self, conn: _ASIController, **kwargs) -> None:
+    def __init__(self, conn: _ASIMotionController, **kwargs) -> None:
         super().__init__(**kwargs)
         self._dev_conn = conn
         self._axes = {
@@ -518,7 +540,7 @@ class ASIMS2000(microscope.abc.Controller):
         self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self._conn = _ASIController(port, baudrate, timeout)
+        self._conn = _ASIMotionController(port, baudrate, timeout)
         self._devices: typing.Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _ASIStage(self._conn)
 
