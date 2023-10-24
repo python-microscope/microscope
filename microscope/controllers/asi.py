@@ -71,50 +71,72 @@ _logger = logging.getLogger(__name__)
 # Error codes are dumped to the screen with the last error code shown first using the ‘DU Y‘
 # command. The table below lists the meanings of the error codes as of this publication.
 # Error Number* Error Description
-# 1-9 OVERTIME – RECOVERABLE. Error caused by competing tasks using the
-# microprocessor.
-# 10-12 OVERSHOT – Move overshot the target; happens frequently, not really an error.
-# 15 NEGATIVE LOG – Negative number for Log conversion.
-# 20-22 AXIS DEAD – FATAL. No movement for 100 cycles; axis halted.
-# 24 ENCODER_ERROR
-# 30-32 EMERGENCY STOP – FATAL. Getting further from the target; axis halted.
-# 34 UPPER LIMIT – Upper Limit reached. (axis unspecific)
-# 35 LOWER LIMIT – Lower Limit reached. (axis unspecific)
-# 40-42 PULSE PARAMETER VALUES OUT OF RANGE – code error.
-# 44 FINISH SPEED CLAMP – Reached the maximum allowed move-finishing speed.
-# 45 ADC_LOCK_OOR – Out-of-range error on ADC input.
-# 46 ADC_FOLLOW_ERR – Error attempting to follow an analog ADC input.
-# 50-52 ENCODER ERROR OVERFLOW – FATAL. Error term so large that move intent is
-# indiscernible; axis halted.
-# 55 EPROM NO LOAD – Saved-settings on EPROM not loaded, compile date mismatch.
-# 60-62 ADJUST-MOVE ERROR – Failed to clear ‘M’ soon enough. FATAL
-# 85 SCAN LOST PULSES – During a scan, missing pulses were detected.
-# 86 SCAN INCOMPLETE – During a scan, terminated before completing the row.
-# 90-92 ERROR_LARGE – RECOVERABLE. Error large. Motor set to FULL SPEED; hope to
-# catch up.
-# 100-102 INDEX NOT FOUND
-# 140 PIEZO WRITE DAC – Error writing to the piezo DAC.
-# 141 PIEZO READ DAC – Error reading from piezo DAC
-# 142 PIEZO READ POS
-# 143 PIEZO WRITE POS
-# 144 PIEZO MOVE ERR
-# 145 PIEZO READ POS1
-# 146 PIEZO INIT
-# 147 PIEZO POS ERROR
-# 148 Autofocus 200um safety limit Encountered
-# 149 I2C_BAD_BUSY ERROR
+ASI_ERRORS = {
+    0: "No Error",
+    1: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    2: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    3: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    4: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    5: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    6: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    7: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    8: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    9: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
+    10: "OVERSHOT - Move overshot the target; happens frequently, not really an error.",
+    11: "OVERSHOT - Move overshot the target; happens frequently, not really an error.",
+    12: "OVERSHOT - Move overshot the target; happens frequently, not really an error.",
+    15: "NEGATIVE LOG - Negative number for Log conversion.",
+    20: "AXIS DEAD - FATAL. No movement for 100 cycles; axis halted.",
+    21: "AXIS DEAD - FATAL. No movement for 100 cycles; axis halted.",
+    22: "AXIS DEAD - FATAL. No movement for 100 cycles; axis halted.",
+    24: "ENCODER_ERROR",
+    30: "EMERGENCY STOP - FATAL. Getting further from the target; axis halted.",
+    31: "EMERGENCY STOP - FATAL. Getting further from the target; axis halted.",
+    32: "EMERGENCY STOP - FATAL. Getting further from the target; axis halted.",
+    34: "UPPER LIMIT - Upper Limit reached. (axis unspecific)",
+    35: "LOWER LIMIT - Lower Limit reached. (axis unspecific)",
+    40: "PULSE PARAMETER VALUES OUT OF RANGE - code error.",
+    41: "PULSE PARAMETER VALUES OUT OF RANGE - code error.",
+    42: "PULSE PARAMETER VALUES OUT OF RANGE - code error.",
+    44: "FINISH SPEED CLAMP - Reached the maximum allowed move-finishing speed.",
+    45: "ADC_LOCK_OOR - Out-of-range error on ADC input.",
+    46: "ADC_FOLLOW_ERR - Error attempting to follow an analog ADC input.",
+    50: "ENCODER ERROR OVERFLOW - FATAL. Error term so large that move intent is indiscernible; axis halted.",
+    51: "ENCODER ERROR OVERFLOW - FATAL. Error term so large that move intent is indiscernible; axis halted.",
+    52: "ENCODER ERROR OVERFLOW - FATAL. Error term so large that move intent is indiscernible; axis halted.",
+    55: "EPROM NO LOAD - Saved-settings on EPROM not loaded, compile date mismatch.",
+    60: "ADJUST-MOVE ERROR - Failed to clear ‘M’ soon enough. FATAL",
+    61: "ADJUST-MOVE ERROR - Failed to clear ‘M’ soon enough. FATAL",
+    62: "ADJUST-MOVE ERROR - Failed to clear ‘M’ soon enough. FATAL",
+    85: "SCAN LOST PULSES - During a scan, missing pulses were detected.",
+    86: "SCAN INCOMPLETE - During a scan, terminated before completing the row.",
+    90: "ERROR_LARGE - RECOVERABLE. Error large. Motor set to FULL SPEED; hope to catch up.",
+    91: "ERROR_LARGE - RECOVERABLE. Error large. Motor set to FULL SPEED; hope to catch up.",
+    92: "ERROR_LARGE - RECOVERABLE. Error large. Motor set to FULL SPEED; hope to catch up.",
+    100: "INDEX NOT FOUND",
+    101: "INDEX NOT FOUND",
+    102: "INDEX NOT FOUND",
+    140: "PIEZO WRITE DAC - Error writing to the piezo DAC.",
+    141: "PIEZO READ DAC - Error reading from piezo DAC",
+    142: "PIEZO READ POS",
+    143: "PIEZO WRITE POS",
+    144: "PIEZO MOVE ERR",
+    145: "PIEZO READ POS1",
+    146: "PIEZO INIT",
+    147: "PIEZO POS ERROR",
+    148: "Autofocus 200um safety limit Encountered",
+    149: "I2C_BAD_BUSY ERROR",
+    173: "I2C_AXIS_ENABLE_ERR1",
+    174: "I2C_AXIS_ENABLE_ERR2",
+    175: "I2C_AXIS_MUTE1_ERR",
+    176: "I2C_AXIS_MUTE2_ERR",
+    203: "I2C_NACK_ERROR",
+    205: "ERR_TTL_MISMATCH I2C bus error.",
+    255: "10 MINUTE CLOCK - Provides time reference for error dump list.",
+    300: "Autofocus Scan failed due to insufficient contrast",
+    302: "Clutch Disengaged, Engage clutch to do Autofocus",
+}
 
-# 173 I2C_AXIS_ENABLE_ERR1
-# 174 I2C_AXIS_ENABLE_ERR2
-# 175 I2C_AXIS_MUTE1_ERR
-# 176 I2C_AXIS_MUTE2_ERR
-
-# 203 I2C_NACK_ERROR
-# 205 ERR_TTL_MISMATCH I2C bus error.
-# 255 10 MINUTE CLOCK – Provides time reference for error dump list.
-
-# 300 Autofocus Scan failed due to insufficient contrast
-# 302 Clutch Disengaged, Engage clutch to do Autofocus
 
 # Status bits for an axis
 
@@ -245,7 +267,7 @@ class _ASIMotionController:
                     # this is an error string
                     error = line[2:].strip()
                     raise (
-                        f"ASI controller error: {error},{LUDL_ERRORS[error]}"
+                        f"ASI controller error: {error},{ASI_ERRORS[error]}"
                     )
         return output
 
@@ -328,7 +350,7 @@ class _ASIMotionController:
         axis_name = self._axis_mapper[axis]
         position = self.get_command(bytes(f"WHERE {axis_name}", "ascii"))
         if position[3:4] == b"N":
-            print(f"Error: {position} : {LUDL_ERRORS[int(position[4:6])]}")
+            print(f"Error: {position} : {ASI_ERRORS[int(position[4:6])]}")
         else:
             return float(position.strip()[2:])
 
@@ -454,7 +476,7 @@ class _ASIStage(microscope.abc.Stage):
             # this is an error string
             error = answer[2:]
             raise Exception(
-                f"ASI controller error: {error},{LUDL_ERRORS[error]}"
+                f"ASI controller error: {error},{ASI_ERRORS[error]}"
             )
         else:
             raise Exception(f"ASI controller error: {answer}")
