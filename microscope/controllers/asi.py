@@ -28,6 +28,7 @@ import threading
 import time
 import typing
 import logging
+from typing import Callable, Any, Dict, Union
 
 import serial
 
@@ -132,22 +133,16 @@ _logger = logging.getLogger(__name__)
 # Bit 7: Lower limit switch: 0 = open, 1 = closed
 
 
-AXIS_MAPPER = {
-    1: "X",
-    2: "Y",
-    3: "Z",
-}
-
-
-def parse_info(info: bytes) -> typing.Mapping[str, str]:
-    info = info.decode().strip()
+def parse_info(info: list) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
 
     items = []
-    for line in info.split('\r'):
-        items.append(line[:33].strip())
-        items.append(line[33:].strip())
+    for line in info:
+        if line in [b"", b"\n", b"\r", b"\r\n"]:
+            continue
+        items.append(line[:33].strip().decode())
+        items.append(line[33:].strip().decode())
 
-    pattern = "(?P<name>.*):\s*((?P<value>\S+)(\s+)?(?P<command>[[].*[]])?(\s+)?(?P<units>.*)?)$"
+    pattern = r"(?P<name>.*):\s*((?P<value>\S+)(\s+)?(?P<command>[\[].*[\]])?(\s+)?(?P<units>.*)?)$"
 
     settings = {}
     for item in items:
@@ -188,35 +183,35 @@ class _ASIMotionController:
         )
         self._lock = threading.RLock()
 
-        with self._lock:
-            # We do not use the general get_description() here because
-            # if this is not a ProScan device it would never reach the
-            # '\rEND\r' that signals the end of the description.
-            self.axis_info = {}
-            try:
-                for i, axis in AXIS_MAPPER.items():
-                    self.command(f"INFO {axis}".encode())
-                    answer = self._serial.read_all()
-                    if len(answer) == 0:
-                        _logger.info(f"Axis {axis} not present")
-                        continue
-                    _logger.info(f"Axis {axis} present")
-                    self.axis_info[axis] = parse_info(answer)
-
-            except:
-                print(
-                    "Unable to read configuration. Is ASI controller connected?"
-                )
-                return
-            # parse config responce which tells us what devices are present
-            # on this controller.
-
+        # We do not use the general get_description() here because
+        # if this is not a ProScan device it would never reach the
+        # '\rEND\r' that signals the end of the description.
+        self._axis_info = {}
+        self._axis_mapper = {}
+        i = 1
+        try:
+            for axis in ["X", "Y", "Z"]:
+                self.command(bytes(f"INFO {axis}", "ascii"))
+                answer = self.read_multiline()
+                if answer == [b""]:  # no axis present
+                    _logger.info(f"Axis {axis} not present")
+                    continue
+                _logger.info(f"Axis {axis} present")
+                self._axis_info[axis] = parse_info(answer)
+                self._axis_mapper[i] = axis
+        except:
+            print(
+                "Unable to read configuration. Is ASI controller connected?"
+            )
+            return
+        # parse config responce which tells us what devices are present
+        # on this controller.
 
     def is_busy(self):
         pass
 
     def get_number_axes(self):
-        return 2
+        return len(self._axis_info)
 
     def command(self, command: bytes) -> None:
         """Send command to device."""
@@ -289,45 +284,45 @@ class _ASIMotionController:
         # other process to check position
         # self.get_command(command)
 
-    def move_by_relative_position(self, axis: bytes, delta: float) -> None:
+    def move_by_relative_position(self, axis: int, delta: float) -> None:
         """Send a relative movement command to stated axis"""
-        axisname = AXIS_MAPPER[axis]
-        self.move_command(bytes(f"MOVREL {axisname}={str(delta)}", "ascii"))
+        axis_name = self._axis_mapper[axis]
+        self.move_command(bytes(f"MOVREL {axis_name}={str(delta)}", "ascii"))
         self.wait_for_motor_stop(axis)
 
-    def move_to_absolute_position(self, axis: bytes, pos: float) -> None:
+    def move_to_absolute_position(self, axis: int, pos: float) -> None:
         """Send a relative movement command to stated axis"""
-        axisname = AXIS_MAPPER[axis]
-        self.move_command(bytes(f"MOVE {axisname}={str(pos)}", "ascii"))
+        axis_name = self._axis_mapper[axis]
+        self.move_command(bytes(f"MOVE {axis_name}={str(pos)}", "ascii"))
         self.wait_for_motor_stop(axis)
 
-    def move_to_limit(self, axis: bytes, speed: int):
-        axisname = AXIS_MAPPER[axis]
-        self.get_command(bytes(f"SPIN {axisname}={speed}", "ascii"))
+    def move_to_limit(self, axis: int, speed: int):
+        axis_name = self._axis_mapper[axis]
+        self.get_command(bytes(f"SPIN {axis_name}={speed}", "ascii"))
 
-    def motor_moving(self, axis: bytes) -> int:
-        axisname = AXIS_MAPPER[axis]
-        reply = self.get_command(bytes(f"RDSTAT {axisname}", "ascii"))
+    def motor_moving(self, axis: int) -> int:
+        axis_name = self._axis_mapper[axis]
+        reply = self.get_command(bytes(f"RDSTAT {axis_name}", "ascii"))
         flags = int(reply.strip()[3:])
         return flags & 1
 
-    def set_speed(self, axis: bytes, speed: int) -> None:
-        axisname = AXIS_MAPPER[axis]
-        self.get_command(bytes(f"SPEED {axisname}={speed}", "ascii"))
+    def set_speed(self, axis: int, speed: int) -> None:
+        axis_name = self._axis_mapper[axis]
+        self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
 
-    def wait_for_motor_stop(self, axis: bytes):
-        # give axis a chnace to start maybe?
+    def wait_for_motor_stop(self, axis: int):
+        # give axis a chance to start maybe?
         time.sleep(0.2)
         while self.motor_moving(axis):
             time.sleep(0.1)
 
-    def reset_position(self, axis: bytes):
-        axisname = AXIS_MAPPER[axis]
-        self.get_command(bytes(f"HERE {axisname}=0", "ascii"))
+    def reset_position(self, axis: int):
+        axis_name = self._axis_mapper[axis]
+        self.get_command(bytes(f"HERE {axis_name}=0", "ascii"))
 
-    def get_absolute_position(self, axis: bytes) -> float:
-        axisname = AXIS_MAPPER[axis]
-        position = self.get_command(bytes(f"WHERE {axisname}", "ascii"))
+    def get_absolute_position(self, axis: int) -> float:
+        axis_name = self._axis_mapper[axis]
+        position = self.get_command(bytes(f"WHERE {axis_name}", "ascii"))
         if position[3:4] == b"N":
             print(f"Error: {position} : {LUDL_ERRORS[int(position[4:6])]}")
         else:
@@ -357,7 +352,7 @@ class _ASIMotionController:
 
 
 class _ASIStageAxis(microscope.abc.StageAxis):
-    def __init__(self, dev_conn: _ASIMotionController, axis: str) -> None:
+    def __init__(self, dev_conn: _ASIMotionController, axis: int) -> None:
         super().__init__()
         self._dev_conn = dev_conn
         self._axis = axis
@@ -432,9 +427,43 @@ class _ASIStage(microscope.abc.Stage):
         self._dev_conn = conn
         self._axes = {
             str(i): _ASIStageAxis(self._dev_conn, i)
-            for i in range(1, 3)  # self._dev_conn.get_number_axes() + 1)
+            for i in range(1, self._dev_conn.get_number_axes() + 1)
         }
+
         self.homed = False
+
+    def _add_settings(self, settings) -> None:
+        """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
+        adds settings consequently to the stage object.
+        """
+        for axis_name, axis_settings in settings.items:
+            for setting_name, setting_params in axis_settings.items:
+                if setting_params['value'].isdigit():
+                    value = int(setting_params['value'])
+                    dtype = "int"
+                elif setting_params['value'].replace('.', '', 1).isdigit():
+                    value = float(setting_params['value'])
+                    dtype = "float"
+                else:
+                    value = setting_params['value']
+                    dtype = "str"  # It might be a enum but we dont know
+
+                if setting_params['command'] is not None:
+                    set_function: Callable[[Any], bytes] = lambda x: self._dev_conn.get_command(
+                        bytes(f"{setting_params['command']} {axis_name}={x}", "ascii"))
+                    read_only = False
+                else:
+                    set_function = None
+                    read_only = True
+
+                self.add_setting(
+                    name=f"{setting_name}_{axis_name}",
+                    dtype=dtype,
+                    get_func=lambda: self._dev_conn.get_command(
+                        bytes(f"{setting_params['command']} {axis_name}", "ascii")),
+                    set_func=set_function,
+                    readonly=read_only,
+                )
 
     def _do_shutdown(self) -> None:
         pass
@@ -537,7 +566,7 @@ class ASIMS2000(microscope.abc.Controller):
     """
 
     def __init__(
-        self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
+            self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _ASIMotionController(port, baudrate, timeout)
