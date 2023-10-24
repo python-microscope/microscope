@@ -133,8 +133,9 @@ _logger = logging.getLogger(__name__)
 # Bit 7: Lower limit switch: 0 = open, 1 = closed
 
 
-def parse_info(info: list) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
-
+def parse_info(
+    info: list,
+) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
     items = []
     for line in info:
         if line in [b"", b"\n", b"\r", b"\r\n"]:
@@ -147,10 +148,14 @@ def parse_info(info: list) -> dict[str, dict[str, Union[typing.Optional[str], An
     settings = {}
     for item in items:
         match = re.search(pattern, item)
-        settings[match.group('name').strip()] = {
-            'value': match.group('value'),
-            'command': None if not match.group('command') else match.group('command')[1:-1],
-            'units': match.group('units') if len(match.group('units')) else None,
+        settings[match.group("name").strip()] = {
+            "value": match.group("value"),
+            "command": None
+            if not match.group("command")
+            else match.group("command")[1:-1],
+            "units": match.group("units")
+            if len(match.group("units"))
+            else None,
         }
 
     return settings
@@ -200,9 +205,7 @@ class _ASIMotionController:
                 self.axis_info[axis] = parse_info(answer)
                 self._axis_mapper[i] = axis
         except:
-            print(
-                "Unable to read configuration. Is ASI controller connected?"
-            )
+            print("Unable to read configuration. Is ASI controller connected?")
             return
         # parse config responce which tells us what devices are present
         # on this controller.
@@ -436,7 +439,9 @@ class _ASIStage(microscope.abc.Stage):
         self.homed = False
 
     def _get_setting(self, command, axis, dtype):
-        answer = self._dev_conn.get_command(bytes(f"{command} {axis}?", "ascii"))
+        answer = self._dev_conn.get_command(
+            bytes(f"{command} {axis}?", "ascii")
+        )
         answer = answer.strip().decode()
         if answer[:2] == ":A":
             if dtype == "int":
@@ -457,24 +462,23 @@ class _ASIStage(microscope.abc.Stage):
     def _set_setting(self, value, command, axis):
         self._dev_conn.set_command(bytes(f"{command} {axis}={value}", "ascii"))
 
-
     def _add_settings(self, settings) -> None:
         """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
         adds settings consequently to the stage object.
         """
         for axis, axis_settings in settings.items():
             for setting_name, setting_params in axis_settings.items():
-                if setting_params['value'].isdigit():
-                    value = int(setting_params['value'])
+                if setting_params["value"].isdigit():
+                    value = int(setting_params["value"])
                     dtype = "int"
-                elif setting_params['value'].replace('.', '', 1).isdigit():
-                    value = float(setting_params['value'])
+                elif setting_params["value"].replace(".", "", 1).isdigit():
+                    value = float(setting_params["value"])
                     dtype = "float"
                 else:
-                    value = setting_params['value']
+                    value = setting_params["value"]
                     dtype = "str"  # It might be a enum but we dont know
 
-                if setting_params['command'] is not None:
+                if setting_params["command"] is not None:
                     read_only = False
                 else:
                     read_only = True
@@ -482,8 +486,14 @@ class _ASIStage(microscope.abc.Stage):
                 self.add_setting(
                     name=f"{setting_name} {axis}",
                     dtype=dtype,
-                    get_func=lambda command=setting_params['command'], axis=axis, dtype=dtype: self._get_setting(command, axis, dtype),
-                    set_func=lambda value, command=setting_params['command'], axis=axis: self._set_setting(value, command, axis),
+                    get_func=lambda command=setting_params[
+                        "command"
+                    ], axis=axis, dtype=dtype: self._get_setting(
+                        command, axis, dtype
+                    ),
+                    set_func=lambda value, command=setting_params[
+                        "command"
+                    ], axis=axis: self._set_setting(value, command, axis),
                     values=lambda: f"curr value is {value}. Units are {setting_params['units']}",
                     # readonly=read_only,
                 )
@@ -589,7 +599,7 @@ class ASIMS2000(microscope.abc.Controller):
     """
 
     def __init__(
-            self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
+        self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _ASIMotionController(port, baudrate, timeout)
