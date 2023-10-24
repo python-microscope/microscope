@@ -221,6 +221,7 @@ class _ASIMotionController:
     def readline(self) -> bytes:
         """Read a line from the device connection until ``\\r\\n``."""
         with self._lock:
+            # We actually read until the \\r cause multiline does not add the \\n
             line = self._serial.read_until(b"\r")
             #            _logger.warning
             return line
@@ -434,11 +435,34 @@ class _ASIStage(microscope.abc.Stage):
 
         self.homed = False
 
+    def _get_setting(self, command, axis, dtype):
+        answer = self._dev_conn.get_command(bytes(f"{command} {axis}?", "ascii"))
+        answer = answer.strip().decode()
+        if answer[:2] == ":A":
+            if dtype == "int":
+                return int(answer[5:])
+            elif dtype == "float":
+                return float(answer[5:])
+            else:
+                return answer[5:]
+        elif answer[0] == "N":
+            # this is an error string
+            error = answer[2:]
+            raise Exception(
+                f"ASI controller error: {error},{LUDL_ERRORS[error]}"
+            )
+        else:
+            raise Exception(f"ASI controller error: {answer}")
+
+    def _set_setting(self, value, command, axis):
+        self._dev_conn.set_command(bytes(f"{command} {axis}={value}", "ascii"))
+
+
     def _add_settings(self, settings) -> None:
         """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
         adds settings consequently to the stage object.
         """
-        for axis_name, axis_settings in settings.items():
+        for axis, axis_settings in settings.items():
             for setting_name, setting_params in axis_settings.items():
                 if setting_params['value'].isdigit():
                     value = int(setting_params['value'])
@@ -451,19 +475,15 @@ class _ASIStage(microscope.abc.Stage):
                     dtype = "str"  # It might be a enum but we dont know
 
                 if setting_params['command'] is not None:
-                    set_function: Callable[[Any], bytes] = lambda x: self._dev_conn.get_command(
-                        bytes(f"{setting_params['command']} {axis_name}={x}", "ascii"))
                     read_only = False
                 else:
-                    set_function = None
                     read_only = True
 
                 self.add_setting(
-                    name=f"{setting_name}_{axis_name}",
+                    name=f"{setting_name} {axis}",
                     dtype=dtype,
-                    get_func=lambda: self._dev_conn.get_command(
-                        bytes(f"{setting_params['command']} {axis_name}", "ascii")),
-                    set_func=set_function,
+                    get_func=lambda command=setting_params['command'], axis=axis, dtype=dtype: self._get_setting(command, axis, dtype),
+                    set_func=lambda value, command=setting_params['command'], axis=axis: self._set_setting(value, command, axis),
                     values=lambda: f"curr value is {value}. Units are {setting_params['units']}",
                     # readonly=read_only,
                 )
