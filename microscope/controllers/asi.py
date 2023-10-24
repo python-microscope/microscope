@@ -186,7 +186,7 @@ class _ASIMotionController:
         # We do not use the general get_description() here because
         # if this is not a ProScan device it would never reach the
         # '\rEND\r' that signals the end of the description.
-        self._axis_info = {}
+        self.axis_info = {}
         self._axis_mapper = {}
         i = 1
         try:
@@ -197,7 +197,7 @@ class _ASIMotionController:
                     _logger.info(f"Axis {axis} not present")
                     continue
                 _logger.info(f"Axis {axis} present")
-                self._axis_info[axis] = parse_info(answer)
+                self.axis_info[axis] = parse_info(answer)
                 self._axis_mapper[i] = axis
         except:
             print(
@@ -211,7 +211,7 @@ class _ASIMotionController:
         pass
 
     def get_number_axes(self):
-        return len(self._axis_info)
+        return len(self.axis_info)
 
     def command(self, command: bytes) -> None:
         """Send command to device."""
@@ -430,14 +430,16 @@ class _ASIStage(microscope.abc.Stage):
             for i in range(1, self._dev_conn.get_number_axes() + 1)
         }
 
+        self._add_settings(self._dev_conn.axis_info)
+
         self.homed = False
 
     def _add_settings(self, settings) -> None:
         """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
         adds settings consequently to the stage object.
         """
-        for axis_name, axis_settings in settings.items:
-            for setting_name, setting_params in axis_settings.items:
+        for axis_name, axis_settings in settings.items():
+            for setting_name, setting_params in axis_settings.items():
                 if setting_params['value'].isdigit():
                     value = int(setting_params['value'])
                     dtype = "int"
@@ -462,7 +464,8 @@ class _ASIStage(microscope.abc.Stage):
                     get_func=lambda: self._dev_conn.get_command(
                         bytes(f"{setting_params['command']} {axis_name}", "ascii")),
                     set_func=set_function,
-                    readonly=read_only,
+                    values=lambda: f"curr value is {value}. Units are {setting_params['units']}",
+                    # readonly=read_only,
                 )
 
     def _do_shutdown(self) -> None:
