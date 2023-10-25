@@ -226,6 +226,7 @@ class _ASIMotionController:
                 _logger.info(f"Axis {axis} present")
                 self.axis_info[axis] = parse_info(answer)
                 self._axis_mapper[i] = axis
+                i += 1
         except:
             print("Unable to read configuration. Is ASI controller connected?")
             return
