@@ -33,6 +33,7 @@ from typing import Callable, Any, Dict, Union
 import serial
 
 import microscope.abc
+import microscope._utils
 
 _logger = logging.getLogger(__name__)
 
@@ -156,7 +157,7 @@ ASI_ERRORS = {
 
 
 def parse_info(
-    info: list,
+        info: list,
 ) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
     items = []
     for line in info:
@@ -183,7 +184,7 @@ def parse_info(
     return settings
 
 
-class _ASIMotionController:
+class _ASIController:
     """Connection to a ASI Controller and wrapper to its commands.
 
     Tested with MS2000 controller and xy stage.
@@ -230,14 +231,20 @@ class _ASIMotionController:
         except:
             print("Unable to read configuration. Is ASI controller connected?")
             return
-        # parse config responce which tells us what devices are present
+
+        self._led_mapper = {"1": b"X", "2": b"Y"}
+
+        # parse config response which tells us what devices are present
         # on this controller.
 
     def is_busy(self):
         pass
 
     def get_number_axes(self):
-        return len(self.axis_info)
+        return len(self._axis_mapper)
+
+    def get_number_leds(self):
+        return len(self._led_mapper)
 
     def command(self, command: bytes) -> None:
         """Send command to device."""
@@ -283,7 +290,7 @@ class _ASIMotionController:
         """Keep sending the ``STATUS`` comand until it responds ``0\\r``"""
         self._command_and_validate(b"STATUS", b"N")
 
-    def _command_and_validate(self, command: bytes, expected: bytes) -> None:
+    def _command_and_validate(self, command: bytes, expected: bytes) -> bytes:
         with self._lock:
             answer = self.get_command(command)
             if answer == b":A \r\n":
@@ -298,6 +305,29 @@ class _ASIMotionController:
             self.command(command)
             return self.readline()
 
+    def set_command(self, command: bytes) -> None:
+        """Send a set command and check return value."""
+        # Property type commands that set certain status respond with
+        # zero.  They respond with a zero even if there are invalid
+        # arguments in the command.
+        self._command_and_validate(command, b"0\r")
+
+    def get_description(self, command: bytes) -> bytes:
+        """Send a get description command and return it."""
+        with self._lock:
+            self.command(command)
+            return self._serial.read_until(b"\rEND\r")
+
+    @contextlib.contextmanager
+    def changed_timeout(self, new_timeout: float):
+        previous = self._serial.timeout
+        try:
+            self._serial.timeout = new_timeout
+            yield
+        finally:
+            self._serial.timeout = previous
+
+    # Motion related methods #
     def move_command(self, command: bytes) -> None:
         """Send a move command and check return value."""
         # Movement commands respond with ":A \n" but the move is then
@@ -355,31 +385,21 @@ class _ASIMotionController:
         else:
             return float(position.strip()[2:])
 
-    def set_command(self, command: bytes) -> None:
-        """Send a set command and check return value."""
-        # Property type commands that set certain status respond with
-        # zero.  They respond with a zero even if there are invalid
-        # arguments in the command.
-        self._command_and_validate(command, b"0\r")
+    # Light related methods #
+    def is_led_on(self, channel):
+        return bool(self.get_led_power(channel))
 
-    def get_description(self, command: bytes) -> bytes:
-        """Send a get description command and return it."""
-        with self._lock:
-            self.command(command)
-            return self._serial.read_until(b"\rEND\r")
+    def get_led_power(self, channel):
+        answer = self.get_command(b"LED " + self._led_mapper[channel] + b"?")
+        return int(answer[3:-4]) / 100
 
-    @contextlib.contextmanager
-    def changed_timeout(self, new_timeout: float):
-        previous = self._serial.timeout
-        try:
-            self._serial.timeout = new_timeout
-            yield
-        finally:
-            self._serial.timeout = previous
+    def set_led_power(self, channel, power):
+        power = str(int(power * 100)).encode()
+        self.get_command(b"LED " + self._led_mapper[channel] + b"=" + power)
 
 
 class _ASIStageAxis(microscope.abc.StageAxis):
-    def __init__(self, dev_conn: _ASIMotionController, axis: int) -> None:
+    def __init__(self, dev_conn: _ASIController, axis: int) -> None:
         super().__init__()
         self._dev_conn = dev_conn
         self._axis = axis
@@ -449,7 +469,7 @@ class _ASIStageAxis(microscope.abc.StageAxis):
 
 
 class _ASIStage(microscope.abc.Stage):
-    def __init__(self, conn: _ASIMotionController, **kwargs) -> None:
+    def __init__(self, conn: _ASIController, **kwargs) -> None:
         super().__init__(**kwargs)
         self._dev_conn = conn
         self._axes = {
@@ -565,6 +585,38 @@ class _ASIStage(microscope.abc.Stage):
         self._dev_conn.wait_until_idle()
 
 
+class _ASILED(microscope._utils.OnlyTriggersBulbOnSoftwareMixin, microscope.abc.LightSource):
+    # In principle the light source of the MS2000 and the tiger controllers support triggers, but as not yet implemented
+    # we set this class as oly triggerable by software
+    # TODO: Look into implementation of triggers
+
+    def __init__(self, dev_conn: _ASIController, channel: str) -> None:
+        super().__init__()
+        self._dev_conn = dev_conn
+        self._channel = channel
+
+    def get_status(self) -> typing.List[str]:
+        return super().get_status() # TODO: Verify what am I doing here. Just copying from the Zaber led controller
+
+    def get_is_on(self) -> bool:
+        return self._dev_conn.is_led_on(self._channel)
+
+    def _do_get_power(self) -> float:
+        return self._dev_conn.get_led_power(self._channel)
+
+    def _do_set_power(self, power: float) -> None:
+        self._dev_conn.set_led_power(self._channel, power)
+
+    def _do_enable(self):
+        self._do_set_power(self._set_point)
+
+    def _do_disable(self):
+        self._do_set_power(0.0)
+
+    def _do_shutdown(self) -> None:
+        self._do_disable()
+
+
 #    def assert_filterwheel_number(self, number: int) -> None:
 #        assert number > 0 and number < 4
 
@@ -622,12 +674,15 @@ class ASIMS2000(microscope.abc.Controller):
     """
 
     def __init__(
-        self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
+            self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self._conn = _ASIMotionController(port, baudrate, timeout)
+        self._conn = _ASIController(port, baudrate, timeout)
         self._devices: typing.Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _ASIStage(self._conn)
+        self._devices["ligth_465"] = _ASILED(self._conn, "1")
+        self._devices["ligth_560"] = _ASILED(self._conn, "2")
+
 
     @property
     def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
