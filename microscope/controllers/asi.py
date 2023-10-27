@@ -594,6 +594,7 @@ class _ASILED(microscope._utils.OnlyTriggersBulbOnSoftwareMixin, microscope.abc.
         super().__init__()
         self._dev_conn = dev_conn
         self._channel = channel
+        self._do_disable()
 
     def get_status(self) -> typing.List[str]:
         return super().get_status() # TODO: Verify what am I doing here. Just copying from the Zaber led controller
