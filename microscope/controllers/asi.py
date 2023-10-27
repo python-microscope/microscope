@@ -337,6 +337,15 @@ class _ASIMotionController:
         axis_name = self._axis_mapper[axis]
         self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
 
+    def find_max_speed(self,  axis: int):
+        axis_name = self._axis_mapper[axis]
+        speed = 100000000
+        #set the sepeed
+        self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
+        #read off the max speed set by controller
+        response=self.get_command(bytes(f"SPEED {axis_name}?", "ascii"))
+        return(float(response.strip()[5:]))
+
     def wait_for_motor_stop(self, axis: int):
         # give axis a chance to start maybe?
         time.sleep(0.2)
@@ -387,9 +396,9 @@ class _ASIStageAxis(microscope.abc.StageAxis):
         # mosaic etc... Maybe we just need to know it!
         self.min_limit = 0.0
         self.max_limit = 100000.0
-        # arbitary speed of 5 mm/s 10 is too fast for y but X appears
-        # to be fine on my stage at this speed.
-        self.set_speed(5)
+        # As detailed in ASI manual set speed to 67% of max
+        max_speed=self._dev_conn.find_max_speed(self._axis)
+        self.set_speed(max_speed*0.67)
 
     def move_by(self, delta: float) -> None:
         self._dev_conn.move_by_relative_position(self._axis, int(delta))
