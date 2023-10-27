@@ -341,17 +341,19 @@ class _ASIController:
         # other process to check position
         # self.get_command(command)
 
-    def move_by_relative_position(self, axis: int, delta: float) -> None:
+    def move_by_relative_position(self, axis: int, delta: float, wait=True) -> None:
         """Send a relative movement command to stated axis"""
         axis_name = self._axis_mapper[axis]
         self.move_command(bytes(f"MOVREL {axis_name}={str(delta)}", "ascii"))
-        self.wait_for_motor_stop(axis)
+        if wait:
+            self.wait_for_motor_stop(axis)
 
-    def move_to_absolute_position(self, axis: int, pos: float) -> None:
+    def move_to_absolute_position(self, axis: int, pos: float, wait=True) -> None:
         """Send a relative movement command to stated axis"""
         axis_name = self._axis_mapper[axis]
         self.move_command(bytes(f"MOVE {axis_name}={str(pos)}", "ascii"))
-        self.wait_for_motor_stop(axis)
+        if wait:
+            self.wait_for_motor_stop(axis)
 
     def move_to_limit(self, axis: int, speed: int):
         axis_name = self._axis_mapper[axis]
@@ -571,6 +573,7 @@ class _ASIStage(microscope.abc.Stage):
             self._dev_conn.move_by_relative_position(
                 int(axis_name),
                 int(axis_delta),
+                wait=False
             )
         self._dev_conn.wait_until_idle()
 
@@ -581,6 +584,7 @@ class _ASIStage(microscope.abc.Stage):
             self._dev_conn.move_to_absolute_position(
                 int(axis_name),
                 int(axis_position),
+                wait=False
             )
         self._dev_conn.wait_until_idle()
 
