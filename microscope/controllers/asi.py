@@ -287,7 +287,7 @@ class _ASIController:
                 continue
 
     def wait_until_idle(self) -> None:
-        """Keep sending the ``STATUS`` comand until it responds ``0\\r``"""
+        """Keep sending the ``STATUS`` command until it responds ``0\\r``"""
         self._command_and_validate(b"STATUS", b"N")
 
     def _command_and_validate(self, command: bytes, expected: bytes) -> bytes:
@@ -407,7 +407,7 @@ class _ASIStageAxis(microscope.abc.StageAxis):
         # mosaic etc... Maybe we just need to know it!
         self.min_limit = 0.0
         self.max_limit = 100000.0
-        # arbitary speed of 5 mm/s 10 is too fast for y but X appears
+        # arbitrary speed of 5 mm/s 10 is too fast for y but X appears
         # to be fine on my stage at this speed.
         self.set_speed(5)
 
