@@ -503,10 +503,10 @@ class _ASIStage(microscope.abc.Stage):
             # this is an error string
             error = answer[2:]
             raise Exception(
-                f"ASI controller error: {error},{ASI_ERRORS[error]}"
+                f"ASI controller error on command {command}: {error},{ASI_ERRORS[error]}"
             )
         else:
-            raise Exception(f"ASI controller error: {answer}")
+            raise Exception(f"ASI controller error on command {command}: {answer}")
 
         if dtype == "int":
             return int(answer)
