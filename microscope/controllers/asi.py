@@ -483,7 +483,9 @@ class _ASIStage(microscope.abc.Stage):
 
         self.homed = False
 
-    def _get_setting(self, command, axis, dtype):
+    def _get_setting(self, command, axis, dtype, value):
+        if command is None:
+            return value
         answer = self._dev_conn.get_command(
             bytes(f"{command} {axis}?", "ascii")
         )
@@ -505,7 +507,10 @@ class _ASIStage(microscope.abc.Stage):
             raise Exception(f"ASI controller error: {answer}")
 
     def _set_setting(self, value, command, axis):
-        self._dev_conn.set_command(bytes(f"{command} {axis}={value}", "ascii"))
+        if command is None:
+            return False
+        else:
+            self._dev_conn.set_command(bytes(f"{command} {axis}={value}", "ascii"))
 
     def _add_settings(self, settings) -> None:
         """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
@@ -533,8 +538,8 @@ class _ASIStage(microscope.abc.Stage):
                     dtype=dtype,
                     get_func=lambda command=setting_params[
                         "command"
-                    ], axis=axis, dtype=dtype: self._get_setting(
-                        command, axis, dtype
+                    ], axis=axis, dtype=dtype, value=value: self._get_setting(
+                        command, axis, dtype, value
                     ),
                     set_func=lambda value, command=setting_params[
                         "command"
