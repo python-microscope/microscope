@@ -491,12 +491,14 @@ class _ASIStage(microscope.abc.Stage):
         )
         answer = answer.strip().decode()
         if answer[:2] == ":A":
-            if dtype == "int":
-                return int(answer[5:])
-            elif dtype == "float":
-                return float(answer[5:])
+            if answer[-2:] == " A":  # Some setting return a non-standard pattern with two A's: ':A axis=value A'
+                answer = answer[5:-1]
+            elif command == "MC":  # The MC command does not follow the standard return pattern. It returns ':A 1'
+                answer = answer[3:]
             else:
-                return answer[5:]
+                answer = answer[5:]  # What I believe is the standard pattern: ':A axis=value' (':A X=42')
+        elif answer[:2] == f":{axis}":
+            answer = answer[3:-2]  # Many settings return ':axis=value A' (':X=42 A')
         elif answer[0] == "N":
             # this is an error string
             error = answer[2:]
@@ -505,6 +507,13 @@ class _ASIStage(microscope.abc.Stage):
             )
         else:
             raise Exception(f"ASI controller error: {answer}")
+
+        if dtype == "int":
+            return int(answer)
+        elif dtype == "float":
+            return float(answer)
+        else:
+            return answer
 
     def _set_setting(self, value, command, axis):
         if command is None:
