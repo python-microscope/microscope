@@ -232,7 +232,8 @@ class _ASIController:
             print("Unable to read configuration. Is ASI controller connected?")
             return
 
-        self._led_mapper = {"1": b"X", "2": b"Y"}
+        # As for this version, some MS2000 controllers have integrated control for 2 LEDs
+        self._led_mapper = [b"X", b"Y"]
 
         # parse config response which tells us what devices are present
         # on this controller.
@@ -608,7 +609,7 @@ class _ASILED(microscope._utils.OnlyTriggersBulbOnSoftwareMixin, microscope.abc.
     # we set this class as oly triggerable by software
     # TODO: Look into implementation of triggers
 
-    def __init__(self, dev_conn: _ASIController, channel: str) -> None:
+    def __init__(self, dev_conn: _ASIController, channel: int) -> None:
         super().__init__()
         self._dev_conn = dev_conn
         self._channel = channel
@@ -687,20 +688,23 @@ class ASIMS2000(microscope.abc.Controller):
 
     .. note::
 
-       The ASI MS2000 can control a stage, and other items
-       but only the stage is currently implemented.
+       The ASI MS2000 can control a stage, and other items.
+       This version implements:
+       stage: X, Y, Z axes
+       lights: up to 2 lights are supported by some MS2000 controllers. Use the lights argument to send a list of
+       one or two lights defined as strings.
 
     """
 
     def __init__(
             self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__()
         self._conn = _ASIController(port, baudrate, timeout)
         self._devices: typing.Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _ASIStage(self._conn)
-        self._devices["ligth_465"] = _ASILED(self._conn, "1")
-        self._devices["ligth_560"] = _ASILED(self._conn, "2")
+        for light_ch, light in enumerate(kwargs["lights"]):
+            self._devices[light] = _ASILED(self._conn, light_ch)
 
 
     @property
