@@ -157,7 +157,7 @@ ASI_ERRORS = {
 
 
 def parse_info(
-        info: list,
+    info: list,
 ) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
     items = []
     for line in info:
@@ -342,14 +342,18 @@ class _ASIController:
         # other process to check position
         # self.get_command(command)
 
-    def move_by_relative_position(self, axis: int, delta: float, wait=True) -> None:
+    def move_by_relative_position(
+        self, axis: int, delta: float, wait=True
+    ) -> None:
         """Send a relative movement command to stated axis"""
         axis_name = self._axis_mapper[axis]
         self.move_command(bytes(f"MOVREL {axis_name}={str(delta)}", "ascii"))
         if wait:
             self.wait_for_motor_stop(axis)
 
-    def move_to_absolute_position(self, axis: int, pos: float, wait=True) -> None:
+    def move_to_absolute_position(
+        self, axis: int, pos: float, wait=True
+    ) -> None:
         """Send a relative movement command to stated axis"""
         axis_name = self._axis_mapper[axis]
         self.move_command(bytes(f"MOVE {axis_name}={str(pos)}", "ascii"))
@@ -492,14 +496,22 @@ class _ASIStage(microscope.abc.Stage):
         )
         answer = answer.strip().decode()
         if answer[:2] == ":A":
-            if answer[-2:] == " A":  # Some setting return a non-standard pattern with two A's: ':A axis=value A'
+            if (
+                answer[-2:] == " A"
+            ):  # Some setting return a non-standard pattern with two A's: ':A axis=value A'
                 answer = answer[5:-1]
-            elif command == "MC":  # The MC command does not follow the standard return pattern. It returns ':A 1'
+            elif (
+                command == "MC"
+            ):  # The MC command does not follow the standard return pattern. It returns ':A 1'
                 answer = answer[3:]
             else:
-                answer = answer[5:]  # What I believe is the standard pattern: ':A axis=value' (':A X=42')
+                answer = answer[
+                    5:
+                ]  # What I believe is the standard pattern: ':A axis=value' (':A X=42')
         elif answer[:2] == f":{axis}":
-            answer = answer[3:-2]  # Many settings return ':axis=value A' (':X=42 A')
+            answer = answer[
+                3:-2
+            ]  # Many settings return ':axis=value A' (':X=42 A')
         elif answer[0] == "N":
             # this is an error string
             error = answer[2:]
@@ -507,7 +519,9 @@ class _ASIStage(microscope.abc.Stage):
                 f"ASI controller error on command {command}: {error},{ASI_ERRORS[error]}"
             )
         else:
-            raise Exception(f"ASI controller error on command {command}: {answer}")
+            raise Exception(
+                f"ASI controller error on command {command}: {answer}"
+            )
 
         if dtype == "int":
             return int(answer)
@@ -520,7 +534,9 @@ class _ASIStage(microscope.abc.Stage):
         if command is None:
             return False
         else:
-            self._dev_conn.set_command(bytes(f"{command} {axis}={value}", "ascii"))
+            self._dev_conn.set_command(
+                bytes(f"{command} {axis}={value}", "ascii")
+            )
 
     def _add_settings(self, settings) -> None:
         """INFO command returns a list of settings that is parsed into a dict. This function takes that dict and
@@ -531,7 +547,12 @@ class _ASIStage(microscope.abc.Stage):
                 if setting_params["value"].replace("-", "", 1).isdigit():
                     value = int(setting_params["value"])
                     dtype = "int"
-                elif setting_params["value"].replace(".", "", 1).replace("-", "", 1).isdigit():
+                elif (
+                    setting_params["value"]
+                    .replace(".", "", 1)
+                    .replace("-", "", 1)
+                    .isdigit()
+                ):
                     value = float(setting_params["value"])
                     dtype = "float"
                 else:
@@ -586,9 +607,7 @@ class _ASIStage(microscope.abc.Stage):
         """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
-                int(axis_name),
-                int(axis_delta),
-                wait=False
+                int(axis_name), int(axis_delta), wait=False
             )
         self._dev_conn.wait_until_idle()
 
@@ -597,14 +616,15 @@ class _ASIStage(microscope.abc.Stage):
         print(position)
         for axis_name, axis_position in position.items():
             self._dev_conn.move_to_absolute_position(
-                int(axis_name),
-                int(axis_position),
-                wait=False
+                int(axis_name), int(axis_position), wait=False
             )
         self._dev_conn.wait_until_idle()
 
 
-class _ASILED(microscope._utils.OnlyTriggersBulbOnSoftwareMixin, microscope.abc.LightSource):
+class _ASILED(
+    microscope._utils.OnlyTriggersBulbOnSoftwareMixin,
+    microscope.abc.LightSource,
+):
     # In principle the light source of the MS2000 and the tiger controllers support triggers, but as not yet implemented
     # we set this class as oly triggerable by software
     # TODO: Look into implementation of triggers
@@ -616,7 +636,9 @@ class _ASILED(microscope._utils.OnlyTriggersBulbOnSoftwareMixin, microscope.abc.
         self._do_disable()
 
     def get_status(self) -> typing.List[str]:
-        return super().get_status() # TODO: Verify what am I doing here. Just copying from the Zaber led controller
+        return (
+            super().get_status()
+        )  # TODO: Verify what am I doing here. Just copying from the Zaber led controller
 
     def get_is_on(self) -> bool:
         return self._dev_conn.is_led_on(self._channel)
@@ -697,7 +719,7 @@ class ASIMS2000(microscope.abc.Controller):
     """
 
     def __init__(
-            self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
+        self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
         super().__init__()
         self._conn = _ASIController(port, baudrate, timeout)
@@ -705,7 +727,6 @@ class ASIMS2000(microscope.abc.Controller):
         self._devices["stage"] = _ASIStage(self._conn)
         for light_ch, light in enumerate(kwargs["lights"]):
             self._devices[light] = _ASILED(self._conn, light_ch)
-
 
     @property
     def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
