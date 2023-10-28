@@ -377,7 +377,7 @@ class _ASIController:
     def find_max_speed(self,  axis: int):
         axis_name = self._axis_mapper[axis]
         speed = 100000000
-        #set the sepeed
+        #set the speed
         self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
         #read off the max speed set by controller
         response=self.get_command(bytes(f"SPEED {axis_name}?", "ascii"))
