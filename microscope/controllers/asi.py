@@ -553,7 +553,7 @@ class _ASIStage(microscope.abc.Stage):
                     set_func=lambda value, command=setting_params[
                         "command"
                     ], axis=axis: self._set_setting(value, command, axis),
-                    values=lambda: f"curr value is {value}. Units are {setting_params['units']}",
+                    values=lambda: f"Units are {setting_params['units']}",
                     # readonly=read_only,
                 )
 
