@@ -513,10 +513,10 @@ class _ASIStage(microscope.abc.Stage):
         """
         for axis, axis_settings in settings.items():
             for setting_name, setting_params in axis_settings.items():
-                if setting_params["value"].isdigit():
+                if setting_params["value"].replace("-", "", 1).isdigit():
                     value = int(setting_params["value"])
                     dtype = "int"
-                elif setting_params["value"].replace(".", "", 1).isdigit():
+                elif setting_params["value"].replace(".", "", 1).replace("-", "", 1).isdigit():
                     value = float(setting_params["value"])
                     dtype = "float"
                 else:
