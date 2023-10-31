@@ -605,7 +605,7 @@ class _ASIStage(microscope.abc.Stage):
         pass
 
     def _do_enable(self) -> bool:
-        # Before a device can moved, it first needs to establish a
+        # Before a device can move, it first needs to establish a
         # reference to the home position.  We won't be able to move
         # unless we home it first.
         if not self.homed:
