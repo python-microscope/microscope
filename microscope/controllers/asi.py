@@ -172,14 +172,21 @@ def parse_info(
     settings = {}
     for item in items:
         match = re.search(pattern, item)
-        settings[match.group("name").strip()] = {
-            "value": match.group("value"),
+        try:
+            name = match.group("name")
+        except AttributeError:
+            _logger.warning(f"Error parsing info. No item name found on: {item}")
+            continue
+        try:
+            value = match.group("value")
+        except AttributeError:
+            _logger.warning(f"Error parsing info. No item value found on: {item}")
+            continue
+        settings[name.strip()] = {
+            "value": value,
             "command": None
-            if not match.group("command")
-            else match.group("command")[1:-1],
-            "units": match.group("units")
-            if len(match.group("units"))
-            else None,
+            if not match.group("command") else match.group("command")[1:-1],
+            "units": match.group("units") if len(match.group("units")) else None,
         }
 
     return settings
