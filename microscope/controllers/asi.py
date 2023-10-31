@@ -215,8 +215,7 @@ class _ASIController:
         # if this is not a ProScan device it would never reach the
         # '\rEND\r' that signals the end of the description.
         self.axis_info = {}
-        self._axis_mapper = {}
-        i = 1
+        self.axis_list = []
         try:
             for axis in ["X", "Y", "Z"]:
                 self.command(bytes(f"INFO {axis}", "ascii"))
@@ -226,14 +225,13 @@ class _ASIController:
                     continue
                 _logger.info(f"Axis {axis} present")
                 self.axis_info[axis] = parse_info(answer)
-                self._axis_mapper[i] = axis
-                i += 1
         except:
             print("Unable to read configuration. Is ASI controller connected?")
             return
+                self.axis_list.append(axis)
 
         # As for this version, some MS2000 controllers have integrated control for 2 LEDs
-        self._led_mapper = [b"X", b"Y"]
+        self.led_list = [b"X", b"Y"]
 
         # parse config response which tells us what devices are present
         # on this controller.
@@ -242,10 +240,10 @@ class _ASIController:
         pass
 
     def get_number_axes(self):
-        return len(self._axis_mapper)
+        return len(self.axis_list)
 
     def get_number_leds(self):
-        return len(self._led_mapper)
+        return len(self.led_list)
 
     def command(self, command: bytes) -> None:
         """Send command to device."""
@@ -343,59 +341,67 @@ class _ASIController:
         # self.get_command(command)
 
     def move_by_relative_position(
-        self, axis: int, delta: float, wait=True
+        self, axis: str, delta: float, wait=True
     ) -> None:
         """Send a relative movement command to stated axis"""
-        axis_name = self._axis_mapper[axis]
-        self.move_command(bytes(f"MOVREL {axis_name}={str(delta)}", "ascii"))
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        self.move_command(bytes(f"MOVREL {axis}={str(delta)}", "ascii"))
         if wait:
             self.wait_for_motor_stop(axis)
 
     def move_to_absolute_position(
-        self, axis: int, pos: float, wait=True
+        self, axis: str, pos: float, wait=True
     ) -> None:
         """Send a relative movement command to stated axis"""
-        axis_name = self._axis_mapper[axis]
-        self.move_command(bytes(f"MOVE {axis_name}={str(pos)}", "ascii"))
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        self.move_command(bytes(f"MOVE {axis}={str(pos)}", "ascii"))
         if wait:
             self.wait_for_motor_stop(axis)
 
-    def move_to_limit(self, axis: int, speed: int):
-        axis_name = self._axis_mapper[axis]
-        self.get_command(bytes(f"SPIN {axis_name}={speed}", "ascii"))
+    def move_to_limit(self, axis: str, speed: int):
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        self.get_command(bytes(f"SPIN {axis}={speed}", "ascii"))
 
-    def motor_moving(self, axis: int) -> int:
-        axis_name = self._axis_mapper[axis]
-        reply = self.get_command(bytes(f"RDSTAT {axis_name}", "ascii"))
+    def motor_moving(self, axis: str) -> int:
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        reply = self.get_command(bytes(f"RDSTAT {axis}", "ascii"))
         flags = int(reply.strip()[3:])
         return flags & 1
 
-    def set_speed(self, axis: int, speed: int) -> None:
-        axis_name = self._axis_mapper[axis]
-        self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
+    def set_speed(self, axis: str, speed: int) -> None:
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        self.get_command(bytes(f"SPEED {axis}={speed}", "ascii"))
 
-    def find_max_speed(self,  axis: int):
-        axis_name = self._axis_mapper[axis]
+    def find_max_speed(self,  axis: str):
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
         speed = 100000000
         #set the speed
-        self.get_command(bytes(f"SPEED {axis_name}={speed}", "ascii"))
+        self.get_command(bytes(f"SPEED {axis}={speed}", "ascii"))
         #read off the max speed set by controller
-        response=self.get_command(bytes(f"SPEED {axis_name}?", "ascii"))
+        response=self.get_command(bytes(f"SPEED {axis}?", "ascii"))
         return(float(response.strip()[5:]))
 
-    def wait_for_motor_stop(self, axis: int):
+    def wait_for_motor_stop(self, axis: str):
         # give axis a chance to start maybe?
         time.sleep(0.2)
         while self.motor_moving(axis):
             time.sleep(0.1)
 
-    def reset_position(self, axis: int):
-        axis_name = self._axis_mapper[axis]
-        self.get_command(bytes(f"HERE {axis_name}=0", "ascii"))
+    def reset_position(self, axis: str):
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        self.get_command(bytes(f"HERE {axis}=0", "ascii"))
 
-    def get_absolute_position(self, axis: int) -> float:
-        axis_name = self._axis_mapper[axis]
-        position = self.get_command(bytes(f"WHERE {axis_name}", "ascii"))
+    def get_absolute_position(self, axis: str) -> float:
+        if axis not in self.axis_list:
+            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+        position = self.get_command(bytes(f"WHERE {axis}", "ascii"))
         if position[3:4] == b"N":
             print(f"Error: {position} : {_ASI_ERRORS[int(position[4:6])]}")
         else:
@@ -406,16 +412,16 @@ class _ASIController:
         return bool(self.get_led_power(channel))
 
     def get_led_power(self, channel):
-        answer = self.get_command(b"LED " + self._led_mapper[channel] + b"?")
+        answer = self.get_command(b"LED " + self.led_list[channel] + b"?")
         return int(answer[3:-4]) / 100
 
     def set_led_power(self, channel, power):
         power = str(int(power * 100)).encode()
-        self.get_command(b"LED " + self._led_mapper[channel] + b"=" + power)
+        self.get_command(b"LED " + self.led_list[channel] + b"=" + power)
 
 
 class _ASIStageAxis(microscope.abc.StageAxis):
-    def __init__(self, dev_conn: _ASIController, axis: int) -> None:
+    def __init__(self, dev_conn: _ASIController, axis: str) -> None:
         super().__init__()
         self._dev_conn = dev_conn
         self._axis = axis
@@ -489,8 +495,8 @@ class _ASIStage(microscope.abc.Stage):
         super().__init__(**kwargs)
         self._dev_conn = conn
         self._axes = {
-            str(i): _ASIStageAxis(self._dev_conn, i)
-            for i in range(1, self._dev_conn.get_number_axes() + 1)
+            a: _ASIStageAxis(self._dev_conn, a)
+            for a in self._dev_conn.axis_list
         }
 
         self._add_settings(self._dev_conn.axis_info)
@@ -616,7 +622,7 @@ class _ASIStage(microscope.abc.Stage):
         """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
-                int(axis_name), int(axis_delta), wait=False
+                axis_name, int(axis_delta), wait=False
             )
         self._dev_conn.wait_until_idle()
 
@@ -625,7 +631,7 @@ class _ASIStage(microscope.abc.Stage):
         print(position)
         for axis_name, axis_position in position.items():
             self._dev_conn.move_to_absolute_position(
-                int(axis_name), int(axis_position), wait=False
+                axis_name, int(axis_position), wait=False
             )
         self._dev_conn.wait_until_idle()
 
