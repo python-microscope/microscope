@@ -34,6 +34,7 @@ import serial
 
 import microscope.abc
 import microscope._utils
+from microscope import DeviceError, InitialiseError
 
 _logger = logging.getLogger(__name__)
 
@@ -225,10 +226,9 @@ class _ASIController:
                     continue
                 _logger.info(f"Axis {axis} present")
                 self.axis_info[axis] = parse_info(answer)
-        except:
-            print("Unable to read configuration. Is ASI controller connected?")
-            return
                 self.axis_list.append(axis)
+        except Exception as e:
+            raise InitialiseError(f"Unable to read configuration. Is ASI controller connected?: {e}")
 
         # As for this version, some MS2000 controllers have integrated control for 2 LEDs
         self.led_list = [b"X", b"Y"]
