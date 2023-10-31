@@ -72,7 +72,7 @@ _logger = logging.getLogger(__name__)
 # Error codes are dumped to the screen with the last error code shown first using the ‘DU Y‘
 # command. The table below lists the meanings of the error codes as of this publication.
 # Error Number* Error Description
-ASI_ERRORS = {
+_ASI_ERRORS = {
     0: "No Error",
     1: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
     2: "OVERTIME - RECOVERABLE. Error caused by competing tasks using the microprocessor.",
@@ -276,7 +276,7 @@ class _ASIController:
                     # this is an error string
                     error = line[2:].strip()
                     raise (
-                        f"ASI controller error: {error},{ASI_ERRORS[error]}"
+                        f"ASI controller error: {error},{_ASI_ERRORS[error]}"
                     )
         return output
 
@@ -397,7 +397,7 @@ class _ASIController:
         axis_name = self._axis_mapper[axis]
         position = self.get_command(bytes(f"WHERE {axis_name}", "ascii"))
         if position[3:4] == b"N":
-            print(f"Error: {position} : {ASI_ERRORS[int(position[4:6])]}")
+            print(f"Error: {position} : {_ASI_ERRORS[int(position[4:6])]}")
         else:
             return float(position.strip()[2:])
 
@@ -525,7 +525,7 @@ class _ASIStage(microscope.abc.Stage):
             # this is an error string
             error = answer[2:]
             raise Exception(
-                f"ASI controller error on command {command}: {error},{ASI_ERRORS[error]}"
+                f"ASI controller error on command {command}: {error},{_ASI_ERRORS[error]}"
             )
         else:
             raise Exception(
