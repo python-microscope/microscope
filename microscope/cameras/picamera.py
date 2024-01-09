@@ -140,7 +140,7 @@ class PiCamera(microscope.abc.Camera):
             )
 
     def _fetch_data(self):
-        if self._queue.qsize() is not 0:
+        if self._queue.qsize() > 0:
             data = self._queue.get()
             _logger.info("Sending image")
             return data
