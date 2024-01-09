@@ -140,12 +140,12 @@ class PiCamera(microscope.abc.Camera):
             )
 
     def _fetch_data(self):
-        if self._queue.qsize() > 0:
-            data = self._queue.get()
-            _logger.info("Sending image")
-            return data
-        else:
+        try:
+            data = self._queue.get_nowait()
+        except queue.Empty:
             return None
+        _logger.info("Sending image")
+        return data
 
     def initialize(self):
         """Initialise the Pi Camera camera.
