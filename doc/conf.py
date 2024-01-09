@@ -101,10 +101,12 @@ autodoc_mock_imports = [
     "microscope.cameras._SDK3",  # should go into microscope._wrappers
     "picamera",
     "picamera.array",
+    "qtpy",
     "RPi",
     "servicemanager",
     "win32service",
     "win32serviceutil",
+    "ximea",
 ]
 
 # Configuration for sphinx.ext.intersphinx
