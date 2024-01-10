@@ -175,18 +175,25 @@ def parse_info(
         try:
             name = match.group("name")
         except AttributeError:
-            _logger.warning(f"Error parsing info. No item name found on: {item}")
+            _logger.warning(
+                f"Error parsing info. No item name found on: {item}"
+            )
             continue
         try:
             value = match.group("value")
         except AttributeError:
-            _logger.warning(f"Error parsing info. No item value found on: {item}")
+            _logger.warning(
+                f"Error parsing info. No item value found on: {item}"
+            )
             continue
         settings[name.strip()] = {
             "value": value,
             "command": None
-            if not match.group("command") else match.group("command")[1:-1],
-            "units": match.group("units") if len(match.group("units")) else None,
+            if not match.group("command")
+            else match.group("command")[1:-1],
+            "units": match.group("units")
+            if len(match.group("units"))
+            else None,
         }
 
     return settings
@@ -235,7 +242,9 @@ class _ASIController:
                 self.axis_info[axis] = parse_info(answer)
                 self.axis_list.append(axis)
         except Exception as e:
-            raise InitialiseError(f"Unable to read configuration. Is ASI controller connected?: {e}")
+            raise InitialiseError(
+                f"Unable to read configuration. Is ASI controller connected?: {e}"
+            )
 
         # As for this version, some MS2000 controllers have integrated control for 2 LEDs
         self.led_list = [b"X", b"Y"]
@@ -352,7 +361,9 @@ class _ASIController:
     ) -> None:
         """Send a relative movement command to stated axis"""
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         self.move_command(bytes(f"MOVREL {axis}={str(delta)}", "ascii"))
         if wait:
             self.wait_for_motor_stop(axis)
@@ -362,37 +373,47 @@ class _ASIController:
     ) -> None:
         """Send a relative movement command to stated axis"""
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         self.move_command(bytes(f"MOVE {axis}={str(pos)}", "ascii"))
         if wait:
             self.wait_for_motor_stop(axis)
 
     def move_to_limit(self, axis: str, speed: int):
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         self.get_command(bytes(f"SPIN {axis}={speed}", "ascii"))
 
     def motor_moving(self, axis: str) -> int:
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         reply = self.get_command(bytes(f"RDSTAT {axis}", "ascii"))
         flags = int(reply.strip()[3:])
         return flags & 1
 
     def set_speed(self, axis: str, speed: int) -> None:
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         self.get_command(bytes(f"SPEED {axis}={speed}", "ascii"))
 
-    def find_max_speed(self,  axis: str):
+    def find_max_speed(self, axis: str):
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         speed = 100000000
-        #set the speed
+        # set the speed
         self.get_command(bytes(f"SPEED {axis}={speed}", "ascii"))
-        #read off the max speed set by controller
-        response=self.get_command(bytes(f"SPEED {axis}?", "ascii"))
-        return(float(response.strip()[5:]))
+        # read off the max speed set by controller
+        response = self.get_command(bytes(f"SPEED {axis}?", "ascii"))
+        return float(response.strip()[5:])
 
     def wait_for_motor_stop(self, axis: str):
         # give axis a chance to start maybe?
@@ -402,12 +423,16 @@ class _ASIController:
 
     def reset_position(self, axis: str):
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         self.get_command(bytes(f"HERE {axis}=0", "ascii"))
 
     def get_absolute_position(self, axis: str) -> float:
         if axis not in self.axis_list:
-            raise ValueError(f"Axis {axis} not present. Verify the name of the axis or your configuration files.")
+            raise ValueError(
+                f"Axis {axis} not present. Verify the name of the axis or your configuration files."
+            )
         position = self.get_command(bytes(f"WHERE {axis}", "ascii"))
         if position[3:4] == b"N":
             print(f"Error: {position} : {_ASI_ERRORS[int(position[4:6])]}")
@@ -437,8 +462,8 @@ class _ASIStageAxis(microscope.abc.StageAxis):
         self.min_limit = 0.0
         self.max_limit = 100000.0
         # As detailed in ASI manual set speed to 67% of max
-        max_speed=self._dev_conn.find_max_speed(self._axis)
-        self.set_speed(max_speed*0.67)
+        max_speed = self._dev_conn.find_max_speed(self._axis)
+        self.set_speed(max_speed * 0.67)
 
     def move_by(self, delta: float) -> None:
         self._dev_conn.move_by_relative_position(self._axis, int(delta))
