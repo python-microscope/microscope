@@ -6,57 +6,68 @@ Version 0.7.0 (upcoming)
 
 * Selected most important, backwards incompatible, changes:
 
-  * The `Camera.get_trigger_type` method, deprecated on version 0.6.0,
-    has been removed as well as the multiple `TRIGGER_*` constants it
-    returned.  Use the `Camera.trigger_type` and `Camera.trigger_mode`
-    properties.  Note that, despite the similar names, the removed
-    `Camera.get_trigger_type` does not return the same as
-    `Camera.trigger_type` property.
+  * The ``Camera.get_trigger_type`` method, deprecated on version
+    0.6.0, has been removed as well as the multiple ``TRIGGER_*``
+    constants it returned.  Use the :attr:`trigger_type
+    <microscope.abc.TriggerTargetMixin.trigger_type>` and
+    :attr:`trigger_mode
+    <microscope.abc.TriggerTargetMixin.trigger_mode>` properties
+    instead.  Note that despite the similar names, the new
+    ``trigger_type`` property does not return the same as the old
+    ``get_trigger_type`` method.
 
 * Changes to device ABCs:
 
-  * The `Stage` ABC has a new method `may_move_on_enable` to hint
-    whether calling `enable` will cause the stage to move.
-
-  * All cameras had a ``"readout mode"`` setting for most cameras only
-    had a ``"default"`` value was available.  This setting has been
-    removed from the base class and is now only kept by cameras that
-    actually make use of it, namely, ``PVCamera`` and ``AndorAtmcd``.
+  * The :class:`Stage <microscope.abc.Stage>` ABC has a new
+    :meth:`may_move_on_enable
+    <microscope.abc.Stage.may_move_on_enable>` method to hint whether
+    calling :meth:`enable <microscope.abc.Device.enable>` will cause
+    the stage to move.
 
   * All cameras had ``"transform"`` setting.  This has been removed.
-    Use the ``get_transform`` and ``set_transform`` methods instead.
-    The result may be different since the ``"transform"`` setting also
+    Use the :meth:`get_transform
+    <microscope.abc.Camera.get_transform>` and :meth:`set_transform
+    <microscope.abc.Camera.set_transform>` methods instead.  The
+    result may be different since the ``"transform"`` setting also
     exposed any internal transformation after readout.
 
   * All filterwheels had a ``"position"`` setting which was redundant
     with the related get/set methods.  The setting was been removed.
 
   * New :class:`ValueLogger <microscope.abc.ValueLogger>` ABC for
-    devices with a series of sensors. Simulation and Raspberry Pi
-    implementations for MCP9808 and TSYS01 temparture sensors.
+    devices with a series of different sensors such as temperature.
 
-  * New :class:`DigitalIO <microscope.abc.DigitalIO>` ABC. Added
-    simulation device and Raspberry Pi implmentation.
+  * New :class:`DigitalIO <microscope.abc.DigitalIO>` ABC for devices
+    with a series of Digital IO (DIO) lines.
 
 * New devices supported:
 
-  * ASI MS 2000 controller (:class:`microscope.controllers.asi.ASIMS2000`)
-  
-  * RaspberryPi as a valuelogger (:class:`microscope.valuelogger.RPiValueLogger`)
-    
-  * RaspberryPi as Digital IO (:class:`microscope.digitalio.raspberrypi.RPiDIO`)
+  * ASI MS 2000 controller
+    (:class:`microscope.controllers.asi.ASIMS2000`)
 
-  * Hamamatsu cameras (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
+  * Hamamatsu cameras
+    (:class:`microscope.cameras.hamamatsu.HamamatsuCamera`)
 
-  * Ludl MC 2000 controller (:class:`microscope.controllers.ludl.LudlMC2000`)
+  * Ludl MC 2000 controller
+    (:class:`microscope.controllers.ludl.LudlMC2000`)
+
+  * MCP9808 temperature sensor on RaspberryPi
+    (:class:`microscope.valuelogger.raspberrypi.RPiValueLogger`)
 
   * RaspberryPi camera (:class:`microscope.cameras.picamera.PiCamera`)
 
-  * Toptica iChrome MLE (:class:`microscope.controllers.toptica.iChromeMLE`)
+  * RaspberryPi as Digital IO
+    (:class:`microscope.digitalio.raspberrypi.RPiDIO`)
+
+  * Toptica iChrome MLE
+    (:class:`microscope.controllers.toptica.iChromeMLE`)
+
+  * TSYS01 temperature sensor on RaspberryPi
+    (:class:`microscope.valuelogger.raspberrypi.RPiValueLogger`)
 
 * Device specific changes:
 
-  * `PVCamera`:
+  * :class:`PVCamera <microscope.cameras.pvcam.PVCamera>`:
 
     * In version 0.6.0 the default PVCAM trigger mode was accidentally
       changed from "strobed" to "trig. first".  This has now been
@@ -64,8 +75,9 @@ Version 0.7.0 (upcoming)
 
     * 8-bit acquisition mode now works.
 
-  * `SimulatedCamera` now takes an optional `sensor_shape` constructor
-    argument instead of always being 512x512 pixels.
+  * :class:`SimulatedCamera <microscope.simulators.SimulatedCamera>`
+    constructor now takes an optional ``sensor_shape`` argument.
+    Previously, simulated cameras were always 512x512 pixels.
 
 * The device server logging was broken in version 0.6.0 for Windows
   and macOS (systems not using fork for multiprocessing).  This

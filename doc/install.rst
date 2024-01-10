@@ -12,11 +12,10 @@ Installation
 Microscope is available on the Python Package Index (PyPI) and can be
 `installed like any other Python package
 <https://packaging.python.org/tutorials/installing-packages/>`_.  The
-short version of it is "use pip"::
+short version of it is "use pip" (you will need to have Python and pip
+already installed on your system)::
 
     python3 -m pip install microscope
-
-You need to have Python and pip already installed on your system.
 
 
 Requirements
@@ -50,11 +49,11 @@ Linux.  See the :ref:`device-server` section for details.
 Dependencies
 ============
 
-Microscope has very few dependencies.  All are Python packages
-available on PyPI and will be automatically resolved if Microscope is
+Microscope has very few dependencies and all are Python packages
+available on PyPI that will be automatically resolved if Microscope is
 installed with pip.  However, the interface to many devices is done
-via an external library (or SDK, or driver) that is only provided by
-the device vendor.
+via an external library (sometimes named SDK or driver) that is only
+provided by the device vendor.
 
 To identify if an external library is required check the device module
 documentation.  If an external library is required, contact the device

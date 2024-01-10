@@ -58,8 +58,8 @@ def library_loader(
         libname: file name or path of the library to be loaded as
             required by `dlltype`
         dlltype: the class of shared library to load.  Typically,
-            ``CDLL`` but sometimes ``WinDLL`` in windows.
-        kwargs: other arguments passed on to ``dlltype``.
+            `ctypes.CDLL` but sometimes `ctypes.WinDLL` in windows.
+        kwargs: other arguments passed on to `dlltype`.
     """
     # Python 3.8 in Windows uses an altered search path.  Their
     # reasons is security and I guess it would make sense if we

@@ -14,7 +14,7 @@ or even discussing a completely new device type.
 In short
 ========
 
-- Open new issues.  Do not create pull requests.
+- Open new issues (do not create pull requests).
 - Open a new issue even if you already have a commit made.  Even if it
   is about adding support for a new device.
 - Coding style is `Black <https://black.readthedocs.io/>`_
@@ -95,7 +95,7 @@ making a commit:
 
 .. code-block:: shell
 
-   black ./
+   black .
 
 
 Docstrings
@@ -173,4 +173,5 @@ We do not request that copyright is assigned to us, you can remain the
 copyright holder of any contribution made.  However, please ensure
 that you are the copyright holder.  Depending on your contract, even
 if you are a student, the copyright holder is likely to be your
-employer or university.  Ask your employer or PhD supervisor first.
+employer or university.  Ask your employer or PhD supervisor if you
+are not sure.

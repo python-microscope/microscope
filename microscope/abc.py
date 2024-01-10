@@ -543,15 +543,15 @@ class DataDevice(Device, metaclass=abc.ABCMeta):
     it to a client.  The client is set using set_client(uri) or (legacy)
     receiveClient(uri).
 
-    Derived classed should implement::
+    Derived classed should implement:
 
     * :meth:`abort` (required)
     * :meth:`_fetch_data` (required)
     * :meth:`_process_data` (optional)
 
-    Derived classes may override `__init__`, `enable` and `disable`,
-    but must ensure to call this class's implementations as indicated
-    in the docstrings.
+    Derived classes may override ``__init__``, ``enable`` and
+    ``disable``, but must ensure to call this class's implementations
+    as indicated in the docstrings.
 
     """
 
@@ -1705,7 +1705,7 @@ class ValueLogger(DataDevice, metaclass=abc.ABCMeta):
             )
         self._numSensors = numSensors
         # If pull data is True data will be pulled from the server if False
-        # data will be pushed from microsocpe (default)
+        # data will be pushed from microscope (default)
         self.pullData = pullData
 
     @abc.abstractmethod

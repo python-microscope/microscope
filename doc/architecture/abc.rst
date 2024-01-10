@@ -35,7 +35,7 @@ which defines a base interface to all devices such as the
 :meth:`shutdown <microscope.abc.Device.shutdown>` method.
 
 There is an additional special device class
-:class:`microsope.abc.DataDevice` which defines a class that has the
+:class:`microscope.abc.DataDevice` which defines a class that has the
 ability to asynchronously send data back to the calling
 connection. This is used for situations like cameras and asynchronous
 communication such as digital input signals.
