@@ -1,6 +1,10 @@
 The following is a summary of the user-visible changes for each of
 python-microscope releases.
 
+Upcoming version
+----------------
+
+
 Version 0.7.0 (2024/01/10)
 --------------------------
 

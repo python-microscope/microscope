@@ -15,7 +15,7 @@ import setuptools.command.sdist
 
 
 project_name = "microscope"
-project_version = "0.7.0"
+project_version = "0.7.0+dev"
 
 
 # setup.py is used for both maintainers actions (build documentation,
