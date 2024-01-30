@@ -1,0 +1,20 @@
+# We list here all extra non-standard files to be included in source
+# distributions.  We list *all*, even those that setuptools picks up
+# automatically --- at the moment setuptools picks up COPYING and
+# README.rst and ignores NEWS.rst and INSTALL.rst.  We list them all
+# because 1) we never know when setuptools changes their mind on what
+# files to include by default; 2) we may accidentally use an older
+# version of setuptools; or 3) we may move away from setuptools to
+# another build tool.
+#
+# Note we do not use package_data from setuptools.  That is for files
+# that will be included in the binary distribution, i.e., needed at
+# runtime.  We only want these files in the source distribution, they
+# are for user information.
+
+include COPYING
+include NEWS.rst
+include README.rst
+include INSTALL.rst
+
+graft doc

@@ -14,7 +14,7 @@ import sys
 import unittest.mock
 
 
-sys.path.insert(0, "../microscope")
+sys.path.insert(0, "..")
 
 
 # autodoc imports the modules to be documented.  Modules that wrap the
@@ -93,6 +93,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.apidoc",
 ]
 
 # Configuration for sphinx.ext.autodoc
@@ -125,6 +126,27 @@ napoleon_include_special_with_doc = False
 # Configuration for sphinx.ext.todo
 todo_include_todos = True
 
+# Configuration for sphinxcontrib.apidoc
+apidoc_module_dir = '../microscope'
+apidoc_output_dir = 'api'
+apidoc_excluded_paths = [
+    # Exclude the testsuite
+    "microscope/testsuite/",
+    # Exclude the wrappers to shared libraries
+    "microscope/_wrappers/",
+    # Exclude the deprecated devices and deviceserver that are kept
+    # for backwards compatibility only
+    "microscope/devices.py",
+    "microscope/deviceserver.py",
+    "microscope/lasers/",
+    # Exclude these that should be moved to microscope/_wrappers
+    "microscope/cameras/_SDK3.py",
+    "microscope/cameras/_SDK3Cam.py",
+]
+apidoc_separate_modules = True
+apidoc_toc_file = "index"
+apidoc_module_first = True
+apidoc_exra_args = ["--private"]
 
 #
 # Options for HTML output
@@ -145,3 +167,14 @@ rst_prolog = """
 .. _gpl-licence: https://www.gnu.org/licenses/gpl-3.0.html
 .. _cockpit-link: https://github.com/MicronOxford/cockpit/
 """
+
+
+#
+# Options for LaTeX/PDF output
+#
+# Currently this has issues because of Japanese characters in
+# authors.rst.  But maybe it would make sense to change authors.rst or
+# maybe there's something smart we can do on LaTeX customisation with
+# latex_elements https://www.sphinx-doc.org/en/master/latex.html
+
+latex_show_urls = "footnote"

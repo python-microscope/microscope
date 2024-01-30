@@ -29,59 +29,72 @@ relevant change should also add the entry to the NEWS file.
 Steps to make a release
 =======================
 
-Because the ``NEWS`` file is supposed to always be kept up to date,
-there should be no need to check it.
+#. Check the ``NEWS`` is up to date for the next release.  Because the
+   ``NEWS`` file is supposed to be kept up to date with each commit
+   that introduces changes worth mentioning, there should be no need
+   to add entries now.  But if so, then::
 
-#. Change version number on ``setup.py`` and date on ``NEWS``.  Commit
-   these changes only.  Note that we use ``release-N`` for tag and not
-   ``v.N``.  This will enable us to one day perform snapshot releases
-   with tags such as ``snapshot-N``::
+    git commit -m "maint: update NEWS for upcoming release" NEWS.rst
 
-    VERSION=$(python3 setup.py --version)
-    sed -i "s,(upcoming),($(date +%Y/%m/%d))," NEWS.rst
-    git commit -m "maint: release $VERSION" setup.py NEWS.rst
-    COMMIT=$(git rev-parse HEAD | cut -c1-12)
-    git tag -s -u $GPGKEY \
-      -m "Added tag release-$VERSION for commit $COMMIT" release-$VERSION
+#. Manually add date and version for next release on ``NEWS.rst``.
+   Then change the version on ``pyproject.toml``, commit it, and tag
+   it::
 
-#. Build a source distribution from a git archive export.  Performing
-   a release from a git archive will ensure that the release will not
-   accidentally include modified or untracked files::
+       NEW_VERSION="X.Y.Z"  # replace this with new version number
+       OLD_VERSION=`grep '^version ' pyproject.toml | sed 's,^version = "\([0-9.]*+dev\)"$,\1,'`
+       python3 -c "from packaging.version import parse; assert parse('$NEW_VERSION') > parse('$OLD_VERSION');"
 
-    rm -rf target/
-    git archive --format=tar --prefix="target/" HEAD | tar -x
-    cd target/
-    python3 setup.py sdist --formats=gztar
+       sed -i 's,^version = "'$OLD_VERSION'"$,version = "'$NEW_VERSION'",' pyproject.toml
+       git commit -m "maint: release $NEW_VERSION" pyproject.toml NEWS.rst
+       COMMIT=$(git rev-parse HEAD | cut -c1-12)
+       git tag -a -m "Added tag release-$NEW_VERSION for commit $COMMIT" release-$NEW_VERSION
+
+   Note that we use ``release-N`` for tag and not ``v.N``.  This will
+   enable us to one day perform snapshot releases with tags such as
+   ``snapshot-N``.
+
+#. Build a source and wheel distribution from a git archive export::
+
+       rm -rf target
+       git archive --format=tar --prefix="target/" release-$NEW_VERSION | tar -x
+       (cd target/ ; python3 -m build)
+
+   Performing a release from a git archive ensures that the release
+   does not accidentally include modified or untracked files.  The
+   wheel distribution is not for actual distribution, we only build it
+   to ensure that a binary distribution can be built from the source
+   distribution.
 
    We should probably do this from a git clone and not an archive to
    ensure that we are not using a commit that has not been pushed yet.
 
-#. Upload and sign distribution::
+#. Upload source distribution to PyPI::
 
-    twine upload -r pypi -s -i $GPGKEY target/dist/microscope-X.tar.gz
+    twine upload -r pypi target/dist/microscope-$NEW_VERSION.tar.gz
 
-#. Add ``+dev`` to version string and a new entry on the ``NEWS``
-   file::
+#. Add ``+dev`` to version string and manually add a new entry on the
+   ``NEWS`` file for the upcoming version::
 
-    sed -i "s,\(^project_version = '[^+]*\)',\1+dev'," setup.py
-    # manually add new version line on NEWS file
-    git commit setup.py NEWS \
-      -m "maint: set version to $VERSION+dev after $VERSION release."
-    git push upstream master
-    git push upstream release-$VERSION
+       sed -i 's,^version = "'$NEW_VERSION'"$,version = "'$NEW_VERSION'+dev",' pyproject.toml
+       # manually add new version line on NEWS.rst file
+       git commit -m "maint: set version to $NEW_VERSION+dev after $NEW_VERSION release." pyproject.toml NEWS.rst
+       git push upstream master
+       git push upstream release-$NEW_VERSION
 
 
 Documentation
 =============
 
-The documentation is generated automatically with `sphinx
-<https://www.sphinx-doc.org/en/master/>`_.  The API section is
-generated from the inline docstrings and makes use of `Sphinx's
-Napoleon extension
-<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`_.  It is
-generated with::
+The documentation is generated with `Sphinx
+<https://www.sphinx-doc.org/>`__, like so::
 
-    python3 setup.py build_sphinx
+    sphinx-build -b html doc/ dist/sphinx/html
+    sphinx-build -M pdflatex doc/ dist/sphinx/pdf
+
+The API section is generated from the inline docstrings and makes use
+of Sphinx's `Napoleon
+<http://www.sphinx-doc.org/en/stable/ext/napoleon.html>`__ and `apidoc
+<https://github.com/sphinx-contrib/apidoc>`__ extensions.
 
 
 Versioning
