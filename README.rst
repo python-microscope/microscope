@@ -1,7 +1,7 @@
 Python-Microscope
 *****************
 
-.. image:: https://github.com/python-microscope/python-microscope.org/raw/master/_static/microscope-logo-96-dpi.png
+.. image:: https://github.com/python-microscope/python-microscope.org/raw/main/_static/microscope-logo-96-dpi.png
    :align: center
    :alt: Python-Microscope logo
 
