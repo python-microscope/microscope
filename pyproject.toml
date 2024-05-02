@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-GUI = ["PySide2"]
+GUI = ["PyQt"]
 
 [project.scripts]
 device-server = "microscope.device_server:_setuptools_entry_point"
