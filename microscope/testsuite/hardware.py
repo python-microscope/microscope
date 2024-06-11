@@ -22,7 +22,7 @@
 
 import time
 
-import numpy
+import numpy as np
 
 
 def test_mirror_actuators(dm, time_interval=0.5):
@@ -34,7 +34,7 @@ def test_mirror_actuators(dm, time_interval=0.5):
             actuator.
     """
     base_value = 0.5
-    data = numpy.full((dm.n_actuators), base_value)
+    data = np.full((dm.n_actuators), base_value)
     dm.apply_pattern(data)
 
     time.sleep(time_interval)

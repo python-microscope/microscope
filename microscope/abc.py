@@ -32,7 +32,7 @@ from enum import EnumMeta
 from threading import Thread
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
-import numpy
+import numpy as np
 import Pyro4
 
 import microscope
@@ -853,13 +853,13 @@ class Camera(TriggerTargetMixin, DataDevice):
 
         # Choose appropriate transform based on (flips, rot).
         # Do rotation
-        data = numpy.rot90(data, rot)
+        data = np.rot90(data, rot)
         # Flip
         data = {
             (0, 0): lambda d: d,
-            (0, 1): numpy.flipud,
-            (1, 0): numpy.fliplr,
-            (1, 1): lambda d: numpy.fliplr(numpy.flipud(d)),
+            (0, 1): np.flipud,
+            (1, 0): np.fliplr,
+            (1, 1): lambda d: np.fliplr(np.flipud(d)),
         }[flips](data)
         return super()._process_data(data)
 
@@ -1064,7 +1064,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._patterns: Optional[numpy.ndarray] = None
+        self._patterns: Optional[np.ndarray] = None
         self._pattern_idx: int = -1
 
     @property
@@ -1072,7 +1072,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     def n_actuators(self) -> int:
         raise NotImplementedError()
 
-    def _validate_patterns(self, patterns: numpy.ndarray) -> None:
+    def _validate_patterns(self, patterns: np.ndarray) -> None:
         """Validate the shape of a series of patterns.
 
         Only validates the shape of the patterns, not if the values
@@ -1096,10 +1096,10 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
             )
 
     @abc.abstractmethod
-    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
+    def _do_apply_pattern(self, pattern: np.ndarray) -> None:
         raise NotImplementedError()
 
-    def apply_pattern(self, pattern: numpy.ndarray) -> None:
+    def apply_pattern(self, pattern: np.ndarray) -> None:
         """Apply this pattern.
 
         Raises:
@@ -1118,7 +1118,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         self._validate_patterns(pattern)
         self._do_apply_pattern(pattern)
 
-    def queue_patterns(self, patterns: numpy.ndarray) -> None:
+    def queue_patterns(self, patterns: np.ndarray) -> None:
         """Send values to the mirror.
 
         Args:

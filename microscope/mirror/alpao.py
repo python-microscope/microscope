@@ -20,7 +20,7 @@
 import ctypes
 import warnings
 
-import numpy
+import numpy as np
 
 import microscope
 import microscope.abc
@@ -55,7 +55,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     ]
 
     @staticmethod
-    def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
+    def _normalize_patterns(patterns: np.ndarray) -> np.ndarray:
         """
         Alpao SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
@@ -124,7 +124,7 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
     def trigger_type(self) -> microscope.TriggerType:
         return self._trigger_type
 
-    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
+    def _do_apply_pattern(self, pattern: np.ndarray) -> None:
         pattern = self._normalize_patterns(pattern)
         data_pointer = pattern.ctypes.data_as(asdk.Scalar_p)
         status = asdk.Send(self._dm, data_pointer)
@@ -157,14 +157,14 @@ class AlpaoDeformableMirror(microscope.abc.DeformableMirror):
         self._raise_if_error(status)
         self._trigger_type = ttype
 
-    def queue_patterns(self, patterns: numpy.ndarray) -> None:
+    def queue_patterns(self, patterns: np.ndarray) -> None:
         if self._trigger_type == microscope.TriggerType.SOFTWARE:
             super().queue_patterns(patterns)
             return
 
         self._validate_patterns(patterns)
         patterns = self._normalize_patterns(patterns)
-        patterns = numpy.atleast_2d(patterns)
+        patterns = np.atleast_2d(patterns)
         n_patterns: int = patterns.shape[0]
 
         # The Alpao SDK seems to only support the trigger mode start.  It

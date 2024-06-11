@@ -37,7 +37,7 @@ import sys
 import threading
 from typing import Dict, List, Optional, Sequence
 
-import numpy
+import numpy as np
 import Pyro4
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -136,7 +136,7 @@ class _DataQueue(queue.Queue):
 class _Imager(QtCore.QObject):
     """Helper for CameraWidget handling the internals of the camera trigger."""
 
-    imageAcquired = QtCore.Signal(numpy.ndarray)
+    imageAcquired = QtCore.Signal(np.ndarray)
 
     def __init__(self, camera: microscope.abc.Camera) -> None:
         super().__init__()
@@ -187,7 +187,7 @@ class CameraWidget(QtWidgets.QWidget):
 
         self._view = QtWidgets.QLabel(parent=self)
         self.displayData(
-            numpy.zeros(self._device.get_sensor_shape(), dtype=numpy.uint8)
+            np.zeros(self._device.get_sensor_shape(), dtype=np.uint8)
         )
 
         self._enable_check = QtWidgets.QCheckBox("Enabled", parent=self)
@@ -232,10 +232,10 @@ class CameraWidget(QtWidgets.QWidget):
         self._snap_button.setEnabled(self._device.get_is_enabled())
         self._exposure_box.setEnabled(self._device.get_is_enabled())
 
-    def displayData(self, data: numpy.ndarray) -> None:
+    def displayData(self, data: np.ndarray) -> None:
         np_to_qt = {
-            numpy.dtype("uint8"): QtGui.QImage.Format_Grayscale8,
-            numpy.dtype("uint16"): QtGui.QImage.Format_Grayscale16,
+            np.dtype("uint8"): QtGui.QImage.Format_Grayscale8,
+            np.dtype("uint16"): QtGui.QImage.Format_Grayscale16,
         }
         qt_img = QtGui.QImage(
             data.tobytes(), *data.shape, np_to_qt[data.dtype]
@@ -257,7 +257,7 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         self._device = device
 
-        self._pattern = numpy.ndarray(shape=(self._device.n_actuators))
+        self._pattern = np.ndarray(shape=(self._device.n_actuators))
         self._actuators: List[QtWidgets.QSlider] = []
         for i in range(self._device.n_actuators):
             actuator = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent=self)

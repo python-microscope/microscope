@@ -42,7 +42,7 @@ applies.
 import ctypes
 from typing import Callable
 
-import numpy
+import numpy as np
 
 import microscope
 import microscope._utils
@@ -82,7 +82,7 @@ class Mirao52e(
         return mro.NB_COMMAND_VALUES
 
     @staticmethod
-    def _normalize_patterns(patterns: numpy.ndarray) -> numpy.ndarray:
+    def _normalize_patterns(patterns: np.ndarray) -> np.ndarray:
         """
         mirao52e SDK expects values in the [-1 1] range, so we normalize
         them from the [0 1] range we expect in our interface.
@@ -90,7 +90,7 @@ class Mirao52e(
         patterns = (patterns * 2) - 1
         return patterns
 
-    def _do_apply_pattern(self, pattern: numpy.ndarray) -> None:
+    def _do_apply_pattern(self, pattern: np.ndarray) -> None:
         pattern = self._normalize_patterns(pattern)
         command = pattern.ctypes.data_as(mro.Command)
         if not mro.applyCommand(command, mro.FALSE, self._status):

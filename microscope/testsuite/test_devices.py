@@ -39,7 +39,7 @@ import unittest
 import unittest.mock
 from queue import Queue
 
-import numpy
+import numpy as np
 
 import microscope
 import microscope.testsuite.devices as dummies
@@ -280,7 +280,7 @@ class DeformableMirrorTests(DeviceTests):
     """
 
     def assertCurrentPattern(self, expected_pattern, msg=""):
-        numpy.testing.assert_array_equal(
+        np.testing.assert_array_equal(
             self.fake.get_current_pattern(), expected_pattern, msg
         )
 
@@ -290,14 +290,14 @@ class DeformableMirrorTests(DeviceTests):
         self.assertEqual(self.device.n_actuators, self.planned_n_actuators)
 
     def test_applying_pattern(self):
-        pattern = numpy.full((self.planned_n_actuators,), 0.2)
+        pattern = np.full((self.planned_n_actuators,), 0.2)
         self.device.apply_pattern(pattern)
         self.assertCurrentPattern(pattern)
 
     def test_out_of_range_pattern(self):
         # While we expect values in the [0 1] range, we should not
         # actually be checking for that.
-        pattern = numpy.zeros((self.planned_n_actuators,))
+        pattern = np.zeros((self.planned_n_actuators,))
         for v in [-1000, -1, 0, 1, 3]:
             pattern[:] = v
             self.device.apply_pattern(pattern)
@@ -305,24 +305,24 @@ class DeformableMirrorTests(DeviceTests):
 
     def test_software_triggering(self):
         n_patterns = 5
-        patterns = numpy.random.rand(n_patterns, self.planned_n_actuators)
+        patterns = np.random.rand(n_patterns, self.planned_n_actuators)
         self.device.queue_patterns(patterns)
         for i in range(n_patterns):
             self.device.next_pattern()
             self.assertCurrentPattern(patterns[i])
 
     def test_validate_pattern_too_long(self):
-        patterns = numpy.zeros((self.planned_n_actuators + 1))
+        patterns = np.zeros((self.planned_n_actuators + 1))
         with self.assertRaisesRegex(Exception, "length of second dimension"):
             self.device.apply_pattern(patterns)
 
     def test_validate_pattern_swapped_dimensions(self):
-        patterns = numpy.zeros((self.planned_n_actuators, 1))
+        patterns = np.zeros((self.planned_n_actuators, 1))
         with self.assertRaisesRegex(Exception, "length of second dimension"):
             self.device.apply_pattern(patterns)
 
     def test_validate_pattern_with_extra_dimension(self):
-        patterns = numpy.zeros((2, 1, self.planned_n_actuators))
+        patterns = np.zeros((2, 1, self.planned_n_actuators))
         with self.assertRaisesRegex(
             Exception, "dimensions \\(must be 1 or 2\\)"
         ):
@@ -444,7 +444,7 @@ class TestImageGenerator(unittest.TestCase):
 
 class TestStageAwareCamera(unittest.TestCase, CameraTests):
     def setUp(self):
-        image = numpy.full((3000, 1500, 1), 42, dtype=numpy.uint8)
+        image = np.full((3000, 1500, 1), 42, dtype=np.uint8)
         self.sensor_shape = (128, 128)
         self.stage = simulators.SimulatedStage(
             {
