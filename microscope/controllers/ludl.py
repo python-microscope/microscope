@@ -22,7 +22,6 @@
 """Ludl controller.
 """
 
-import contextlib
 import re
 import threading
 import time

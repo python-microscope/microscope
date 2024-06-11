@@ -22,18 +22,14 @@
 """Raspberry Pi Digital IO module.
 """
 
-import contextlib
 import logging
 import queue
-import re
 import threading
 import time
-import typing
 
 import RPi.GPIO as GPIO
 
 import microscope.abc
-
 
 # Support for async digital IO control on the Raspberryy Pi.
 # Currently supports digital input and output via GPIO lines

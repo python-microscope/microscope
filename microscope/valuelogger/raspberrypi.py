@@ -22,14 +22,10 @@
 """Raspberry Pi Value Logger module.
 """
 
-import contextlib
 import logging
 import queue
-import re
 import threading
 import time
-import typing
-
 
 try:
     from Adafruit_MCP9808 import MCP9808
@@ -47,7 +43,6 @@ except ModuleNotFoundError:
 
 
 import microscope.abc
-
 
 # Support for async digital IO control on the Raspberryy Pi.
 # Currently supports digital input and output via GPIO lines
