@@ -52,7 +52,6 @@ import numpy as np
 import microscope
 import microscope.abc
 
-
 try:
     import microscope._wrappers.dcamapi4 as dcam
 except Exception as e:

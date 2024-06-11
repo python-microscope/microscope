@@ -31,7 +31,6 @@ import serial
 
 import microscope.abc
 
-
 # so far very basic support for stages
 # no support for filter, shutters, or slide loader as I dont have hardware
 

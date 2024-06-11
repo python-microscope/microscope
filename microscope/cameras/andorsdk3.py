@@ -42,7 +42,6 @@ from microscope.cameras._SDK3Cam import (
     ATString,
 )
 
-
 _logger = logging.getLogger(__name__)
 
 

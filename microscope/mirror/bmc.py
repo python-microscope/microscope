@@ -30,7 +30,6 @@ import microscope
 import microscope._utils
 import microscope.abc
 
-
 try:
     import microscope._wrappers.BMC as BMC
 except Exception as e:

@@ -37,7 +37,6 @@ from microscope.simulators import (
     SimulatedStage,
 )
 
-
 _logger = logging.getLogger(__name__)
 
 

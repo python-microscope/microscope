@@ -26,7 +26,6 @@ import microscope
 import microscope._utils
 import microscope.abc
 
-
 _LOGGER = logging.getLogger(__name__)
 
 _QUOTATION_CODE = ord(b'"')

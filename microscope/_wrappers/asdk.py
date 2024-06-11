@@ -26,7 +26,6 @@ from ctypes import c_char_p, c_double, c_int, c_size_t, c_uint32
 
 import microscope._utils
 
-
 if os.name == "nt":  # is windows
     _libname = "ASDK"
 else:

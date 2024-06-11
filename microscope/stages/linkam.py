@@ -51,7 +51,6 @@ import microscope
 import microscope._utils
 import microscope.abc
 
-
 _max_version_length = 20
 
 # Typedefs from C headers

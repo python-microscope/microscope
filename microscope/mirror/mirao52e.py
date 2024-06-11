@@ -48,7 +48,6 @@ import microscope
 import microscope._utils
 import microscope.abc
 
-
 try:
     import microscope._wrappers.mirao52e as mro
 except Exception as e:

@@ -33,7 +33,6 @@ import microscope.abc
 from microscope import ROI, Binning, TriggerMode, TriggerType
 from microscope.abc import keep_acquiring
 
-
 GPIO_Trigger = 21
 GPIO_CAMLED = 5
 

@@ -26,15 +26,14 @@ import microscope.abc
 
 # These classes were originally in testsuite but have been moved to
 # their own subpackage, these imports are for backwards compatibility.
+from microscope.simulators import SimulatedCamera
+from microscope.simulators import SimulatedController as TestController
 from microscope.simulators import (
-    SimulatedCamera,
-    SimulatedController as TestController,
     SimulatedDeformableMirror as TestDeformableMirror,
-    SimulatedFilterWheel as TestFilterWheel,
-    SimulatedLightSource,
-    SimulatedStage as TestStage,
 )
-
+from microscope.simulators import SimulatedFilterWheel as TestFilterWheel
+from microscope.simulators import SimulatedLightSource
+from microscope.simulators import SimulatedStage as TestStage
 
 _logger = logging.getLogger(__name__)
 

@@ -21,19 +21,15 @@
 """
 
 from microscope import ROI, AxisLimits, Binning, TriggerMode, TriggerType
-from microscope.abc import (
-    Camera as CameraDevice,
-    Controller as ControllerDevice,
-    DataDevice,
-    DeformableMirror,
-    Device,
-    FilterWheel as FilterWheelBase,
-    FloatingDeviceMixin,
-    LightSource as LaserDevice,
-    SerialDeviceMixin as SerialDeviceMixIn,
-    Stage as StageDevice,
-    StageAxis,
-    TriggerTargetMixin as TriggerTargetMixIn,
-    keep_acquiring,
-)
+from microscope.abc import Camera as CameraDevice
+from microscope.abc import Controller as ControllerDevice
+from microscope.abc import DataDevice, DeformableMirror, Device
+from microscope.abc import FilterWheel as FilterWheelBase
+from microscope.abc import FloatingDeviceMixin
+from microscope.abc import LightSource as LaserDevice
+from microscope.abc import SerialDeviceMixin as SerialDeviceMixIn
+from microscope.abc import Stage as StageDevice
+from microscope.abc import StageAxis
+from microscope.abc import TriggerTargetMixin as TriggerTargetMixIn
+from microscope.abc import keep_acquiring
 from microscope.device_server import device

@@ -25,7 +25,6 @@ import numpy
 import microscope
 import microscope.abc
 
-
 try:
     import microscope._wrappers.asdk as asdk
 except Exception as e:

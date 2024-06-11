@@ -27,7 +27,6 @@ import microscope
 import microscope._utils
 import microscope.abc
 
-
 _logger = logging.getLogger(__name__)
 
 

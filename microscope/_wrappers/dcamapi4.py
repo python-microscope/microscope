@@ -36,7 +36,6 @@ import os
 
 import microscope._utils
 
-
 if os.name == "nt":
     _LIB = microscope._utils.library_loader("dcamapi", ctypes.WinDLL)
 else:

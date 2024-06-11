@@ -29,7 +29,6 @@ import hid
 import microscope
 import microscope.devices
 
-
 # Clarity constants. These may differ across products, so mangle names.
 # USB IDs
 _Clarity__VENDORID = 0x1F0A

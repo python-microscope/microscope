@@ -43,7 +43,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import microscope.abc
 
-
 _logger = logging.getLogger(__name__)
 
 

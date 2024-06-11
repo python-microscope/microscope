@@ -24,7 +24,6 @@ import ctypes
 
 import microscope._utils
 
-
 # Vendor only supports Windows
 SDK = microscope._utils.library_loader("mirao52e", ctypes.WinDLL)
 

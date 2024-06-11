@@ -38,7 +38,6 @@ import sys
 
 import servicemanager
 
-
 # These win32* modules both import win32api which is a pyd file.
 # Importing win32api can be problematic because of Windows things
 # specially when running as a Windows.  So if it fails, add the
