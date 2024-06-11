@@ -35,7 +35,7 @@ import logging
 import queue
 import sys
 import threading
-import typing
+from typing import Dict, List, Optional, Sequence
 
 import numpy
 import Pyro4
@@ -87,10 +87,10 @@ class ControllerWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         self._device = device
 
-        self._button2window: typing.Dict[
-            QtWidgets.QPushButton, typing.Optional[QtWidgets.QMainWindow]
+        self._button2window: Dict[
+            QtWidgets.QPushButton, Optional[QtWidgets.QMainWindow]
         ] = {}
-        self._button2name: typing.Dict[QtWidgets.QPushButton, str] = {}
+        self._button2name: Dict[QtWidgets.QPushButton, str] = {}
 
         self._button_grp = QtWidgets.QButtonGroup(self)
         self._button_grp.setExclusive(False)
@@ -259,7 +259,7 @@ class DeformableMirrorWidget(QtWidgets.QWidget):
         self._device = device
 
         self._pattern = numpy.ndarray(shape=(self._device.n_actuators))
-        self._actuators: typing.List[QtWidgets.QSlider] = []
+        self._actuators: List[QtWidgets.QSlider] = []
         for i in range(self._device.n_actuators):
             actuator = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent=self)
             actuator.setMinimum(0)
@@ -484,7 +484,7 @@ def _guess_device_widget(device) -> QtWidgets.QWidget:
         raise TypeError("device is not a Microscope Device")
 
 
-def main(argv: typing.Sequence[str]) -> int:
+def main(argv: Sequence[str]) -> int:
     app = QtWidgets.QApplication(argv)
     app.setApplicationName("Microscope GUI")
     app.setOrganizationDomain("python-microscope.org")

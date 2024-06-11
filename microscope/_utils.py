@@ -21,13 +21,12 @@ import ctypes
 import os
 import sys
 import threading
-import typing
+from typing import List, Optional, Type
 
 import serial
 
 import microscope
 import microscope.abc
-
 
 # Both pySerial and serial distribution packages install an import
 # package named serial.  If both are installed we may have imported
@@ -47,7 +46,7 @@ if not hasattr(serial, "Serial"):
 
 
 def library_loader(
-    libname: str, dlltype: typing.Type[ctypes.CDLL] = ctypes.CDLL, **kwargs
+    libname: str, dlltype: Type[ctypes.CDLL] = ctypes.CDLL, **kwargs
 ) -> ctypes.CDLL:
     """Load shared library.
 
@@ -156,14 +155,14 @@ class SharedSerial:
         with self._lock:
             return self._serial.readline()
 
-    def readlines(self, hint: int = -1) -> typing.List[bytes]:
+    def readlines(self, hint: int = -1) -> List[bytes]:
         with self._lock:
             return self._serial.readlines(hint)
 
     # Beware: pySerial 3.5 changed the named of its first argument
     # from terminator to expected.  See issue #233.
     def read_until(
-        self, terminator: bytes = b"\n", size: typing.Optional[int] = None
+        self, terminator: bytes = b"\n", size: Optional[int] = None
     ) -> bytes:
         with self._lock:
             return self._serial.read_until(terminator, size=size)

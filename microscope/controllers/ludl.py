@@ -25,7 +25,7 @@
 import re
 import threading
 import time
-import typing
+from typing import Mapping
 
 import serial
 
@@ -371,10 +371,10 @@ class _LudlStage(microscope.abc.Stage):
         return not self.homed
 
     @property
-    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
+    def axes(self) -> Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
-    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+    def move_by(self, delta: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
@@ -383,7 +383,7 @@ class _LudlStage(microscope.abc.Stage):
             )
         self._dev_conn.wait_until_idle()
 
-    def move_to(self, position: typing.Mapping[str, float]) -> None:
+    def move_to(self, position: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         print(position)
         for axis_name, axis_position in position.items():
@@ -455,7 +455,7 @@ class LudlMC2000(microscope.abc.Controller):
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _LudlController(port, baudrate, timeout)
-        self._devices: typing.Mapping[str, microscope.abc.Device] = {}
+        self._devices: Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _LudlStage(self._conn)
 
     #        # Can have up to three filter wheels, numbered 1 to 3.
@@ -465,7 +465,7 @@ class LudlMC2000(microscope.abc.Controller):
     #                self._devices[key] = _ludlFilterWheel(self._conn, number)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> Mapping[str, microscope.abc.Device]:
         return self._devices
 
 

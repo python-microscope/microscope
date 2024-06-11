@@ -22,7 +22,7 @@
 
 import contextlib
 import threading
-import typing
+from typing import Mapping
 
 import serial
 
@@ -213,7 +213,7 @@ class ProScanIII(microscope.abc.Controller):
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _ProScanIIIConnection(port, baudrate, timeout)
-        self._devices: typing.Mapping[str, microscope.abc.Device] = {}
+        self._devices: Mapping[str, microscope.abc.Device] = {}
 
         # Can have up to three filter wheels, numbered 1 to 3.
         for number in range(1, 4):
@@ -222,7 +222,7 @@ class ProScanIII(microscope.abc.Controller):
                 self._devices[key] = _ProScanIIIFilterWheel(self._conn, number)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> Mapping[str, microscope.abc.Device]:
         return self._devices
 
 

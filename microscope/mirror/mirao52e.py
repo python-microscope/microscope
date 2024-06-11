@@ -40,7 +40,7 @@ applies.
 """
 
 import ctypes
-import typing
+from typing import Callable
 
 import numpy
 
@@ -97,7 +97,7 @@ class Mirao52e(
         if not mro.applyCommand(command, mro.FALSE, self._status):
             self._raise_status(mro.applyCommand)
 
-    def _raise_status(self, func: typing.Callable) -> None:
+    def _raise_status(self, func: Callable) -> None:
         error_code = self._status.contents.value
         raise microscope.DeviceError(
             "mro_%s() failed (error code %d)" % (func.__name__, error_code)

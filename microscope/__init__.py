@@ -18,7 +18,7 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import enum
-import typing
+from typing import NamedTuple
 
 
 class MicroscopeError(Exception):
@@ -127,21 +127,21 @@ class LibraryLoadError(MicroscopeError):
     pass
 
 
-class AxisLimits(typing.NamedTuple):
+class AxisLimits(NamedTuple):
     """Limits of a :class:`microscope.abc.StageAxis`."""
 
     lower: float
     upper: float
 
 
-class Binning(typing.NamedTuple):
+class Binning(NamedTuple):
     """A tuple containing parameters for horizontal and vertical binning."""
 
     h: int
     v: int
 
 
-class ROI(typing.NamedTuple):
+class ROI(NamedTuple):
     """A tuple that defines a region of interest.
 
     This rectangle format completely defines the ROI without reference

@@ -29,7 +29,7 @@ We only need access to other such devices.
    (not legacy).  This can be changed via the device web interface.
 """
 
-import typing
+from typing import List, Mapping, Tuple
 
 import serial
 
@@ -104,7 +104,7 @@ class _SpectraIIIConnection:
     def set_command(self, command: bytes, *args: bytes) -> None:
         self.command_and_answer(b"SET", command, *args)
 
-    def get_channel_map(self) -> typing.List[typing.Tuple[int, str]]:
+    def get_channel_map(self) -> List[Tuple[int, str]]:
         answer = self.get_command(b"CHMAP")
         return list(enumerate(answer.decode().split()))
 
@@ -171,7 +171,7 @@ class SpectraIIILightEngine(microscope.abc.Controller):
 
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._lights: typing.Mapping[str, microscope.abc.Device] = {}
+        self._lights: Mapping[str, microscope.abc.Device] = {}
 
         # We use standard (not legacy) mode communication so 115200,8,N,1
         serial_conn = serial.Serial(
@@ -195,7 +195,7 @@ class SpectraIIILightEngine(microscope.abc.Controller):
             self._lights[name] = _SpectraIIILightChannel(connection, index)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> Mapping[str, microscope.abc.Device]:
         return self._lights
 
 
@@ -223,8 +223,8 @@ class _SpectraIIILightChannel(
         # do.  So do nothing.
         pass
 
-    def get_status(self) -> typing.List[str]:
-        status: typing.List[str] = []
+    def get_status(self) -> List[str]:
+        status: List[str] = []
         return status
 
     def enable(self) -> None:

@@ -21,7 +21,7 @@
 """
 
 import logging
-import typing
+from typing import Dict, List
 
 import serial
 
@@ -76,7 +76,7 @@ class _CoolLEDConnection:
                 " but got '%s' instead" % answer.decode
             )
 
-    def get_channels(self) -> typing.List[str]:
+    def get_channels(self) -> List[str]:
         """Return list of channel names (names are one character string)."""
         # answer has the form: [xsnNNN] per channel.  The letter 'x'
         # defines the channel (A to H), 's' refers to S (Selected) or
@@ -160,7 +160,7 @@ class _CoolLEDChannel(microscope.abc.LightSource):
     def _do_shutdown(self) -> None:
         pass
 
-    def get_status(self) -> typing.List[str]:
+    def get_status(self) -> List[str]:
         return []
 
     def enable(self) -> None:
@@ -292,7 +292,7 @@ class CoolLED(microscope.abc.Controller):
 
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._channels: typing.Dict[str, microscope.abc.LightSource] = {}
+        self._channels: Dict[str, microscope.abc.LightSource] = {}
 
         # CoolLED manual only has the baudrate, we guessed the rest.
         serial_conn = serial.Serial(
@@ -312,5 +312,5 @@ class CoolLED(microscope.abc.Controller):
             self._channels[name] = _CoolLEDChannel(connection, name)
 
     @property
-    def devices(self) -> typing.Dict[str, microscope.abc.Device]:
+    def devices(self) -> Dict[str, microscope.abc.Device]:
         return self._channels

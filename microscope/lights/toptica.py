@@ -19,7 +19,7 @@
 
 import logging
 import re
-import typing
+from typing import List
 
 import serial
 
@@ -232,8 +232,8 @@ class TopticaiBeam(
     def _do_shutdown(self) -> None:
         pass
 
-    def get_status(self) -> typing.List[str]:
-        status: typing.List[str] = []
+    def get_status(self) -> List[str]:
+        status: List[str] = []
         return status
 
     def enable(self) -> None:

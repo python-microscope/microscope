@@ -44,11 +44,11 @@ import os.path
 import signal
 import sys
 import time
-import typing
 from collections.abc import Iterable
 from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from threading import Thread
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import Pyro4
 
@@ -79,11 +79,11 @@ Pyro4.config.REQUIRE_EXPOSE = False
 
 
 def device(
-    cls: typing.Callable,
+    cls: Callable,
     host: str,
     port: int,
-    conf: typing.Mapping[str, typing.Any] = {},
-    uid: typing.Optional[str] = None,
+    conf: Mapping[str, Any] = {},
+    uid: Optional[str] = None,
 ):
     """Define devices and where to serve them.
 
@@ -106,7 +106,7 @@ def device(
 
     .. code-block:: python
 
-        def construct_devices() -> typing.Dict[str, Device]:
+        def construct_devices() -> Dict[str, Device]:
             camera = Camera(some, arguments)
             # ... any other configuration that might be wanted
             return {'RedCamera': camera}
@@ -257,14 +257,14 @@ class DeviceServer(multiprocessing.Process):
         self,
         device_def,
         options: DeviceServerOptions,
-        id_to_host: typing.Mapping[str, str],
-        id_to_port: typing.Mapping[str, int],
-        exit_event: typing.Optional[multiprocessing.Event] = None,
+        id_to_host: Mapping[str, str],
+        id_to_port: Mapping[str, int],
+        exit_event: Optional[multiprocessing.Event] = None,
     ):
         # The device to serve.
         self._device_def = device_def
         self._options = options
-        self._devices: typing.Dict[str, microscope.abc.Device] = {}
+        self._devices: Dict[str, microscope.abc.Device] = {}
         # Where to serve it.
         self._id_to_host = id_to_host
         self._id_to_port = id_to_port
@@ -555,7 +555,7 @@ def serve_devices(devices, options: DeviceServerOptions, exit_event=None):
     return
 
 
-def _parse_cmd_line_args(args: typing.Sequence[str]) -> DeviceServerOptions:
+def _parse_cmd_line_args(args: Sequence[str]) -> DeviceServerOptions:
     parser = argparse.ArgumentParser(prog="device-server")
     parser.add_argument(
         "--logging-level",
@@ -607,7 +607,7 @@ def validate_devices(configfile):
     return devices
 
 
-def main(argv: typing.Sequence[str]) -> int:
+def main(argv: Sequence[str]) -> int:
     options = _parse_cmd_line_args(argv[1:])
 
     root_logger = logging.getLogger()

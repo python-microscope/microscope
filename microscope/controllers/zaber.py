@@ -43,7 +43,7 @@ import enum
 import logging
 import threading
 import time
-import typing
+from typing import Dict, List, Mapping
 
 import serial
 
@@ -350,10 +350,10 @@ class _ZaberStage(microscope.abc.Stage):
         return not self._dev_conn.been_homed()
 
     @property
-    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
+    def axes(self) -> Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
-    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+    def move_by(self, delta: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
@@ -362,7 +362,7 @@ class _ZaberStage(microscope.abc.Stage):
             )
         self._dev_conn.wait_until_idle()
 
-    def move_to(self, position: typing.Mapping[str, float]) -> None:
+    def move_to(self, position: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         for axis_name, axis_position in position.items():
             self._dev_conn.move_to_absolute_position(
@@ -456,7 +456,7 @@ class _ZaberLED(
     def _do_shutdown(self) -> None:
         pass
 
-    def get_status(self) -> typing.List[str]:
+    def get_status(self) -> List[str]:
         return super().get_status()
 
     def _do_enable(self) -> bool:
@@ -491,7 +491,7 @@ class _ZaberLEDController(microscope.abc.Controller):
     ) -> None:
         super().__init__(**kwargs)
         self._dev_conn = _ZaberDeviceConnection(conn, device_address)
-        self._leds: typing.Dict[str, _ZaberLED] = {}
+        self._leds: Dict[str, _ZaberLED] = {}
 
         all_lamps = self._dev_conn.command(b"get lamp.status").response.split()
         # We get one status per peripheral connection.  Documentation
@@ -510,7 +510,7 @@ class _ZaberLEDController(microscope.abc.Controller):
                 _logger.info("no LED %d, status is %s", i, lamp_state.decode())
 
     @property
-    def devices(self) -> typing.Dict[str, _ZaberLED]:
+    def devices(self) -> Dict[str, _ZaberLED]:
         return self._leds
 
 
@@ -588,12 +588,12 @@ class ZaberDaisyChain(microscope.abc.Controller):
     def __init__(
         self,
         port: str,
-        address2type: typing.Mapping[int, ZaberDeviceType],
+        address2type: Mapping[int, ZaberDeviceType],
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self._conn = _ZaberConnection(port, baudrate=115200, timeout=0.5)
-        self._devices: typing.Dict[str, microscope.abc.Device] = {}
+        self._devices: Dict[str, microscope.abc.Device] = {}
 
         for address, device_type in address2type.items():
             if address < 1 or address > 99:
@@ -602,5 +602,5 @@ class ZaberDaisyChain(microscope.abc.Controller):
             self._devices[str(address)] = dev_cls(self._conn, address)
 
     @property
-    def devices(self) -> typing.Dict[str, microscope.abc.Device]:
+    def devices(self) -> Dict[str, microscope.abc.Device]:
         return self._devices

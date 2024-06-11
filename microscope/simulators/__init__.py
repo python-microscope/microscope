@@ -30,8 +30,7 @@ import logging
 import math
 import random
 import time
-import typing
-from typing import Tuple
+from typing import Mapping, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -324,13 +323,11 @@ class SimulatedCamera(
 
 
 class SimulatedController(microscope.abc.Controller):
-    def __init__(
-        self, devices: typing.Mapping[str, microscope.abc.Device]
-    ) -> None:
+    def __init__(self, devices: Mapping[str, microscope.abc.Device]) -> None:
         self._devices = devices.copy()
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> Mapping[str, microscope.abc.Device]:
         return self._devices
 
 
@@ -467,7 +464,7 @@ class SimulatedStage(microscope.abc.Stage):
     """
 
     def __init__(
-        self, limits: typing.Mapping[str, microscope.AxisLimits], **kwargs
+        self, limits: Mapping[str, microscope.AxisLimits], **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self._axes = {
@@ -481,14 +478,14 @@ class SimulatedStage(microscope.abc.Stage):
         return False
 
     @property
-    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
+    def axes(self) -> Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
-    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+    def move_by(self, delta: Mapping[str, float]) -> None:
         for name, rpos in delta.items():
             self.axes[name].move_by(rpos)
 
-    def move_to(self, position: typing.Mapping[str, float]) -> None:
+    def move_to(self, position: Mapping[str, float]) -> None:
         for name, pos in position.items():
             self.axes[name].move_to(pos)
 

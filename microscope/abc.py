@@ -28,15 +28,14 @@ import logging
 import queue
 import threading
 import time
-import typing
 from enum import EnumMeta
 from threading import Thread
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy
 import Pyro4
 
 import microscope
-
 
 _logger = logging.getLogger(__name__)
 
@@ -99,10 +98,10 @@ class _Setting:
         self,
         name: str,
         dtype: str,
-        get_func: typing.Optional[typing.Callable[[], typing.Any]],
-        set_func: typing.Optional[typing.Callable[[typing.Any], None]] = None,
-        values: typing.Any = None,
-        readonly: typing.Optional[typing.Callable[[], bool]] = None,
+        get_func: Optional[Callable[[], Any]],
+        set_func: Optional[Callable[[Any], None]] = None,
+        values: Any = None,
+        readonly: Optional[Callable[[], bool]] = None,
     ) -> None:
         self.name = name
         if dtype not in DTYPES:
@@ -286,7 +285,7 @@ class Device(metaclass=abc.ABCMeta):
 
     def __init__(self) -> None:
         self.enabled = False
-        self._settings: typing.Dict[str, _Setting] = {}
+        self._settings: Dict[str, _Setting] = {}
 
     def __del__(self) -> None:
         self.shutdown()
@@ -402,7 +401,7 @@ class Device(metaclass=abc.ABCMeta):
         get_func,
         set_func,
         values,
-        readonly: typing.Optional[typing.Callable[[], bool]] = None,
+        readonly: Optional[Callable[[], bool]] = None,
     ) -> None:
         """Add a setting definition.
 
@@ -864,7 +863,7 @@ class Camera(TriggerTargetMixin, DataDevice):
         }[flips](data)
         return super()._process_data(data)
 
-    def get_transform(self) -> typing.Tuple[bool, bool, bool]:
+    def get_transform(self) -> Tuple[bool, bool, bool]:
         """Return the current transform without readout transform."""
         return self._client_transform
 
@@ -879,7 +878,7 @@ class Camera(TriggerTargetMixin, DataDevice):
             ud = not ud
         self._transform = (lr, ud, rot)
 
-    def set_transform(self, transform: typing.Tuple[bool, bool, bool]) -> None:
+    def set_transform(self, transform: Tuple[bool, bool, bool]) -> None:
         """Set client transform and update resultant transform."""
         self._client_transform = transform
         self._update_transform()
@@ -903,11 +902,11 @@ class Camera(TriggerTargetMixin, DataDevice):
         pass
 
     @abc.abstractmethod
-    def _get_sensor_shape(self) -> typing.Tuple[int, int]:
+    def _get_sensor_shape(self) -> Tuple[int, int]:
         """Return a tuple of `(width, height)` indicating shape in pixels."""
         pass
 
-    def get_sensor_shape(self) -> typing.Tuple[int, int]:
+    def get_sensor_shape(self) -> Tuple[int, int]:
         """Return a tuple of `(width, height)` corrected for transform."""
         shape = self._get_sensor_shape()
         if self._transform[2]:
@@ -1065,7 +1064,7 @@ class DeformableMirror(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._patterns: typing.Optional[numpy.ndarray] = None
+        self._patterns: Optional[numpy.ndarray] = None
         self._pattern_idx: int = -1
 
     @property
@@ -1193,7 +1192,7 @@ class LightSource(TriggerTargetMixin, Device, metaclass=abc.ABCMeta):
         self._set_point = 0.0
 
     @abc.abstractmethod
-    def get_status(self) -> typing.List[str]:
+    def get_status(self) -> List[str]:
         """Query and return the light source status."""
         result = []
         return result
@@ -1319,7 +1318,7 @@ class Controller(Device, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def devices(self) -> typing.Mapping[str, Device]:
+    def devices(self) -> Mapping[str, Device]:
         """Map of names to the controlled devices."""
         raise NotImplementedError()
 
@@ -1432,7 +1431,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def axes(self) -> typing.Mapping[str, StageAxis]:
+    def axes(self) -> Mapping[str, StageAxis]:
         """Map of axis names to the corresponding :class:`StageAxis`.
 
         .. code-block:: python
@@ -1475,7 +1474,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @property
-    def position(self) -> typing.Mapping[str, float]:
+    def position(self) -> Mapping[str, float]:
         """Map of axis name to their current position.
 
         .. code-block:: python
@@ -1490,7 +1489,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
         return {name: axis.position for name, axis in self.axes.items()}
 
     @property
-    def limits(self) -> typing.Mapping[str, microscope.AxisLimits]:
+    def limits(self) -> Mapping[str, microscope.AxisLimits]:
         """Map of axis name to its upper and lower limits.
 
         .. code-block:: python
@@ -1510,7 +1509,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
         return {name: axis.limits for name, axis in self.axes.items()}
 
     @abc.abstractmethod
-    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+    def move_by(self, delta: Mapping[str, float]) -> None:
         """Move axes by the corresponding amounts.
 
         Args:
@@ -1536,7 +1535,7 @@ class Stage(Device, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def move_to(self, position: typing.Mapping[str, float]) -> None:
+    def move_to(self, position: Mapping[str, float]) -> None:
         """Move axes to the corresponding positions.
 
         Args:

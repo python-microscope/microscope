@@ -59,7 +59,7 @@ PyPI.  See Ximea's website for `install instructions
 import contextlib
 import enum
 import logging
-import typing
+from typing import Optional, Tuple
 
 import numpy as np
 from ximea import xiapi
@@ -183,9 +183,7 @@ class XimeaCamera(microscope.abc.Camera):
 
     """
 
-    def __init__(
-        self, serial_number: typing.Optional[str] = None, **kwargs
-    ) -> None:
+    def __init__(self, serial_number: Optional[str] = None, **kwargs) -> None:
         super().__init__(**kwargs)
         self._acquiring = False
         self._handle = xiapi.Camera()
@@ -216,7 +214,7 @@ class XimeaCamera(microscope.abc.Camera):
 
         self.initialize()
 
-    def _fetch_data(self) -> typing.Optional[np.ndarray]:
+    def _fetch_data(self) -> Optional[np.ndarray]:
         if not self._acquiring:
             return None
 
@@ -359,7 +357,7 @@ class XimeaCamera(microscope.abc.Camera):
     def get_cycle_time(self):
         return 1.0 / self._handle.get_framerate()
 
-    def _get_sensor_shape(self) -> typing.Tuple[int, int]:
+    def _get_sensor_shape(self) -> Tuple[int, int]:
         return self._sensor_shape
 
     def soft_trigger(self) -> None:

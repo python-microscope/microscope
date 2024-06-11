@@ -23,18 +23,18 @@
 """
 
 import contextlib
+import logging
 import re
 import threading
 import time
 import typing
-import logging
-from typing import Callable, Any, Dict, Union
+from typing import Dict, List, Mapping, Optional
 
 import serial
 
-import microscope.abc
 import microscope._utils
-from microscope import DeviceError, InitialiseError
+import microscope.abc
+from microscope import InitialiseError
 
 _logger = logging.getLogger(__name__)
 
@@ -157,9 +157,7 @@ _ASI_ERRORS = {
 # Bit 7: Lower limit switch: 0 = open, 1 = closed
 
 
-def parse_info(
-    info: list,
-) -> dict[str, dict[str, Union[typing.Optional[str], Any]]]:
+def parse_info(info: List[str]) -> Dict[str, Dict[str, Optional[str]]]:
     items = []
     for line in info:
         if line in [b"", b"\n", b"\r", b"\r\n"]:
@@ -647,10 +645,10 @@ class _ASIStage(microscope.abc.Stage):
         return not self.homed
 
     @property
-    def axes(self) -> typing.Mapping[str, microscope.abc.StageAxis]:
+    def axes(self) -> Mapping[str, microscope.abc.StageAxis]:
         return self._axes
 
-    def move_by(self, delta: typing.Mapping[str, float]) -> None:
+    def move_by(self, delta: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         for axis_name, axis_delta in delta.items():
             self._dev_conn.move_by_relative_position(
@@ -658,7 +656,7 @@ class _ASIStage(microscope.abc.Stage):
             )
         self._dev_conn.wait_until_idle()
 
-    def move_to(self, position: typing.Mapping[str, float]) -> None:
+    def move_to(self, position: Mapping[str, float]) -> None:
         """Move specified axes by the specified distance."""
         print(position)
         for axis_name, axis_position in position.items():
@@ -682,7 +680,7 @@ class _ASILED(
         self._channel = channel
         self._do_disable()
 
-    def get_status(self) -> typing.List[str]:
+    def get_status(self) -> List[str]:
         return (
             super().get_status()
         )  # TODO: Verify what am I doing here. Just copying from the Zaber led controller
@@ -770,11 +768,11 @@ class ASIMS2000(microscope.abc.Controller):
     ) -> None:
         super().__init__()
         self._conn = _ASIController(port, baudrate, timeout)
-        self._devices: typing.Mapping[str, microscope.abc.Device] = {}
+        self._devices: Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _ASIStage(self._conn)
         for light_ch, light in enumerate(kwargs["lights"]):
             self._devices[light] = _ASILED(self._conn, light_ch)
 
     @property
-    def devices(self) -> typing.Mapping[str, microscope.abc.Device]:
+    def devices(self) -> Mapping[str, microscope.abc.Device]:
         return self._devices

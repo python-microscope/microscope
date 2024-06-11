@@ -18,7 +18,7 @@
 ## along with Microscope.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import typing
+from typing import Dict, List
 
 import serial
 
@@ -182,7 +182,7 @@ class _iChromeLaser(microscope.abc.LightSource):
             "delay", "int", self._conn.get_delay, None, values=tuple()
         )
 
-    def get_status(self) -> typing.List[str]:
+    def get_status(self) -> List[str]:
         return self._conn.get_status_txt().split()
 
     def get_is_on(self) -> bool:
@@ -260,7 +260,7 @@ class iChromeMLE(microscope.abc.Controller):
 
     def __init__(self, port: str, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._lasers: typing.Dict[str, _iChromeLaser] = {}
+        self._lasers: Dict[str, _iChromeLaser] = {}
 
         # Setting specified on the manual (M-051 version 03)
         serial_conn = serial.Serial(
@@ -295,5 +295,5 @@ class iChromeMLE(microscope.abc.Controller):
                 self._lasers[name] = laser
 
     @property
-    def devices(self) -> typing.Dict[str, _iChromeLaser]:
+    def devices(self) -> Dict[str, _iChromeLaser]:
         return self._lasers
