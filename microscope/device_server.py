@@ -81,7 +81,7 @@ def device(
     cls: Callable,
     host: str,
     port: int,
-    conf: Mapping[str, Any] = {},
+    conf: Optional[Mapping[str, Any]] = None,
     uid: Optional[str] = None,
 ):
     """Define devices and where to serve them.
@@ -119,6 +119,9 @@ def device(
         ]
 
     """
+    if conf is None:
+        conf = {}
+
     if not callable(cls):
         raise TypeError("cls must be a callable")
     elif isinstance(cls, type):
