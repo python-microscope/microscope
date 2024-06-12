@@ -397,12 +397,6 @@ class DeviceServer(multiprocessing.Process):
 
 
 def serve_devices(devices, options: DeviceServerOptions, exit_event=None):
-    # We make changes to `devices` (would be great if we didn't had
-    # to) so make a a copy of it because we don't want to make those
-    # changes on the caller.  See original issue on #211 and PRs #212
-    # and #217 (most discussion happens on #212).
-    devices = copy.deepcopy(devices)
-
     root_logger = logging.getLogger()
 
     log_handler = FileHandler("__MAIN__.log")
@@ -445,6 +439,13 @@ def serve_devices(devices, options: DeviceServerOptions, exit_event=None):
     # Group devices by class.
     by_class = {}
     for dev in devices:
+        ## We may change dev['conf'] later so make a copy of it (see
+        ## original issue #211 and PRs #212 and #217 - most discussion
+        ## happens on #212).  And the copy must be made on 'dev' and
+        ## not 'devices' because 'devices' may have internal refs
+        ## which are kept on a deepcopy (issue #274).
+        dev = copy.deepcopy(dev)
+
         by_class[dev["cls"]] = by_class.get(dev["cls"], []) + [dev]
 
     if not by_class:

@@ -325,6 +325,70 @@ class TestFunctionInDeviceDefinition(BaseTestDeviceServer):
         self.assertEqual(dm2.n_actuators, 20)
 
 
+class TestCopyOfDeviceConf(BaseTestServeDevices):
+    """Ensure that device configurations are a copy."""
+
+    def setUp(self):
+        ## We need to test this with floating devices since they are
+        ## the case that modifies conf.  The TestFloatingDevice class
+        ## needs a `uid` arg but for this test, we need use the same
+        ## conf object for both.  And because this will instantiated
+        ## on a new Process, we use this multiprocessing Queue.
+        uids_to_pick = multiprocessing.Queue()
+        uids_to_pick.put("foo")
+        uids_to_pick.put("bar")
+        class FloatingDeviceX(TestFloatingDevice):
+            def __init__(self, **kwargs):
+                super().__init__(uid=uids_to_pick.get(), **kwargs)
+
+        self.conf = {}
+
+        self.DEVICES = [
+            microscope.device_server.device(
+                FloatingDeviceX, "127.0.0.1", 8001, self.conf, uid="foo"
+            ),
+            microscope.device_server.device(
+                FloatingDeviceX, "127.0.0.1", 8002, self.conf, uid="bar"
+            ),
+        ]
+        super().setUp()
+
+    def test_conf_copy(self):
+        """Test that device_server does not change the original conf.
+
+        Because we are dealing with a FloatingDevice, serve_devices
+        will be injecting an 'index' on it.  This test confirms that
+        the change is on a copy of it.  See issue #211 and PRs #212
+        and #217 (most discussion happens on #212).
+        """
+        self.assertFalse(
+            "index" in self.conf,
+            "injected 'index' key found on original - conf not copied"
+        )
+
+    def test_independent_conf_copies(self):
+        """Test that device_server makes a copy for each device.
+
+        It is possible that two devices have the same conf object.
+        Because we may modify that "conf" internally, we need to
+        ensure that each device has its own copy of the conf.
+
+        This is a regression test for issue #274.
+
+        """
+        d1 = Pyro4.Proxy("PYRO:FloatingDeviceX@127.0.0.1:8001")
+        d2 = Pyro4.Proxy("PYRO:FloatingDeviceX@127.0.0.1:8002")
+        ## These are floating devices so each gets assigned an index
+        ## by `serve_devices`.  If their index are the same it means
+        ## that the device confs are references to the same dict
+        ## (probably because they were not copied properly).
+        self.assertNotEqual(
+            d1.get_index(),
+            d2.get_index(),
+            "both devices assigned the same index (sharing the same conf?)"
+        )
+
+
 class TestKeepDeviceServerAlive(BaseTestServeDevices):
     DEVICES = [
         microscope.device_server.device(
