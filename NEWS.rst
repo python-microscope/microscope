@@ -4,6 +4,16 @@ python-microscope releases.
 Upcoming version
 ----------------
 
+  * Cameras now have a property ``"shuttering_mode"`` for the type of
+    electronic shuttering mode (global or rolling) implemented on hardware.
+
+  * Implemented support for Thorlabs ELL-slider
+    (:class:`microscope.filterwheels.thorlabs.ThorlabsELLSlider`).
+
+  * Ximea cameras now automatically get all the settings. As we only have tested
+    a camera model, this may not work for all Ximea cameras. If it does not work
+    for your camera, please report it as an issue.
+
 
 Version 0.7.0 (2024/01/10)
 --------------------------
