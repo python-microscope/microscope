@@ -863,6 +863,25 @@ class Camera(TriggerTargetMixin, DataDevice):
         }[flips](data)
         return super()._process_data(data)
 
+    @property
+    def shuttering_mode(self) -> microscope.ElectronicShutteringMode:
+        """Return the electronic shuttering mode."""
+        return self._get_shuttering_mode()
+
+    @abc.abstractmethod
+    def _get_shuttering_mode(self) -> microscope.ElectronicShutteringMode:
+        """Return the electronic shuttering mode."""
+        pass
+
+    @shuttering_mode.setter
+    def shuttering_mode(self, mode: microscope.ElectronicShutteringMode):
+        """Set the electronic shuttering mode."""
+        self._set_shuttering_mode(mode)
+
+    def _set_shuttering_mode(self, mode: microscope.ElectronicShutteringMode):
+        """Set the electronic shuttering mode."""
+        raise NotImplementedError()
+
     def get_transform(self) -> Tuple[bool, bool, bool]:
         """Return the current transform without readout transform."""
         return self._client_transform

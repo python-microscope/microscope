@@ -788,6 +788,20 @@ class HamamatsuCamera(microscope.abc.Camera):
                 " manually via the settings dict?)" % (source)
             )
 
+    def _get_shuttering_mode(self) -> microscope.ElectronicShutteringMode:
+        mode = self._get_long_property(dcam.IDPROP.TIMING_EXPOSURE)
+        if mode == dcam.PROPMODEVALUE.TIMING_EXPOSURE__ROLLING:
+            return microscope.ElectronicShutteringMode.ROLLING
+        elif mode in (
+            dcam.PROPMODEVALUE.TIMING_EXPOSURE__AFTERREADOUT,
+            dcam.PROPMODEVALUE.TIMING_EXPOSURE__OVERLAPREADOUT,
+        ):
+            return microscope.ElectronicShutteringMode.GLOBAL
+        else:
+            raise microscope.UnsupportedFeatureError(
+                "Unsupported shuttering mode: %d" % mode
+            )
+
     @property
     def trigger_type(self) -> microscope.TriggerType:
         return self._get_trigger_combo()[0]

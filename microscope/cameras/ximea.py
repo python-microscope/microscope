@@ -342,6 +342,19 @@ class XimeaCamera(microscope.abc.Camera):
         _logger.info("Acquisition enabled.")
         return True
 
+    def _get_shuttering_mode(self) -> microscope.ElectronicShutteringMode:
+        shutter_type = self._handle.get_shutter_type()
+        if shutter_type == "XI_SHUTTER_GLOBAL":
+            return microscope.ElectronicShutteringMode.GLOBAL
+        elif shutter_type == "XI_SHUTTER_ROLLING":
+            return microscope.ElectronicShutteringMode.ROLLING
+        # This shutter global reset release mode is de facto a rolling shutter where all pixels are activated
+        # at the same time. https://www.ximea.com/support/wiki/allprod/Sensor_Shutter_Modes
+        elif shutter_type == "XI_SHUTTER_GLOBAL_RESET_RELEASE":
+            return microscope.ElectronicShutteringMode.ROLLING
+        else:
+            raise microscope.UnsupportedFeatureError(f"{shutter_type} shuttering mode is not supported.")
+
     def set_exposure_time(self, value: float) -> None:
         # exposure times are set in us.
         try:
