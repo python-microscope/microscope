@@ -116,7 +116,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         self._flush_handshake()
         self._write(b"SOURce:AM:STATe?")
         response = self._readline()
-        _logger.info("SOURce:AM:STATe? [%s]", response.decode())
+        _logger.debug("SOURce:AM:STATe? [%s]", response.decode())
 
         if not self.get_is_on():
             # Something went wrong.
@@ -166,7 +166,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
         """Return True if the laser is currently able to produce light."""
         self._write(b"SOURce:AM:STATe?")
         response = self._readline()
-        _logger.info("Are we on? [%s]", response.decode())
+        _logger.debug("Are we on? [%s]", response.decode())
         return response == b"ON"
 
     @microscope.abc.SerialDeviceMixin.lock_comms
@@ -180,7 +180,7 @@ class ObisLaser(microscope.abc.SerialDeviceMixin, microscope.abc.LightSource):
     @microscope.abc.SerialDeviceMixin.lock_comms
     def _set_power_mw(self, mw):
         power_w = mw / 1000.0
-        _logger.info("Setting laser power to %.7sW", power_w)
+        _logger.debug("Setting laser power to %.7sW", power_w)
         self._write(b"SOURce:POWer:LEVel:IMMediate:AMPLitude %.5f" % power_w)
         self._flush_handshake()
 
