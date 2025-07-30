@@ -50,6 +50,7 @@ Filter Wheels
 
 - Prior (:mod:`microscope.controllers.prior`)
 - Thorlabs (:mod:`microscope.filterwheels.thorlabs`)
+- Thorlabs ELL sliders (:mod:'microscope.filterwheels.ell_slider')
 - Zaber (:class:`microscope.controllers.zaber.ZaberDaisyChain`)
 
 Light Sources
