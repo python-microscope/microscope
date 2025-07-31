@@ -33,7 +33,7 @@ import serial
 
 import microscope._utils
 import microscope.abc
-from microscope import InitialiseError
+from microscope import InitialiseError, DeviceError
 
 _logger = logging.getLogger(__name__)
 
@@ -286,7 +286,7 @@ class _ASIController:
                 elif line[0] == b"N":
                     # this is an error string
                     error = line[2:].strip()
-                    raise (
+                    raise DeviceError(
                         f"ASI controller error: {error},{_ASI_ERRORS[error]}"
                     )
         return output
@@ -432,7 +432,7 @@ class _ASIController:
             )
         position = self.get_command(bytes(f"WHERE {axis}", "ascii"))
         if position[3:4] == b"N":
-            print(f"Error: {position} : {_ASI_ERRORS[int(position[4:6])]}")
+            raise DeviceError(f"Error: {position} : {_ASI_ERRORS[int(position[4:6])]}")
         else:
             return float(position.strip()[2:])
 
@@ -559,11 +559,11 @@ class _ASIStage(microscope.abc.Stage):
         elif answer[0] == "N":
             # this is an error string
             error = answer[2:]
-            raise Exception(
+            raise DeviceError(
                 f"ASI controller error on command {command}: {error},{_ASI_ERRORS[error]}"
             )
         else:
-            raise Exception(
+            raise DeviceError(
                 f"ASI controller error on command {command}: {answer}"
             )
 
