@@ -27,7 +27,6 @@ import logging
 import re
 import threading
 import time
-import typing
 from typing import Dict, List, Mapping, Optional
 
 import serial
