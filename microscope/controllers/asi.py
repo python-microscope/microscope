@@ -680,9 +680,7 @@ class _ASILED(
         self._do_disable()
 
     def get_status(self) -> List[str]:
-        return (
-            super().get_status()
-        )  # TODO: Verify what am I doing here. Just copying from the Zaber led controller
+        return []
 
     def get_is_on(self) -> bool:
         return self._dev_conn.is_led_on(self._channel)
