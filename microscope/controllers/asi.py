@@ -393,12 +393,12 @@ class _ASIController:
         flags = int(reply.strip()[3:])
         return flags & 1
 
-    def set_speed(self, axis: str, speed: int) -> None:
+    def set_speed(self, axis: str, speed: float) -> None:
         if axis not in self.axis_list:
             raise ValueError(
                 f"Axis {axis} not present. Verify the name of the axis or your configuration files."
             )
-        self.get_command(bytes(f"SPEED {axis}={speed}", "ascii"))
+        self.get_command(bytes(f"SPEED {axis}={speed:.6f}", "ascii"))
 
     def find_max_speed(self, axis: str):
         if axis not in self.axis_list:
@@ -460,6 +460,7 @@ class _ASIStageAxis(microscope.abc.StageAxis):
         self.max_limit = 100000.0
         # As detailed in ASI manual set speed to 67% of max
         max_speed = self._dev_conn.find_max_speed(self._axis)
+        self.speed = None
         self.set_speed(max_speed * 0.67)
 
     def move_by(self, delta: float) -> None:
@@ -492,9 +493,9 @@ class _ASIStageAxis(microscope.abc.StageAxis):
         self.move_to(self.max_limit / 2)
         self._dev_conn.wait_for_motor_stop(self._axis)
 
-    def set_speed(self, speed: int) -> None:
-        self.speed = speed
+    def set_speed(self, speed: float) -> None:
         self._dev_conn.set_speed(self._axis, speed)
+        self.speed = speed
 
     def find_limits(self, speed=100):
         # drive axis to minimum pos, zero and then drive to max position
