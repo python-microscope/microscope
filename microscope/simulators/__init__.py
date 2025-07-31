@@ -171,6 +171,7 @@ class SimulatedCamera(
         self._sensor_shape = sensor_shape
         self._roi = microscope.ROI(0, 0, *sensor_shape)
         self._binning = microscope.Binning(1, 1)
+        self._shuttering_mode = microscope.ElectronicShutteringMode.GLOBAL
         # Function used to generate test image
         self._image_generator = _ImageGenerator()
         self.add_setting(
@@ -291,6 +292,14 @@ class SimulatedCamera(
 
     def _get_sensor_shape(self):
         return self._sensor_shape
+
+
+    def _get_shuttering_mode(self):
+        return self._shuttering_mode
+
+    def _set_shuttering_mode(self,
+                             mode: microscope.ElectronicShutteringMode):
+        self._shuttering_mode = mode
 
     def soft_trigger(self):
         # deprecated, use self.trigger()
