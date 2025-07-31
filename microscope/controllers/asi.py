@@ -767,8 +767,11 @@ class ASIMS2000(microscope.abc.Controller):
         self._conn = _ASIController(port, baudrate, timeout)
         self._devices: Mapping[str, microscope.abc.Device] = {}
         self._devices["stage"] = _ASIStage(self._conn)
-        for light_ch, light in enumerate(kwargs["lights"]):
-            self._devices[light] = _ASILED(self._conn, light_ch)
+        try:
+            for light_ch, light in enumerate(kwargs["lights"]):
+                self._devices[light] = _ASILED(self._conn, light_ch)
+        except KeyError:
+            _logger.info("No lights defined for this controller")
 
     @property
     def devices(self) -> Mapping[str, microscope.abc.Device]:
