@@ -1050,7 +1050,7 @@ class SerialDeviceMixin(metaclass=abc.ABCMeta):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             with self._comms_lock:
-                self.connection.flushInput()
+                self.connection.reset_input_buffer()
                 return func(self, *args, **kwargs)
 
         return wrapper

@@ -102,12 +102,12 @@ class CoboltLaser(
         # Disable laser.
         self.disable()
         self.send(b"@cob0")
-        self.connection.flushInput()
+        self.connection.reset_input_buffer()
 
     #  Initialization to do when cockpit connects.
     @microscope.abc.SerialDeviceMixin.lock_comms
     def initialize(self):
-        self.connection.flushInput()
+        self.connection.reset_input_buffer()
         # We don't want 'direct control' mode.
         self.send(b"@cobasdr 0")
         # Force laser into autostart mode.
