@@ -211,15 +211,17 @@ class ProScanIII(microscope.abc.Controller):
     def __init__(
         self, port: str, baudrate: int = 9600, timeout: float = 0.5, **kwargs
     ) -> None:
-        super().__init__(**kwargs)
-        self._conn = _ProScanIIIConnection(port, baudrate, timeout)
         self._devices: Mapping[str, microscope.abc.Device] = {}
+
+        self._conn = _ProScanIIIConnection(port, baudrate, timeout)
 
         # Can have up to three filter wheels, numbered 1 to 3.
         for number in range(1, 4):
             if self._conn.has_filterwheel(number):
                 key = "filter %d" % number
                 self._devices[key] = _ProScanIIIFilterWheel(self._conn, number)
+
+        super().__init__(**kwargs)
 
     @property
     def devices(self) -> Mapping[str, microscope.abc.Device]:
